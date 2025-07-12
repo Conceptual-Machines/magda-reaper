@@ -27,9 +27,6 @@ class TestTrackAgent:
         # Patch the LLM parsing method to return all required fields for TrackResult
         with patch.object(agent, "_parse_track_operation_with_llm") as mock_parse:
             mock_parse.return_value = {
-                "daw_commands": ["track(bass, serum)"],
-                "context": {"tracks": {"bass": "track_1"}},
-                "reasoning": "Created bass track with Serum",
                 "name": "bass",
                 "vst": "serum",
             }
@@ -39,7 +36,9 @@ class TestTrackAgent:
                 agent_name="track",
             )
             result = agent.execute(str(op.parameters), {})
-            assert "track(bass, serum)" in result["daw_command"]
+            assert "name:bass" in result["daw_command"]
+            assert "vst:serum" in result["daw_command"]
+            assert result["daw_command"].startswith("track(")
 
 
 class TestClipAgent:
