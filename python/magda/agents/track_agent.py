@@ -13,6 +13,7 @@ class TrackAgent(BaseAgent):
     
     def __init__(self):
         super().__init__()
+        self.name = "track"
         self.created_tracks = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
@@ -23,34 +24,32 @@ class TrackAgent(BaseAgent):
     def execute(self, operation: str, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
         """Execute track creation operation using LLM."""
         context = context or {}
-        
+
         # Use LLM to parse track operation and generate DAW command
         track_info = self._parse_track_operation_with_llm(operation)
-        
+
         # Generate unique track ID
         track_id = str(uuid.uuid4())
-        
-        # Create track result
+
+        # Forward all required fields from track_info to TrackResult
         track_result = TrackResult(
             id=track_id,
             name=track_info.get("name", f"track_{track_id[:8]}"),
             vst=track_info.get("vst"),
-            type="track"
+            type="track",
+            daw_commands=track_info.get("daw_commands", []),
+            context=track_info.get("context", {}),
+            reasoning=track_info.get("reasoning", ""),
         )
-        
+
         # Store track for future reference
-        self.created_tracks[track_id] = track_result.dict()
-        
-        # Generate DAW command
-        daw_command = self._generate_daw_command(track_result)
-        
-        response = AgentResponse(
-            result=track_result.dict(),
-            daw_command=daw_command,
-            context=context
-        )
-        
-        return response.dict()
+        self.created_tracks[track_id] = track_result.model_dump()
+
+        return {
+            "daw_command": "; ".join(track_result.daw_commands),
+            "result": track_result.model_dump(),
+            "context": track_result.context,
+        }
     
     def _parse_track_operation_with_llm(self, operation: str) -> Dict[str, Any]:
         """Use LLM to parse track operation and extract parameters using Responses API."""

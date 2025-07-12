@@ -4,7 +4,7 @@ from .base import BaseAgent
 import openai
 import os
 from dotenv import load_dotenv
-from ..models import MidiResult, DAWCommand, AgentResponse
+from ..models import MIDIResult, DAWCommand, AgentResponse
 
 load_dotenv()
 
@@ -13,6 +13,7 @@ class MidiAgent(BaseAgent):
     
     def __init__(self):
         super().__init__()
+        self.name = "midi"
         self.midi_events = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
@@ -39,7 +40,7 @@ class MidiAgent(BaseAgent):
         midi_id = str(uuid.uuid4())
         
         # Create MIDI result
-        midi_result = MidiResult(
+        midi_result = MIDIResult(
             id=midi_id,
             track_id=track_id or "unknown",
             note=midi_info.get("note", "C4"),
@@ -83,7 +84,7 @@ class MidiAgent(BaseAgent):
                 model="gpt-4.1",
                 instructions=instructions,
                 input=operation,
-                text_format=MidiResult,
+                text_format=MIDIResult,
                 temperature=0.1
             )
             
@@ -94,7 +95,7 @@ class MidiAgent(BaseAgent):
             print(f"Error parsing MIDI operation: {e}")
             return {}
     
-    def _generate_daw_command(self, midi: MidiResult) -> str:
+    def _generate_daw_command(self, midi: MIDIResult) -> str:
         """Generate DAW command string from MIDI result."""
         return f"midi(track:{midi.track_id}, note:{midi.note}, velocity:{midi.velocity}, duration:{midi.duration}, bar:{midi.start_bar}, channel:{midi.channel})"
     

@@ -13,6 +13,7 @@ class EffectAgent(BaseAgent):
     
     def __init__(self):
         super().__init__()
+        self.name = "effect"
         self.effects = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     

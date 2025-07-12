@@ -13,6 +13,7 @@ class ClipAgent(BaseAgent):
     
     def __init__(self):
         super().__init__()
+        self.name = "clip"
         self.created_clips = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     

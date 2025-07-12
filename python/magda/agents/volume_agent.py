@@ -13,6 +13,7 @@ class VolumeAgent(BaseAgent):
     
     def __init__(self):
         super().__init__()
+        self.name = "volume"
         self.volume_automations = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
