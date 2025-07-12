@@ -42,10 +42,12 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd python
         uv sync --frozen
 
     - name: Run tests
       run: |
+        cd python
         uv run pytest --cov=magda --cov-report=xml --cov-report=term-missing
 
     - name: Upload coverage to Codecov
@@ -75,15 +77,18 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd python
         uv sync --frozen
 
     - name: Run linting
       run: |
+        cd python
         uv run ruff check .
         uv run ruff format --check .
 
     - name: Run type checking
       run: |
+        cd python
         uv run mypy magda/
 
   build:
@@ -106,17 +111,19 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd python
         uv sync --frozen
 
     - name: Build package
       run: |
+        cd python
         uv run python -m build
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
         name: dist
-        path: dist/
+        path: python/dist/
 
   security:
     runs-on: ubuntu-latest
@@ -137,10 +144,12 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd python
         uv sync --frozen
 
     - name: Run security checks
       run: |
+        cd python
         uv run bandit -r magda/ -f json -o bandit-report.json || true
         uv run safety check --json --output safety-report.json || true
 
@@ -173,10 +182,12 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd python
         uv sync --frozen
 
     - name: Build package
       run: |
+        cd python
         uv run python -m build
 
     - name: Create Release
