@@ -2,7 +2,7 @@
 name = "magda"
 version = "0.1.0"
 description = "Multi Agent Generative DAW API - Translate natural language prompts into DAW commands"
-readme = "README.md"
+readme = "../README.md"
 requires-python = ">=3.12"
 dependencies = [
     "openai>=1.95.1",
