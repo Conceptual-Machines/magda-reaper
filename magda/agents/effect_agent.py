@@ -4,7 +4,7 @@ from .base import BaseAgent
 import openai
 import os
 from dotenv import load_dotenv
-from ..models import EffectResult, DAWCommand, AgentResponse
+from ..models import EffectResult, EffectParameters, DAWCommand, AgentResponse
 
 load_dotenv()
 
@@ -43,7 +43,7 @@ class EffectAgent(BaseAgent):
             id=effect_id,
             track_id=track_id or "unknown",
             effect_type=effect_info.get("effect_type", "reverb"),
-            parameters=effect_info.get("parameters", {}),
+            parameters=effect_info.get("parameters", EffectParameters()),
             position=effect_info.get("position", "insert")
         )
         
@@ -92,7 +92,14 @@ class EffectAgent(BaseAgent):
     
     def _generate_daw_command(self, effect: EffectResult) -> str:
         """Generate DAW command string from effect result."""
-        params_str = ", ".join([f"{k}:{v}" for k, v in effect.parameters.items()])
+        params = effect.parameters
+        params_str = f"wet:{params.wet}, dry:{params.dry}"
+        if effect.effect_type == "compressor":
+            params_str += f", threshold:{params.threshold}, ratio:{params.ratio}"
+        elif effect.effect_type == "reverb":
+            params_str += f", decay:{params.decay}"
+        elif effect.effect_type == "delay":
+            params_str += f", feedback:{params.feedback}"
         return f"effect(track:{effect.track_id}, type:{effect.effect_type}, position:{effect.position}, params:{{{params_str}}})"
     
     def get_capabilities(self) -> List[str]:

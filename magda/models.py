@@ -104,12 +104,25 @@ class VolumeResult(BaseModel):
         extra = "forbid"  # This is equivalent to additionalProperties: false
 
 
+class EffectParameters(BaseModel):
+    """Model for effect parameters."""
+    wet: float = Field(0.5, description="Wet mix amount (0.0 to 1.0)")
+    dry: float = Field(0.5, description="Dry mix amount (0.0 to 1.0)")
+    threshold: float = Field(-20.0, description="Compressor threshold in dB")
+    ratio: float = Field(4.0, description="Compressor ratio")
+    decay: float = Field(2.0, description="Reverb decay time in seconds")
+    feedback: float = Field(0.3, description="Delay feedback amount (0.0 to 1.0)")
+    
+    class Config:
+        extra = "forbid"
+
+
 class EffectResult(BaseModel):
     """Model for effect result."""
     id: str = Field(..., description="Unique effect ID")
     track_id: str = Field(..., description="Target track ID")
     effect_type: str = Field(..., description="Type of effect (reverb, delay, compressor, etc.)")
-    parameters: Dict[str, Any] = Field(..., description="Effect parameters")
+    parameters: EffectParameters = Field(..., description="Effect parameters")
     position: str = Field(..., description="Effect position (insert, send, master)")
     
     class Config:
