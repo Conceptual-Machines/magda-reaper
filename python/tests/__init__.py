@@ -1,1 +1,1 @@
-# Tests package for MAGDA 
+# Tests package for MAGDA

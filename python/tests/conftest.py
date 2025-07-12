@@ -1,7 +1,9 @@
-import pytest
 import os
 from unittest.mock import Mock, patch
-from magda.models import Operation, OperationType, AgentResponse
+
+import pytest
+
+from magda.models import AgentResponse, Operation, OperationType
 
 
 @pytest.fixture(scope="session")
@@ -214,4 +216,4 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="run API tests that require actual OpenAI API calls"
-    ) 
+    )

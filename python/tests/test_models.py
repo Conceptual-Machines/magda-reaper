@@ -1,8 +1,16 @@
 import pytest
 from pydantic import ValidationError
+
 from magda.models import (
-    Operation, OperationType, AgentResponse, TrackResult, ClipResult,
-    VolumeResult, EffectResult, EffectParameters, MIDIResult
+    AgentResponse,
+    ClipResult,
+    EffectParameters,
+    EffectResult,
+    MIDIResult,
+    Operation,
+    OperationType,
+    TrackResult,
+    VolumeResult,
 )
 
 
@@ -16,7 +24,7 @@ class TestOperation:
             parameters={"track_name": "bass", "instrument": "serum"},
             agent_name="track_agent"
         )
-        
+
         assert operation.operation_type == OperationType.CREATE_TRACK
         assert operation.parameters["track_name"] == "bass"
         assert operation.parameters["instrument"] == "serum"
@@ -29,7 +37,7 @@ class TestOperation:
             parameters={},
             agent_name="volume_agent"
         )
-        
+
         assert operation.parameters == {}
 
     def test_operation_type_enum(self):
@@ -62,7 +70,7 @@ class TestAgentResponse:
             context={"tracks": {"bass": "track_1"}},
             reasoning="Created bass track and set volume"
         )
-        
+
         assert len(response.daw_commands) == 2
         assert "track(bass, serum)" in response.daw_commands
         assert response.context["tracks"]["bass"] == "track_1"
@@ -75,7 +83,7 @@ class TestAgentResponse:
             context={},
             reasoning="No operations needed"
         )
-        
+
         assert response.daw_commands == []
         assert response.context == {}
 
@@ -86,13 +94,13 @@ class TestAgentResponse:
             "effects": {"bass": ["compressor", "reverb"]},
             "volumes": {"bass": -6, "drums": -3}
         }
-        
+
         response = AgentResponse(
             daw_commands=["track(bass, serum)", "track(drums, addictive_drums)"],
             context=complex_context,
             reasoning="Created multiple tracks with effects"
         )
-        
+
         assert response.context["tracks"]["bass"] == "track_1"
         assert response.context["effects"]["bass"] == ["compressor", "reverb"]
         assert response.context["volumes"]["bass"] == -6
@@ -111,7 +119,7 @@ class TestTrackResult:
             track_name="bass",
             instrument="serum"
         )
-        
+
         assert result.track_id == "track_1"
         assert result.track_name == "bass"
         assert result.instrument == "serum"
@@ -125,7 +133,7 @@ class TestTrackResult:
             track_id="track_1",
             track_name="bass"
         )
-        
+
         assert result.instrument is None
 
 
@@ -143,7 +151,7 @@ class TestClipResult:
             start_time=0.0,
             duration=4.0
         )
-        
+
         assert result.clip_id == "clip_1"
         assert result.track_name == "bass"
         assert result.start_time == 0.0
@@ -162,7 +170,7 @@ class TestVolumeResult:
             track_name="bass",
             volume=-6.0
         )
-        
+
         assert result.track_name == "bass"
         assert result.volume == -6.0
 
@@ -177,7 +185,7 @@ class TestVolumeResult:
             fade_type="in",
             fade_duration=2.0
         )
-        
+
         assert result.fade_type == "in"
         assert result.fade_duration == 2.0
 
@@ -201,7 +209,7 @@ class TestEffectParameters:
             q_factor=1.0,
             gain=0.0
         )
-        
+
         assert params.wet_mix == 0.3
         assert params.threshold == -20.0
         assert params.ratio == 4.0
@@ -211,7 +219,7 @@ class TestEffectParameters:
     def test_effect_parameters_with_defaults(self):
         """Test effect parameters with default values."""
         params = EffectParameters()
-        
+
         assert params.wet_mix == 0.5
         assert params.dry_mix == 0.5
         assert params.threshold == -24.0
@@ -222,11 +230,11 @@ class TestEffectParameters:
         # Test wet_mix range validation
         with pytest.raises(ValidationError):
             EffectParameters(wet_mix=1.5)  # Should be <= 1.0
-        
+
         # Test ratio range validation
         with pytest.raises(ValidationError):
             EffectParameters(ratio=0.5)  # Should be >= 1.0
-        
+
         # Test threshold range validation
         with pytest.raises(ValidationError):
             EffectParameters(threshold=-100.0)  # Should be >= -60.0
@@ -246,7 +254,7 @@ class TestEffectResult:
             effect_type="compressor",
             parameters=params
         )
-        
+
         assert result.track_name == "bass"
         assert result.effect_type == "compressor"
         assert result.parameters.ratio == 4.0
@@ -261,7 +269,7 @@ class TestEffectResult:
             track_name="bass",
             effect_type="reverb"
         )
-        
+
         assert result.parameters is None
 
 
@@ -279,7 +287,7 @@ class TestMIDIResult:
             quantization="16th",
             transpose_semitones=2
         )
-        
+
         assert result.track_name == "piano"
         assert result.operation == "quantize"
         assert result.quantization == "16th"
@@ -295,7 +303,7 @@ class TestMIDIResult:
             operation="velocity",
             velocity=80
         )
-        
+
         assert result.velocity == 80
         assert result.operation == "velocity"
 
@@ -310,7 +318,7 @@ class TestModelSerialization:
             parameters={"track_name": "bass"},
             agent_name="track_agent"
         )
-        
+
         data = operation.model_dump()
         assert data["operation_type"] == "CREATE_TRACK"
         assert data["parameters"]["track_name"] == "bass"
@@ -323,7 +331,7 @@ class TestModelSerialization:
             context={"tracks": {"bass": "track_1"}},
             reasoning="Created bass track"
         )
-        
+
         data = response.model_dump()
         assert data["daw_commands"] == ["track(bass, serum)"]
         assert data["context"]["tracks"]["bass"] == "track_1"
@@ -332,8 +340,8 @@ class TestModelSerialization:
     def test_effect_parameters_serialization(self):
         """Test effect parameters model serialization."""
         params = EffectParameters(ratio=4.0, threshold=-20.0)
-        
+
         data = params.model_dump()
         assert data["ratio"] == 4.0
         assert data["threshold"] == -20.0
-        assert data["wet_mix"] == 0.5  # default value 
+        assert data["wet_mix"] == 0.5  # default value

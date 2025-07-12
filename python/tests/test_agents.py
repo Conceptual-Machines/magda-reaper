@@ -1,14 +1,15 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch
-from magda.agents.track_agent import TrackAgent
+
 from magda.agents.clip_agent import ClipAgent
-from magda.agents.volume_agent import VolumeAgent
 from magda.agents.effect_agent import EffectAgent
 from magda.agents.midi_agent import MidiAgent
-from magda.agents.operation_identifier import OperationIdentifier
+from magda.agents.track_agent import TrackAgent
+from magda.agents.volume_agent import VolumeAgent
 from magda.models import (
-    Operation, OperationType, AgentResponse, TrackResult, ClipResult,
-    VolumeResult, EffectResult, EffectParameters, MIDIResult
+    Operation,
+    OperationType,
 )
 
 # Remove tests that instantiate BaseAgent directly
@@ -68,4 +69,4 @@ class TestMidiAgent:
         assert agent.name == "midi"
 
 # Remove or skip tests that patch openai.responses.Responses.create directly or test abstract base agent
-# Focus on public API and correct patching for LLM calls 
+# Focus on public API and correct patching for LLM calls
