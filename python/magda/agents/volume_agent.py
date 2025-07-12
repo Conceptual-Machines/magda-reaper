@@ -10,6 +10,7 @@ from .base import BaseAgent
 
 load_dotenv()
 
+
 class VolumeAgent(BaseAgent):
     """Agent responsible for handling volume automation operations using LLM."""
 
@@ -21,9 +22,17 @@ class VolumeAgent(BaseAgent):
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle volume operations."""
-        return operation.lower() in ['volume', 'fade', 'automation', 'fade in', 'fade out']
+        return operation.lower() in [
+            "volume",
+            "fade",
+            "automation",
+            "fade in",
+            "fade out",
+        ]
 
-    def execute(self, operation: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, operation: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute volume automation operation using LLM."""
         context = context or {}
 
@@ -48,7 +57,7 @@ class VolumeAgent(BaseAgent):
             start_value=volume_info.get("start_value", 0.0),
             end_value=volume_info.get("end_value", 1.0),
             start_bar=volume_info.get("start_bar", 1),
-            end_bar=volume_info.get("end_bar", volume_info.get("start_bar", 1) + 4)
+            end_bar=volume_info.get("end_bar", volume_info.get("start_bar", 1) + 4),
         )
 
         # Store volume automation for future reference
@@ -58,9 +67,7 @@ class VolumeAgent(BaseAgent):
         daw_command = self._generate_daw_command(volume_result)
 
         response = AgentResponse(
-            result=volume_result.dict(),
-            daw_command=daw_command,
-            context=context
+            result=volume_result.dict(), daw_command=daw_command, context=context
         )
 
         return response.dict()
@@ -85,7 +92,7 @@ class VolumeAgent(BaseAgent):
                 instructions=instructions,
                 input=operation,
                 text_format=VolumeResult,
-                temperature=0.1
+                temperature=0.1,
             )
 
             # The parse method returns the parsed object directly

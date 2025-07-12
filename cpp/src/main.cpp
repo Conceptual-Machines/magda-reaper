@@ -9,4 +9,4 @@ int main() {
     std::cout << "Version: 0.1.0" << std::endl;
     std::cout << "This is a placeholder for the C++ implementation." << std::endl;
     return 0;
-} 
+}

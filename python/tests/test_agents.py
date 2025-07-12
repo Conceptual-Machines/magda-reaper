@@ -14,6 +14,7 @@ from magda.models import (
 
 # Remove tests that instantiate BaseAgent directly
 
+
 class TestTrackAgent:
     @pytest.fixture
     def agent(self):
@@ -30,11 +31,16 @@ class TestTrackAgent:
                 "context": {"tracks": {"bass": "track_1"}},
                 "reasoning": "Created bass track with Serum",
                 "name": "bass",
-                "vst": "serum"
+                "vst": "serum",
             }
-            op = Operation(operation_type=OperationType.CREATE_TRACK, parameters={"track_name": "bass", "instrument": "serum"}, agent_name="track")
+            op = Operation(
+                operation_type=OperationType.CREATE_TRACK,
+                parameters={"track_name": "bass", "instrument": "serum"},
+                agent_name="track",
+            )
             result = agent.execute(str(op.parameters), {})
             assert "track(bass, serum)" in result["daw_command"]
+
 
 class TestClipAgent:
     @pytest.fixture
@@ -44,6 +50,7 @@ class TestClipAgent:
     def test_agent_initialization(self, agent):
         assert agent.name == "clip"
 
+
 class TestVolumeAgent:
     @pytest.fixture
     def agent(self):
@@ -51,6 +58,7 @@ class TestVolumeAgent:
 
     def test_agent_initialization(self, agent):
         assert agent.name == "volume"
+
 
 class TestEffectAgent:
     @pytest.fixture
@@ -60,6 +68,7 @@ class TestEffectAgent:
     def test_agent_initialization(self, agent):
         assert agent.name == "effect"
 
+
 class TestMidiAgent:
     @pytest.fixture
     def agent(self):
@@ -67,6 +76,7 @@ class TestMidiAgent:
 
     def test_agent_initialization(self, agent):
         assert agent.name == "midi"
+
 
 # Remove or skip tests that patch openai.responses.Responses.create directly or test abstract base agent
 # Focus on public API and correct patching for LLM calls

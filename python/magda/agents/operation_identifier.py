@@ -8,6 +8,7 @@ from .base import BaseAgent
 
 load_dotenv()
 
+
 class OperationIdentifier(BaseAgent):
     """Agent responsible for identifying operations in natural language prompts using LLM."""
 
@@ -19,14 +20,16 @@ class OperationIdentifier(BaseAgent):
         """This agent can handle any operation as it's the entry point."""
         return True
 
-    def execute(self, prompt: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, prompt: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Parse the prompt and identify operations using LLM."""
         operations = self.identify_operations_with_llm(prompt)
 
         return {
             "operations": operations,
             "original_prompt": prompt,
-            "context": context or {}
+            "context": context or {},
         }
 
     def identify_operations_with_llm(self, prompt: str) -> list[dict[str, Any]]:
@@ -50,12 +53,11 @@ Example output:
 
         try:
             response = self.client.responses.create(
-                model="o3-mini",
-                instructions=instructions,
-                input=prompt
+                model="o3-mini", instructions=instructions, input=prompt
             )
 
             import json
+
             content = response.output_text
             if content is None:
                 return []
@@ -85,14 +87,12 @@ Example output:
                 # Track creation creates context for subsequent operations
                 track_info = op.get("parameters", {})
                 current_context["track"] = track_info
-                operation_chain.append({
-                    "operation": op,
-                    "context": current_context.copy()
-                })
+                operation_chain.append(
+                    {"operation": op, "context": current_context.copy()}
+                )
             else:
-                operation_chain.append({
-                    "operation": op,
-                    "context": current_context.copy()
-                })
+                operation_chain.append(
+                    {"operation": op, "context": current_context.copy()}
+                )
 
         return operation_chain

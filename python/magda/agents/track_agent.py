@@ -10,6 +10,7 @@ from .base import BaseAgent
 
 load_dotenv()
 
+
 class TrackAgent(BaseAgent):
     """Agent responsible for handling track creation operations using LLM."""
 
@@ -21,9 +22,11 @@ class TrackAgent(BaseAgent):
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle track operations."""
-        return operation.lower() in ['track', 'create track', 'add track']
+        return operation.lower() in ["track", "create track", "add track"]
 
-    def execute(self, operation: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, operation: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute track creation operation using LLM."""
         context = context or {}
 
@@ -72,7 +75,7 @@ class TrackAgent(BaseAgent):
                 instructions=instructions,
                 input=operation,
                 text_format=TrackResult,
-                temperature=0.1
+                temperature=0.1,
             )
 
             # The parse method returns the parsed object directly

@@ -209,4 +209,4 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./dist/magda-${{ github.run_number }}.tar.gz
         asset_name: magda-${{ github.run_number }}.tar.gz
-        asset_content_type: application/gzip 
+        asset_content_type: application/gzip

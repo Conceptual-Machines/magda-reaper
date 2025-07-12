@@ -24,7 +24,7 @@ class BaseAgent(ABC):
         return {
             "agent_id": self.agent_id,
             "agent_type": self.__class__.__name__,
-            "capabilities": self.get_capabilities()
+            "capabilities": self.get_capabilities(),
         }
 
     @abstractmethod

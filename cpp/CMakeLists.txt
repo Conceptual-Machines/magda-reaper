@@ -22,4 +22,4 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 # Enable testing
-enable_testing() 
+enable_testing()

@@ -10,6 +10,7 @@ from .base import BaseAgent
 
 load_dotenv()
 
+
 class MidiAgent(BaseAgent):
     """Agent responsible for handling MIDI operations using LLM."""
 
@@ -21,9 +22,18 @@ class MidiAgent(BaseAgent):
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle MIDI operations."""
-        return operation.lower() in ['midi', 'note', 'chord', 'sequence', 'arpeggio', 'melody']
+        return operation.lower() in [
+            "midi",
+            "note",
+            "chord",
+            "sequence",
+            "arpeggio",
+            "melody",
+        ]
 
-    def execute(self, operation: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, operation: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute MIDI operation using LLM."""
         context = context or {}
 
@@ -49,7 +59,7 @@ class MidiAgent(BaseAgent):
             velocity=midi_info.get("velocity", 100),
             duration=midi_info.get("duration", 1.0),
             start_bar=midi_info.get("start_bar", 1),
-            channel=midi_info.get("channel", 1)
+            channel=midi_info.get("channel", 1),
         )
 
         # Store MIDI event for future reference
@@ -59,9 +69,7 @@ class MidiAgent(BaseAgent):
         daw_command = self._generate_daw_command(midi_result)
 
         response = AgentResponse(
-            result=midi_result.dict(),
-            daw_command=daw_command,
-            context=context
+            result=midi_result.dict(), daw_command=daw_command, context=context
         )
 
         return response.dict()
@@ -87,7 +95,7 @@ class MidiAgent(BaseAgent):
                 instructions=instructions,
                 input=operation,
                 text_format=MIDIResult,
-                temperature=0.1
+                temperature=0.1,
             )
 
             # The parse method returns the parsed object directly

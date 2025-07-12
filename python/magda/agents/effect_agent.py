@@ -10,6 +10,7 @@ from .base import BaseAgent
 
 load_dotenv()
 
+
 class EffectAgent(BaseAgent):
     """Agent responsible for handling effect operations using LLM."""
 
@@ -21,9 +22,19 @@ class EffectAgent(BaseAgent):
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle effect operations."""
-        return operation.lower() in ['effect', 'reverb', 'delay', 'compressor', 'eq', 'filter', 'distortion']
+        return operation.lower() in [
+            "effect",
+            "reverb",
+            "delay",
+            "compressor",
+            "eq",
+            "filter",
+            "distortion",
+        ]
 
-    def execute(self, operation: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, operation: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute effect operation using LLM."""
         context = context or {}
 
@@ -47,7 +58,7 @@ class EffectAgent(BaseAgent):
             track_id=track_id or "unknown",
             effect_type=effect_info.get("effect_type", "reverb"),
             parameters=effect_info.get("parameters", EffectParameters()),
-            position=effect_info.get("position", "insert")
+            position=effect_info.get("position", "insert"),
         )
 
         # Store effect for future reference
@@ -57,9 +68,7 @@ class EffectAgent(BaseAgent):
         daw_command = self._generate_daw_command(effect_result)
 
         response = AgentResponse(
-            result=effect_result.dict(),
-            daw_command=daw_command,
-            context=context
+            result=effect_result.dict(), daw_command=daw_command, context=context
         )
 
         return response.dict()
@@ -83,7 +92,7 @@ class EffectAgent(BaseAgent):
                 instructions=instructions,
                 input=operation,
                 text_format=EffectResult,
-                temperature=0.1
+                temperature=0.1,
             )
 
             # The parse method returns the parsed object directly

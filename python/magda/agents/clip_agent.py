@@ -10,6 +10,7 @@ from .base import BaseAgent
 
 load_dotenv()
 
+
 class ClipAgent(BaseAgent):
     """Agent responsible for handling clip creation operations using LLM."""
 
@@ -21,9 +22,11 @@ class ClipAgent(BaseAgent):
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle clip operations."""
-        return operation.lower() in ['clip', 'create clip', 'add clip']
+        return operation.lower() in ["clip", "create clip", "add clip"]
 
-    def execute(self, operation: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, operation: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute clip creation operation using LLM."""
         context = context or {}
 
@@ -46,7 +49,7 @@ class ClipAgent(BaseAgent):
             id=clip_id,
             track_id=track_id or "unknown",
             start_bar=clip_info.get("start_bar", 1),
-            end_bar=clip_info.get("end_bar", clip_info.get("start_bar", 1) + 4)
+            end_bar=clip_info.get("end_bar", clip_info.get("start_bar", 1) + 4),
         )
 
         # Store clip for future reference
@@ -56,9 +59,7 @@ class ClipAgent(BaseAgent):
         daw_command = self._generate_daw_command(clip_result)
 
         response = AgentResponse(
-            result=clip_result.dict(),
-            daw_command=daw_command,
-            context=context
+            result=clip_result.dict(), daw_command=daw_command, context=context
         )
 
         return response.dict()
@@ -82,7 +83,7 @@ class ClipAgent(BaseAgent):
                 instructions=instructions,
                 input=operation,
                 text_format=ClipResult,
-                temperature=0.1
+                temperature=0.1,
             )
 
             # The parse method returns the parsed object directly
@@ -94,7 +95,9 @@ class ClipAgent(BaseAgent):
 
     def _generate_daw_command(self, clip: ClipResult) -> str:
         """Generate DAW command string from clip result."""
-        return f"clip(track:{clip.track_id}, start:{clip.start_bar}, end:{clip.end_bar})"
+        return (
+            f"clip(track:{clip.track_id}, start:{clip.start_bar}, end:{clip.end_bar})"
+        )
 
     def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can handle."""
@@ -110,4 +113,6 @@ class ClipAgent(BaseAgent):
 
     def get_clips_for_track(self, track_id: str) -> list[dict[str, Any]]:
         """Get all clips for a specific track."""
-        return [clip for clip in self.created_clips.values() if clip["track_id"] == track_id]
+        return [
+            clip for clip in self.created_clips.values() if clip["track_id"] == track_id
+        ]

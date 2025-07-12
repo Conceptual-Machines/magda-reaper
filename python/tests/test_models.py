@@ -22,7 +22,7 @@ class TestOperation:
         operation = Operation(
             operation_type=OperationType.CREATE_TRACK,
             parameters={"track_name": "bass", "instrument": "serum"},
-            agent_name="track_agent"
+            agent_name="track_agent",
         )
 
         assert operation.operation_type == OperationType.CREATE_TRACK
@@ -35,7 +35,7 @@ class TestOperation:
         operation = Operation(
             operation_type=OperationType.SET_VOLUME,
             parameters={},
-            agent_name="volume_agent"
+            agent_name="volume_agent",
         )
 
         assert operation.parameters == {}
@@ -46,7 +46,7 @@ class TestOperation:
             operation = Operation(
                 operation_type=op_type,
                 parameters={"test": "value"},
-                agent_name="test_agent"
+                agent_name="test_agent",
             )
             assert operation.operation_type == op_type
 
@@ -54,9 +54,7 @@ class TestOperation:
         """Test that invalid operation type raises error."""
         with pytest.raises(ValidationError):
             Operation(
-                operation_type="INVALID_TYPE",
-                parameters={},
-                agent_name="test_agent"
+                operation_type="INVALID_TYPE", parameters={}, agent_name="test_agent"
             )
 
 
@@ -68,7 +66,7 @@ class TestAgentResponse:
         response = AgentResponse(
             daw_commands=["track(bass, serum)", "volume(bass, -6)"],
             context={"tracks": {"bass": "track_1"}},
-            reasoning="Created bass track and set volume"
+            reasoning="Created bass track and set volume",
         )
 
         assert len(response.daw_commands) == 2
@@ -79,9 +77,7 @@ class TestAgentResponse:
     def test_agent_response_with_empty_commands(self):
         """Test agent response with empty commands."""
         response = AgentResponse(
-            daw_commands=[],
-            context={},
-            reasoning="No operations needed"
+            daw_commands=[], context={}, reasoning="No operations needed"
         )
 
         assert response.daw_commands == []
@@ -92,13 +88,13 @@ class TestAgentResponse:
         complex_context = {
             "tracks": {"bass": "track_1", "drums": "track_2"},
             "effects": {"bass": ["compressor", "reverb"]},
-            "volumes": {"bass": -6, "drums": -3}
+            "volumes": {"bass": -6, "drums": -3},
         }
 
         response = AgentResponse(
             daw_commands=["track(bass, serum)", "track(drums, addictive_drums)"],
             context=complex_context,
-            reasoning="Created multiple tracks with effects"
+            reasoning="Created multiple tracks with effects",
         )
 
         assert response.context["tracks"]["bass"] == "track_1"
@@ -117,7 +113,7 @@ class TestTrackResult:
             reasoning="Created bass track with Serum",
             track_id="track_1",
             track_name="bass",
-            instrument="serum"
+            instrument="serum",
         )
 
         assert result.track_id == "track_1"
@@ -131,7 +127,7 @@ class TestTrackResult:
             context={"tracks": {"bass": "track_1"}},
             reasoning="Created bass track",
             track_id="track_1",
-            track_name="bass"
+            track_name="bass",
         )
 
         assert result.instrument is None
@@ -149,7 +145,7 @@ class TestClipResult:
             clip_id="clip_1",
             track_name="bass",
             start_time=0.0,
-            duration=4.0
+            duration=4.0,
         )
 
         assert result.clip_id == "clip_1"
@@ -168,7 +164,7 @@ class TestVolumeResult:
             context={"volumes": {"bass": -6}},
             reasoning="Set bass track volume to -6dB",
             track_name="bass",
-            volume=-6.0
+            volume=-6.0,
         )
 
         assert result.track_name == "bass"
@@ -183,7 +179,7 @@ class TestVolumeResult:
             track_name="bass",
             volume=-6.0,
             fade_type="in",
-            fade_duration=2.0
+            fade_duration=2.0,
         )
 
         assert result.fade_type == "in"
@@ -207,7 +203,7 @@ class TestEffectParameters:
             delay_time=0.5,
             frequency=1000.0,
             q_factor=1.0,
-            gain=0.0
+            gain=0.0,
         )
 
         assert params.wet_mix == 0.3
@@ -252,7 +248,7 @@ class TestEffectResult:
             reasoning="Added compressor to bass track",
             track_name="bass",
             effect_type="compressor",
-            parameters=params
+            parameters=params,
         )
 
         assert result.track_name == "bass"
@@ -267,7 +263,7 @@ class TestEffectResult:
             context={"effects": {"bass": ["reverb"]}},
             reasoning="Added reverb to bass track",
             track_name="bass",
-            effect_type="reverb"
+            effect_type="reverb",
         )
 
         assert result.parameters is None
@@ -285,7 +281,7 @@ class TestMIDIResult:
             track_name="piano",
             operation="quantize",
             quantization="16th",
-            transpose_semitones=2
+            transpose_semitones=2,
         )
 
         assert result.track_name == "piano"
@@ -301,7 +297,7 @@ class TestMIDIResult:
             reasoning="Set piano MIDI velocity to 80",
             track_name="piano",
             operation="velocity",
-            velocity=80
+            velocity=80,
         )
 
         assert result.velocity == 80
@@ -316,7 +312,7 @@ class TestModelSerialization:
         operation = Operation(
             operation_type=OperationType.CREATE_TRACK,
             parameters={"track_name": "bass"},
-            agent_name="track_agent"
+            agent_name="track_agent",
         )
 
         data = operation.model_dump()
@@ -329,7 +325,7 @@ class TestModelSerialization:
         response = AgentResponse(
             daw_commands=["track(bass, serum)"],
             context={"tracks": {"bass": "track_1"}},
-            reasoning="Created bass track"
+            reasoning="Created bass track",
         )
 
         data = response.model_dump()

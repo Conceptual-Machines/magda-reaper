@@ -9,7 +9,7 @@ from magda.models import AgentResponse, Operation, OperationType
 @pytest.fixture(scope="session")
 def mock_openai_client():
     """Mock OpenAI client for testing."""
-    with patch('openai.OpenAI') as mock_client:
+    with patch("openai.OpenAI") as mock_client:
         yield mock_client
 
 
@@ -19,7 +19,7 @@ def sample_operation():
     return Operation(
         operation_type=OperationType.CREATE_TRACK,
         parameters={"track_name": "bass", "instrument": "serum"},
-        agent_name="track_agent"
+        agent_name="track_agent",
     )
 
 
@@ -29,7 +29,7 @@ def sample_agent_response():
     return AgentResponse(
         daw_commands=["track(bass, serum)"],
         context={"tracks": {"bass": "track_1"}},
-        reasoning="Created bass track with Serum"
+        reasoning="Created bass track with Serum",
     )
 
 
@@ -40,29 +40,31 @@ def complex_operations():
         Operation(
             operation_type=OperationType.CREATE_TRACK,
             parameters={"track_name": "bass", "instrument": "serum"},
-            agent_name="track_agent"
+            agent_name="track_agent",
         ),
         Operation(
             operation_type=OperationType.ADD_EFFECT,
             parameters={"track_name": "bass", "effect": "compressor", "ratio": 4},
-            agent_name="effect_agent"
+            agent_name="effect_agent",
         ),
         Operation(
             operation_type=OperationType.SET_VOLUME,
             parameters={"track_name": "bass", "volume": -6},
-            agent_name="volume_agent"
-        )
+            agent_name="volume_agent",
+        ),
     ]
 
 
 @pytest.fixture
 def mock_api_response():
     """Mock API response for testing."""
+
     def _create_mock_response(content):
         mock_response = Mock()
         mock_response.choices = [Mock()]
         mock_response.choices[0].message.content = content
         return mock_response
+
     return _create_mock_response
 
 
@@ -84,10 +86,10 @@ def sample_prompts():
             "spanish": "crear una pista de bajo con Serum y aplicar compresión",
             "french": "créer une piste de basse avec Serum et ajouter une compression",
             "german": "erstellen Sie eine Bass-Spur mit Serum und fügen Sie Kompression hinzu",
-            "italian": "creare una traccia di basso con Serum e aggiungere compressione"
+            "italian": "creare una traccia di basso con Serum e aggiungere compressione",
         },
         "no_operations": "this should return no operations",
-        "invalid_prompt": "invalid prompt that should cause errors"
+        "invalid_prompt": "invalid prompt that should cause errors",
     }
 
 
@@ -100,11 +102,11 @@ def expected_daw_commands():
         "complex_operation": [
             "track(bass, serum)",
             "effect(bass, compressor, ratio=4, threshold=-20)",
-            "volume(bass, -6)"
+            "volume(bass, -6)",
         ],
         "volume_operation": ["volume(bass, -6)"],
         "effect_operation": ["effect(bass, compressor, ratio=4, threshold=-20)"],
-        "midi_operation": ["midi(piano, quantize=16th, transpose=2)"]
+        "midi_operation": ["midi(piano, quantize=16th, transpose=2)"],
     }
 
 
@@ -112,27 +114,11 @@ def expected_daw_commands():
 def mock_context():
     """Mock context for testing."""
     return {
-        "tracks": {
-            "bass": "track_1",
-            "drums": "track_2",
-            "piano": "track_3"
-        },
-        "effects": {
-            "bass": ["compressor", "reverb"],
-            "drums": ["eq"]
-        },
-        "volumes": {
-            "bass": -6,
-            "drums": -3,
-            "piano": 0
-        },
-        "clips": {
-            "bass": "clip_1",
-            "drums": "clip_2"
-        },
-        "midi": {
-            "piano": "midi_1"
-        }
+        "tracks": {"bass": "track_1", "drums": "track_2", "piano": "track_3"},
+        "effects": {"bass": ["compressor", "reverb"], "drums": ["eq"]},
+        "volumes": {"bass": -6, "drums": -3, "piano": 0},
+        "clips": {"bass": "clip_1", "drums": "clip_2"},
+        "midi": {"piano": "midi_1"},
     }
 
 
@@ -144,23 +130,11 @@ def sample_effect_parameters():
             "ratio": 4.0,
             "threshold": -20.0,
             "attack": 0.01,
-            "release": 0.1
+            "release": 0.1,
         },
-        "reverb": {
-            "wet_mix": 0.3,
-            "dry_mix": 0.7,
-            "decay": 2.5
-        },
-        "delay": {
-            "delay_time": 0.5,
-            "feedback": 0.25,
-            "wet_mix": 0.4
-        },
-        "eq": {
-            "frequency": 1000.0,
-            "q_factor": 1.0,
-            "gain": 3.0
-        }
+        "reverb": {"wet_mix": 0.3, "dry_mix": 0.7, "decay": 2.5},
+        "delay": {"delay_time": 0.5, "feedback": 0.25, "wet_mix": 0.4},
+        "eq": {"frequency": 1000.0, "q_factor": 1.0, "gain": 3.0},
     }
 
 
@@ -171,32 +145,24 @@ def mock_pipeline_result():
         "daw_commands": [
             "track(bass, serum)",
             "effect(bass, compressor, ratio=4, threshold=-20)",
-            "volume(bass, -6)"
+            "volume(bass, -6)",
         ],
         "context": {
             "tracks": {"bass": "track_1"},
             "effects": {"bass": ["compressor"]},
-            "volumes": {"bass": -6}
+            "volumes": {"bass": -6},
         },
-        "reasoning": "Created bass track with Serum, added compressor, and set volume"
+        "reasoning": "Created bass track with Serum, added compressor, and set volume",
     }
 
 
 # Markers for different test types
 def pytest_configure(config):
     """Configure custom pytest markers."""
-    config.addinivalue_line(
-        "markers", "integration: mark test as integration test"
-    )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
-    config.addinivalue_line(
-        "markers", "unit: mark test as unit test"
-    )
-    config.addinivalue_line(
-        "markers", "api: mark test as API test"
-    )
+    config.addinivalue_line("markers", "integration: mark test as integration test")
+    config.addinivalue_line("markers", "slow: mark test as slow running")
+    config.addinivalue_line("markers", "unit: mark test as unit test")
+    config.addinivalue_line("markers", "api: mark test as API test")
 
 
 # Skip tests that require API calls unless explicitly requested
@@ -215,5 +181,5 @@ def pytest_addoption(parser):
         "--run-api",
         action="store_true",
         default=False,
-        help="run API tests that require actual OpenAI API calls"
+        help="run API tests that require actual OpenAI API calls",
     )

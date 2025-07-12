@@ -15,4 +15,4 @@ target_link_libraries(magda_cpp_tests PRIVATE
 )
 
 # Add tests
-add_test(NAME magda_cpp_tests COMMAND magda_cpp_tests) 
+add_test(NAME magda_cpp_tests COMMAND magda_cpp_tests)

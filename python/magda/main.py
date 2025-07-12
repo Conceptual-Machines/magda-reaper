@@ -10,7 +10,7 @@ def main():
     parser.add_argument(
         "prompt",
         type=str,
-        help="The natural language prompt to translate into DAW commands."
+        help="The natural language prompt to translate into DAW commands.",
     )
     args = parser.parse_args()
 
@@ -21,9 +21,9 @@ def main():
     result = pipeline.process_prompt(args.prompt)
 
     # Display final results
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("FINAL DAW COMMANDS:")
-    print("="*50)
+    print("=" * 50)
     for i, command in enumerate(result["daw_commands"], 1):
         print(f"{i}. {command}")
 

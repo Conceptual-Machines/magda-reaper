@@ -32,8 +32,8 @@ class MAGDAPipeline:
 
         print(f"Identified {len(operations)} operations:")
         for op in operations:
-            op_type = op.get('type', 'unknown')
-            op_desc = op.get('description', str(op))
+            op_type = op.get("type", "unknown")
+            op_desc = op.get("description", str(op))
             print(f"  - {op_type}: {op_desc}")
 
         # Stage 2: Execute operations with specialized agents
@@ -79,7 +79,7 @@ class MAGDAPipeline:
             "original_prompt": prompt,
             "operations": operations,
             "results": results,
-            "daw_commands": [r["daw_command"] for r in results if "daw_command" in r]
+            "daw_commands": [r["daw_command"] for r in results if "daw_command" in r],
         }
 
     def get_agent_info(self) -> dict[str, Any]:
