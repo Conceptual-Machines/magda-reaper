@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Dict, Any, List, Optional
 from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class OperationType(str, Enum):
@@ -21,38 +22,38 @@ class OperationType(str, Enum):
 class Operation(BaseModel):
     """Model for a single operation."""
     operation_type: OperationType = Field(..., description="Type of operation")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Operation parameters")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Operation parameters")
     agent_name: str = Field(..., description="Name of the agent to handle this operation")
 
 
 class AgentResponse(BaseModel):
     """Base model for agent responses."""
-    daw_commands: List[str] = Field(..., description="List of generated DAW commands")
-    context: Dict[str, Any] = Field(default_factory=dict, description="Operation context")
+    daw_commands: list[str] = Field(..., description="List of generated DAW commands")
+    context: dict[str, Any] = Field(default_factory=dict, description="Operation context")
     reasoning: str = Field(..., description="Reasoning behind the operations")
 
 
 class TrackResult(AgentResponse):
     """Model for track operation result."""
-    track_id: Optional[str] = Field(None, description="Unique track ID")
-    track_name: Optional[str] = Field(None, description="Track name")
-    instrument: Optional[str] = Field(None, description="Instrument/VST plugin")
+    track_id: str | None = Field(None, description="Unique track ID")
+    track_name: str | None = Field(None, description="Track name")
+    instrument: str | None = Field(None, description="Instrument/VST plugin")
 
 
 class ClipResult(AgentResponse):
     """Model for clip operation result."""
-    clip_id: Optional[str] = Field(None, description="Unique clip ID")
-    track_name: Optional[str] = Field(None, description="Target track name")
-    start_time: Optional[float] = Field(None, description="Start time in seconds")
-    duration: Optional[float] = Field(None, description="Clip duration in seconds")
+    clip_id: str | None = Field(None, description="Unique clip ID")
+    track_name: str | None = Field(None, description="Target track name")
+    start_time: float | None = Field(None, description="Start time in seconds")
+    duration: float | None = Field(None, description="Clip duration in seconds")
 
 
 class VolumeResult(AgentResponse):
     """Model for volume operation result."""
-    track_name: Optional[str] = Field(None, description="Target track name")
-    volume: Optional[float] = Field(None, description="Volume level in dB")
-    fade_type: Optional[str] = Field(None, description="Type of fade (in, out)")
-    fade_duration: Optional[float] = Field(None, description="Fade duration in seconds")
+    track_name: str | None = Field(None, description="Target track name")
+    volume: float | None = Field(None, description="Volume level in dB")
+    fade_type: str | None = Field(None, description="Type of fade (in, out)")
+    fade_duration: float | None = Field(None, description="Fade duration in seconds")
 
 
 class EffectParameters(BaseModel):
@@ -73,18 +74,18 @@ class EffectParameters(BaseModel):
 
 class EffectResult(AgentResponse):
     """Model for effect operation result."""
-    track_name: Optional[str] = Field(None, description="Target track name")
-    effect_type: Optional[str] = Field(None, description="Type of effect")
-    parameters: Optional[EffectParameters] = Field(None, description="Effect parameters")
+    track_name: str | None = Field(None, description="Target track name")
+    effect_type: str | None = Field(None, description="Type of effect")
+    parameters: EffectParameters | None = Field(None, description="Effect parameters")
 
 
 class MIDIResult(AgentResponse):
     """Model for MIDI operation result."""
-    track_name: Optional[str] = Field(None, description="Target track name")
-    operation: Optional[str] = Field(None, description="MIDI operation type")
-    quantization: Optional[str] = Field(None, description="Quantization value")
-    transpose_semitones: Optional[int] = Field(None, description="Transpose amount in semitones")
-    velocity: Optional[int] = Field(None, ge=0, le=127, description="MIDI velocity")
+    track_name: str | None = Field(None, description="Target track name")
+    operation: str | None = Field(None, description="MIDI operation type")
+    quantization: str | None = Field(None, description="Quantization value")
+    transpose_semitones: int | None = Field(None, description="Transpose amount in semitones")
+    velocity: int | None = Field(None, ge=0, le=127, description="MIDI velocity")
 
 
 # Legacy models for backward compatibility
@@ -95,42 +96,42 @@ class OperationParameters(BaseModel):
 
 class TrackParameters(OperationParameters):
     """Parameters for track creation operations."""
-    vst: Optional[str] = Field(None, description="VST plugin name")
-    name: Optional[str] = Field(None, description="Track name")
-    type: Optional[str] = Field(None, description="Track type (audio, midi, etc.)")
+    vst: str | None = Field(None, description="VST plugin name")
+    name: str | None = Field(None, description="Track name")
+    type: str | None = Field(None, description="Track type (audio, midi, etc.)")
 
 
 class ClipParameters(OperationParameters):
     """Parameters for clip creation operations."""
-    start_bar: Optional[int] = Field(None, description="Starting bar number")
-    end_bar: Optional[int] = Field(None, description="Ending bar number")
-    track_id: Optional[str] = Field(None, description="Target track ID")
-    track_name: Optional[str] = Field(None, description="Target track name")
+    start_bar: int | None = Field(None, description="Starting bar number")
+    end_bar: int | None = Field(None, description="Ending bar number")
+    track_id: str | None = Field(None, description="Target track ID")
+    track_name: str | None = Field(None, description="Target track name")
 
 
 class VolumeParameters(OperationParameters):
     """Parameters for volume automation operations."""
-    start_value: Optional[float] = Field(None, description="Starting volume value")
-    end_value: Optional[float] = Field(None, description="Ending volume value")
-    start_bar: Optional[int] = Field(None, description="Starting bar number")
-    end_bar: Optional[int] = Field(None, description="Ending bar number")
+    start_value: float | None = Field(None, description="Starting volume value")
+    end_value: float | None = Field(None, description="Ending volume value")
+    start_bar: int | None = Field(None, description="Starting bar number")
+    end_bar: int | None = Field(None, description="Ending bar number")
 
 
 class MidiParameters(OperationParameters):
     """Parameters for MIDI operations."""
-    note: Optional[str] = Field(None, description="MIDI note")
-    velocity: Optional[int] = Field(None, description="Note velocity")
-    duration: Optional[float] = Field(None, description="Note duration")
-    track_id: Optional[str] = Field(None, description="Target track ID")
+    note: str | None = Field(None, description="MIDI note")
+    velocity: int | None = Field(None, description="Note velocity")
+    duration: float | None = Field(None, description="Note duration")
+    track_id: str | None = Field(None, description="Target track ID")
 
 
 class OperationList(BaseModel):
     """Model for a list of operations."""
-    operations: List[Operation] = Field(..., description="List of identified operations")
+    operations: list[Operation] = Field(..., description="List of identified operations")
 
 
 class DAWCommand(BaseModel):
     """Model for DAW command output."""
     command: str = Field(..., description="The DAW command string")
-    parameters: Dict[str, Any] = Field(..., description="Command parameters")
-    result_id: Optional[str] = Field(None, description="ID of the created object") 
+    parameters: dict[str, Any] = Field(..., description="Command parameters")
+    result_id: str | None = Field(None, description="ID of the created object")

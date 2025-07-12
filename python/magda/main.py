@@ -1,4 +1,5 @@
 import argparse
+
 from .pipeline import MAGDAPipeline
 
 
@@ -12,13 +13,13 @@ def main():
         help="The natural language prompt to translate into DAW commands."
     )
     args = parser.parse_args()
-    
+
     # Initialize the MAGDA pipeline
     pipeline = MAGDAPipeline()
-    
+
     # Process the prompt
     result = pipeline.process_prompt(args.prompt)
-    
+
     # Display final results
     print("\n" + "="*50)
     print("FINAL DAW COMMANDS:")
@@ -28,4 +29,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()
