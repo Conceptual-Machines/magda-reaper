@@ -5,7 +5,7 @@ from typing import Any
 import openai
 from dotenv import load_dotenv
 
-from ..models import AgentResponse, EffectParameters, EffectResult
+from ..models import EffectParameters, EffectResult
 from .base import BaseAgent
 
 load_dotenv()
@@ -17,7 +17,7 @@ class EffectAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__()
         self.name = "effect"
-        self.effects = {}
+        self.effects: dict[str, Any] = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def can_handle(self, operation: str) -> bool:
@@ -54,24 +54,39 @@ class EffectAgent(BaseAgent):
 
         # Create effect result
         effect_result = EffectResult(
-            id=effect_id,
+            track_name=context.get("track_name", "unknown"),
             track_id=track_id or "unknown",
             effect_type=effect_info.get("effect_type", "reverb"),
-            parameters=effect_info.get("parameters", EffectParameters()),
+            parameters=EffectParameters(
+                wet_mix=0.5,
+                dry_mix=0.5,
+                threshold=-20.0,
+                ratio=4.0,
+                attack=0.01,
+                release=0.1,
+                decay=0.5,
+                feedback=0.3,
+                delay_time=0.5,
+                frequency=1000.0,
+                q_factor=1.0,
+                gain=0.0,
+                wet=0.5,
+                dry=0.5,
+            ),
             position=effect_info.get("position", "insert"),
         )
 
         # Store effect for future reference
-        self.effects[effect_id] = effect_result.dict()
+        self.effects[effect_id] = effect_result.model_dump()
 
         # Generate DAW command
         daw_command = self._generate_daw_command(effect_result)
 
-        response = AgentResponse(
-            result=effect_result.dict(), daw_command=daw_command, context=context
-        )
-
-        return response.dict()
+        return {
+            "daw_command": daw_command,
+            "result": effect_result.model_dump(),
+            "context": context,
+        }
 
     def _parse_effect_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse effect operation and extract parameters using Responses API."""
@@ -96,7 +111,9 @@ class EffectAgent(BaseAgent):
             )
 
             # The parse method returns the parsed object directly
-            return response.output_parsed.dict()
+            if response.output_parsed is None:
+                return {}
+            return response.output_parsed.model_dump()
 
         except Exception as e:
             print(f"Error parsing effect operation: {e}")
@@ -105,14 +122,17 @@ class EffectAgent(BaseAgent):
     def _generate_daw_command(self, effect: EffectResult) -> str:
         """Generate DAW command string from effect result."""
         params = effect.parameters
-        params_str = f"wet:{params.wet}, dry:{params.dry}"
+        if params is None:
+            return f"effect(track:{effect.track_name}, type:{effect.effect_type}, position:{effect.position})"
+
+        params_str = f"wet_mix:{params.wet_mix}, dry_mix:{params.dry_mix}"
         if effect.effect_type == "compressor":
             params_str += f", threshold:{params.threshold}, ratio:{params.ratio}"
         elif effect.effect_type == "reverb":
             params_str += f", decay:{params.decay}"
         elif effect.effect_type == "delay":
             params_str += f", feedback:{params.feedback}"
-        return f"effect(track:{effect.track_id}, type:{effect.effect_type}, position:{effect.position}, params:{{{params_str}}})"
+        return f"effect(track:{effect.track_name}, type:{effect.effect_type}, position:{effect.position}, params:{{{params_str}}})"
 
     def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can handle."""

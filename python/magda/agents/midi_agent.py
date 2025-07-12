@@ -5,7 +5,7 @@ from typing import Any
 import openai
 from dotenv import load_dotenv
 
-from ..models import AgentResponse, MIDIResult
+from ..models import MIDIResult
 from .base import BaseAgent
 
 load_dotenv()
@@ -17,7 +17,7 @@ class MidiAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__()
         self.name = "midi"
-        self.midi_events = {}
+        self.midi_events: dict[str, Any] = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def can_handle(self, operation: str) -> bool:
@@ -53,26 +53,29 @@ class MidiAgent(BaseAgent):
 
         # Create MIDI result
         midi_result = MIDIResult(
-            id=midi_id,
+            track_name=context.get("track_name", "unknown"),
             track_id=track_id or "unknown",
-            note=midi_info.get("note", "C4"),
+            operation=midi_info.get("operation", "note"),
+            quantization=midi_info.get("quantization"),
+            transpose_semitones=midi_info.get("transpose_semitones"),
             velocity=midi_info.get("velocity", 100),
+            note=midi_info.get("note", "C4"),
             duration=midi_info.get("duration", 1.0),
             start_bar=midi_info.get("start_bar", 1),
             channel=midi_info.get("channel", 1),
         )
 
         # Store MIDI event for future reference
-        self.midi_events[midi_id] = midi_result.dict()
+        self.midi_events[midi_id] = midi_result.model_dump()
 
         # Generate DAW command
         daw_command = self._generate_daw_command(midi_result)
 
-        response = AgentResponse(
-            result=midi_result.dict(), daw_command=daw_command, context=context
-        )
-
-        return response.dict()
+        return {
+            "daw_command": daw_command,
+            "result": midi_result.model_dump(),
+            "context": context,
+        }
 
     def _parse_midi_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse MIDI operation and extract parameters using Responses API."""
@@ -99,7 +102,9 @@ class MidiAgent(BaseAgent):
             )
 
             # The parse method returns the parsed object directly
-            return response.output_parsed.dict()
+            if response.output_parsed is None:
+                return {}
+            return response.output_parsed.model_dump()
 
         except Exception as e:
             print(f"Error parsing MIDI operation: {e}")

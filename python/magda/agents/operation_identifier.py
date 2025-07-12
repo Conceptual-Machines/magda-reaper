@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any
 
@@ -51,24 +52,20 @@ Example output:
   {"type": "clip", "description": "Add a clip starting from bar 17", "parameters": {"start_bar": 17}}
 ]}"""
 
+        operations: list[dict[str, Any]] = []
         try:
             response = self.client.responses.create(
                 model="o3-mini", instructions=instructions, input=prompt
             )
-
-            import json
-
             content = response.output_text
-            if content is None:
-                return []
-            result = json.loads(content)
-            # Extract operations array from the response
-            operations = result.get("operations", [])
-            return operations
-
+            if content is not None:
+                result = json.loads(content)
+                ops = result.get("operations", [])
+                if isinstance(ops, list):
+                    operations = ops
         except Exception as e:
             print(f"Error identifying operations: {e}")
-            return []
+        return operations
 
     def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can identify."""

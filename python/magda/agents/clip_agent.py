@@ -5,7 +5,7 @@ from typing import Any
 import openai
 from dotenv import load_dotenv
 
-from ..models import AgentResponse, ClipResult
+from ..models import ClipResult
 from .base import BaseAgent
 
 load_dotenv()
@@ -17,7 +17,7 @@ class ClipAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__()
         self.name = "clip"
-        self.created_clips = {}
+        self.created_clips: dict[str, Any] = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def can_handle(self, operation: str) -> bool:
@@ -46,23 +46,26 @@ class ClipAgent(BaseAgent):
 
         # Create clip result
         clip_result = ClipResult(
-            id=clip_id,
+            clip_id=clip_id,
+            track_name=context.get("track_name", "unknown"),
             track_id=track_id or "unknown",
+            start_time=clip_info.get("start_time"),
+            duration=clip_info.get("duration"),
             start_bar=clip_info.get("start_bar", 1),
             end_bar=clip_info.get("end_bar", clip_info.get("start_bar", 1) + 4),
         )
 
         # Store clip for future reference
-        self.created_clips[clip_id] = clip_result.dict()
+        self.created_clips[clip_id] = clip_result.model_dump()
 
         # Generate DAW command
         daw_command = self._generate_daw_command(clip_result)
 
-        response = AgentResponse(
-            result=clip_result.dict(), daw_command=daw_command, context=context
-        )
-
-        return response.dict()
+        return {
+            "daw_command": daw_command,
+            "result": clip_result.model_dump(),
+            "context": context,
+        }
 
     def _parse_clip_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse clip operation and extract parameters using Responses API."""
@@ -87,7 +90,9 @@ class ClipAgent(BaseAgent):
             )
 
             # The parse method returns the parsed object directly
-            return response.output_parsed.dict()
+            if response.output_parsed is None:
+                return {}
+            return response.output_parsed.model_dump()
 
         except Exception as e:
             print(f"Error parsing clip operation: {e}")
@@ -96,7 +101,7 @@ class ClipAgent(BaseAgent):
     def _generate_daw_command(self, clip: ClipResult) -> str:
         """Generate DAW command string from clip result."""
         return (
-            f"clip(track:{clip.track_id}, start:{clip.start_bar}, end:{clip.end_bar})"
+            f"clip(track:{clip.track_name}, start:{clip.start_bar}, end:{clip.end_bar})"
         )
 
     def get_capabilities(self) -> list[str]:

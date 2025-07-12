@@ -98,7 +98,9 @@ class VolumeAgent(BaseAgent):
             )
 
             # The parse method returns the parsed object directly
-            return response.output_parsed.dict()
+            if response.output_parsed is None:
+                return {}
+            return response.output_parsed.model_dump()
 
         except Exception as e:
             print(f"Error parsing volume operation: {e}")
