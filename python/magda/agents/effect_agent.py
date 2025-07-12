@@ -14,7 +14,7 @@ load_dotenv()
 class EffectAgent(BaseAgent):
     """Agent responsible for handling effect operations using LLM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.name = "effect"
         self.effects = {}

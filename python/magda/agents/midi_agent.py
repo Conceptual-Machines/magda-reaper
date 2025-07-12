@@ -14,7 +14,7 @@ load_dotenv()
 class MidiAgent(BaseAgent):
     """Agent responsible for handling MIDI operations using LLM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.name = "midi"
         self.midi_events = {}

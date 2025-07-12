@@ -12,7 +12,7 @@ from .agents.volume_agent import VolumeAgent
 class MAGDAPipeline:
     """Main pipeline orchestrator for MAGDA."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.operation_identifier = OperationIdentifier()
         self.agents: dict[str, BaseAgent] = {
             "track": TrackAgent(),
@@ -39,7 +39,7 @@ class MAGDAPipeline:
         # Stage 2: Execute operations with specialized agents
         print("\nStage 2: Executing operations...")
         results = []
-        current_context = {}
+        current_context: dict[str, Any] = {}
 
         for operation in operations:
             op_type = operation["type"]

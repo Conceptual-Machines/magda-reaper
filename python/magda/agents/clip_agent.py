@@ -14,7 +14,7 @@ load_dotenv()
 class ClipAgent(BaseAgent):
     """Agent responsible for handling clip creation operations using LLM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.name = "clip"
         self.created_clips = {}
@@ -103,7 +103,7 @@ class ClipAgent(BaseAgent):
         """Return list of operations this agent can handle."""
         return ["clip", "create clip", "add clip"]
 
-    def get_clip_by_id(self, clip_id: str) -> dict[str, Any]:
+    def get_clip_by_id(self, clip_id: str) -> dict[str, Any] | None:
         """Get clip information by ID."""
         return self.created_clips.get(clip_id)
 

@@ -6,7 +6,7 @@ from typing import Any
 class BaseAgent(ABC):
     """Base class for all MAGDA agents."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.agent_id = str(uuid.uuid4())
 
     @abstractmethod
@@ -15,11 +15,13 @@ class BaseAgent(ABC):
         pass
 
     @abstractmethod
-    def execute(self, operation: str, context: dict[str, Any] = None) -> dict[str, Any]:
+    def execute(
+        self, operation: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute the operation and return the result."""
         pass
 
-    def get_agent_info(self) -> dict[str, str]:
+    def get_agent_info(self) -> dict[str, Any]:
         """Get information about this agent."""
         return {
             "agent_id": self.agent_id,

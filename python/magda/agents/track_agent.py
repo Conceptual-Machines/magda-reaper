@@ -14,10 +14,10 @@ load_dotenv()
 class TrackAgent(BaseAgent):
     """Agent responsible for handling track creation operations using LLM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.name = "track"
-        self.created_tracks = {}
+        self.created_tracks: dict[str, Any] = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def can_handle(self, operation: str) -> bool:
@@ -38,22 +38,23 @@ class TrackAgent(BaseAgent):
 
         # Forward all required fields from track_info to TrackResult
         track_result = TrackResult(
-            id=track_id,
-            name=track_info.get("name", f"track_{track_id[:8]}"),
+            track_id=track_id,
+            track_name=track_info.get("name", f"track_{track_id[:8]}"),
             vst=track_info.get("vst"),
             type="track",
-            daw_commands=track_info.get("daw_commands", []),
-            context=track_info.get("context", {}),
-            reasoning=track_info.get("reasoning", ""),
+            instrument=track_info.get("vst"),
         )
 
         # Store track for future reference
         self.created_tracks[track_id] = track_result.model_dump()
 
+        # Generate DAW command
+        daw_command = self._generate_daw_command(track_result)
+
         return {
-            "daw_command": "; ".join(track_result.daw_commands),
+            "daw_command": daw_command,
             "result": track_result.model_dump(),
-            "context": track_result.context,
+            "context": context,
         }
 
     def _parse_track_operation_with_llm(self, operation: str) -> dict[str, Any]:
@@ -88,11 +89,12 @@ class TrackAgent(BaseAgent):
     def _generate_daw_command(self, track: TrackResult) -> str:
         """Generate DAW command string from track result."""
         params = []
-        if track.name:
-            params.append(f"name:{track.name}")
+        if track.track_name:
+            params.append(f"name:{track.track_name}")
         if track.vst:
             params.append(f"vst:{track.vst}")
-        params.append(f"id:{track.id}")
+        if track.track_id:
+            params.append(f"id:{track.track_id}")
 
         return f"track({', '.join(params)})"
 
@@ -100,7 +102,7 @@ class TrackAgent(BaseAgent):
         """Return list of operations this agent can handle."""
         return ["track", "create track", "add track"]
 
-    def get_track_by_id(self, track_id: str) -> dict[str, Any]:
+    def get_track_by_id(self, track_id: str) -> dict[str, Any] | None:
         """Get track information by ID."""
         return self.created_tracks.get(track_id)
 

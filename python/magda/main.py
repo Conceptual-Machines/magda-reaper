@@ -3,7 +3,7 @@ import argparse
 from .pipeline import MAGDAPipeline
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="MAGDA: Multi Agent Generative DAW API. Translate natural language prompts into DAW commands."
     )

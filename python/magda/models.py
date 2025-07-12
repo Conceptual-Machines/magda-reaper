@@ -42,30 +42,39 @@ class AgentResponse(BaseModel):
     reasoning: str = Field(..., description="Reasoning behind the operations")
 
 
-class TrackResult(AgentResponse):
+class TrackResult(BaseModel):
     """Model for track operation result."""
 
     track_id: str | None = Field(None, description="Unique track ID")
     track_name: str | None = Field(None, description="Track name")
     instrument: str | None = Field(None, description="Instrument/VST plugin")
+    vst: str | None = Field(None, description="VST plugin name")
+    type: str | None = Field(None, description="Track type")
 
 
-class ClipResult(AgentResponse):
+class ClipResult(BaseModel):
     """Model for clip operation result."""
 
     clip_id: str | None = Field(None, description="Unique clip ID")
     track_name: str | None = Field(None, description="Target track name")
+    track_id: str | None = Field(None, description="Target track ID")
     start_time: float | None = Field(None, description="Start time in seconds")
     duration: float | None = Field(None, description="Clip duration in seconds")
+    start_bar: int | None = Field(None, description="Starting bar number")
+    end_bar: int | None = Field(None, description="Ending bar number")
 
 
-class VolumeResult(AgentResponse):
+class VolumeResult(BaseModel):
     """Model for volume operation result."""
 
     track_name: str | None = Field(None, description="Target track name")
     volume: float | None = Field(None, description="Volume level in dB")
     fade_type: str | None = Field(None, description="Type of fade (in, out)")
     fade_duration: float | None = Field(None, description="Fade duration in seconds")
+    start_value: float | None = Field(None, description="Starting volume value")
+    end_value: float | None = Field(None, description="Ending volume value")
+    start_bar: int | None = Field(None, description="Starting bar number")
+    end_bar: int | None = Field(None, description="Ending bar number")
 
 
 class EffectParameters(BaseModel):
@@ -97,17 +106,22 @@ class EffectParameters(BaseModel):
     )
     q_factor: float = Field(1.0, ge=0.1, le=10.0, description="EQ Q factor")
     gain: float = Field(0.0, ge=-24.0, le=24.0, description="EQ gain in dB")
+    # Legacy field names for backward compatibility
+    wet: float | None = Field(None, description="Wet mix (legacy)")
+    dry: float | None = Field(None, description="Dry mix (legacy)")
 
 
-class EffectResult(AgentResponse):
+class EffectResult(BaseModel):
     """Model for effect operation result."""
 
     track_name: str | None = Field(None, description="Target track name")
     effect_type: str | None = Field(None, description="Type of effect")
     parameters: EffectParameters | None = Field(None, description="Effect parameters")
+    track_id: str | None = Field(None, description="Target track ID")
+    position: str | None = Field(None, description="Effect position")
 
 
-class MIDIResult(AgentResponse):
+class MIDIResult(BaseModel):
     """Model for MIDI operation result."""
 
     track_name: str | None = Field(None, description="Target track name")
@@ -117,6 +131,11 @@ class MIDIResult(AgentResponse):
         None, description="Transpose amount in semitones"
     )
     velocity: int | None = Field(None, ge=0, le=127, description="MIDI velocity")
+    track_id: str | None = Field(None, description="Target track ID")
+    note: str | None = Field(None, description="MIDI note")
+    duration: float | None = Field(None, description="Note duration")
+    start_bar: int | None = Field(None, description="Starting bar number")
+    channel: int | None = Field(None, description="MIDI channel")
 
 
 # Legacy models for backward compatibility

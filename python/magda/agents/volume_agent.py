@@ -5,7 +5,7 @@ from typing import Any
 import openai
 from dotenv import load_dotenv
 
-from ..models import AgentResponse, VolumeResult
+from ..models import VolumeResult
 from .base import BaseAgent
 
 load_dotenv()
@@ -14,10 +14,10 @@ load_dotenv()
 class VolumeAgent(BaseAgent):
     """Agent responsible for handling volume automation operations using LLM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.name = "volume"
-        self.volume_automations = {}
+        self.volume_automations: dict[str, Any] = {}
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def can_handle(self, operation: str) -> bool:
@@ -52,8 +52,10 @@ class VolumeAgent(BaseAgent):
 
         # Create volume result
         volume_result = VolumeResult(
-            id=volume_id,
-            track_id=track_id or "unknown",
+            track_name=context.get("track_name", "unknown"),
+            volume=volume_info.get("end_value", 1.0),
+            fade_type=volume_info.get("fade_type"),
+            fade_duration=volume_info.get("fade_duration"),
             start_value=volume_info.get("start_value", 0.0),
             end_value=volume_info.get("end_value", 1.0),
             start_bar=volume_info.get("start_bar", 1),
@@ -61,16 +63,16 @@ class VolumeAgent(BaseAgent):
         )
 
         # Store volume automation for future reference
-        self.volume_automations[volume_id] = volume_result.dict()
+        self.volume_automations[volume_id] = volume_result.model_dump()
 
         # Generate DAW command
         daw_command = self._generate_daw_command(volume_result)
 
-        response = AgentResponse(
-            result=volume_result.dict(), daw_command=daw_command, context=context
-        )
-
-        return response.dict()
+        return {
+            "daw_command": daw_command,
+            "result": volume_result.model_dump(),
+            "context": context,
+        }
 
     def _parse_volume_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse volume operation and extract parameters using Responses API."""
@@ -104,7 +106,7 @@ class VolumeAgent(BaseAgent):
 
     def _generate_daw_command(self, volume: VolumeResult) -> str:
         """Generate DAW command string from volume result."""
-        return f"volume(track:{volume.track_id}, start:{volume.start_bar}, end:{volume.end_bar}, start_value:{volume.start_value}, end_value:{volume.end_value})"
+        return f"volume(track:{volume.track_name}, start:{volume.start_bar}, end:{volume.end_bar}, start_value:{volume.start_value}, end_value:{volume.end_value})"
 
     def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can handle."""

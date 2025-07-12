@@ -12,7 +12,7 @@ load_dotenv()
 class OperationIdentifier(BaseAgent):
     """Agent responsible for identifying operations in natural language prompts using LLM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
