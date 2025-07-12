@@ -1,14 +1,31 @@
-import sys
+import argparse
+from .pipeline import MAGDAPipeline
+
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m magda.main '<your prompt>'")
-        sys.exit(1)
-    prompt = sys.argv[1]
-    # Placeholder for DAW command generation
-    print(f"Received prompt: {prompt}")
-    print("track(bass, serum)")
-    print("track(drums, addictive_drums)")
+    parser = argparse.ArgumentParser(
+        description="MAGDA: Multi Agent Generative DAW API. Translate natural language prompts into DAW commands."
+    )
+    parser.add_argument(
+        "prompt",
+        type=str,
+        help="The natural language prompt to translate into DAW commands."
+    )
+    args = parser.parse_args()
+    
+    # Initialize the MAGDA pipeline
+    pipeline = MAGDAPipeline()
+    
+    # Process the prompt
+    result = pipeline.process_prompt(args.prompt)
+    
+    # Display final results
+    print("\n" + "="*50)
+    print("FINAL DAW COMMANDS:")
+    print("="*50)
+    for i, command in enumerate(result["daw_commands"], 1):
+        print(f"{i}. {command}")
+
 
 if __name__ == "__main__":
     main() 
