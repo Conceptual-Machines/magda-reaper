@@ -26,7 +26,21 @@ MAGDA is an AI-driven system that translates natural language prompts into gener
 
 ## 🏗️ Architecture
 
-MAGDA uses a dual-stage pipeline:
+MAGDA is implemented in both **Python** and **C++** to provide maximum flexibility and performance:
+
+### Python Implementation
+- **High-level orchestration** and AI integration
+- **Multi-agent pipeline** with OpenAI's Responses API
+- **Rapid prototyping** and development
+- **Rich ecosystem** of AI/ML libraries
+
+### C++ Implementation
+- **High-performance** core components
+- **Low-latency** audio processing
+- **Cross-platform** compatibility
+- **Production-ready** DAW integration
+
+### Dual-Stage Pipeline
 
 1. **Operation Identifier Agent** (`o3-mini`): Analyzes prompts and identifies operations
 2. **Specialized Agents** (`gpt-4.1`): Handle specific DAW operations:
@@ -49,14 +63,17 @@ MAGDA uses a dual-stage pipeline:
 
 ### Installation
 
+#### Python Implementation
+
 1. **Clone the repository**:
    ```bash
    git clone <repository-url>
    cd magda
    ```
 
-2. **Install dependencies**:
+2. **Install Python dependencies**:
    ```bash
+   cd python
    uv sync
    ```
 
@@ -66,9 +83,24 @@ MAGDA uses a dual-stage pipeline:
    # Edit .env and add your OpenAI API key
    ```
 
-4. **Install the package**:
+4. **Install the Python package**:
    ```bash
    uv pip install -e .
+   ```
+
+#### C++ Implementation
+
+1. **Build C++ components**:
+   ```bash
+   cd cpp
+   mkdir build && cd build
+   cmake ..
+   make
+   ```
+
+2. **Run C++ examples**:
+   ```bash
+   ./examples/magda_example
    ```
 
 ### Usage
@@ -153,9 +185,12 @@ MAGDA uses different models for different tasks:
 
 ## 🧪 Testing
 
-Run the test suite:
+### Python Tests
+
+Run the Python test suite:
 
 ```bash
+cd python
 uv run pytest
 ```
 
@@ -165,30 +200,80 @@ Run with coverage:
 uv run pytest --cov=magda
 ```
 
+### C++ Tests
+
+Run the C++ test suite:
+
+```bash
+cd cpp
+mkdir build && cd build
+cmake ..
+make
+ctest
+```
+
 ## 🏗️ Development
 
 ### Project Structure
 
 ```
 magda/
-├── magda/
-│   ├── __init__.py
-│   ├── main.py              # CLI entry point
-│   ├── models.py            # Pydantic data models
-│   ├── pipeline.py          # Main orchestration pipeline
-│   └── agents/
-│       ├── __init__.py
-│       ├── base.py          # Base agent class
-│       ├── operation_identifier.py
-│       ├── track_agent.py
-│       ├── clip_agent.py
-│       ├── volume_agent.py
-│       ├── effect_agent.py
-│       └── midi_agent.py
-├── pyproject.toml
-├── uv.lock
+├── python/                  # Python implementation
+│   ├── magda/
+│   │   ├── __init__.py
+│   │   ├── main.py          # CLI entry point
+│   │   ├── models.py        # Pydantic data models
+│   │   ├── pipeline.py      # Main orchestration pipeline
+│   │   ├── context_manager.py # Context management
+│   │   └── agents/
+│   │       ├── __init__.py
+│   │       ├── base.py      # Base agent class
+│   │       ├── operation_identifier.py
+│   │       ├── track_agent.py
+│   │       ├── clip_agent.py
+│   │       ├── volume_agent.py
+│   │       ├── effect_agent.py
+│   │       └── midi_agent.py
+│   ├── tests/               # Python test suite
+│   ├── pyproject.toml       # Python package config
+│   └── uv.lock
+├── cpp/                     # C++ implementation
+│   ├── include/magda_cpp/   # C++ headers
+│   ├── src/                 # C++ source files
+│   ├── examples/            # C++ examples
+│   ├── tests/               # C++ test suite
+│   └── CMakeLists.txt       # CMake configuration
+├── scripts/
+│   └── release.py           # Release automation script
+├── .github/workflows/       # CI/CD pipelines
+├── pyproject.toml           # Root project config
 └── README.md
 ```
+
+### Release Process
+
+MAGDA uses semantic versioning and automated releases. To create a new release:
+
+1. **Bump version and release**:
+   ```bash
+   python scripts/release.py patch   # or 'minor' or 'major'
+   ```
+
+2. **Dry run** (see what would happen):
+   ```bash
+   python scripts/release.py patch --dry-run
+   ```
+
+3. **Prepare without pushing**:
+   ```bash
+   python scripts/release.py patch --no-push
+   ```
+
+The release script will:
+- Bump the version in `pyproject.toml`
+- Create a git tag
+- Push changes and tag to GitHub
+- Trigger the GitHub Actions workflow to create a release
 
 ### Adding New Agents
 
