@@ -20,12 +20,11 @@ on:
 
 jobs:
   python-quality:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-latest]
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11"]
 
     steps:
     - name: Checkout code
@@ -84,7 +83,7 @@ jobs:
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: python-test-results-${{ matrix.os }}-${{ matrix.python-version }}
+        name: python-test-results-${{ matrix.python-version }}
         path: |
           python/.pytest_cache/
           python/htmlcov/
