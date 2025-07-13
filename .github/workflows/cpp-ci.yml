@@ -1,0 +1,131 @@
+name: C++ CI - Build, Test & Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - 'LICENSE'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - 'LICENSE'
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+        build_type: [Release]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache vcpkg packages
+      if: matrix.os == 'windows-latest'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ github.workspace }}/vcpkg
+          ${{ github.workspace }}/vcpkg_installed
+        key: vcpkg-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-${{ matrix.os }}-
+
+    - name: Cache CMake build
+      uses: actions/cache@v4
+      with:
+        path: |
+          build
+        key: cmake-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', 'magda/**/*') }}
+        restore-keys: |
+          cmake-${{ matrix.os }}-${{ matrix.build_type }}-
+
+    - name: Cache apt packages (Linux)
+      if: matrix.os == 'ubuntu-22.04'
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt
+          /var/lib/apt
+        key: apt-${{ hashFiles('.github/workflows/ci.yml') }}
+        restore-keys: apt-
+
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-22.04'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc g++ cmake ninja-build libssl-dev nlohmann-json3-dev
+
+    - name: Setup C++ Environment (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: aminya/setup-cpp@v1
+      with:
+        cmake: true
+        ninja: true
+
+    - name: Setup vcpkg (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: '**/vcpkg.json'
+
+    - name: Disable pre-commit hook
+      run: |
+        if [ -f .git/hooks/pre-commit ]; then
+          mv .git/hooks/pre-commit .git/hooks/pre-commit.disabled
+        fi
+      shell: bash
+
+    - name: Configure CMake (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" cpp/
+
+    - name: Configure CMake (Linux)
+      if: matrix.os == 'ubuntu-22.04'
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} cpp/
+
+    - name: Build
+      timeout-minutes: 15
+      run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+    - name: Test
+      working-directory: build
+      timeout-minutes: 10
+      run: |
+        echo "Running CI-safe tests (excluding integration tests)..."
+        ./bin/magda_cpp_tests "~[integration]"
+
+    - name: Check formatting (Linux only)
+      if: matrix.os == 'ubuntu-22.04' && github.event_name == 'pull_request'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format
+        find magda cpp/include cpp/src tests -name "*.h" -o -name "*.hpp" -o -name "*.cpp" -o -name "*.c" | xargs clang-format --dry-run --style=file
+
+    - name: Run static analysis (Linux only)
+      if: matrix.os == 'ubuntu-22.04' && github.event_name == 'pull_request'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cppcheck
+        cppcheck --enable=warning --inline-suppr --suppress=missingIncludeSystem --suppress=useInitializationList --suppress=unusedParameter --error-exitcode=0 -I magda/ cpp/include/ cpp/src/
+      continue-on-error: true
+
+    - name: Upload build artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ matrix.os }}-${{ matrix.build_type }}
+        path: |
+          build/CMakeFiles/*.log
+          build/Testing/Temporary/LastTest.log
