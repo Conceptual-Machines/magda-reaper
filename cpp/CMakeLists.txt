@@ -21,7 +21,16 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Find dependencies
 find_package(OpenSSL REQUIRED)
-find_package(PkgConfig REQUIRED)
+
+# PkgConfig is not available on Windows by default, so make it optional there
+if(WIN32)
+    find_package(PkgConfig)
+    if(NOT PKG_CONFIG_FOUND)
+        message(WARNING "PkgConfig not found on Windows - some dependencies may need manual configuration")
+    endif()
+else()
+    find_package(PkgConfig REQUIRED)
+endif()
 
 # Let llmcpp handle nlohmann_json to avoid conflicts
 # find_package(nlohmann_json REQUIRED)  # Commented out to avoid conflicts
