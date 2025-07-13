@@ -1,19 +1,13 @@
 #include "magda_cpp/agents/midi_agent.h"
-#include <llmcpp/core/LLMRequest.h>
+#include "prompt_loader.hpp"
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 
-namespace magda_cpp {
+namespace magda {
 
-MidiAgent::MidiAgent(const std::string& api_key) {
-    // Initialize OpenAI client
-    llmcpp::OpenAI::Config config;
-    if (!api_key.empty()) {
-        config.api_key = api_key;
-    }
-    client_ = std::make_unique<llmcpp::OpenAI::OpenAIClient>(config);
-}
+MidiAgent::MidiAgent(const std::string& api_key)
+    : BaseAgent("midi", api_key) {}
 
 bool MidiAgent::canHandle(const std::string& operation) const {
     std::string op_lower = operation;
@@ -28,8 +22,44 @@ bool MidiAgent::canHandle(const std::string& operation) const {
 
 AgentResponse MidiAgent::execute(const std::string& operation, const nlohmann::json& context) {
     try {
-        // Parse MIDI operation using LLM
-        auto midi_info = parseMidiOperationWithLLM(operation);
+        // Load shared prompt
+        SharedResources resources;
+        std::string prompt = resources.getMidiAgentPrompt();
+
+        // Create schema for MIDI parameters
+        auto schema = JsonSchemaBuilder()
+            .type("object")
+            .title("MIDI Parameters")
+            .description("Parameters for MIDI operations in a DAW")
+            .property("operation", JsonSchemaBuilder()
+                .type("string")
+                .description("The type of MIDI operation (note, chord, quantize, transpose, etc.)"))
+            .property("note", JsonSchemaBuilder()
+                .type("string")
+                .description("The MIDI note (e.g., 'C4', 'A#3')"))
+            .property("velocity", JsonSchemaBuilder()
+                .type("integer")
+                .description("Note velocity (0-127)"))
+            .property("duration", JsonSchemaBuilder()
+                .type("number")
+                .description("Note duration in seconds"))
+            .property("start_bar", JsonSchemaBuilder()
+                .type("integer")
+                .description("Starting bar number"))
+            .property("channel", JsonSchemaBuilder()
+                .type("integer")
+                .description("MIDI channel (1-16)"))
+            .property("quantization", JsonSchemaBuilder()
+                .type("string")
+                .description("Quantization value if specified"))
+            .property("transpose_semitones", JsonSchemaBuilder()
+                .type("integer")
+                .description("Transpose amount in semitones if specified"))
+            .required({"operation", "note", "velocity", "duration", "start_bar", "channel", "quantization", "transpose_semitones"})
+            .additionalProperties(false);
+
+        // Parse MIDI operation using base class method
+        auto midi_info = parseOperationWithLLM(operation, prompt, schema);
 
         // Get track ID from context
         std::string track_id = getTrackIdFromContext(context);
@@ -108,67 +138,6 @@ std::vector<MIDIResult> MidiAgent::listMidiEvents() const {
     return result;
 }
 
-nlohmann::json MidiAgent::parseMidiOperationWithLLM(const std::string& operation) {
-    try {
-        llmcpp::LLMRequest request;
-        request.model = llmcpp::OpenAI::Model::GPT_4O_MINI;
-        request.system_prompt = R"(
-You are a MIDI specialist for a DAW system.
-Your job is to parse MIDI requests and extract the necessary parameters.
-
-Extract the following information:
-- operation: The type of MIDI operation (note, chord, quantize, transpose, etc.)
-- note: The MIDI note (e.g., "C4", "A#3", default: "C4")
-- velocity: Note velocity (0-127, default: 100)
-- duration: Note duration in seconds (default: 1.0)
-- start_bar: Starting bar number (default: 1)
-- channel: MIDI channel (1-16, default: 1)
-- quantization: Quantization value if specified
-- transpose_semitones: Transpose amount in semitones if specified
-
-Return a JSON object with the extracted parameters.
-)";
-        request.user_prompt = operation;
-        request.temperature = 0.1f;
-        request.max_tokens = 500;
-
-        // Add JSON schema for structured output
-        request.json_schema = {
-            {"type", "object"},
-            {"properties", {
-                {"operation", {{"type", "string"}}},
-                {"note", {{"type", "string"}}},
-                {"velocity", {{"type", "integer"}}},
-                {"duration", {{"type", "number"}}},
-                {"start_bar", {{"type", "integer"}}},
-                {"channel", {{"type", "integer"}}},
-                {"quantization", {{"type", "string"}}},
-                {"transpose_semitones", {{"type", "integer"}}}
-            }},
-            {"required", {"operation"}}
-        };
-
-        auto response = client_->chat(request);
-
-        if (response.success && response.json_content.has_value()) {
-            return response.json_content.value();
-        }
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error parsing MIDI operation: " << e.what() << std::endl;
-    }
-
-    // Return default values if parsing fails
-    return {
-        {"operation", "note"},
-        {"note", "C4"},
-        {"velocity", 100},
-        {"duration", 1.0},
-        {"start_bar", 1},
-        {"channel", 1}
-    };
-}
-
 std::string MidiAgent::generateDawCommand(const MIDIResult& midi) const {
     std::ostringstream oss;
     oss << "midi(track:" << midi.track_id
@@ -184,6 +153,27 @@ std::string MidiAgent::generateDawCommand(const MIDIResult& midi) const {
     }
     if (midi.transpose_semitones.has_value()) {
         oss << ", transpose:" << midi.transpose_semitones.value();
+    }
+
+    oss << ")";
+    return oss.str();
+}
+
+std::string MidiAgent::generateDAWCommand(const nlohmann::json& result) const {
+    std::ostringstream oss;
+    oss << "midi(track:" << result.value("track_id", "unknown")
+        << ", operation:" << result.value("operation", "note")
+        << ", note:" << result.value("note", "C4")
+        << ", velocity:" << result.value("velocity", 100)
+        << ", duration:" << result.value("duration", 1.0)
+        << ", start_bar:" << result.value("start_bar", 1)
+        << ", channel:" << result.value("channel", 1);
+
+    if (result.contains("quantization")) {
+        oss << ", quantization:" << result["quantization"];
+    }
+    if (result.contains("transpose_semitones")) {
+        oss << ", transpose:" << result["transpose_semitones"];
     }
 
     oss << ")";
@@ -207,4 +197,4 @@ std::string MidiAgent::getTrackIdFromContext(const nlohmann::json& context) cons
     return "unknown";
 }
 
-} // namespace magda_cpp
+} // namespace magda

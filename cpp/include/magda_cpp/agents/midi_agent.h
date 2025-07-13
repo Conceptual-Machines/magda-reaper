@@ -2,18 +2,17 @@
 
 #include "magda_cpp/agents/base_agent.h"
 #include "magda_cpp/models.h"
-#include <llmcpp/openai/OpenAIClient.h>
 #include <memory>
 #include <string>
 #include <map>
 
-namespace magda_cpp {
+namespace magda {
 
 /**
  * @brief Agent responsible for handling MIDI operations using LLM
  *
  * Processes MIDI-related operations like creating notes, chords, quantization,
- * and other MIDI data manipulation in the DAW system.
+ * transposition, and other MIDI events in the DAW system.
  */
 class MidiAgent : public BaseAgent {
 public:
@@ -59,15 +58,7 @@ public:
     std::vector<MIDIResult> listMidiEvents() const;
 
 private:
-    std::unique_ptr<llmcpp::OpenAI::OpenAIClient> client_;
     std::map<std::string, MIDIResult> midi_events_;
-
-    /**
-     * @brief Parse MIDI operation using LLM
-     * @param operation The operation string
-     * @return Parsed MIDI information
-     */
-    nlohmann::json parseMidiOperationWithLLM(const std::string& operation);
 
     /**
      * @brief Generate DAW command from MIDI result
@@ -77,6 +68,13 @@ private:
     std::string generateDawCommand(const MIDIResult& midi) const;
 
     /**
+     * @brief Generate DAW command from JSON result (BaseAgent interface)
+     * @param result The JSON result
+     * @return DAW command string
+     */
+    std::string generateDAWCommand(const nlohmann::json& result) const override;
+
+    /**
      * @brief Get track ID from context
      * @param context The context object
      * @return Track ID string
@@ -84,4 +82,4 @@ private:
     std::string getTrackIdFromContext(const nlohmann::json& context) const;
 };
 
-} // namespace magda_cpp
+} // namespace magda

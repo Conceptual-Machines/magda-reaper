@@ -1,25 +1,32 @@
-<div align="center">
-
-```
-    ╭─────────────────╮
-    │     MAGDA       │
-    │   🎵 🎹 🎤 🐍 ⚡ │
-    │                 │
-    │  Multi Agent    │
-    │ Generic DAW API │
-    ╰─────────────────╯
-```
-
-</div>
+[![CI/CD Pipeline](https://github.com/lucaromagnoli/magda/workflows/MAGDA%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/lucaromagnoli/magda/actions)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type checked with mypy](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
+[![codecov](https://codecov.io/gh/lucaromagnoli/magda/branch/main/graph/badge.svg)](https://codecov.io/gh/lucaromagnoli/magda)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4.1-green.svg)](https://openai.com/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-2.11+-blue.svg)](https://pydantic.dev/)
+[![Multi-Agent](https://img.shields.io/badge/Architecture-Multi--Agent-orange.svg)](https://en.wikipedia.org/wiki/Multi-agent_system)
+[![uv](https://img.shields.io/badge/uv-Package%20Manager-purple.svg)](https://docs.astral.sh/uv/)
+[![CMake](https://img.shields.io/badge/CMake-3.22+-blue.svg)](https://cmake.org/)
+[![Ninja](https://img.shields.io/badge/Ninja-Build-orange.svg)](https://ninja-build.org/)
+[![OpenSSL](https://img.shields.io/badge/OpenSSL-Required-green.svg)](https://www.openssl.org/)
+[![nlohmann/json](https://img.shields.io/badge/nlohmann%2Fjson-3.11+-blue.svg)](https://github.com/nlohmann/json)
 
 # MAGDA
 
-[![CI/CD Pipeline](https://github.com/lucaromagnoli/magda/workflows/MAGDA%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/lucaromagnoli/magda/actions)
-[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Type checked with mypy](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/lucaromagnoli/magda)
+<div align="center">
+
+```
+     MAGDA
+   🎵 🎹 🎤 🐍 ⚡ 🦀
+
+  Multi Agent
+ Generic DAW API
+```
+
+</div>
 
 Multi Agent Generic DAW API
 
@@ -320,3 +327,43 @@ For questions, issues, or contributions:
 - Open an issue on GitHub
 - Join our community discussions
 - Check the documentation for common solutions
+
+## 🤖 Model Selection & Defaults
+
+MAGDA uses multiple OpenAI models for different stages of the pipeline. The defaults are:
+
+- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate reasoning)
+- **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective for DAW commands)
+
+You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex or creative tasks, you may use larger models (e.g., `gpt-4o`, `o3-mini`, `o1-pro`) as a fallback.
+
+### Model Summary Table
+| Model           | Latency | Token Usage | Cost | Reasoning | Recommended For         |
+|-----------------|---------|-------------|------|-----------|------------------------|
+| gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
+| gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
+| gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐⭐        | Fallback, complex tasks|
+| o3-mini, o1-pro | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Only if needed         |
+
+## 📊 Model Benchmarking
+
+MAGDA includes a benchmarking framework to evaluate model performance (latency, token usage, cost, etc.) for DAW tasks.
+
+- **Run the benchmark:**
+  ```bash
+  python python/run_model_benchmark.py --config quick
+  ```
+  (Other configs: `full`, `latency`, `multistep`, or custom YAML)
+
+- **Analyze results:**
+  ```bash
+  python python/analyze_benchmark_results.py
+  ```
+  This prints per-model and overall stats for latency, token usage, and more.
+
+- **Customize:**
+  Edit `python/run_model_benchmark.py` or provide your own config to test different prompts, models, or metrics.
+
+---
+
+For more details, see the `python/run_model_benchmark.py` and `python/analyze_benchmark_results.py` scripts for benchmarking methodology and results.

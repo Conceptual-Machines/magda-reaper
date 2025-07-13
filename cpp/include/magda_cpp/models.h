@@ -182,4 +182,66 @@ public:
     nlohmann::json toJson() const;
 };
 
+/**
+ * @brief Centralized model configuration for MAGDA agents
+ *
+ * This ensures consistency across all agents and makes it easy to update
+ * model choices for different stages of the pipeline.
+ */
+struct ModelConfig {
+    // First stage: Operation identification (cost-effective, fast)
+    static constexpr const char* OPERATION_IDENTIFIER = "o3-mini";
+    // TODO: Use enum when llmcpp library is updated
+    // static constexpr OpenAI::Model OPERATION_IDENTIFIER_ENUM = OpenAI::Model::O3_Mini;
+
+    // Second stage: Specialized agents (higher quality, structured output)
+    static constexpr const char* SPECIALIZED_AGENTS = "gpt-4.1";
+    // TODO: Use enum when llmcpp library is updated
+    // static constexpr OpenAI::Model SPECIALIZED_AGENTS_ENUM = OpenAI::Model::GPT_4_1;
+
+    // Alternative for specialized agents (cost-effective but still high quality)
+    static constexpr const char* SPECIALIZED_AGENTS_MINI = "gpt-4.1-mini";
+    // TODO: Use enum when llmcpp library is updated
+    // static constexpr OpenAI::Model SPECIALIZED_AGENTS_MINI_ENUM = OpenAI::Model::GPT_4_1_Mini;
+
+    // Fallback model for error cases
+    static constexpr const char* FALLBACK = "gpt-4o-mini";
+    // TODO: Use enum when llmcpp library is updated
+    // static constexpr OpenAI::Model FALLBACK_ENUM = OpenAI::Model::GPT_4o_Mini;
+
+    // Current model choices (easy to change in one place)
+    static constexpr const char* CURRENT_DECISION_AGENT = "o3-mini";
+    static constexpr const char* CURRENT_SPECIALIZED_AGENTS = "gpt-4.1-mini";
+
+    // Convenience methods for common use cases
+    static std::string getOperationIdentifierModel() {
+        return OPERATION_IDENTIFIER;
+    }
+
+    static std::string getSpecializedAgentModel() {
+        return SPECIALIZED_AGENTS;
+    }
+
+    static std::string getFallbackModel() {
+        return FALLBACK;
+    }
+
+    // TODO: Use enums when llmcpp library is updated
+    // static OpenAI::Model getOperationIdentifierEnum() {
+    //     return OPERATION_IDENTIFIER_ENUM;
+    // }
+
+    // static OpenAI::Model getSpecializedAgentEnum() {
+    //     return SPECIALIZED_AGENTS_ENUM;
+    // }
+
+    // static OpenAI::Model getSpecializedAgentMiniEnum() {
+    //     return SPECIALIZED_AGENTS_MINI_ENUM;
+    // }
+
+    // static OpenAI::Model getFallbackEnum() {
+    //     return FALLBACK_ENUM;
+    // }
+};
+
 } // namespace magda

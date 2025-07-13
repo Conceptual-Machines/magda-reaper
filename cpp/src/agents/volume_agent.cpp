@@ -1,6 +1,8 @@
 #include "magda_cpp/agents/volume_agent.h"
+#include "prompt_loader.hpp"
 #include <algorithm>
 #include <sstream>
+#include <iostream>
 
 namespace magda {
 
@@ -20,7 +22,36 @@ bool VolumeAgent::canHandle(const std::string& operation) const {
 AgentResponse VolumeAgent::execute(const std::string& operation,
                                    const nlohmann::json& context) {
     // Parse the operation with LLM
-    auto volume_info = parseVolumeOperationWithLLM(operation);
+    std::cout << "🔍 DEBUG: Volume agent executing operation: " << operation << std::endl;
+
+    // Load shared prompt
+    static SharedResources resources;
+    std::string instructions = resources.getVolumeAgentPrompt();
+
+    // Create a structured schema for volume parameters
+    auto schema = JsonSchemaBuilder()
+        .type("object")
+        .title("Volume Parameters")
+        .description("Parameters for controlling volume, pan, and mute in a DAW")
+        .property("track_name", JsonSchemaBuilder()
+            .type("string")
+            .description("The name of the track to control"))
+        .property("volume", JsonSchemaBuilder()
+            .type("number")
+            .description("Volume level (0.0 to 1.0, or percentage 0-100)")
+            .minimum(-100.0)
+            .maximum(100.0))
+        .property("pan", JsonSchemaBuilder()
+            .type("number")
+            .description("Pan position (-1.0 to 1.0, where -1 is left, 0 is center, 1 is right)"))
+        .property("mute", JsonSchemaBuilder()
+            .type("boolean")
+            .description("Mute state (true for mute, false for unmute)"))
+        .required({"track_name", "volume", "pan", "mute"})
+        .additionalProperties(false);
+
+    auto volume_info = parseOperationWithLLM(operation, instructions, schema);
+    std::cout << "🔍 DEBUG: Volume agent parsed info: " << volume_info.dump(2) << std::endl;
 
     // Get track information from context
     std::string track_id = getTrackIdFromContext(context);
@@ -81,49 +112,6 @@ std::vector<nlohmann::json> VolumeAgent::listVolumeSettings() const {
     }
 
     return settings;
-}
-
-nlohmann::json VolumeAgent::parseVolumeOperationWithLLM(const std::string& operation) {
-    std::string instructions = R"(
-You are a volume control specialist for a DAW system.
-Your job is to parse volume control requests and extract the necessary parameters.
-
-Extract the following information:
-- track_name: The name of the track (if mentioned)
-- volume: Volume level (0.0 to 1.0, or percentage 0-100)
-- pan: Pan position (-1.0 to 1.0, where -1 is left, 0 is center, 1 is right)
-- mute: Whether to mute the track (true/false)
-
-Return a JSON object with the extracted parameters following the provided schema.
-)";
-
-    // Create a structured schema for volume parameters
-    auto schema = llmcpp::JsonSchemaBuilder()
-        .type("object")
-        .title("Volume Parameters")
-        .description("Parameters for controlling volume, pan, and mute in a DAW")
-        .property("track_name", llmcpp::JsonSchemaBuilder()
-            .type("string")
-            .description("The name of the track to control")
-            .optionalString())
-        .property("volume", llmcpp::JsonSchemaBuilder()
-            .type("number")
-            .description("Volume level (0.0 to 1.0, or percentage 0-100)")
-            .minimum(0.0)
-            .maximum(100.0)
-            .optionalString())
-        .property("pan", llmcpp::JsonSchemaBuilder()
-            .type("number")
-            .description("Pan position (-1.0 to 1.0, where -1 is left, 0 is center, 1 is right)")
-            .minimum(-1.0)
-            .maximum(1.0)
-            .optionalString())
-        .property("mute", llmcpp::JsonSchemaBuilder()
-            .type("boolean")
-            .description("Whether to mute the track")
-            .optionalString());
-
-    return parseOperationWithLLM(operation, instructions, schema);
 }
 
 std::string VolumeAgent::generateDAWCommand(const nlohmann::json& result) const {

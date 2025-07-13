@@ -4,59 +4,74 @@
 #include <sstream>
 #include <iomanip>
 #include <chrono>
+#include <iostream>
 
 namespace magda {
 
 BaseAgent::BaseAgent(const std::string& name, const std::string& api_key)
     : name_(name) {
     if (!api_key.empty()) {
-        client_ = std::make_unique<llmcpp::OpenAIClient>(api_key);
+        client_ = std::make_unique<OpenAIClient>(api_key);
     } else {
         // Try to get API key from environment
         const char* env_key = std::getenv("OPENAI_API_KEY");
         if (env_key) {
-            client_ = std::make_unique<llmcpp::OpenAIClient>(env_key);
+            client_ = std::make_unique<OpenAIClient>(env_key);
         }
     }
 }
 
 nlohmann::json BaseAgent::parseOperationWithLLM(const std::string& operation,
                                                 const std::string& instructions,
-                                                const llmcpp::JsonSchemaBuilder& schema) {
+                                                const JsonSchemaBuilder& schema) {
     if (!client_) {
         throw std::runtime_error("OpenAI client not initialized. Please provide API key.");
     }
 
     try {
         // Create LLM request with structured output
-        llmcpp::LLMRequestConfig config;
+        LLMRequestConfig config;
         config.client = "openai";
-        config.model = "gpt-4o-mini";
+        config.model = ModelConfig::CURRENT_SPECIALIZED_AGENTS;  // Use current specialized agents model
         config.maxTokens = 500;
         config.temperature = 0.1f;
         config.schemaObject = schema.build();
         config.functionName = "parse_operation";
 
         // Create the request
-        llmcpp::LLMRequest request(config, instructions);
+        LLMRequest request(config, instructions);
 
         // Add the operation as context
-        llmcpp::LLMContext context = {{{"role", "user"}, {"content", operation}}};
+        LLMContext context = {{{"role", "user"}, {"content", operation}}};
         request.context = context;
 
         // Send the request
         auto response = client_->sendRequest(request);
 
         if (response.success) {
+            std::cout << "🔍 DEBUG: Base agent response result: " << response.result.dump(2) << std::endl;
             // The response should already be structured JSON due to schema validation
             if (response.result.contains("text")) {
+                std::cout << "🔍 DEBUG: Base agent text field type: " << (response.result["text"].is_string() ? "string" : "object") << std::endl;
                 try {
-                    return nlohmann::json::parse(response.result["text"].get<std::string>());
+                    // Extract the text field and parse it as JSON
+                    if (response.result["text"].is_string()) {
+                        std::cout << "🔍 DEBUG: Base agent parsing string: " << response.result["text"].get<std::string>() << std::endl;
+                        return nlohmann::json::parse(response.result["text"].get<std::string>());
+                    } else {
+                        // If text is already a JSON object, return it directly
+                        std::cout << "🔍 DEBUG: Base agent returning object directly" << std::endl;
+                        return response.result["text"];
+                    }
                 } catch (const nlohmann::json::parse_error& e) {
                     // If parsing fails, return a basic structure
                     nlohmann::json fallback;
                     fallback["error"] = "Failed to parse LLM response as JSON";
-                    fallback["raw_response"] = response.result["text"].get<std::string>();
+                    if (response.result["text"].is_string()) {
+                        fallback["raw_response"] = response.result["text"].get<std::string>();
+                    } else {
+                        fallback["raw_response"] = response.result["text"].dump();
+                    }
                     return fallback;
                 }
             } else {

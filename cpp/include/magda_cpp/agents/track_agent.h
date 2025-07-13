@@ -3,6 +3,7 @@
 #include "magda_cpp/agents/base_agent.h"
 #include "magda_cpp/models.h"
 #include <map>
+#include <openai/OpenAIClient.h>
 
 namespace magda {
 
@@ -58,13 +59,6 @@ public:
 
 private:
     std::map<std::string, nlohmann::json> created_tracks_;
-
-    /**
-     * @brief Parse track operation with LLM
-     * @param operation The operation string
-     * @return Parsed track information as JSON
-     */
-    nlohmann::json parseTrackOperationWithLLM(const std::string& operation);
 
     /**
      * @brief Generate DAW command from track result

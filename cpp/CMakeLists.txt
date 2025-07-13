@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(magda_cpp VERSION 0.1.0 LANGUAGES CXX)
+project(magda_cpp VERSION 0.2.3 LANGUAGES CXX)
 
 # Set C++20 standard
 set(CMAKE_CXX_STANDARD 20)
@@ -21,8 +21,19 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Find dependencies
 find_package(OpenSSL REQUIRED)
-find_package(nlohmann_json REQUIRED)
-find_package(PkgConfig REQUIRED)
+
+# PkgConfig is not available on Windows by default, so make it optional there
+if(WIN32)
+    find_package(PkgConfig)
+    if(NOT PKG_CONFIG_FOUND)
+        message(WARNING "PkgConfig not found on Windows - some dependencies may need manual configuration")
+    endif()
+else()
+    find_package(PkgConfig REQUIRED)
+endif()
+
+# Let llmcpp handle nlohmann_json to avoid conflicts
+# find_package(nlohmann_json REQUIRED)  # Commented out to avoid conflicts
 
 # Add llmcpp library
 # Option 1: If llmcpp is installed system-wide

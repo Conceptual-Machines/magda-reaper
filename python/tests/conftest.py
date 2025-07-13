@@ -86,10 +86,18 @@ def mock_api_response():
 
 
 @pytest.fixture(autouse=True)
-def mock_env_vars():
-    """Mock environment variables for testing."""
-    with patch.dict(os.environ, {"OPENAI_API_KEY": "test-api-key"}):
-        yield
+def mock_env_vars(request):
+    """Mock environment variables for testing, but preserve real API key for integration tests."""
+    # Don't mock API key for integration tests
+    if (
+        "integration" in request.node.nodeid
+        or "test_integration" in request.node.nodeid
+    ):
+        yield  # Use real environment variables
+    else:
+        # Mock API key for unit tests
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-api-key"}):
+            yield
 
 
 @pytest.fixture

@@ -1,10 +1,4 @@
-#include "magda_cpp/agents/base_agent.h"
-#include "magda_cpp/agents/track_agent.h"
-#include "magda_cpp/agents/volume_agent.h"
-#include "magda_cpp/agents/effect_agent.h"
-#include "magda_cpp/agents/midi_agent.h"
-#include "magda_cpp/agents/clip_agent.h"
-#include "magda_cpp/agents/operation_identifier.h"
+#include "magda_cpp/pipeline.hpp"
 #include <memory>
 #include <vector>
 #include <algorithm>
@@ -12,113 +6,111 @@
 
 namespace magda {
 
-/**
- * @brief Two-stage pipeline that coordinates operation identification and execution
- */
-class MAGDAPipeline {
-public:
-    /**
-     * @brief Constructor
-     * @param api_key OpenAI API key for all agents
-     */
-    explicit MAGDAPipeline(const std::string& api_key = "") : api_key_(api_key) {
-        // Initialize operation identifier
-        operation_identifier_ = std::make_unique<magda_cpp::OperationIdentifier>(api_key);
+MAGDAPipeline::MAGDAPipeline(const std::string& api_key) : api_key_(api_key) {
+    initializeAgents();
+}
 
-        // Initialize specialized agents
-        agents_["track"] = std::make_shared<TrackAgent>(api_key);
-        agents_["clip"] = std::make_shared<ClipAgent>(api_key);
-        agents_["volume"] = std::make_shared<VolumeAgent>(api_key);
-        agents_["effect"] = std::make_shared<EffectAgent>(api_key);
-        agents_["midi"] = std::make_shared<MidiAgent>(api_key);
-    }
+void MAGDAPipeline::initializeAgents() {
+    // Initialize operation identifier
+    operation_identifier_ = std::make_unique<OperationIdentifier>(api_key_);
 
-    /**
-     * @brief Process a natural language prompt through the two-stage pipeline
-     * @param prompt The natural language prompt
-     * @return Pipeline result with operations and DAW commands
-     */
-    nlohmann::json processPrompt(const std::string& prompt) {
-        nlohmann::json result;
-        result["original_prompt"] = prompt;
-        result["operations"] = nlohmann::json::array();
-        result["results"] = nlohmann::json::array();
-        result["daw_commands"] = nlohmann::json::array();
+    // Initialize specialized agents
+    agents_["track"] = std::make_unique<TrackAgent>(api_key_);
+    agents_["clip"] = std::make_unique<ClipAgent>(api_key_);
+    agents_["volume"] = std::make_unique<VolumeAgent>(api_key_);
+    agents_["effect"] = std::make_unique<EffectAgent>(api_key_);
+    agents_["midi"] = std::make_unique<MidiAgent>(api_key_);
+}
 
-        try {
-            // Stage 1: Identify operations
-            std::cout << "Stage 1: Identifying operations..." << std::endl;
-            auto identification_result = operation_identifier_->identifyOperations(prompt);
+std::optional<PipelineResult> MAGDAPipeline::processPrompt(const std::string& prompt) {
+    try {
+        std::vector<Operation> operations;
+        std::vector<std::string> daw_commands;
 
-            if (!identification_result.success) {
-                result["error"] = identification_result.error_message;
-                return result;
-            }
+        // Stage 1: Identify operations
+        std::cout << "Stage 1: Identifying operations..." << std::endl;
+        auto identification_result = operation_identifier_->identifyOperations(prompt);
 
-            std::cout << "Identified " << identification_result.operations.size() << " operations:" << std::endl;
-            for (const auto& op : identification_result.operations) {
-                std::cout << "  - " << op.type << ": " << op.description << std::endl;
-            }
+        if (!identification_result.success) {
+            std::cout << "Error identifying operations: " << identification_result.error_message << std::endl;
+            return std::nullopt;
+        }
 
-            // Stage 2: Execute operations with specialized agents
-            std::cout << "\nStage 2: Executing operations..." << std::endl;
+        std::cout << "Identified " << identification_result.operations.size() << " operations:" << std::endl;
+        for (const auto& op : identification_result.operations) {
+            std::cout << "  - " << op.type << ": " << op.description << std::endl;
+        }
 
-            for (const auto& operation : identification_result.operations) {
-                std::cout << "Processing " << operation.type << " operation: " << operation.description << std::endl;
+        // Stage 2: Execute operations with specialized agents
+        std::cout << "\nStage 2: Executing operations..." << std::endl;
 
-                // Find appropriate agent
-                auto agent_it = agents_.find(operation.type);
-                if (agent_it == agents_.end()) {
-                    std::cout << "Warning: No agent found for operation type '" << operation.type << "'" << std::endl;
-                    continue;
-                }
+        for (const auto& daw_operation : identification_result.operations) {
+            std::cout << "Processing " << daw_operation.type << " operation: " << daw_operation.description << std::endl;
 
-                // Execute operation
-                try {
-                    auto agent_response = agent_it->second->execute(operation.description, operation.parameters);
+            // Convert DAWOperation to Operation
+            OperationType op_type = OperationType::UNKNOWN;
+            if (daw_operation.type == "track") op_type = OperationType::CREATE_TRACK;
+            else if (daw_operation.type == "clip") op_type = OperationType::CREATE_CLIP;
+            else if (daw_operation.type == "volume") op_type = OperationType::SET_VOLUME;
+            else if (daw_operation.type == "effect") op_type = OperationType::ADD_EFFECT;
+            else if (daw_operation.type == "midi") op_type = OperationType::CREATE_MIDI;
 
-                    // Add to results
-                    result["operations"].push_back({
-                        {"type", operation.type},
-                        {"description", operation.description},
-                        {"parameters", operation.parameters}
-                    });
-
-                    result["results"].push_back(agent_response.result);
-                    result["daw_commands"].push_back(agent_response.daw_command);
-
-                    std::cout << "  ✓ " << agent_response.daw_command << std::endl;
-
-                } catch (const std::exception& e) {
-                    std::cout << "  ✗ Error executing " << operation.type << " operation: " << e.what() << std::endl;
+            // Convert JSON parameters to string map
+            std::map<std::string, std::string> string_params;
+            for (const auto& [key, value] : daw_operation.parameters.items()) {
+                if (value.is_string()) {
+                    string_params[key] = value.get<std::string>();
+                } else {
+                    string_params[key] = value.dump();
                 }
             }
 
-        } catch (const std::exception& e) {
-            result["error"] = "Pipeline error: " + std::string(e.what());
+            Operation operation(op_type, string_params, daw_operation.type);
+
+            // Find appropriate agent
+            auto agent_it = agents_.find(daw_operation.type);
+            if (agent_it == agents_.end()) {
+                std::cout << "Warning: No agent found for operation type '" << daw_operation.type << "'" << std::endl;
+                continue;
+            }
+
+            // Execute operation
+            try {
+                std::cout << "🔍 DEBUG: Pipeline calling agent with description: " << daw_operation.description << std::endl;
+                std::cout << "🔍 DEBUG: Pipeline context: " << context_.dump(2) << std::endl;
+                auto agent_response = agent_it->second->execute(daw_operation.description, context_);
+
+                // Add to results
+                operations.push_back(operation);
+                daw_commands.push_back(agent_response.daw_command);
+
+                // Update context with agent response
+                if (!agent_response.context.is_null()) {
+                    context_.merge_patch(agent_response.context);
+                }
+
+                std::cout << "  ✓ " << agent_response.daw_command << std::endl;
+
+            } catch (const std::exception& e) {
+                std::cout << "  ✗ Error executing " << daw_operation.type << " operation: " << e.what() << std::endl;
+            }
         }
 
-        return result;
-    }
+        return PipelineResult(operations, daw_commands, context_);
 
-    /**
-     * @brief Get information about all available agents
-     * @return Agent information
-     */
-    nlohmann::json getAgentInfo() const {
-        nlohmann::json agent_info;
-        for (const auto& pair : agents_) {
-            agent_info[pair.first] = {
-                {"capabilities", pair.second->getCapabilities()}
-            };
+    } catch (const std::exception& e) {
+        std::cout << "Pipeline error: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
+BaseAgent* MAGDAPipeline::findAgentForOperation(const std::string& operation) {
+    for (auto& [name, agent] : agents_) {
+        if (agent->canHandle(operation)) {
+            return agent.get();
         }
-        return agent_info;
     }
-
-private:
-    std::string api_key_;
-    std::unique_ptr<magda_cpp::OperationIdentifier> operation_identifier_;
-    std::map<std::string, std::shared_ptr<BaseAgent>> agents_;
-};
+    return nullptr;
+}
 
 } // namespace magda

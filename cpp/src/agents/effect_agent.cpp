@@ -1,19 +1,13 @@
 #include "magda_cpp/agents/effect_agent.h"
-#include <llmcpp/core/LLMRequest.h>
+#include "prompt_loader.hpp"
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 
-namespace magda_cpp {
+namespace magda {
 
-EffectAgent::EffectAgent(const std::string& api_key) {
-    // Initialize OpenAI client
-    llmcpp::OpenAI::Config config;
-    if (!api_key.empty()) {
-        config.api_key = api_key;
-    }
-    client_ = std::make_unique<llmcpp::OpenAI::OpenAIClient>(config);
-}
+EffectAgent::EffectAgent(const std::string& api_key)
+    : BaseAgent("effect", api_key) {}
 
 bool EffectAgent::canHandle(const std::string& operation) const {
     std::string op_lower = operation;
@@ -30,8 +24,31 @@ bool EffectAgent::canHandle(const std::string& operation) const {
 
 AgentResponse EffectAgent::execute(const std::string& operation, const nlohmann::json& context) {
     try {
-        // Parse effect operation using LLM
-        auto effect_info = parseEffectOperationWithLLM(operation);
+        // Load shared prompt
+        SharedResources resources;
+        std::string prompt = resources.getEffectAgentPrompt();
+
+        // Create schema for effect parameters
+        auto schema = JsonSchemaBuilder()
+            .type("object")
+            .title("Effect Parameters")
+            .description("Parameters for adding effects in a DAW")
+            .property("effect_type", JsonSchemaBuilder()
+                .type("string")
+                .description("The type of effect (reverb, delay, compressor, eq, filter, distortion, etc.)"))
+            .property("parameters", JsonSchemaBuilder()
+                .type("object")
+                .description("A dictionary of effect parameters")
+                .additionalProperties(false)
+                .required({}))
+            .property("position", JsonSchemaBuilder()
+                .type("string")
+                .description("Where to insert the effect (insert, send, master)"))
+            .required({"effect_type", "parameters", "position"})
+            .additionalProperties(false);
+
+        // Parse effect operation using base class method
+        auto effect_info = parseOperationWithLLM(operation, prompt, schema);
 
         // Get track ID from context
         std::string track_id = getTrackIdFromContext(context);
@@ -111,54 +128,6 @@ std::vector<EffectResult> EffectAgent::listEffects() const {
     return result;
 }
 
-nlohmann::json EffectAgent::parseEffectOperationWithLLM(const std::string& operation) {
-    try {
-        llmcpp::LLMRequest request;
-        request.model = llmcpp::OpenAI::Model::GPT_4O_MINI;
-        request.system_prompt = R"(
-You are an effect specialist for a DAW system.
-Your job is to parse effect requests and extract the necessary parameters.
-
-Extract the following information:
-- effect_type: The type of effect (reverb, delay, compressor, eq, filter, distortion, etc.)
-- parameters: A dictionary of effect parameters (e.g., {"wet": 0.5, "decay": 2.0})
-- position: Where to insert the effect (insert, send, master, default: insert)
-
-Return a JSON object with the extracted parameters.
-)";
-        request.user_prompt = operation;
-        request.temperature = 0.1f;
-        request.max_tokens = 500;
-
-        // Add JSON schema for structured output
-        request.json_schema = {
-            {"type", "object"},
-            {"properties", {
-                {"effect_type", {{"type", "string"}}},
-                {"parameters", {{"type", "object"}}},
-                {"position", {{"type", "string"}}}
-            }},
-            {"required", {"effect_type"}}
-        };
-
-        auto response = client_->chat(request);
-
-        if (response.success && response.json_content.has_value()) {
-            return response.json_content.value();
-        }
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error parsing effect operation: " << e.what() << std::endl;
-    }
-
-    // Return default values if parsing fails
-    return {
-        {"effect_type", "reverb"},
-        {"position", "insert"},
-        {"parameters", nlohmann::json::object()}
-    };
-}
-
 std::string EffectAgent::generateDawCommand(const EffectResult& effect) const {
     std::ostringstream oss;
     oss << "effect(track:" << effect.track_id
@@ -193,6 +162,41 @@ std::string EffectAgent::generateDawCommand(const EffectResult& effect) const {
     return oss.str();
 }
 
+std::string EffectAgent::generateDAWCommand(const nlohmann::json& result) const {
+    std::ostringstream oss;
+    oss << "effect(track:" << result.value("track_id", "unknown")
+        << ", type:" << result.value("effect_type", "reverb")
+        << ", position:" << result.value("position", "insert");
+
+    if (result.contains("parameters") && result["parameters"].is_object()) {
+        const auto& params = result["parameters"];
+        oss << ", params:{";
+
+        std::vector<std::string> param_parts;
+        if (params.contains("wet_mix")) {
+            param_parts.push_back("wet_mix:" + std::to_string(params["wet_mix"].get<double>()));
+        }
+        if (params.contains("dry_mix")) {
+            param_parts.push_back("dry_mix:" + std::to_string(params["dry_mix"].get<double>()));
+        }
+        if (params.contains("threshold")) {
+            param_parts.push_back("threshold:" + std::to_string(params["threshold"].get<double>()));
+        }
+        if (params.contains("ratio")) {
+            param_parts.push_back("ratio:" + std::to_string(params["ratio"].get<double>()));
+        }
+
+        for (size_t i = 0; i < param_parts.size(); ++i) {
+            if (i > 0) oss << ", ";
+            oss << param_parts[i];
+        }
+        oss << "}";
+    }
+
+    oss << ")";
+    return oss.str();
+}
+
 std::string EffectAgent::getTrackIdFromContext(const nlohmann::json& context) const {
     // Try to get track ID from context parameters
     if (context.contains("track_id")) {
@@ -210,4 +214,4 @@ std::string EffectAgent::getTrackIdFromContext(const nlohmann::json& context) co
     return "unknown";
 }
 
-} // namespace magda_cpp
+} // namespace magda

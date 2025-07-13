@@ -1,13 +1,14 @@
 #pragma once
 
-#include <llmcpp/openai/OpenAIClient.h>
-#include <llmcpp/core/JsonSchemaBuilder.h>
-#include <llmcpp/core/LLMRequest.h>
+#include "magda_cpp/agents/base_agent.h"
+#include <openai/OpenAIClient.h>
+#include <core/JsonSchemaBuilder.h>
+#include <core/LLMTypes.h>
 #include <string>
 #include <vector>
 #include <memory>
 
-namespace magda_cpp {
+namespace magda {
 
 /**
  * @brief Represents a single DAW operation identified from a prompt
@@ -34,13 +35,18 @@ struct OperationIdentificationResult {
  * Uses OpenAI's GPT models via llmcpp to analyze prompts and extract structured
  * DAW operations that can be executed by specialized agents.
  */
-class OperationIdentifier {
+class OperationIdentifier : public BaseAgent {
 public:
     /**
      * @brief Constructor
      * @param api_key OpenAI API key (can be nullptr to use environment variable)
      */
     explicit OperationIdentifier(const std::string& api_key = "");
+
+    // BaseAgent interface implementation
+    bool canHandle(const std::string& operation) const override;
+    AgentResponse execute(const std::string& operation, const nlohmann::json& context = nlohmann::json::object()) override;
+    std::vector<std::string> getCapabilities() const override;
 
     /**
      * @brief Identify operations in a natural language prompt
@@ -51,9 +57,9 @@ public:
 
     /**
      * @brief Get the recommended model for operation identification
-     * @return Model enum for optimal performance/cost balance
+     * @return Model string for optimal performance/cost balance
      */
-    static llmcpp::OpenAI::Model getRecommendedModel();
+    static std::string getRecommendedModel();
 
     /**
      * @brief Get the JSON schema for DAW operations
@@ -62,7 +68,8 @@ public:
     static nlohmann::json getOperationSchema();
 
 private:
-    std::unique_ptr<llmcpp::OpenAIClient> client_;
+    // BaseAgent pure virtual method implementation
+    std::string generateDAWCommand(const nlohmann::json& result) const override;
 
     /**
      * @brief Build the system prompt for operation identification
@@ -71,11 +78,24 @@ private:
     static std::string buildSystemPrompt();
 
     /**
-     * @brief Parse the LLM response into DAW operations
+     * @brief Check if structured output should be used based on model
+     * @return true if structured output should be used
+     */
+    bool shouldUseStructuredOutput();
+
+    /**
+     * @brief Parse structured LLM response (with schema)
      * @param response LLM response
      * @return Parsed operations
      */
-    std::vector<DAWOperation> parseOperations(const llmcpp::LLMResponse& response);
+    std::vector<DAWOperation> parseStructuredOperations(const LLMResponse& response);
+
+    /**
+     * @brief Parse free-form LLM response (without schema)
+     * @param response LLM response
+     * @return Parsed operations
+     */
+    std::vector<DAWOperation> parseFreeFormOperations(const LLMResponse& response);
 };
 
-} // namespace magda_cpp
+} // namespace magda

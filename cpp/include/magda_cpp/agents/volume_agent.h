@@ -3,6 +3,7 @@
 #include "magda_cpp/agents/base_agent.h"
 #include "magda_cpp/models.h"
 #include <map>
+#include <openai/OpenAIClient.h>
 
 namespace magda {
 
@@ -57,13 +58,6 @@ public:
 
 private:
     std::map<std::string, nlohmann::json> volume_settings_;
-
-    /**
-     * @brief Parse volume operation with LLM
-     * @param operation The operation string
-     * @return Parsed volume information as JSON
-     */
-    nlohmann::json parseVolumeOperationWithLLM(const std::string& operation);
 
     /**
      * @brief Generate DAW command from volume result
