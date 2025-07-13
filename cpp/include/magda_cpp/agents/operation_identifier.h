@@ -78,11 +78,24 @@ private:
     static std::string buildSystemPrompt();
 
     /**
-     * @brief Parse the LLM response into DAW operations
+     * @brief Check if structured output should be used based on model
+     * @return true if structured output should be used
+     */
+    bool shouldUseStructuredOutput();
+
+    /**
+     * @brief Parse structured LLM response (with schema)
      * @param response LLM response
      * @return Parsed operations
      */
-    std::vector<DAWOperation> parseOperations(const LLMResponse& response);
+    std::vector<DAWOperation> parseStructuredOperations(const LLMResponse& response);
+
+    /**
+     * @brief Parse free-form LLM response (without schema)
+     * @param response LLM response
+     * @return Parsed operations
+     */
+    std::vector<DAWOperation> parseFreeFormOperations(const LLMResponse& response);
 };
 
 } // namespace magda

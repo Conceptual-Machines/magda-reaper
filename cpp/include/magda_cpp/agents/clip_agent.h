@@ -2,7 +2,6 @@
 
 #include "magda_cpp/agents/base_agent.h"
 #include "magda_cpp/models.h"
-#include <openai/OpenAIClient.h>
 #include <memory>
 #include <string>
 #include <map>
@@ -59,19 +58,18 @@ public:
     std::vector<ClipResult> listClips() const;
 
 private:
-    std::unique_ptr<OpenAIClient> client_;
     std::map<std::string, ClipResult> clips_;
-
-    /**
-     * @brief Parse clip operation using LLM
-     * @param operation The operation string
-     * @return Parsed clip information
-     */
-    nlohmann::json parseClipOperationWithLLM(const std::string& operation);
 
     /**
      * @brief Generate DAW command from clip result
      * @param clip The clip result
+     * @return DAW command string
+     */
+    std::string generateDawCommand(const ClipResult& clip) const;
+
+    /**
+     * @brief Generate DAW command from JSON result (BaseAgent interface)
+     * @param result The JSON result
      * @return DAW command string
      */
     std::string generateDAWCommand(const nlohmann::json& result) const override;

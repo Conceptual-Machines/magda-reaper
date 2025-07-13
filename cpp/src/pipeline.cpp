@@ -16,10 +16,10 @@ void MAGDAPipeline::initializeAgents() {
 
     // Initialize specialized agents
     agents_["track"] = std::make_unique<TrackAgent>(api_key_);
-    // agents_["clip"] = std::make_unique<ClipAgent>(api_key_);
+    agents_["clip"] = std::make_unique<ClipAgent>(api_key_);
     agents_["volume"] = std::make_unique<VolumeAgent>(api_key_);
-    // agents_["effect"] = std::make_unique<EffectAgent>(api_key_);
-    // agents_["midi"] = std::make_unique<MidiAgent>(api_key_);
+    agents_["effect"] = std::make_unique<EffectAgent>(api_key_);
+    agents_["midi"] = std::make_unique<MidiAgent>(api_key_);
 }
 
 std::optional<PipelineResult> MAGDAPipeline::processPrompt(const std::string& prompt) {
@@ -55,7 +55,17 @@ std::optional<PipelineResult> MAGDAPipeline::processPrompt(const std::string& pr
             else if (daw_operation.type == "effect") op_type = OperationType::ADD_EFFECT;
             else if (daw_operation.type == "midi") op_type = OperationType::CREATE_MIDI;
 
-            Operation operation(op_type, daw_operation.parameters, daw_operation.type);
+            // Convert JSON parameters to string map
+            std::map<std::string, std::string> string_params;
+            for (const auto& [key, value] : daw_operation.parameters.items()) {
+                if (value.is_string()) {
+                    string_params[key] = value.get<std::string>();
+                } else {
+                    string_params[key] = value.dump();
+                }
+            }
+
+            Operation operation(op_type, string_params, daw_operation.type);
 
             // Find appropriate agent
             auto agent_it = agents_.find(daw_operation.type);
@@ -66,6 +76,8 @@ std::optional<PipelineResult> MAGDAPipeline::processPrompt(const std::string& pr
 
             // Execute operation
             try {
+                std::cout << "🔍 DEBUG: Pipeline calling agent with description: " << daw_operation.description << std::endl;
+                std::cout << "🔍 DEBUG: Pipeline context: " << context_.dump(2) << std::endl;
                 auto agent_response = agent_it->second->execute(daw_operation.description, context_);
 
                 // Add to results

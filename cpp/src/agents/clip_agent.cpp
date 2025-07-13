@@ -1,18 +1,13 @@
 #include "magda_cpp/agents/clip_agent.h"
+#include "prompt_loader.hpp"
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 
 namespace magda {
 
-ClipAgent::ClipAgent(const std::string& api_key) {
-    // Initialize OpenAI client
-    OpenAI::Config config;
-    if (!api_key.empty()) {
-        config.api_key = api_key;
-    }
-    client_ = std::make_unique<OpenAI::OpenAIClient>(config);
-}
+ClipAgent::ClipAgent(const std::string& api_key)
+    : BaseAgent("clip", api_key) {}
 
 bool ClipAgent::canHandle(const std::string& operation) const {
     std::string op_lower = operation;
@@ -27,8 +22,35 @@ bool ClipAgent::canHandle(const std::string& operation) const {
 
 AgentResponse ClipAgent::execute(const std::string& operation, const nlohmann::json& context) {
     try {
-        // Parse clip operation using LLM
-        auto clip_info = parseClipOperationWithLLM(operation);
+        // Load shared prompt
+        SharedResources resources;
+        std::string prompt = resources.getClipAgentPrompt();
+
+        // Create schema for clip parameters
+        auto schema = JsonSchemaBuilder()
+            .type("object")
+            .title("Clip Parameters")
+            .description("Parameters for creating clips in a DAW")
+            .property("start_bar", JsonSchemaBuilder()
+                .type("integer")
+                .description("Starting bar number"))
+            .property("end_bar", JsonSchemaBuilder()
+                .type("integer")
+                .description("Ending bar number"))
+            .property("start_time", JsonSchemaBuilder()
+                .type("number")
+                .description("Start time in seconds"))
+            .property("duration", JsonSchemaBuilder()
+                .type("number")
+                .description("Clip duration in seconds"))
+            .property("track_name", JsonSchemaBuilder()
+                .type("string")
+                .description("Target track name"))
+            .required({"start_bar", "end_bar", "start_time", "duration", "track_name"})
+            .additionalProperties(false);
+
+        // Parse clip operation using base class method
+        auto clip_info = parseOperationWithLLM(operation, prompt, schema);
 
         // Get track ID from context
         std::string track_id = getTrackIdFromContext(context);
@@ -106,57 +128,6 @@ std::vector<ClipResult> ClipAgent::listClips() const {
     return result;
 }
 
-nlohmann::json ClipAgent::parseClipOperationWithLLM(const std::string& operation) {
-    try {
-        LLMRequest request;
-        request.model = OpenAI::Model::GPT_4o_Mini;
-        request.system_prompt = R"(
-You are a clip specialist for a DAW system.
-Your job is to parse clip requests and extract the necessary parameters.
-
-Extract the following information:
-- start_bar: Starting bar number (default: 1)
-- end_bar: Ending bar number (default: start_bar + 4)
-- start_time: Start time in seconds (optional)
-- duration: Clip duration in seconds (optional)
-- track_name: Target track name (optional)
-
-Return a JSON object with the extracted parameters.
-)";
-        request.user_prompt = operation;
-        request.temperature = 0.1f;
-        request.max_tokens = 500;
-
-        // Add JSON schema for structured output
-        request.json_schema = {
-            {"type", "object"},
-            {"properties", {
-                {"start_bar", {{"type", "integer"}}},
-                {"end_bar", {{"type", "integer"}}},
-                {"start_time", {{"type", "number"}}},
-                {"duration", {{"type", "number"}}},
-                {"track_name", {{"type", "string"}}}
-            }},
-            {"required", {"start_bar"}}
-        };
-
-        auto response = client_->chat(request);
-
-        if (response.success && response.json_content.has_value()) {
-            return response.json_content.value();
-        }
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error parsing clip operation: " << e.what() << std::endl;
-    }
-
-    // Return default values if parsing fails
-    return {
-        {"start_bar", 1},
-        {"end_bar", 5}
-    };
-}
-
 std::string ClipAgent::generateDawCommand(const ClipResult& clip) const {
     std::ostringstream oss;
     oss << "clip(track:" << clip.track_id
@@ -168,6 +139,23 @@ std::string ClipAgent::generateDawCommand(const ClipResult& clip) const {
     }
     if (clip.duration.has_value()) {
         oss << ", duration:" << clip.duration.value();
+    }
+
+    oss << ")";
+    return oss.str();
+}
+
+std::string ClipAgent::generateDAWCommand(const nlohmann::json& result) const {
+    std::ostringstream oss;
+    oss << "clip(track:" << result.value("track_id", "unknown")
+        << ", start_bar:" << result.value("start_bar", 1)
+        << ", end_bar:" << result.value("end_bar", 5);
+
+    if (result.contains("start_time")) {
+        oss << ", start_time:" << result["start_time"];
+    }
+    if (result.contains("duration")) {
+        oss << ", duration:" << result["duration"];
     }
 
     oss << ")";

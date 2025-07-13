@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iomanip>
 #include <chrono>
+#include <iostream>
 
 namespace magda {
 
@@ -48,15 +49,29 @@ nlohmann::json BaseAgent::parseOperationWithLLM(const std::string& operation,
         auto response = client_->sendRequest(request);
 
         if (response.success) {
+            std::cout << "🔍 DEBUG: Base agent response result: " << response.result.dump(2) << std::endl;
             // The response should already be structured JSON due to schema validation
             if (response.result.contains("text")) {
+                std::cout << "🔍 DEBUG: Base agent text field type: " << (response.result["text"].is_string() ? "string" : "object") << std::endl;
                 try {
-                    return nlohmann::json::parse(response.result["text"].get<std::string>());
+                    // Extract the text field and parse it as JSON
+                    if (response.result["text"].is_string()) {
+                        std::cout << "🔍 DEBUG: Base agent parsing string: " << response.result["text"].get<std::string>() << std::endl;
+                        return nlohmann::json::parse(response.result["text"].get<std::string>());
+                    } else {
+                        // If text is already a JSON object, return it directly
+                        std::cout << "🔍 DEBUG: Base agent returning object directly" << std::endl;
+                        return response.result["text"];
+                    }
                 } catch (const nlohmann::json::parse_error& e) {
                     // If parsing fails, return a basic structure
                     nlohmann::json fallback;
                     fallback["error"] = "Failed to parse LLM response as JSON";
-                    fallback["raw_response"] = response.result["text"].get<std::string>();
+                    if (response.result["text"].is_string()) {
+                        fallback["raw_response"] = response.result["text"].get<std::string>();
+                    } else {
+                        fallback["raw_response"] = response.result["text"].dump();
+                    }
                     return fallback;
                 }
             } else {

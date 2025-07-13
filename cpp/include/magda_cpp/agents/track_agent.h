@@ -61,13 +61,6 @@ private:
     std::map<std::string, nlohmann::json> created_tracks_;
 
     /**
-     * @brief Parse track operation with LLM
-     * @param operation The operation string
-     * @return Parsed track information as JSON
-     */
-    nlohmann::json parseTrackOperationWithLLM(const std::string& operation);
-
-    /**
      * @brief Generate DAW command from track result
      * @param result The track result to convert
      * @return DAW command string

@@ -60,13 +60,6 @@ private:
     std::map<std::string, nlohmann::json> volume_settings_;
 
     /**
-     * @brief Parse volume operation with LLM
-     * @param operation The operation string
-     * @return Parsed volume information as JSON
-     */
-    nlohmann::json parseVolumeOperationWithLLM(const std::string& operation);
-
-    /**
      * @brief Generate DAW command from volume result
      * @param result The volume result to convert
      * @return DAW command string
