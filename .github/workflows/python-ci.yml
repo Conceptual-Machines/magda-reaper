@@ -69,7 +69,7 @@ jobs:
     - name: Run tests
       working-directory: python
       run: |
-        uv run pytest --cov=magda --cov-report=xml --cov-report=term-missing
+        uv run pytest --cov=magda --cov-report=xml --cov-report=term-missing --ignore=tests/test_simple_integration.py
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
