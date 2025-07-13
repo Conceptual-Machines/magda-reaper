@@ -4,84 +4,137 @@ Simple integration tests for quick verification.
 
 import os
 import pytest
+from unittest.mock import patch, Mock
 from magda.pipeline import MAGDAPipeline
 
 
 class TestSimpleIntegration:
-    """Simple integration tests with real API calls."""
+    """Simple integration tests with mocked API calls."""
     
     @pytest.fixture
     def pipeline(self):
         """Create a pipeline instance."""
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            pytest.skip("OPENAI_API_KEY not set")
         return MAGDAPipeline()
     
-    def test_basic_track_creation(self, pipeline):
+    @patch("magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm")
+    def test_basic_track_creation(self, mock_identify, pipeline):
         """Test basic track creation."""
         prompt = "Create a new track called 'Test Guitar'"
         
-        print(f"\nTesting: {prompt}")
-        result = pipeline.process_prompt(prompt)
+        # Mock operation identification
+        mock_identify.return_value = [{"type": "track", "description": "Create a new track called 'Test Guitar'", "parameters": {"name": "Test Guitar"}}]
         
-        assert result is not None
-        assert "operations" in result
-        assert "daw_commands" in result
-        assert len(result["operations"]) > 0
-        print(f"✓ Track creation passed: {result}")
+        # Mock track agent response
+        with patch.object(pipeline.agents["track"], "execute") as mock_track:
+            mock_track.return_value = {
+                "daw_command": "track(Test Guitar)",
+                "result": {"id": "track_1", "name": "Test Guitar"}
+            }
+            
+            print(f"\nTesting: {prompt}")
+            result = pipeline.process_prompt(prompt)
+            
+            assert result is not None
+            assert "operations" in result
+            assert "daw_commands" in result
+            assert len(result["operations"]) > 0
+            print(f"✓ Track creation passed: {result}")
     
-    def test_volume_adjustment(self, pipeline):
+    @patch("magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm")
+    def test_volume_adjustment(self, mock_identify, pipeline):
         """Test volume adjustment."""
         prompt = "Set the volume of track 'Test Guitar' to -3dB"
         
-        print(f"\nTesting: {prompt}")
-        result = pipeline.process_prompt(prompt)
+        # Mock operation identification
+        mock_identify.return_value = [{"type": "volume", "description": "Set the volume of track 'Test Guitar' to -3dB", "parameters": {"track_name": "Test Guitar", "volume": -3}}]
         
-        assert result is not None
-        assert "operations" in result
-        assert "daw_commands" in result
-        assert len(result["operations"]) > 0
-        print(f"✓ Volume adjustment passed: {result}")
+        # Mock volume agent response
+        with patch.object(pipeline.agents["volume"], "execute") as mock_volume:
+            mock_volume.return_value = {
+                "daw_command": "volume(Test Guitar, -3)",
+                "result": {"id": "volume_1", "track_id": "track_1", "volume": -3}
+            }
+            
+            print(f"\nTesting: {prompt}")
+            result = pipeline.process_prompt(prompt)
+            
+            assert result is not None
+            assert "operations" in result
+            assert "daw_commands" in result
+            assert len(result["operations"]) > 0
+            print(f"✓ Volume adjustment passed: {result}")
     
-    def test_effect_addition(self, pipeline):
+    @patch("magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm")
+    def test_effect_addition(self, mock_identify, pipeline):
         """Test effect addition."""
         prompt = "Add reverb to the 'Test Guitar' track"
         
-        print(f"\nTesting: {prompt}")
-        result = pipeline.process_prompt(prompt)
+        # Mock operation identification
+        mock_identify.return_value = [{"type": "effect", "description": "Add reverb to the 'Test Guitar' track", "parameters": {"track_name": "Test Guitar", "effect": "reverb"}}]
         
-        assert result is not None
-        assert "operations" in result
-        assert "daw_commands" in result
-        assert len(result["operations"]) > 0
-        print(f"✓ Effect addition passed: {result}")
+        # Mock effect agent response
+        with patch.object(pipeline.agents["effect"], "execute") as mock_effect:
+            mock_effect.return_value = {
+                "daw_command": "effect(Test Guitar, reverb)",
+                "result": {"id": "effect_1", "track_id": "track_1", "type": "reverb"}
+            }
+            
+            print(f"\nTesting: {prompt}")
+            result = pipeline.process_prompt(prompt)
+            
+            assert result is not None
+            assert "operations" in result
+            assert "daw_commands" in result
+            assert len(result["operations"]) > 0
+            print(f"✓ Effect addition passed: {result}")
     
-    def test_spanish_prompt(self, pipeline):
+    @patch("magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm")
+    def test_spanish_prompt(self, mock_identify, pipeline):
         """Test Spanish prompt."""
         prompt = "Crea una nueva pista llamada 'Piano Español'"
         
-        print(f"\nTesting: {prompt}")
-        result = pipeline.process_prompt(prompt)
+        # Mock operation identification
+        mock_identify.return_value = [{"type": "track", "description": "Create a new track called 'Piano Español'", "parameters": {"name": "Piano Español"}}]
         
-        assert result is not None
-        assert "operations" in result
-        assert "daw_commands" in result
-        assert len(result["operations"]) > 0
-        print(f"✓ Spanish prompt passed: {result}")
+        # Mock track agent response
+        with patch.object(pipeline.agents["track"], "execute") as mock_track:
+            mock_track.return_value = {
+                "daw_command": "track(Piano Español)",
+                "result": {"id": "track_1", "name": "Piano Español"}
+            }
+            
+            print(f"\nTesting: {prompt}")
+            result = pipeline.process_prompt(prompt)
+            
+            assert result is not None
+            assert "operations" in result
+            assert "daw_commands" in result
+            assert len(result["operations"]) > 0
+            print(f"✓ Spanish prompt passed: {result}")
     
-    def test_french_prompt(self, pipeline):
+    @patch("magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm")
+    def test_french_prompt(self, mock_identify, pipeline):
         """Test French prompt."""
         prompt = "Ajoute une piste audio nommée 'Basse Française'"
         
-        print(f"\nTesting: {prompt}")
-        result = pipeline.process_prompt(prompt)
+        # Mock operation identification
+        mock_identify.return_value = [{"type": "track", "description": "Create a new track called 'Basse Française'", "parameters": {"name": "Basse Française"}}]
         
-        assert result is not None
-        assert "operations" in result
-        assert "daw_commands" in result
-        assert len(result["operations"]) > 0
-        print(f"✓ French prompt passed: {result}")
+        # Mock track agent response
+        with patch.object(pipeline.agents["track"], "execute") as mock_track:
+            mock_track.return_value = {
+                "daw_command": "track(Basse Française)",
+                "result": {"id": "track_1", "name": "Basse Française"}
+            }
+            
+            print(f"\nTesting: {prompt}")
+            result = pipeline.process_prompt(prompt)
+            
+            assert result is not None
+            assert "operations" in result
+            assert "daw_commands" in result
+            assert len(result["operations"]) > 0
+            print(f"✓ French prompt passed: {result}")
 
 
 if __name__ == "__main__":
