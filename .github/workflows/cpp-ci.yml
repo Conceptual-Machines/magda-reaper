@@ -86,15 +86,18 @@ jobs:
         fi
       shell: bash
 
+    - name: Copy vcpkg.json to cpp/
+      run: cp vcpkg.json cpp/vcpkg.json
+
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" .
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" cpp/
 
     - name: Configure CMake (Linux)
       if: matrix.os == 'ubuntu-22.04'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} .
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} cpp/
 
     - name: Build
       timeout-minutes: 15
