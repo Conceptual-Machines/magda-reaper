@@ -1,5 +1,5 @@
 [![CI/CD Pipeline](https://github.com/lucaromagnoli/magda/workflows/MAGDA%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/lucaromagnoli/magda/actions)
-[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
@@ -13,7 +13,6 @@
 [![Ninja](https://img.shields.io/badge/Ninja-Build-orange.svg)](https://ninja-build.org/)
 [![OpenSSL](https://img.shields.io/badge/OpenSSL-Required-green.svg)](https://www.openssl.org/)
 [![nlohmann/json](https://img.shields.io/badge/nlohmann%2Fjson-3.11+-blue.svg)](https://github.com/nlohmann/json)
-[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
 # MAGDA
 
@@ -329,23 +328,16 @@ For questions, issues, or contributions:
 - Join our community discussions
 - Check the documentation for common solutions
 
-## Model Selection Strategy for MAGDA
+## 🤖 Model Selection & Defaults
 
-MAGDA supports multiple OpenAI models for translating natural language into DAW commands. Based on extensive benchmarking, here are our recommendations:
+MAGDA uses multiple OpenAI models for different stages of the pipeline. The defaults are:
 
-### Default Models
-- **General Reasoning Tasks:**
-  - **Default:** `gpt-4.1-nano`
-  - **Why:** Fast, cost-effective, and accurate for both simple and multi-step workflows.
-- **Specialized/Low-Latency Tasks:**
-  - **Default:** `gpt-4o-mini`
-  - **Why:** Extremely fast and efficient for straightforward or high-throughput operations.
+- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate reasoning)
+- **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective for DAW commands)
 
-### Fallback and Customization
-- The client code can override the default model for any agent or task.
-- For complex, creative, or ambiguous tasks, consider using larger models (e.g., `gpt-4o`, `o3-mini`, `o1-pro`) as a fallback if the default model fails or produces invalid output.
+You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex or creative tasks, you may use larger models (e.g., `gpt-4o`, `o3-mini`, `o1-pro`) as a fallback.
 
-### Summary Table
+### Model Summary Table
 | Model           | Latency | Token Usage | Cost | Reasoning | Recommended For         |
 |-----------------|---------|-------------|------|-----------|------------------------|
 | gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
@@ -353,9 +345,24 @@ MAGDA supports multiple OpenAI models for translating natural language into DAW 
 | gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐⭐        | Fallback, complex tasks|
 | o3-mini, o1-pro | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Only if needed         |
 
-### How to Change the Model
-- The default model for each agent is set in the pipeline configuration.
-- You can override the model by passing a `model` parameter to the relevant API or agent call.
+## 📊 Model Benchmarking
+
+MAGDA includes a benchmarking framework to evaluate model performance (latency, token usage, cost, etc.) for DAW tasks.
+
+- **Run the benchmark:**
+  ```bash
+  python python/run_model_benchmark.py --config quick
+  ```
+  (Other configs: `full`, `latency`, `multistep`, or custom YAML)
+
+- **Analyze results:**
+  ```bash
+  python python/analyze_benchmark_results.py
+  ```
+  This prints per-model and overall stats for latency, token usage, and more.
+
+- **Customize:**
+  Edit `python/run_model_benchmark.py` or provide your own config to test different prompts, models, or metrics.
 
 ---
 
