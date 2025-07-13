@@ -36,7 +36,18 @@ class OperationIdentifier(BaseAgent):
     def identify_operations_with_llm(self, prompt: str) -> list[dict[str, Any]]:
         """Use LLM to identify operations in the prompt using reasoning with Responses API."""
 
-        instructions = """
+        # Load shared prompt
+        try:
+            import sys
+
+            sys.path.append("../../shared/utils")
+            from prompt_loader import get_shared_resources
+
+            resources = get_shared_resources()
+            instructions = resources.get_operation_identifier_prompt()
+        except ImportError:
+            # Fallback to hardcoded prompt if shared resources not available
+            instructions = """
 You are an operation identifier for a DAW (Digital Audio Workstation) system.
 Your job is to analyze natural language prompts and break them down into discrete operations.
 

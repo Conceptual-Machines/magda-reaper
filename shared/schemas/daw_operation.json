@@ -1,0 +1,91 @@
+{
+  "type": "object",
+  "properties": {
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["track", "clip", "volume", "effect", "midi"],
+            "description": "The type of DAW operation"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the operation"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Operation-specific parameters",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name for tracks, clips, or other named objects"
+              },
+              "track_name": {
+                "type": "string",
+                "description": "Name of the target track"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["audio", "midi", "bus", "aux"],
+                "description": "Type of track or object"
+              },
+              "effect_type": {
+                "type": "string",
+                "enum": ["reverb", "delay", "compressor", "eq", "filter", "distortion"],
+                "description": "Type of audio effect"
+              },
+              "volume": {
+                "type": "number",
+                "description": "Volume level in dB"
+              },
+              "fade_type": {
+                "type": "string",
+                "enum": ["in", "out"],
+                "description": "Type of fade operation"
+              },
+              "duration": {
+                "type": "number",
+                "description": "Duration in seconds"
+              },
+              "ratio": {
+                "type": "number",
+                "description": "Compressor ratio"
+              },
+              "threshold": {
+                "type": "number",
+                "description": "Compressor threshold in dB"
+              },
+              "start_bar": {
+                "type": "integer",
+                "description": "Starting bar position"
+              },
+              "end_bar": {
+                "type": "integer",
+                "description": "Ending bar position"
+              },
+              "note": {
+                "type": "string",
+                "description": "MIDI note (e.g., 'C4', 'A#3')"
+              },
+              "velocity": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 127,
+                "description": "MIDI velocity"
+              },
+              "chord": {
+                "type": "string",
+                "description": "Chord name (e.g., 'C major', 'Am7')"
+              }
+            }
+          }
+        },
+        "required": ["type", "description", "parameters"]
+      }
+    }
+  },
+  "required": ["operations"]
+}
