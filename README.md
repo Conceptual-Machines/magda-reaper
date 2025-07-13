@@ -1,6 +1,7 @@
 [![CI/CD Pipeline](https://github.com/lucaromagnoli/magda/workflows/MAGDA%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/lucaromagnoli/magda/actions)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checked with mypy](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/lucaromagnoli/magda)
@@ -8,6 +9,10 @@
 [![Pydantic](https://img.shields.io/badge/Pydantic-2.11+-blue.svg)](https://pydantic.dev/)
 [![Multi-Agent](https://img.shields.io/badge/Architecture-Multi--Agent-orange.svg)](https://en.wikipedia.org/wiki/Multi-agent_system)
 [![uv](https://img.shields.io/badge/uv-Package%20Manager-purple.svg)](https://docs.astral.sh/uv/)
+[![CMake](https://img.shields.io/badge/CMake-3.22+-blue.svg)](https://cmake.org/)
+[![Ninja](https://img.shields.io/badge/Ninja-Build-orange.svg)](https://ninja-build.org/)
+[![OpenSSL](https://img.shields.io/badge/OpenSSL-Required-green.svg)](https://www.openssl.org/)
+[![nlohmann/json](https://img.shields.io/badge/nlohmann%2Fjson-3.11+-blue.svg)](https://github.com/nlohmann/json)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
 # MAGDA
@@ -16,7 +21,7 @@
 
 ```
      MAGDA
-   🎵 🎹 🎤 🐍 ⚡
+   🎵 🎹 🎤 🐍 ⚡ 🦀
 
   Multi Agent
  Generic DAW API
