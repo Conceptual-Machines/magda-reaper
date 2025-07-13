@@ -185,10 +185,37 @@ magda/
 │       ├── volume_agent.py
 │       ├── effect_agent.py
 │       └── midi_agent.py
+├── scripts/
+│   └── release.py           # Release automation script
 ├── pyproject.toml
 ├── uv.lock
 └── README.md
 ```
+
+### Release Process
+
+MAGDA uses semantic versioning and automated releases. To create a new release:
+
+1. **Bump version and release**:
+   ```bash
+   python scripts/release.py patch   # or 'minor' or 'major'
+   ```
+
+2. **Dry run** (see what would happen):
+   ```bash
+   python scripts/release.py patch --dry-run
+   ```
+
+3. **Prepare without pushing**:
+   ```bash
+   python scripts/release.py patch --no-push
+   ```
+
+The release script will:
+- Bump the version in `pyproject.toml`
+- Create a git tag
+- Push changes and tag to GitHub
+- Trigger the GitHub Actions workflow to create a release
 
 ### Adding New Agents
 
