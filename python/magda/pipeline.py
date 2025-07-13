@@ -1,59 +1,60 @@
-from typing import Dict, Any, List
-from .agents.operation_identifier import OperationIdentifier
-from .agents.track_agent import TrackAgent
+from typing import Any, Dict
+
+from .agents.base import BaseAgent
 from .agents.clip_agent import ClipAgent
-from .agents.volume_agent import VolumeAgent
 from .agents.effect_agent import EffectAgent
 from .agents.midi_agent import MidiAgent
-from .agents.base import BaseAgent
+from .agents.operation_identifier import OperationIdentifier
+from .agents.track_agent import TrackAgent
+from .agents.volume_agent import VolumeAgent
 from .context_manager import ContextManager
 
 
 class MAGDAPipeline:
     """Main pipeline orchestrator for MAGDA with context awareness."""
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         self.operation_identifier = OperationIdentifier()
         self.context_manager = ContextManager()
-        self.agents: Dict[str, BaseAgent] = {
+        self.agents: dict[str, BaseAgent] = {
             "track": TrackAgent(),
             "clip": ClipAgent(),
             "volume": VolumeAgent(),
             "effect": EffectAgent(),
             "midi": MidiAgent(),
         }
-    
-    def process_prompt(self, prompt: str) -> Dict[str, Any]:
+
+    def process_prompt(self, prompt: str) -> dict[str, Any]:
         """Process a natural language prompt through the MAGDA pipeline with context awareness."""
-        
+
         # Stage 1: Identify operations
         print("Stage 1: Identifying operations...")
         identification_result = self.operation_identifier.execute(prompt)
         operations = identification_result["operations"]
-        
+
         print(f"Identified {len(operations)} operations:")
         for op in operations:
-            op_type = op.get('type', 'unknown')
-            op_desc = op.get('description', str(op))
+            op_type = op.get("type", "unknown")
+            op_desc = op.get("description", str(op))
             print(f"  - {op_type}: {op_desc}")
-        
+
         # Stage 2: Execute operations with specialized agents and context awareness
         print("\nStage 2: Executing operations...")
         results = []
-        
+
         for operation in operations:
             op_type = operation["type"]
             op_description = operation["description"]
             op_parameters = operation.get("parameters", {})
-            
+
             print(f"Processing {op_type} operation: {op_description}")
-            
+
             # Find appropriate agent
             agent = self.agents.get(op_type)
             if not agent:
                 print(f"Warning: No agent found for operation type '{op_type}'")
                 continue
-            
+
             # Execute operation with context awareness
             try:
                 # Resolve track references in parameters
@@ -76,12 +77,12 @@ class MAGDAPipeline:
                 
                 # Update context based on operation result
                 self._update_context_from_result(op_type, result, resolved_parameters)
-                
+
                 print(f"  ✓ {result['daw_command']}")
-                
+
             except Exception as e:
                 print(f"  ✗ Error executing {op_type} operation: {e}")
-        
+
         return {
             "original_prompt": prompt,
             "operations": operations,
@@ -230,7 +231,7 @@ class MAGDAPipeline:
         """Get a summary of the current context."""
         return self.context_manager.get_context_summary()
     
-    def set_current_selection(self, object_ids: List[str]) -> None:
+    def set_current_selection(self, object_ids: list[str]) -> None:
         """Set the current selection in the DAW."""
         self.context_manager.set_current_selection(object_ids)
     
@@ -244,4 +245,4 @@ class MAGDAPipeline:
     
     def find_track_by_id(self, track_id: str):
         """Find a track by ID."""
-        return self.context_manager.find_track_by_id(track_id) 
+        return self.context_manager.find_track_by_id(track_id)

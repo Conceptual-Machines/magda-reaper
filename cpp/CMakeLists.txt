@@ -14,9 +14,15 @@ endif()
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 
+# Output directories
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 # Find dependencies
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(PkgConfig REQUIRED)
 
 # Add llmcpp library
 # Option 1: If llmcpp is installed system-wide
@@ -81,4 +87,4 @@ write_basic_package_version_file(
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/magda_cppConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/magda_cpp
-) 
+)

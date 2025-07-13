@@ -155,4 +155,4 @@ class OperationIdentifier(BaseAgent):
                     "operation": op,
                     "context": current_context.copy()
                 })
-        return operation_chain 
+        return operation_chain

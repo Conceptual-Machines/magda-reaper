@@ -29,4 +29,10 @@ target_include_directories(magda_cpp
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-) 
+)
+
+# Create the main executable
+add_executable(magda_cpp_cli main.cpp)
+
+# Link against the library
+target_link_libraries(magda_cpp_cli PRIVATE magda_cpp)
