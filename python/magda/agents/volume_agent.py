@@ -6,6 +6,7 @@ import openai
 from dotenv import load_dotenv
 
 from ..models import VolumeResult
+from ..prompt_loader import get_prompt
 from .base import BaseAgent
 
 load_dotenv()
@@ -86,16 +87,7 @@ class VolumeAgent(BaseAgent):
     def _parse_volume_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse volume operation and extract parameters using Responses API."""
 
-        instructions = """You are a volume automation specialist for a DAW system.
-        Your job is to parse volume automation requests and extract the necessary parameters.
-
-        Extract the following information:
-        - start_value: The starting volume value (0.0 to 1.0, default: 0.0)
-        - end_value: The ending volume value (0.0 to 1.0, default: 1.0)
-        - start_bar: The starting bar number (default: 1)
-        - end_bar: The ending bar number (default: start_bar + 4)
-
-        Return a JSON object with the extracted parameters following the provided schema."""
+        instructions = get_prompt("volume_agent")
 
         try:
             response = self.client.responses.parse(

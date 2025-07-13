@@ -58,28 +58,6 @@ Return your analysis as a JSON object with an 'operations' array, where each ope
 }
 ```
 
-### Input: "set the bass track volume to -6dB and create a 2-second fade-in"
-```json
-{
-  "operations": [
-    {
-      "type": "volume",
-      "description": "Set bass track volume to -6dB",
-      "parameters": {"track_name": "bass", "volume": -6}
-    },
-    {
-      "type": "volume",
-      "description": "Create 2-second fade-in on bass track",
-      "parameters": {
-        "track_name": "bass",
-        "fade_type": "in",
-        "duration": 2
-      }
-    }
-  ]
-}
-```
-
 ## Guidelines
 
 1. **Be specific**: Extract all relevant parameters from the prompt

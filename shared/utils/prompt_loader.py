@@ -45,6 +45,26 @@ class SharedResources:
         """Get the operation identifier system prompt."""
         return self.load_prompt("operation_identifier")
 
+    def get_track_agent_prompt(self) -> str:
+        """Get the track agent system prompt."""
+        return self.load_prompt("track_agent")
+
+    def get_effect_agent_prompt(self) -> str:
+        """Get the effect agent system prompt."""
+        return self.load_prompt("effect_agent")
+
+    def get_volume_agent_prompt(self) -> str:
+        """Get the volume agent system prompt."""
+        return self.load_prompt("volume_agent")
+
+    def get_midi_agent_prompt(self) -> str:
+        """Get the MIDI agent system prompt."""
+        return self.load_prompt("midi_agent")
+
+    def get_clip_agent_prompt(self) -> str:
+        """Get the clip agent system prompt."""
+        return self.load_prompt("clip_agent")
+
     def get_daw_operation_schema(self) -> dict[str, Any]:
         """Get the DAW operation JSON schema."""
         return self.load_schema("daw_operation")

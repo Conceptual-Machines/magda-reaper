@@ -6,6 +6,7 @@ import openai
 from dotenv import load_dotenv
 
 from ..models import TrackResult
+from ..prompt_loader import get_prompt
 from .base import BaseAgent
 
 load_dotenv()
@@ -61,15 +62,7 @@ class TrackAgent(BaseAgent):
     def _parse_track_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse track operation and extract parameters using Responses API."""
 
-        instructions = """You are a track creation specialist for a DAW system.
-        Your job is to parse track creation requests and extract the necessary parameters.
-
-        Extract the following information:
-        - vst: The VST plugin name (e.g., "serum", "addictive drums")
-        - name: The track name (e.g., "bass", "drums")
-        - type: Track type (usually "audio" or "midi")
-
-        Return a JSON object with the extracted parameters following the provided schema."""
+        instructions = get_prompt("track_agent")
 
         try:
             response = self.client.responses.parse(

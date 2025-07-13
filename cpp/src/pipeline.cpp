@@ -1,71 +1,124 @@
 #include "magda_cpp/agents/base_agent.h"
 #include "magda_cpp/agents/track_agent.h"
 #include "magda_cpp/agents/volume_agent.h"
+#include "magda_cpp/agents/effect_agent.h"
+#include "magda_cpp/agents/midi_agent.h"
+#include "magda_cpp/agents/clip_agent.h"
+#include "magda_cpp/agents/operation_identifier.h"
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
 namespace magda {
 
 /**
- * @brief Pipeline class that coordinates multiple agents
+ * @brief Two-stage pipeline that coordinates operation identification and execution
  */
-class Pipeline {
+class MAGDAPipeline {
 public:
-    Pipeline() = default;
-
     /**
-     * @brief Add an agent to the pipeline
-     * @param agent Shared pointer to the agent
+     * @brief Constructor
+     * @param api_key OpenAI API key for all agents
      */
-    void addAgent(std::shared_ptr<BaseAgent> agent) {
-        agents_.push_back(agent);
+    explicit MAGDAPipeline(const std::string& api_key = "") : api_key_(api_key) {
+        // Initialize operation identifier
+        operation_identifier_ = std::make_unique<magda_cpp::OperationIdentifier>(api_key);
+
+        // Initialize specialized agents
+        agents_["track"] = std::make_shared<TrackAgent>(api_key);
+        agents_["clip"] = std::make_shared<ClipAgent>(api_key);
+        agents_["volume"] = std::make_shared<VolumeAgent>(api_key);
+        agents_["effect"] = std::make_shared<EffectAgent>(api_key);
+        agents_["midi"] = std::make_shared<MidiAgent>(api_key);
     }
 
     /**
-     * @brief Process an operation by finding the appropriate agent
-     * @param operation The operation string
-     * @param context Optional context
-     * @return AgentResponse from the appropriate agent
+     * @brief Process a natural language prompt through the two-stage pipeline
+     * @param prompt The natural language prompt
+     * @return Pipeline result with operations and DAW commands
      */
-    AgentResponse processOperation(const std::string& operation,
-                                   const nlohmann::json& context = nlohmann::json::object()) {
-        // Find the first agent that can handle this operation
-        for (auto& agent : agents_) {
-            if (agent->canHandle(operation)) {
-                return agent->execute(operation, context);
+    nlohmann::json processPrompt(const std::string& prompt) {
+        nlohmann::json result;
+        result["original_prompt"] = prompt;
+        result["operations"] = nlohmann::json::array();
+        result["results"] = nlohmann::json::array();
+        result["daw_commands"] = nlohmann::json::array();
+
+        try {
+            // Stage 1: Identify operations
+            std::cout << "Stage 1: Identifying operations..." << std::endl;
+            auto identification_result = operation_identifier_->identifyOperations(prompt);
+
+            if (!identification_result.success) {
+                result["error"] = identification_result.error_message;
+                return result;
             }
+
+            std::cout << "Identified " << identification_result.operations.size() << " operations:" << std::endl;
+            for (const auto& op : identification_result.operations) {
+                std::cout << "  - " << op.type << ": " << op.description << std::endl;
+            }
+
+            // Stage 2: Execute operations with specialized agents
+            std::cout << "\nStage 2: Executing operations..." << std::endl;
+
+            for (const auto& operation : identification_result.operations) {
+                std::cout << "Processing " << operation.type << " operation: " << operation.description << std::endl;
+
+                // Find appropriate agent
+                auto agent_it = agents_.find(operation.type);
+                if (agent_it == agents_.end()) {
+                    std::cout << "Warning: No agent found for operation type '" << operation.type << "'" << std::endl;
+                    continue;
+                }
+
+                // Execute operation
+                try {
+                    auto agent_response = agent_it->second->execute(operation.description, operation.parameters);
+
+                    // Add to results
+                    result["operations"].push_back({
+                        {"type", operation.type},
+                        {"description", operation.description},
+                        {"parameters", operation.parameters}
+                    });
+
+                    result["results"].push_back(agent_response.result);
+                    result["daw_commands"].push_back(agent_response.daw_command);
+
+                    std::cout << "  ✓ " << agent_response.daw_command << std::endl;
+
+                } catch (const std::exception& e) {
+                    std::cout << "  ✗ Error executing " << operation.type << " operation: " << e.what() << std::endl;
+                }
+            }
+
+        } catch (const std::exception& e) {
+            result["error"] = "Pipeline error: " + std::string(e.what());
         }
 
-        // If no agent can handle it, return an error response
-        nlohmann::json error_result;
-        error_result["error"] = "No agent found to handle operation: " + operation;
-
-        return AgentResponse(error_result, "", context);
+        return result;
     }
 
     /**
-     * @brief Get all agents in the pipeline
-     * @return Vector of agent pointers
+     * @brief Get information about all available agents
+     * @return Agent information
      */
-    const std::vector<std::shared_ptr<BaseAgent>>& getAgents() const {
-        return agents_;
-    }
-
-    /**
-     * @brief Create a default pipeline with common agents
-     * @param api_key OpenAI API key
-     * @return Pipeline with track and volume agents
-     */
-    static Pipeline createDefaultPipeline(const std::string& api_key = "") {
-        Pipeline pipeline;
-        pipeline.addAgent(std::make_shared<TrackAgent>(api_key));
-        pipeline.addAgent(std::make_shared<VolumeAgent>(api_key));
-        return pipeline;
+    nlohmann::json getAgentInfo() const {
+        nlohmann::json agent_info;
+        for (const auto& pair : agents_) {
+            agent_info[pair.first] = {
+                {"capabilities", pair.second->getCapabilities()}
+            };
+        }
+        return agent_info;
     }
 
 private:
-    std::vector<std::shared_ptr<BaseAgent>> agents_;
+    std::string api_key_;
+    std::unique_ptr<magda_cpp::OperationIdentifier> operation_identifier_;
+    std::map<std::string, std::shared_ptr<BaseAgent>> agents_;
 };
 
 } // namespace magda

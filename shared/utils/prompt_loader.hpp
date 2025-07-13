@@ -39,6 +39,36 @@ public:
     std::string getOperationIdentifierPrompt() const;
 
     /**
+     * @brief Get the track agent system prompt
+     * @return The track agent prompt
+     */
+    std::string getTrackAgentPrompt() const;
+
+    /**
+     * @brief Get the effect agent system prompt
+     * @return The effect agent prompt
+     */
+    std::string getEffectAgentPrompt() const;
+
+    /**
+     * @brief Get the volume agent system prompt
+     * @return The volume agent prompt
+     */
+    std::string getVolumeAgentPrompt() const;
+
+    /**
+     * @brief Get the MIDI agent system prompt
+     * @return The MIDI agent prompt
+     */
+    std::string getMidiAgentPrompt() const;
+
+    /**
+     * @brief Get the clip agent system prompt
+     * @return The clip agent prompt
+     */
+    std::string getClipAgentPrompt() const;
+
+    /**
      * @brief Get the DAW operation JSON schema
      * @return The DAW operation schema
      */
@@ -46,6 +76,13 @@ public:
 
 private:
     std::filesystem::path base_path_;
+
+    /**
+     * @brief Load a prompt file from the shared prompts directory
+     * @param prompt_name Name of the prompt file (without .md extension)
+     * @return The prompt content as a string
+     */
+    std::string loadPromptFile(const std::string& prompt_name) const;
 
     /**
      * @brief Find the shared resources directory
