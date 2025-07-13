@@ -5,7 +5,7 @@
 #include <fstream>
 #include <filesystem>
 
-namespace magda_cpp {
+namespace magda {
 
 /**
  * @brief Load and manage shared prompts and schemas for C++ implementation
@@ -77,6 +77,17 @@ public:
 private:
     std::filesystem::path base_path_;
 
+    // Cached prompts
+    std::string operation_identifier_prompt_;
+    std::string track_agent_prompt_;
+    std::string effect_agent_prompt_;
+    std::string volume_agent_prompt_;
+    std::string midi_agent_prompt_;
+    std::string clip_agent_prompt_;
+
+    // Cached schemas
+    nlohmann::json daw_operation_schema_;
+
     /**
      * @brief Load a prompt file from the shared prompts directory
      * @param prompt_name Name of the prompt file (without .md extension)
@@ -85,10 +96,25 @@ private:
     std::string loadPromptFile(const std::string& prompt_name) const;
 
     /**
+     * @brief Load prompts into cache
+     */
+    void loadPrompts();
+
+    /**
+     * @brief Load schemas into cache
+     */
+    void loadSchemas();
+
+    /**
+     * @brief Load default schema if file not found
+     */
+    void loadDefaultSchema();
+
+    /**
      * @brief Find the shared resources directory
      * @return Path to shared resources
      */
     static std::filesystem::path findSharedResourcesPath();
 };
 
-} // namespace magda_cpp
+} // namespace magda

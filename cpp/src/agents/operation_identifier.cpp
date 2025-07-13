@@ -4,15 +4,10 @@
 #include <sstream>
 #include <iostream>
 
-namespace magda_cpp {
+namespace magda {
 
-OperationIdentifier::OperationIdentifier(const std::string& api_key) {
-    // Initialize OpenAI client
-    llmcpp::OpenAI::Config config;
-    if (!api_key.empty()) {
-        config.api_key = api_key;
-    }
-    client_ = std::make_unique<llmcpp::OpenAI::OpenAIClient>(config);
+OperationIdentifier::OperationIdentifier(const std::string& api_key)
+    : BaseAgent("operation_identifier", api_key) {
 }
 
 OperationIdentificationResult OperationIdentifier::identifyOperations(const std::string& prompt) {
@@ -21,25 +16,25 @@ OperationIdentificationResult OperationIdentifier::identifyOperations(const std:
     result.success = false;
 
     try {
-        // Build the request
-        llmcpp::LLMRequest request;
-        request.model = getRecommendedModel();
-        request.system_prompt = buildSystemPrompt();
-        request.user_prompt = prompt;
-        request.temperature = 0.1f;
-        request.max_tokens = 1000;
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = ModelConfig::CURRENT_DECISION_AGENT;  // Use current decision agent model
+        config.temperature = 0.1f;
+        config.maxTokens = 1000;
+        config.schemaObject = getOperationSchema();
 
-        // Add JSON schema for structured output
-        request.json_schema = getOperationSchema();
+        std::string system_prompt = buildSystemPrompt();
+        std::string full_prompt = system_prompt + "\n" + prompt;
+        LLMContext context = {};
+        LLMRequest request(config, full_prompt, context);
 
-        // Make the request
-        auto response = client_->chat(request);
+        auto response = client_->sendRequest(request);
 
         if (response.success) {
             result.operations = parseOperations(response);
             result.success = true;
         } else {
-            result.error_message = "LLM request failed: " + response.error_message;
+            result.error_message = "LLM request failed: " + response.errorMessage;
         }
 
     } catch (const std::exception& e) {
@@ -49,18 +44,20 @@ OperationIdentificationResult OperationIdentifier::identifyOperations(const std:
     return result;
 }
 
-llmcpp::OpenAI::Model OperationIdentifier::getRecommendedModel() {
-    return llmcpp::OpenAI::Model::GPT_4O_MINI; // Cost-effective for operation identification
+std::string OperationIdentifier::getRecommendedModel() {
+    return ModelConfig::CURRENT_DECISION_AGENT; // Use current decision agent model
 }
 
 nlohmann::json OperationIdentifier::getOperationSchema() {
     return {
         {"type", "object"},
+        {"additionalProperties", false},
         {"properties", {
             {"operations", {
                 {"type", "array"},
                 {"items", {
                     {"type", "object"},
+                    {"additionalProperties", false},
                     {"properties", {
                         {"type", {
                             {"type", "string"},
@@ -80,7 +77,7 @@ nlohmann::json OperationIdentifier::getOperationSchema() {
 std::string OperationIdentifier::buildSystemPrompt() {
     try {
         // Try to use shared prompt loader
-        auto& resources = shared::getSharedResources();
+        static SharedResources resources;
         return resources.getOperationIdentifierPrompt();
     } catch (...) {
         // Fallback to hardcoded prompt
@@ -104,31 +101,24 @@ Example output:
     }
 }
 
-std::vector<DAWOperation> OperationIdentifier::parseOperations(const llmcpp::LLMResponse& response) {
+std::vector<DAWOperation> OperationIdentifier::parseOperations(const LLMResponse& response) {
     std::vector<DAWOperation> operations;
 
     try {
-        if (response.json_content.has_value()) {
-            auto json = response.json_content.value();
-
-            if (json.contains("operations") && json["operations"].is_array()) {
-                for (const auto& op : json["operations"]) {
-                    DAWOperation operation;
-
-                    if (op.contains("type") && op["type"].is_string()) {
-                        operation.type = op["type"];
-                    }
-
-                    if (op.contains("description") && op["description"].is_string()) {
-                        operation.description = op["description"];
-                    }
-
-                    if (op.contains("parameters") && op["parameters"].is_object()) {
-                        operation.parameters = op["parameters"];
-                    }
-
-                    operations.push_back(operation);
+        const auto& json = response.result;
+        if (json.contains("operations") && json["operations"].is_array()) {
+            for (const auto& op : json["operations"]) {
+                DAWOperation operation;
+                if (op.contains("type") && op["type"].is_string()) {
+                    operation.type = op["type"];
                 }
+                if (op.contains("description") && op["description"].is_string()) {
+                    operation.description = op["description"];
+                }
+                if (op.contains("parameters") && op["parameters"].is_object()) {
+                    operation.parameters = op["parameters"];
+                }
+                operations.push_back(operation);
             }
         }
     } catch (const std::exception& e) {
@@ -138,4 +128,54 @@ std::vector<DAWOperation> OperationIdentifier::parseOperations(const llmcpp::LLM
     return operations;
 }
 
-} // namespace magda_cpp
+// BaseAgent interface implementation
+bool OperationIdentifier::canHandle(const std::string& operation) const {
+    // OperationIdentifier can handle any operation type
+    return true;
+}
+
+AgentResponse OperationIdentifier::execute(const std::string& operation, const nlohmann::json& context) {
+    // Execute operation identification
+    auto result = identifyOperations(operation);
+
+    if (result.success) {
+        // Convert DAWOperations to Operations
+        std::vector<Operation> operations;
+        for (const auto& daw_op : result.operations) {
+            OperationType op_type = OperationType::UNKNOWN;
+            if (daw_op.type == "track") op_type = OperationType::CREATE_TRACK;
+            else if (daw_op.type == "clip") op_type = OperationType::CREATE_CLIP;
+            else if (daw_op.type == "volume") op_type = OperationType::SET_VOLUME;
+            else if (daw_op.type == "effect") op_type = OperationType::ADD_EFFECT;
+            else if (daw_op.type == "midi") op_type = OperationType::CREATE_MIDI;
+
+            operations.emplace_back(op_type, daw_op.parameters, daw_op.type);
+        }
+
+        // Create response
+        nlohmann::json result_json;
+        result_json["operations"] = nlohmann::json::array();
+        for (const auto& op : operations) {
+            result_json["operations"].push_back({
+                {"type", op.agent_name},
+                {"description", op.toString()},
+                {"parameters", op.parameters}
+            });
+        }
+
+        return AgentResponse(result_json, "operation_identification", context);
+    } else {
+        throw std::runtime_error("Operation identification failed: " + result.error_message);
+    }
+}
+
+std::vector<std::string> OperationIdentifier::getCapabilities() const {
+    return {"operation_identification", "track", "clip", "volume", "effect", "midi"};
+}
+
+std::string OperationIdentifier::generateDAWCommand(const nlohmann::json& result) const {
+    // OperationIdentifier doesn't generate DAW commands directly
+    return "operation_identification";
+}
+
+} // namespace magda

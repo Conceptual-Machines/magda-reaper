@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <nlohmann/json.hpp>
+#include "magda_cpp/pipeline.hpp"
 
 /**
  * @brief Main entry point for the MAGDA C++ library
@@ -29,7 +30,7 @@ int main() {
         }
 
         // Create pipeline
-        MAGDAPipeline pipeline(api_key);
+        magda::MAGDAPipeline pipeline(api_key);
 
         // Demo prompts
         std::vector<std::string> demo_prompts = {
@@ -45,8 +46,16 @@ int main() {
 
             auto result = pipeline.processPrompt(prompt);
 
-            std::cout << "\nFinal Result:" << std::endl;
-            std::cout << result.dump(2) << std::endl;
+            if (result.has_value()) {
+                std::cout << "\nFinal Result:" << std::endl;
+                std::cout << "Operations: " << result->operations.size() << std::endl;
+                std::cout << "DAW Commands: " << result->daw_commands.size() << std::endl;
+                for (const auto& cmd : result->daw_commands) {
+                    std::cout << "  " << cmd << std::endl;
+                }
+            } else {
+                std::cout << "No result returned" << std::endl;
+            }
         }
 
     } catch (const std::exception& e) {

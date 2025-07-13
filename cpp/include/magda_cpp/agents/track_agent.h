@@ -3,6 +3,7 @@
 #include "magda_cpp/agents/base_agent.h"
 #include "magda_cpp/models.h"
 #include <map>
+#include <openai/OpenAIClient.h>
 
 namespace magda {
 

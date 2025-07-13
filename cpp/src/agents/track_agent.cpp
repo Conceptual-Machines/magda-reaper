@@ -76,7 +76,7 @@ nlohmann::json TrackAgent::parseTrackOperationWithLLM(const std::string& operati
     // Load shared prompt
     std::string instructions;
     try {
-        auto& resources = shared::getSharedResources();
+        static SharedResources resources;
         instructions = resources.getTrackAgentPrompt();
     } catch (...) {
         // Fallback to hardcoded prompt
@@ -94,19 +94,19 @@ Return a JSON object with the extracted parameters following the provided schema
     }
 
     // Create a structured schema for track parameters
-    auto schema = llmcpp::JsonSchemaBuilder()
+    auto schema = JsonSchemaBuilder()
         .type("object")
         .title("Track Parameters")
         .description("Parameters for creating a track in a DAW")
-        .property("name", llmcpp::JsonSchemaBuilder()
+        .property("name", JsonSchemaBuilder()
             .type("string")
             .description("The name of the track (e.g., 'bass', 'drums', 'lead')")
-            .required())
-        .property("vst", llmcpp::JsonSchemaBuilder()
+            .required({"name"}))
+        .property("vst", JsonSchemaBuilder()
             .type("string")
             .description("The VST plugin name (e.g., 'serum', 'addictive drums', 'kontakt')")
             .optionalString())
-        .property("type", llmcpp::JsonSchemaBuilder()
+        .property("type", JsonSchemaBuilder()
             .type("string")
             .description("Track type")
             .enumValues({"audio", "midi"})

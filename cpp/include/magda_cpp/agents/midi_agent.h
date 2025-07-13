@@ -2,12 +2,12 @@
 
 #include "magda_cpp/agents/base_agent.h"
 #include "magda_cpp/models.h"
-#include <llmcpp/openai/OpenAIClient.h>
+#include <openai/OpenAIClient.h>
 #include <memory>
 #include <string>
 #include <map>
 
-namespace magda_cpp {
+namespace magda {
 
 /**
  * @brief Agent responsible for handling MIDI operations using LLM
@@ -59,7 +59,7 @@ public:
     std::vector<MIDIResult> listMidiEvents() const;
 
 private:
-    std::unique_ptr<llmcpp::OpenAI::OpenAIClient> client_;
+    std::unique_ptr<OpenAIClient> client_;
     std::map<std::string, MIDIResult> midi_events_;
 
     /**
@@ -74,7 +74,7 @@ private:
      * @param midi The MIDI result
      * @return DAW command string
      */
-    std::string generateDawCommand(const MIDIResult& midi) const;
+    std::string generateDAWCommand(const nlohmann::json& result) const override;
 
     /**
      * @brief Get track ID from context
@@ -84,4 +84,4 @@ private:
     std::string getTrackIdFromContext(const nlohmann::json& context) const;
 };
 
-} // namespace magda_cpp
+} // namespace magda

@@ -4,9 +4,9 @@ add_library(magda_cpp
     agents/base_agent.cpp
     agents/track_agent.cpp
     agents/volume_agent.cpp
-    agents/effect_agent.cpp
-    agents/midi_agent.cpp
-    agents/clip_agent.cpp
+    # agents/effect_agent.cpp
+    # agents/midi_agent.cpp
+    # agents/clip_agent.cpp
     agents/operation_identifier.cpp
     pipeline.cpp
     ../../shared/utils/prompt_loader.cpp

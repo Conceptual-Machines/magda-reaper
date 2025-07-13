@@ -1,18 +1,17 @@
 #include "magda_cpp/agents/effect_agent.h"
-#include <llmcpp/core/LLMRequest.h>
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 
-namespace magda_cpp {
+namespace magda {
 
 EffectAgent::EffectAgent(const std::string& api_key) {
     // Initialize OpenAI client
-    llmcpp::OpenAI::Config config;
+    OpenAI::Config config;
     if (!api_key.empty()) {
         config.api_key = api_key;
     }
-    client_ = std::make_unique<llmcpp::OpenAI::OpenAIClient>(config);
+    client_ = std::make_unique<OpenAI::OpenAIClient>(config);
 }
 
 bool EffectAgent::canHandle(const std::string& operation) const {
@@ -113,8 +112,8 @@ std::vector<EffectResult> EffectAgent::listEffects() const {
 
 nlohmann::json EffectAgent::parseEffectOperationWithLLM(const std::string& operation) {
     try {
-        llmcpp::LLMRequest request;
-        request.model = llmcpp::OpenAI::Model::GPT_4O_MINI;
+        LLMRequest request;
+        request.model = OpenAI::Model::GPT_4o_Mini;
         request.system_prompt = R"(
 You are an effect specialist for a DAW system.
 Your job is to parse effect requests and extract the necessary parameters.
@@ -210,4 +209,4 @@ std::string EffectAgent::getTrackIdFromContext(const nlohmann::json& context) co
     return "unknown";
 }
 
-} // namespace magda_cpp
+} // namespace magda

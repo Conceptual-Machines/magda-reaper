@@ -10,38 +10,38 @@ namespace magda {
 BaseAgent::BaseAgent(const std::string& name, const std::string& api_key)
     : name_(name) {
     if (!api_key.empty()) {
-        client_ = std::make_unique<llmcpp::OpenAIClient>(api_key);
+        client_ = std::make_unique<OpenAIClient>(api_key);
     } else {
         // Try to get API key from environment
         const char* env_key = std::getenv("OPENAI_API_KEY");
         if (env_key) {
-            client_ = std::make_unique<llmcpp::OpenAIClient>(env_key);
+            client_ = std::make_unique<OpenAIClient>(env_key);
         }
     }
 }
 
 nlohmann::json BaseAgent::parseOperationWithLLM(const std::string& operation,
                                                 const std::string& instructions,
-                                                const llmcpp::JsonSchemaBuilder& schema) {
+                                                const JsonSchemaBuilder& schema) {
     if (!client_) {
         throw std::runtime_error("OpenAI client not initialized. Please provide API key.");
     }
 
     try {
         // Create LLM request with structured output
-        llmcpp::LLMRequestConfig config;
+        LLMRequestConfig config;
         config.client = "openai";
-        config.model = "gpt-4o-mini";
+        config.model = ModelConfig::CURRENT_SPECIALIZED_AGENTS;  // Use current specialized agents model
         config.maxTokens = 500;
         config.temperature = 0.1f;
         config.schemaObject = schema.build();
         config.functionName = "parse_operation";
 
         // Create the request
-        llmcpp::LLMRequest request(config, instructions);
+        LLMRequest request(config, instructions);
 
         // Add the operation as context
-        llmcpp::LLMContext context = {{{"role", "user"}, {"content", operation}}};
+        LLMContext context = {{{"role", "user"}, {"content", operation}}};
         request.context = context;
 
         // Send the request

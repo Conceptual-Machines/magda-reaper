@@ -21,8 +21,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Find dependencies
 find_package(OpenSSL REQUIRED)
-find_package(nlohmann_json REQUIRED)
 find_package(PkgConfig REQUIRED)
+
+# Let llmcpp handle nlohmann_json to avoid conflicts
+# find_package(nlohmann_json REQUIRED)  # Commented out to avoid conflicts
 
 # Add llmcpp library
 # Option 1: If llmcpp is installed system-wide

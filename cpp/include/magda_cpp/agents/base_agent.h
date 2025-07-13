@@ -6,7 +6,8 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <llmcpp.h>
-#include <llmcpp/core/JsonSchemaBuilder.h>
+#include <core/JsonSchemaBuilder.h>
+#include "magda_cpp/models.h"
 
 namespace magda {
 
@@ -57,7 +58,7 @@ public:
 
 protected:
     std::string name_;
-    std::unique_ptr<llmcpp::OpenAIClient> client_;
+    std::unique_ptr<OpenAIClient> client_;
 
     /**
      * @brief Parse operation with LLM using structured output
@@ -68,7 +69,7 @@ protected:
      */
     nlohmann::json parseOperationWithLLM(const std::string& operation,
                                          const std::string& instructions,
-                                         const llmcpp::JsonSchemaBuilder& schema);
+                                         const JsonSchemaBuilder& schema);
 
     /**
      * @brief Generate a DAW command from a result
