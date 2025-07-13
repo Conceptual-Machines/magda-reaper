@@ -1,9 +1,26 @@
+"""
+Pytest configuration for integration tests.
+"""
+
 import os
 from unittest.mock import Mock, patch
 
 import pytest
 
 from magda.models import AgentResponse, Operation, OperationType
+
+
+@pytest.fixture(scope="session")
+def openai_api_key() -> str | None:
+    """Get OpenAI API key from environment."""
+    return os.getenv("OPENAI_API_KEY")
+
+
+@pytest.fixture(scope="session")
+def skip_if_no_api_key(openai_api_key):
+    """Skip tests if no API key is available."""
+    if not openai_api_key:
+        pytest.skip("OPENAI_API_KEY not set - skipping integration tests")
 
 
 @pytest.fixture(scope="session")
@@ -156,18 +173,27 @@ def mock_pipeline_result():
     }
 
 
-# Markers for different test types
 def pytest_configure(config):
-    """Configure custom pytest markers."""
-    config.addinivalue_line("markers", "integration: mark test as integration test")
+    """Configure pytest for integration tests."""
+    # Add markers
+    config.addinivalue_line(
+        "markers",
+        "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    )
+    config.addinivalue_line("markers", "api: marks tests that make real API calls")
     config.addinivalue_line("markers", "slow: mark test as slow running")
     config.addinivalue_line("markers", "unit: mark test as unit test")
-    config.addinivalue_line("markers", "api: mark test as API test")
 
 
-# Skip tests that require API calls unless explicitly requested
 def pytest_collection_modifyitems(config, items):
-    """Skip API tests unless --run-api flag is provided."""
+    """Automatically mark integration tests and skip API tests unless requested."""
+    for item in items:
+        if "integration" in item.nodeid:
+            item.add_marker(pytest.mark.integration)
+        if "test_integration" in item.nodeid:
+            item.add_marker(pytest.mark.api)
+
+    # Skip API tests unless --run-api flag is provided
     if not config.getoption("--run-api"):
         skip_api = pytest.mark.skip(reason="API tests require --run-api flag")
         for item in items:
