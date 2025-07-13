@@ -4,6 +4,5 @@
   "dependencies": [
     "openssl",
     "nlohmann-json"
-  ],
-  "builtin-baseline": "2024-12-19"
+  ]
 }
