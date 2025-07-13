@@ -61,8 +61,10 @@ class VolumeAgent(BaseAgent):
 
         # Create volume result
         volume_result = VolumeResult(
-            id=volume_id,
-            track_id=track_id,
+            track_name=None,
+            volume=None,
+            fade_type=None,
+            fade_duration=None,
             start_value=volume_info.get("start_value", 0.0),
             end_value=volume_info.get("end_value", 1.0),
             start_bar=volume_info.get("start_bar", 1),
@@ -73,7 +75,7 @@ class VolumeAgent(BaseAgent):
         self.volume_automations[volume_id] = volume_result.model_dump()
 
         # Generate DAW command
-        daw_command = self._generate_daw_command(volume_result)
+        daw_command = self._generate_daw_command(volume_result, track_id)
 
         return {
             "daw_command": daw_command,
@@ -113,9 +115,9 @@ class VolumeAgent(BaseAgent):
             print(f"Error parsing volume operation: {e}")
             return {}
 
-    def _generate_daw_command(self, volume: VolumeResult) -> str:
+    def _generate_daw_command(self, volume: VolumeResult, track_id: str) -> str:
         """Generate DAW command string from volume result."""
-        return f"volume(track:{volume.track_id}, start:{volume.start_bar}, end:{volume.end_bar}, start_value:{volume.start_value}, end_value:{volume.end_value})"
+        return f"volume(track:{track_id}, start:{volume.start_bar}, end:{volume.end_bar}, start_value:{volume.start_value}, end_value:{volume.end_value})"
 
     def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can handle."""

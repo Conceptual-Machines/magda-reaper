@@ -63,7 +63,7 @@ class EffectAgent(BaseAgent):
 
         # Create effect result
         effect_result = EffectResult(
-            id=effect_id,
+            track_name=None,
             track_id=track_id,
             effect_type=effect_info.get("effect_type", "reverb"),
             parameters=EffectParameters(

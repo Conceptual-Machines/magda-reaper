@@ -248,10 +248,10 @@ class MAGDAPipeline:
         """Clear all context (start fresh session)."""
         self.context_manager.clear_context()
 
-    def find_track_by_name(self, name: str):
+    def find_track_by_name(self, name: str) -> Any:
         """Find a track by name."""
         return self.context_manager.find_track_by_name(name)
 
-    def find_track_by_id(self, track_id: str):
+    def find_track_by_id(self, track_id: str) -> Any:
         """Find a track by ID."""
         return self.context_manager.find_track_by_id(track_id)
