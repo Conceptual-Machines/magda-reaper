@@ -3,7 +3,7 @@ import re
 import sys
 from pathlib import Path
 
-PYPROJECT_PATH = Path("python/pyproject.toml")
+PYPROJECT_PATH = Path("pyproject.toml")
 
 if len(sys.argv) != 2 or sys.argv[1] not in ("patch", "minor", "major"):
     print("Usage: python bump_version.py [patch|minor|major]")
