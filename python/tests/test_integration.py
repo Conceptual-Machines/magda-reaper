@@ -164,22 +164,22 @@ class TestIntegration:
 
             assert result is not None, f"Pipeline failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             # Check if the expected operation type is in the identified operations
             operation_types = [op.get("type", "") for op in result["operations"]]
             if isinstance(expected_type, list):
                 # For multiple possible types, check if any match
-                assert any(
-                    exp_type in operation_types for exp_type in expected_type
-                ), f"Expected one of {expected_type} in {operation_types} for: {prompt}"
+                assert any(exp_type in operation_types for exp_type in expected_type), (
+                    f"Expected one of {expected_type} in {operation_types} for: {prompt}"
+                )
             else:
                 # For single type
-                assert (
-                    expected_type in operation_types
-                ), f"Expected {expected_type} in {operation_types} for: {prompt}"
+                assert expected_type in operation_types, (
+                    f"Expected {expected_type} in {operation_types} for: {prompt}"
+                )
 
             print("✓ Operation identification passed")
 
@@ -202,9 +202,9 @@ class TestIntegration:
 
             assert result is not None, f"Track agent failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             # Check for track operations
             operation_types = [op.get("type", "") for op in result["operations"]]
@@ -231,15 +231,15 @@ class TestIntegration:
 
             assert result is not None, f"Volume agent failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             # Check for volume operations
             operation_types = [op.get("type", "") for op in result["operations"]]
-            assert (
-                "volume" in operation_types
-            ), f"No volume operation found for: {prompt}"
+            assert "volume" in operation_types, (
+                f"No volume operation found for: {prompt}"
+            )
 
             print("✓ Volume agent passed")
 
@@ -262,15 +262,15 @@ class TestIntegration:
 
             assert result is not None, f"Effect agent failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             # Check for effect operations
             operation_types = [op.get("type", "") for op in result["operations"]]
-            assert (
-                "effect" in operation_types
-            ), f"No effect operation found for: {prompt}"
+            assert "effect" in operation_types, (
+                f"No effect operation found for: {prompt}"
+            )
 
             print("✓ Effect agent passed")
 
@@ -293,9 +293,9 @@ class TestIntegration:
 
             assert result is not None, f"Clip agent failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             # Check for clip operations
             operation_types = [op.get("type", "") for op in result["operations"]]
@@ -322,9 +322,9 @@ class TestIntegration:
 
             assert result is not None, f"MIDI agent failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             # Check for MIDI operations
             operation_types = [op.get("type", "") for op in result["operations"]]
@@ -351,9 +351,9 @@ class TestIntegration:
             assert result is not None, f"Pipeline failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
             assert "daw_commands" in result, f"No DAW commands generated for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             print("✓ Full pipeline passed")
 
@@ -416,15 +416,15 @@ class TestIntegration:
 
             assert result is not None, f"Multilingual processing failed for: {prompt}"
             assert "operations" in result, f"No operations found for: {prompt}"
-            assert (
-                len(result["operations"]) > 0
-            ), f"No operations identified for: {prompt}"
+            assert len(result["operations"]) > 0, (
+                f"No operations identified for: {prompt}"
+            )
 
             # Check for expected operation type
             operation_types = [op.get("type", "") for op in result["operations"]]
-            assert (
-                expected_type in operation_types
-            ), f"Expected {expected_type} in {operation_types} for: {prompt}"
+            assert expected_type in operation_types, (
+                f"Expected {expected_type} in {operation_types} for: {prompt}"
+            )
 
             print("✓ Multilingual support passed")
 
