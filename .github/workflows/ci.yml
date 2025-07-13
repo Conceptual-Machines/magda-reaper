@@ -117,21 +117,47 @@ jobs:
 
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
+      uses: actions/github-script@v7
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v${{ github.run_number }}
-        release_name: Release v${{ github.run_number }}
-        draft: false
-        prerelease: false
+        script: |
+          const release = await github.rest.repos.createRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag_name: `v${context.runNumber}`,
+            name: `Release v${context.runNumber}`,
+            body: `Automated release for run ${context.runNumber}`,
+            draft: false,
+            prerelease: false
+          });
+          core.setOutput('upload_url', release.data.upload_url);
+          core.setOutput('release_id', release.data.id);
 
     - name: Upload Release Assets
-      uses: actions/upload-release-asset@v1
+      uses: actions/github-script@v7
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/magda-${{ github.run_number }}.tar.gz
-        asset_name: magda-${{ github.run_number }}.tar.gz
-        asset_content_type: application/gzip
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          const assetPath = './dist/magda-${{ github.run_number }}.tar.gz';
+          const assetName = 'magda-${{ github.run_number }}.tar.gz';
+
+          if (fs.existsSync(assetPath)) {
+            const asset = fs.readFileSync(assetPath);
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ steps.create_release.outputs.release_id }},
+              name: assetName,
+              data: asset,
+              headers: {
+                'content-type': 'application/gzip'
+              }
+            });
+          } else {
+            core.warning(`Asset file ${assetPath} not found`);
+          }
