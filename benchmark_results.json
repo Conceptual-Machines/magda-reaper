@@ -1,0 +1,272 @@
+[
+  {
+    "model": "gpt-4.1",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 1825.268030166626,
+    "prompt_tokens": 555,
+    "completion_tokens": 183,
+    "total_tokens": 738,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_6874039566d8819ab1e8ac9fa949951501aeef9fd2c5dc68', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\\n        \"name\": \"Drums\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip to the \\'Drums\\' track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"length_bars\": 4,\\n        \"clip_type\": \"drum loop\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set the volume of the \\'Drums\\' track to -3dB\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"volume_db\": -3\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 2433.962821960449,
+    "prompt_tokens": 562,
+    "completion_tokens": 244,
+    "total_tokens": 806,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_68740397258c819aa8b6768f0f668cfc044915d474e5beab', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track for bass\",\\n      \"parameters\": {\"name\": \"bass\", \"type\": \"audio\"}\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line on the bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"length_bars\": 2,\\n        \"action\": \"record\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add a compressor to the bass track with a 3:1 ratio\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate volume on the bass track to fade in over 8 bars\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"automation_type\": \"fade in\",\\n        \"start_bar\": 1,\\n        \"end_bar\": 8\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 2047.895908355713,
+    "prompt_tokens": 556,
+    "completion_tokens": 217,
+    "total_tokens": 773,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_6874039988cc819ba71cc33db14d870504fa6624e3a83029', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track for vocals\",\\n      \"parameters\": {\\n        \"name\": \"vocals\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb to the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"effect_type\": \"reverb\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"section\": \"verse\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust mix so vocals sit well with drums and bass\",\\n      \"parameters\": {\\n        \"tracks\": [\"vocals\", \"drums\", \"bass\"],\\n        \"goal\": \"vocals blend well with drums and bass\"\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1-mini",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 5942.946672439575,
+    "prompt_tokens": 555,
+    "completion_tokens": 188,
+    "total_tokens": 743,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_6874039d3dc08199ad2defbe4be825bb047629fb65423963', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\\n        \"name\": \"Drums\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip to \\'Drums\\' track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"clip_type\": \"loop\",\\n        \"length_bars\": 4,\\n        \"content\": \"drum loop\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set the volume of \\'Drums\\' track to -3dB\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"volume_db\": -3\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1-mini",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 3798.0971336364746,
+    "prompt_tokens": 562,
+    "completion_tokens": 235,
+    "total_tokens": 797,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403a18058819bb1b84df8f9a6226907538a9e22678b5b', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track for bass\",\\n      \"parameters\": {\"name\": \"bass\", \"type\": \"audio\"}\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line on the bass track\",\\n      \"parameters\": {\"track_name\": \"bass\", \"length_bars\": 2}\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compression to bass track with 3:1 ratio\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3,\\n        \"threshold\": null\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate volume to fade in over 8 bars on bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"automation_type\": \"volume\",\\n        \"fade_type\": \"fade_in\",\\n        \"length_bars\": 8\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1-mini",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 3345.827102661133,
+    "prompt_tokens": 556,
+    "completion_tokens": 213,
+    "total_tokens": 769,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403a5477c819aabedb9b0fc5fe3a10055613230712e67', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a vocal track\",\\n      \"parameters\": {\"name\": \"vocal\", \"type\": \"audio\"}\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb effect to the vocal track\",\\n      \"parameters\": {\"track_name\": \"vocal\", \"effect_type\": \"reverb\"}\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocal track\",\\n      \"parameters\": {\"track_name\": \"vocal\", \"clip_type\": \"recording\", \"content\": \"verse\"}\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust vocal track volume to blend well with drums and bass\",\\n      \"parameters\": {\\n        \"track_name\": \"vocal\",\\n        \"reference_tracks\": [\"drums\", \"bass\"],\\n        \"adjustment_goal\": \"balanced mix\"\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1-nano",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 1953.9909362792969,
+    "prompt_tokens": 555,
+    "completion_tokens": 174,
+    "total_tokens": 729,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403a894b0819b952037e0ac016e3d08889cf82280e0f4', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\\n        \"name\": \"Drums\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip to \\'Drums\\' track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"length_bars\": 4,\\n        \"clip_type\": \"loop\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set volume of \\'Drums\\' track to -3dB\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"level_db\": -3\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1-nano",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 2842.360258102417,
+    "prompt_tokens": 562,
+    "completion_tokens": 257,
+    "total_tokens": 819,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403aa998c81988a90e4faaf90a2f90dc8449b11737094', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a bass track\",\\n      \"parameters\": {\\n        \"name\": \"bass\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line on the bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"length\": \"2 bars\",\\n        \"action\": \"record\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compression to the bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3,\\n        \"threshold\": null\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate volume to fade in over 8 bars on the bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"automation_type\": \"fade\",\\n        \"start_value\": 0,\\n        \"end_value\": 1,\\n        \"duration\": \"8 bars\",\\n        \"fade_type\": \"fade-in\"\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4.1-nano",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 2043.4277057647705,
+    "prompt_tokens": 556,
+    "completion_tokens": 222,
+    "total_tokens": 778,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403ad582c819bb1e917836d6e12d30e69dd419394366f', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a new vocal track\",\\n      \"parameters\": {\\n        \"name\": \"vocal\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb to the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocal\",\\n        \"effect_type\": \"reverb\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse in the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocal\",\\n        \"region\": \"verse\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust mix so vocals sit well with drums and bass\",\\n      \"parameters\": {\\n        \"tracks\": [\"vocal\", \"drums\", \"bass\"],\\n        \"adjustment_type\": \"balance\",\\n        \"criteria\": \"vocals sit well with drums and bass\"\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4o",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 3072.509288787842,
+    "prompt_tokens": 555,
+    "completion_tokens": 155,
+    "total_tokens": 710,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403af9194819b85ecd84175b259a40874e527cb4eb8f7', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\"name\": \"Drums\", \"type\": \"audio\"}\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip\",\\n      \"parameters\": {\"track_name\": \"Drums\", \"length\": \"4 bars\", \"type\": \"loop\"}\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set the volume of the \\'Drums\\' track to -3dB\",\\n      \"parameters\": {\"track_name\": \"Drums\", \"volume\": -3}\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4o",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 4391.587018966675,
+    "prompt_tokens": 562,
+    "completion_tokens": 200,
+    "total_tokens": 762,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403b2c3f88198a33bfe2a43009d1c0e0a0b722dd29de7', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track for bass\",\\n      \"parameters\": {\"name\": \"bass\", \"type\": \"audio\"}\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line\",\\n      \"parameters\": {\"track_name\": \"bass\", \"length_bars\": 2}\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compression to bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate volume to fade in over 8 bars\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"fade_in_bars\": 8\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4o",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 3185.070037841797,
+    "prompt_tokens": 556,
+    "completion_tokens": 195,
+    "total_tokens": 751,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403b7099c819a9f3cb44cf032c0bf03e90bef97ba03cc', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Set up a vocal track\",\\n      \"parameters\": {\"name\": \"vocals\", \"type\": \"audio\"}\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb to the vocals track\",\\n      \"parameters\": {\"track_name\": \"vocals\", \"effect_type\": \"reverb\"}\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocals track\",\\n      \"parameters\": {\"track_name\": \"vocals\", \"action\": \"record\"}\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust mix so vocals sit well with drums and bass\",\\n      \"parameters\": {\\n        \"tracks\": [\"vocals\", \"drums\", \"bass\"],\\n        \"action\": \"balance\"\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4o-mini",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 3019.071102142334,
+    "prompt_tokens": 555,
+    "completion_tokens": 182,
+    "total_tokens": 737,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403ba3f3c8198bf96f0c4882415920bc8b1f8bfffad61', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\\n        \"name\": \"Drums\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip to the \\'Drums\\' track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"clip_type\": \"drum_loop\",\\n        \"length\": \"4 bars\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set the volume of the \\'Drums\\' track to -3dB\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"volume_level\": -3\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4o-mini",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 3160.979986190796,
+    "prompt_tokens": 562,
+    "completion_tokens": 205,
+    "total_tokens": 767,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403bd46fc819b8615e692d56e81a004119d3390ad995e', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a bass track\",\\n      \"parameters\": {\"name\": \"bass\", \"type\": \"audio\"}\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line\",\\n      \"parameters\": {\"track_name\": \"bass\", \"duration\": \"2 bars\"}\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compression to bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate volume to fade in over 8 bars\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"fade_duration\": \"8 bars\",\\n        \"fade_type\": \"in\"\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "gpt-4o-mini",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 3182.133913040161,
+    "prompt_tokens": 556,
+    "completion_tokens": 223,
+    "total_tokens": 779,
+    "success": true,
+    "result": "[ResponseOutputMessage(id='msg_687403c05acc8198b743aaa639dd1cad01d34e2d76d6c69a', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Set up a vocal track\",\\n      \"parameters\": {\\n        \"name\": \"vocals\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb to the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"effect_type\": \"reverb\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"action\": \"record\",\\n        \"content\": \"verse\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust vocal mix to sit well with drums and bass\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"action\": \"mix\",\\n        \"adjust_to\": [\"drums\", \"bass\"]\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o3-mini",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 5801.2330532073975,
+    "prompt_tokens": 554,
+    "completion_tokens": 369,
+    "total_tokens": 923,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687403c538b481999e0376d70ab0089701efb46df6c5aa4f', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687403c67b048199805d4518885bfbbc01efb46df6c5aa4f', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\\n        \"name\": \"Drums\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip to the \\'Drums\\' track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"clip_type\": \"drum loop\",\\n        \"length\": \"4 bars\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set the volume of the \\'Drums\\' track to -3dB\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"volume\": -3\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o3-mini",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 4742.748975753784,
+    "prompt_tokens": 561,
+    "completion_tokens": 423,
+    "total_tokens": 984,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687403cab864819bbc912824283ce6db02ce6f3b840f0eaf', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687403cb6134819b9d6e68869783c02902ce6f3b840f0eaf', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a bass track\",\\n      \"parameters\": {\\n        \"name\": \"bass\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"length_bars\": 2,\\n        \"action\": \"record\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compression to the bass track with a 3:1 ratio\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": \"3:1\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate the volume to fade in over 8 bars\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"automation_type\": \"fade_in\",\\n        \"duration_bars\": 8\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o3-mini",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 12184.439182281494,
+    "prompt_tokens": 555,
+    "completion_tokens": 1109,
+    "total_tokens": 1664,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687403d5f464819aa079b204c7ecfe6708588d9195d84492', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687403d7b3bc819a80c952ac00999e5a08588d9195d84492', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a vocal track\",\\n      \"parameters\": {\\n        \"name\": \"vocal\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb effect to the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocal\",\\n        \"effect\": \"reverb\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocal\",\\n        \"clip_name\": \"verse\",\\n        \"action\": \"record\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust mix levels to balance vocals with drums and bass\",\\n      \"parameters\": {\\n        \"tracks\": [\"vocal\", \"drums\", \"bass\"],\\n        \"action\": \"balance\"\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o1",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 6668.265819549561,
+    "prompt_tokens": 554,
+    "completion_tokens": 431,
+    "total_tokens": 985,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687403de2264819b8d288078ea4282a90563643bbb6dd5d0', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687403df0a1c819b9fc6851ef97907980563643bbb6dd5d0', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\\n        \"name\": \"Drums\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip to the Drums track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"length_bars\": 4,\\n        \"clip_name\": \"Drum Loop\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set the volume of the Drums track to -3dB\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"volume_db\": -3\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o1",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 9709.348201751709,
+    "prompt_tokens": 561,
+    "completion_tokens": 820,
+    "total_tokens": 1381,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687403e69944819a9c73def7ce20bdf50066ffbdfc4634d6', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687403e85770819a9056e9e34c80b4890066ffbdfc4634d6', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a bass track\",\\n      \"parameters\": {\\n        \"name\": \"bass\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"length_bars\": 2,\\n        \"content\": \"bass line\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compression to the bass track with 3:1 ratio\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate the volume to fade in over 8 bars\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"automation\": \"fade_in\",\\n        \"duration_bars\": 8,\\n        \"start_volume\": \"-\u221e\",\\n        \"end_volume\": 0\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o1",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 8602.34785079956,
+    "prompt_tokens": 555,
+    "completion_tokens": 971,
+    "total_tokens": 1526,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687403ef6d648199bbf91b8502c394ce0a47829253d3401d', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687403f1304c8199aad72e3f4fe4b4150a47829253d3401d', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a vocal track\",\\n      \"parameters\": {\\n        \"name\": \"vocals\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb to the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"effect_type\": \"reverb\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocal track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"clip_name\": \"verse\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust the vocal track volume to fit well with bass and drums\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"volume_level\": \"balanced\"\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o1-pro",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 61890.20609855652,
+    "prompt_tokens": 554,
+    "completion_tokens": 370,
+    "total_tokens": 924,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_6874043030988199b8fed89d3e1b16cb0e4de9168214f73e', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_68740430320c8199b471045d8b7be5200e4de9168214f73e', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track called \\'Drums\\'\",\\n      \"parameters\": {\\n        \"name\": \"Drums\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Add a 4-bar drum loop clip on the \\'Drums\\' track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"clip_name\": \"drum loop\",\\n        \"length_bars\": 4\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Set volume to -3dB on the \\'Drums\\' track\",\\n      \"parameters\": {\\n        \"track_name\": \"Drums\",\\n        \"level_db\": -3\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o1-pro",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 85620.79000473022,
+    "prompt_tokens": 561,
+    "completion_tokens": 1080,
+    "total_tokens": 1641,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_68740485c868819881b006962b6b9f530fc7a9de5e469845', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_68740485caf0819881b1b1cd33c9b8860fc7a9de5e469845', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a bass track\",\\n      \"parameters\": {\\n        \"name\": \"bass\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line on the bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"action\": \"record\",\\n        \"length_bars\": 2\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compressor to bass track with 3:1 ratio\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate volume to fade in over 8 bars on bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"fade_type\": \"in\",\\n        \"duration_bars\": 8,\\n        \"start_db\": \"-\u221e\",\\n        \"end_db\": 0\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o1-pro",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 68188.55404853821,
+    "prompt_tokens": 555,
+    "completion_tokens": 1040,
+    "total_tokens": 1595,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687404c9e238819a8d4e7eb4a795c76101d0d1009aac55d7', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687404c9e3b0819abea9eb19f11e894e01d0d1009aac55d7', content=[ResponseOutputText(annotations=[], text='{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a vocal track\",\\n      \"parameters\": {\\n        \"name\": \"vocals\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb to vocals track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"effect_type\": \"reverb\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocals track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"clip_name\": \"verse_take\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust mix so vocals sit well with the drums and bass\",\\n      \"parameters\": {\\n        \"tracks\": [\"vocals\", \"drums\", \"bass\"],\\n        \"action\": \"balance_levels\"\\n      }\\n    }\\n  ]\\n}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o4-mini",
+    "prompt": "Create a track called 'Drums', add a 4-bar drum loop clip, and set the volume to -3dB",
+    "latency_ms": 4282.630205154419,
+    "prompt_tokens": 554,
+    "completion_tokens": 379,
+    "total_tokens": 933,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687404cb2ccc819ba5384a5a817ef5270ef130b061e4e3cb', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687404cd61c4819ba8f52c6b1925bd4e0ef130b061e4e3cb', content=[ResponseOutputText(annotations=[], text='{\"operations\":[{\"type\":\"track\",\"description\":\"Create a track called \\'Drums\\'\",\"parameters\":{\"name\":\"Drums\",\"type\":\"audio\"}},{\"type\":\"clip\",\"description\":\"Add a 4-bar drum loop clip to the Drums track\",\"parameters\":{\"track_name\":\"Drums\",\"clip_name\":\"drum loop\",\"clip_type\":\"loop\",\"length_bars\":4}},{\"type\":\"volume\",\"description\":\"Set the volume of the Drums track to -3 dB\",\"parameters\":{\"track_name\":\"Drums\",\"level\":-3,\"unit\":\"dB\"}}]}', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o4-mini",
+    "prompt": "Create a bass track, record a 2-bar bass line, add compression with 3:1 ratio, and automate the volume to fade in over 8 bars",
+    "latency_ms": 10444.02289390564,
+    "prompt_tokens": 561,
+    "completion_tokens": 1103,
+    "total_tokens": 1664,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687404cf51108199bdb546fbcbe0cfce0a6ffafeaf7747d0', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687404d6e740819987aa46feb98b14d70a6ffafeaf7747d0', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a bass track\",\\n      \"parameters\": {\\n        \"name\": \"bass\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a 2-bar bass line\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"clip_type\": \"audio\",\\n        \"mode\": \"record\",\\n        \"length_bars\": 2\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add compressor with 3:1 ratio to bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"effect_type\": \"compressor\",\\n        \"ratio\": 3\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Automate volume fade in over 8 bars on bass track\",\\n      \"parameters\": {\\n        \"track_name\": \"bass\",\\n        \"automation\": \"fade_in\",\\n        \"start_bar\": 1,\\n        \"end_bar\": 8,\\n        \"start_value\": 0.0,\\n        \"end_value\": 1.0\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  },
+  {
+    "model": "o4-mini",
+    "prompt": "Set up a vocal track with reverb, record a verse, then adjust the mix so the vocals sit well with the drums and bass",
+    "latency_ms": 10732.281923294067,
+    "prompt_tokens": 555,
+    "completion_tokens": 1003,
+    "total_tokens": 1558,
+    "success": true,
+    "result": "[ResponseReasoningItem(id='rs_687404d9c8a481988032678090287d8c0b9b28f2c183f852', summary=[], type='reasoning', encrypted_content=None, status=None), ResponseOutputMessage(id='msg_687404e237a48198b7cae30e8a870e5f0b9b28f2c183f852', content=[ResponseOutputText(annotations=[], text='```json\\n{\\n  \"operations\": [\\n    {\\n      \"type\": \"track\",\\n      \"description\": \"Create a track for vocals\",\\n      \"parameters\": {\\n        \"name\": \"vocals\",\\n        \"type\": \"audio\"\\n      }\\n    },\\n    {\\n      \"type\": \"effect\",\\n      \"description\": \"Add reverb to the vocals track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"effect_type\": \"reverb\",\\n        \"preset\": \"default\"\\n      }\\n    },\\n    {\\n      \"type\": \"clip\",\\n      \"description\": \"Record a verse on the vocals track\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"action\": \"record\",\\n        \"clip_name\": \"verse\"\\n      }\\n    },\\n    {\\n      \"type\": \"volume\",\\n      \"description\": \"Adjust mix to balance vocals with drums and bass\",\\n      \"parameters\": {\\n        \"track_name\": \"vocals\",\\n        \"reference_tracks\": [\"drums\", \"bass\"],\\n        \"action\": \"balance\"\\n      }\\n    }\\n  ]\\n}\\n```', type='output_text', logprobs=[])], role='assistant', status='completed', type='message')]"
+  }
+]

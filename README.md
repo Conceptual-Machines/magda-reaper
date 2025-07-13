@@ -323,3 +323,35 @@ For questions, issues, or contributions:
 - Open an issue on GitHub
 - Join our community discussions
 - Check the documentation for common solutions
+
+## Model Selection Strategy for MAGDA
+
+MAGDA supports multiple OpenAI models for translating natural language into DAW commands. Based on extensive benchmarking, here are our recommendations:
+
+### Default Models
+- **General Reasoning Tasks:**
+  - **Default:** `gpt-4.1-nano`
+  - **Why:** Fast, cost-effective, and accurate for both simple and multi-step workflows.
+- **Specialized/Low-Latency Tasks:**
+  - **Default:** `gpt-4o-mini`
+  - **Why:** Extremely fast and efficient for straightforward or high-throughput operations.
+
+### Fallback and Customization
+- The client code can override the default model for any agent or task.
+- For complex, creative, or ambiguous tasks, consider using larger models (e.g., `gpt-4o`, `o3-mini`, `o1-pro`) as a fallback if the default model fails or produces invalid output.
+
+### Summary Table
+| Model           | Latency | Token Usage | Cost | Reasoning | Recommended For         |
+|-----------------|---------|-------------|------|-----------|------------------------|
+| gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
+| gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
+| gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐⭐        | Fallback, complex tasks|
+| o3-mini, o1-pro | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Only if needed         |
+
+### How to Change the Model
+- The default model for each agent is set in the pipeline configuration.
+- You can override the model by passing a `model` parameter to the relevant API or agent call.
+
+---
+
+For more details, see the `python/run_model_benchmark.py` and `python/analyze_benchmark_results.py` scripts for benchmarking methodology and results.
