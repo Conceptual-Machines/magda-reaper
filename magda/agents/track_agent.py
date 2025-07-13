@@ -21,8 +21,9 @@ class TrackAgent(BaseAgent):
         return operation.lower() in ['track', 'create track', 'add track']
     
     def execute(self, operation: str, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        """Execute track creation operation using LLM."""
+        """Execute track creation operation using LLM with context awareness."""
         context = context or {}
+        context_manager = context.get("context_manager")
         
         # Use LLM to parse track operation and generate DAW command
         track_info = self._parse_track_operation_with_llm(operation)
@@ -41,7 +42,7 @@ class TrackAgent(BaseAgent):
         # Store track for future reference
         self.created_tracks[track_id] = track_result.dict()
         
-        # Generate DAW command
+        # Generate DAW command with proper track ID
         daw_command = self._generate_daw_command(track_result)
         
         response = AgentResponse(

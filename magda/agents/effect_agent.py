@@ -21,19 +21,21 @@ class EffectAgent(BaseAgent):
         return operation.lower() in ['effect', 'reverb', 'delay', 'compressor', 'eq', 'filter', 'distortion']
     
     def execute(self, operation: str, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        """Execute effect operation using LLM."""
+        """Execute effect operation using LLM with context awareness."""
         context = context or {}
+        context_manager = context.get("context_manager")
         
         # Use LLM to parse effect operation and extract parameters
         effect_info = self._parse_effect_operation_with_llm(operation)
         
         # Get track information from context
-        track_id = context.get("track_id")
-        if not track_id:
-            # Try to get track from context
-            track_context = context.get("track")
-            if track_context and "id" in track_context:
-                track_id = track_context["id"]
+        track_id = "unknown"
+        if context_manager:
+            # Try to get track from context parameters
+            if "track_id" in context:
+                track_id = context["track_id"]
+            elif "track_daw_id" in context:
+                track_id = context["track_daw_id"]
         
         # Generate unique effect ID
         effect_id = str(uuid.uuid4())
@@ -41,7 +43,7 @@ class EffectAgent(BaseAgent):
         # Create effect result
         effect_result = EffectResult(
             id=effect_id,
-            track_id=track_id or "unknown",
+            track_id=track_id,
             effect_type=effect_info.get("effect_type", "reverb"),
             parameters=effect_info.get("parameters", EffectParameters()),
             position=effect_info.get("position", "insert")

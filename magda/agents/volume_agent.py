@@ -21,19 +21,21 @@ class VolumeAgent(BaseAgent):
         return operation.lower() in ['volume', 'fade', 'automation', 'fade in', 'fade out']
     
     def execute(self, operation: str, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        """Execute volume automation operation using LLM."""
+        """Execute volume automation operation using LLM with context awareness."""
         context = context or {}
+        context_manager = context.get("context_manager")
         
         # Use LLM to parse volume operation and extract parameters
         volume_info = self._parse_volume_operation_with_llm(operation)
         
         # Get track information from context
-        track_id = context.get("track_id")
-        if not track_id:
-            # Try to get track from context
-            track_context = context.get("track")
-            if track_context and "id" in track_context:
-                track_id = track_context["id"]
+        track_id = "unknown"
+        if context_manager:
+            # Try to get track from context parameters
+            if "track_id" in context:
+                track_id = context["track_id"]
+            elif "track_daw_id" in context:
+                track_id = context["track_daw_id"]
         
         # Generate unique volume automation ID
         volume_id = str(uuid.uuid4())
@@ -41,7 +43,7 @@ class VolumeAgent(BaseAgent):
         # Create volume result
         volume_result = VolumeResult(
             id=volume_id,
-            track_id=track_id or "unknown",
+            track_id=track_id,
             start_value=volume_info.get("start_value", 0.0),
             end_value=volume_info.get("end_value", 1.0),
             start_bar=volume_info.get("start_bar", 1),
