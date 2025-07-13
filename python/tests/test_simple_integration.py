@@ -9,6 +9,7 @@ import pytest
 from magda.pipeline import MAGDAPipeline
 
 
+@pytest.mark.integration
 class TestSimpleIntegration:
     """Simple integration tests with mocked API calls."""
 
