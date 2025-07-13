@@ -1,4 +1,5 @@
 #include "magda_cpp/agents/track_agent.h"
+#include "prompt_loader.hpp"
 #include <algorithm>
 #include <sstream>
 
@@ -72,7 +73,14 @@ std::vector<nlohmann::json> TrackAgent::listTracks() const {
 }
 
 nlohmann::json TrackAgent::parseTrackOperationWithLLM(const std::string& operation) {
-    std::string instructions = R"(
+    // Load shared prompt
+    std::string instructions;
+    try {
+        auto& resources = shared::getSharedResources();
+        instructions = resources.getTrackAgentPrompt();
+    } catch (...) {
+        // Fallback to hardcoded prompt
+        instructions = R"(
 You are a track creation specialist for a DAW system.
 Your job is to parse track creation requests and extract the necessary parameters.
 
@@ -83,6 +91,7 @@ Extract the following information:
 
 Return a JSON object with the extracted parameters following the provided schema.
 )";
+    }
 
     // Create a structured schema for track parameters
     auto schema = llmcpp::JsonSchemaBuilder()

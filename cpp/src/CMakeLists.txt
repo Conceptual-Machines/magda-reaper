@@ -4,7 +4,12 @@ add_library(magda_cpp
     agents/base_agent.cpp
     agents/track_agent.cpp
     agents/volume_agent.cpp
+    agents/effect_agent.cpp
+    agents/midi_agent.cpp
+    agents/clip_agent.cpp
+    agents/operation_identifier.cpp
     pipeline.cpp
+    ../../shared/utils/prompt_loader.cpp
 )
 
 # Set target properties
@@ -28,6 +33,7 @@ target_link_libraries(magda_cpp
 target_include_directories(magda_cpp
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../shared/utils>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 

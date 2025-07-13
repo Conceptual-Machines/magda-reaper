@@ -5,6 +5,8 @@ from typing import Any
 import openai
 from dotenv import load_dotenv
 
+from magda.prompt_loader import get_prompt
+
 from .base import BaseAgent
 
 load_dotenv()
@@ -36,21 +38,7 @@ class OperationIdentifier(BaseAgent):
     def identify_operations_with_llm(self, prompt: str) -> list[dict[str, Any]]:
         """Use LLM to identify operations in the prompt using reasoning with Responses API."""
 
-        instructions = """
-You are an operation identifier for a DAW (Digital Audio Workstation) system.
-Your job is to analyze natural language prompts and break them down into discrete operations.
-
-For each operation, return an object with:
-- type: the operation type (track, clip, volume, effect, midi)
-- description: a short human-readable description of the operation
-- parameters: a dictionary of parameters for the operation
-
-Return your analysis as a JSON object with an 'operations' array, where each operation has 'type', 'description', and 'parameters'.
-Example output:
-{"operations": [
-  {"type": "track", "description": "Create a track with Serum VST named 'bass'", "parameters": {"name": "bass", "vst": "serum"}},
-  {"type": "clip", "description": "Add a clip starting from bar 17", "parameters": {"start_bar": 17}}
-]}"""
+        instructions = get_prompt("operation_identifier")
 
         operations: list[dict[str, Any]] = []
         try:

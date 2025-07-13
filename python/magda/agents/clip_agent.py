@@ -6,6 +6,7 @@ import openai
 from dotenv import load_dotenv
 
 from ..models import ClipResult
+from ..prompt_loader import get_prompt
 from .base import BaseAgent
 
 load_dotenv()
@@ -70,15 +71,7 @@ class ClipAgent(BaseAgent):
     def _parse_clip_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse clip operation and extract parameters using Responses API."""
 
-        instructions = """You are a clip creation specialist for a DAW system.
-        Your job is to parse clip creation requests and extract the necessary parameters.
-
-        Extract the following information:
-        - start_bar: The starting bar number (default: 1)
-        - end_bar: The ending bar number (default: start_bar + 4)
-        - track_reference: Any reference to a specific track
-
-        Return a JSON object with the extracted parameters following the provided schema."""
+        instructions = get_prompt("clip_agent")
 
         try:
             response = self.client.responses.parse(

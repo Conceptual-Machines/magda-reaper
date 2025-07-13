@@ -6,6 +6,7 @@ import openai
 from dotenv import load_dotenv
 
 from ..models import EffectParameters, EffectResult
+from ..prompt_loader import get_prompt
 from .base import BaseAgent
 
 load_dotenv()
@@ -100,15 +101,7 @@ class EffectAgent(BaseAgent):
     def _parse_effect_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse effect operation and extract parameters using Responses API."""
 
-        instructions = """You are an effect specialist for a DAW system.
-        Your job is to parse effect requests and extract the necessary parameters.
-
-        Extract the following information:
-        - effect_type: The type of effect (reverb, delay, compressor, eq, filter, distortion, etc.)
-        - parameters: A dictionary of effect parameters (e.g., {"wet": 0.5, "decay": 2.0})
-        - position: Where to insert the effect (insert, send, master, default: insert)
-
-        Return a JSON object with the extracted parameters following the provided schema."""
+        instructions = get_prompt("effect_agent")
 
         try:
             response = self.client.responses.parse(

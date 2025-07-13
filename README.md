@@ -1,3 +1,17 @@
+<div align="center">
+
+```
+    ╭─────────────────╮
+    │     MAGDA       │
+    │   🎵 🎹 🎤 🐍 ⚡ │
+    │                 │
+    │  Multi Agent    │
+    │ Generic DAW API │
+    ╰─────────────────╯
+```
+
+</div>
+
 # MAGDA
 
 [![CI/CD Pipeline](https://github.com/lucaromagnoli/magda/workflows/MAGDA%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/lucaromagnoli/magda/actions)
@@ -7,7 +21,7 @@
 [![Type checked with mypy](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/lucaromagnoli/magda)
 
-Multi Agent Generative DAW API
+Multi Agent Generic DAW API
 
 MAGDA is an AI-driven system that translates natural language prompts into generic DAW (Digital Audio Workstation) commands using a multi-agent architecture powered by OpenAI's Responses API.
 

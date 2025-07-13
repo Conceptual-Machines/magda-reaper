@@ -6,6 +6,7 @@ import openai
 from dotenv import load_dotenv
 
 from ..models import MIDIResult
+from ..prompt_loader import get_prompt
 from .base import BaseAgent
 
 load_dotenv()
@@ -80,17 +81,7 @@ class MidiAgent(BaseAgent):
     def _parse_midi_operation_with_llm(self, operation: str) -> dict[str, Any]:
         """Use LLM to parse MIDI operation and extract parameters using Responses API."""
 
-        instructions = """You are a MIDI specialist for a DAW system.
-        Your job is to parse MIDI requests and extract the necessary parameters.
-
-        Extract the following information:
-        - note: The MIDI note (e.g., "C4", "F#3", "A5")
-        - velocity: Note velocity (0-127, default: 100)
-        - duration: Note duration in beats (default: 1.0)
-        - start_bar: Starting bar number (default: 1)
-        - channel: MIDI channel (1-16, default: 1)
-
-        Return a JSON object with the extracted parameters following the provided schema."""
+        instructions = get_prompt("midi_agent")
 
         try:
             response = self.client.responses.parse(
