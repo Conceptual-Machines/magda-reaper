@@ -8,7 +8,7 @@ namespace magda {
 
 /**
  * @brief Agent responsible for handling track creation operations
- * 
+ *
  * This agent can create audio and MIDI tracks with various VST plugins
  * and instruments. It uses LLM to parse natural language requests and
  * generate appropriate DAW commands.
@@ -74,4 +74,4 @@ private:
     std::string generateDAWCommand(const nlohmann::json& result) const override;
 };
 
-} // namespace magda 
+} // namespace magda

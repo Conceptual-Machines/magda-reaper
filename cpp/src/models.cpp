@@ -4,7 +4,7 @@
 namespace magda {
 
 // TrackResult implementation
-TrackResult::TrackResult(const std::string& id, const std::string& name, 
+TrackResult::TrackResult(const std::string& id, const std::string& name,
                          const std::optional<std::string>& vst_plugin)
     : track_id(id), track_name(name), vst(vst_plugin), instrument(vst_plugin) {}
 
@@ -19,9 +19,9 @@ nlohmann::json TrackResult::toJson() const {
 }
 
 // ClipResult implementation
-ClipResult::ClipResult(const std::string& id, const std::string& track_name, 
+ClipResult::ClipResult(const std::string& id, const std::string& track_name,
                        const std::string& track_id, int start, int end)
-    : clip_id(id), track_name(track_name), track_id(track_id), 
+    : clip_id(id), track_name(track_name), track_id(track_id),
       start_bar(start), end_bar(end) {}
 
 nlohmann::json ClipResult::toJson() const {
@@ -113,7 +113,7 @@ Operation::Operation(OperationType type, const std::map<std::string, std::string
 std::string Operation::toString() const {
     std::ostringstream oss;
     oss << "Operation{type=";
-    
+
     switch (operation_type) {
         case OperationType::CREATE_TRACK: oss << "CREATE_TRACK"; break;
         case OperationType::CREATE_CLIP: oss << "CREATE_CLIP"; break;
@@ -122,7 +122,7 @@ std::string Operation::toString() const {
         case OperationType::CREATE_MIDI: oss << "CREATE_MIDI"; break;
         default: oss << "UNKNOWN"; break;
     }
-    
+
     oss << ", parameters={";
     bool first = true;
     for (const auto& [key, value] : parameters) {
@@ -131,7 +131,7 @@ std::string Operation::toString() const {
         first = false;
     }
     oss << "}, agent=" << agent_name << "}";
-    
+
     return oss.str();
 }
 
@@ -148,4 +148,4 @@ nlohmann::json AgentResponse::toJson() const {
     return j;
 }
 
-} // namespace magda 
+} // namespace magda

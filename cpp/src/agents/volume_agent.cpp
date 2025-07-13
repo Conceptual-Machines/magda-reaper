@@ -10,7 +10,7 @@ VolumeAgent::VolumeAgent(const std::string& api_key)
 bool VolumeAgent::canHandle(const std::string& operation) const {
     std::string op_lower = operation;
     std::transform(op_lower.begin(), op_lower.end(), op_lower.begin(), ::tolower);
-    
+
     return op_lower.find("volume") != std::string::npos ||
            op_lower.find("pan") != std::string::npos ||
            op_lower.find("mute") != std::string::npos ||
@@ -21,42 +21,42 @@ AgentResponse VolumeAgent::execute(const std::string& operation,
                                    const nlohmann::json& context) {
     // Parse the operation with LLM
     auto volume_info = parseVolumeOperationWithLLM(operation);
-    
+
     // Get track information from context
     std::string track_id = getTrackIdFromContext(context);
     if (track_id.empty()) {
         track_id = generateUniqueId();
     }
-    
+
     std::string track_name = getTrackNameFromContext(context);
     if (track_name == "unknown") {
         track_name = volume_info.value("track_name", "track_" + track_id.substr(0, 8));
     }
-    
+
     // Create volume result
     VolumeResult volume_result(track_name, track_id);
-    
+
     // Set volume if provided
     if (volume_info.contains("volume")) {
         volume_result.volume = volume_info["volume"].get<float>();
     }
-    
+
     // Set pan if provided
     if (volume_info.contains("pan")) {
         volume_result.pan = volume_info["pan"].get<float>();
     }
-    
+
     // Set mute if provided
     if (volume_info.contains("mute")) {
         volume_result.mute = volume_info["mute"].get<bool>();
     }
-    
+
     // Store volume settings for future reference
     volume_settings_[track_id] = volume_result.toJson();
-    
+
     // Generate DAW command
     std::string daw_command = generateDAWCommand(volume_result.toJson());
-    
+
     return AgentResponse(volume_result.toJson(), daw_command, context);
 }
 
@@ -75,11 +75,11 @@ nlohmann::json VolumeAgent::getVolumeSettings(const std::string& track_id) const
 std::vector<nlohmann::json> VolumeAgent::listVolumeSettings() const {
     std::vector<nlohmann::json> settings;
     settings.reserve(volume_settings_.size());
-    
+
     for (const auto& [id, setting] : volume_settings_) {
         settings.push_back(setting);
     }
-    
+
     return settings;
 }
 
@@ -129,34 +129,34 @@ Return a JSON object with the extracted parameters following the provided schema
 std::string VolumeAgent::generateDAWCommand(const nlohmann::json& result) const {
     std::ostringstream oss;
     oss << "volume(";
-    
+
     bool first = true;
-    
+
     if (result.contains("track_name") && !result["track_name"].get<std::string>().empty()) {
         if (!first) oss << ", ";
         oss << "track:" << result["track_name"].get<std::string>();
         first = false;
     }
-    
+
     if (result.contains("volume")) {
         if (!first) oss << ", ";
         oss << "level:" << result["volume"].get<float>();
         first = false;
     }
-    
+
     if (result.contains("pan")) {
         if (!first) oss << ", ";
         oss << "pan:" << result["pan"].get<float>();
         first = false;
     }
-    
+
     if (result.contains("mute")) {
         if (!first) oss << ", ";
         oss << "mute:" << (result["mute"].get<bool>() ? "true" : "false");
     }
-    
+
     oss << ")";
     return oss.str();
 }
 
-} // namespace magda 
+} // namespace magda

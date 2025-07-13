@@ -8,7 +8,7 @@ namespace magda {
 
 /**
  * @brief Agent responsible for handling volume control operations
- * 
+ *
  * This agent can control volume, pan, and mute settings for tracks.
  * It uses LLM to parse natural language requests and generate appropriate DAW commands.
  */
@@ -73,4 +73,4 @@ private:
     std::string generateDAWCommand(const nlohmann::json& result) const override;
 };
 
-} // namespace magda 
+} // namespace magda

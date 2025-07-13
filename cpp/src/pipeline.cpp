@@ -40,7 +40,7 @@ public:
         // If no agent can handle it, return an error response
         nlohmann::json error_result;
         error_result["error"] = "No agent found to handle operation: " + operation;
-        
+
         return AgentResponse(error_result, "", context);
     }
 
@@ -68,4 +68,4 @@ private:
     std::vector<std::shared_ptr<BaseAgent>> agents_;
 };
 
-} // namespace magda 
+} // namespace magda

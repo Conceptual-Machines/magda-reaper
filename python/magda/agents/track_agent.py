@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import openai
 from dotenv import load_dotenv
@@ -29,8 +29,8 @@ class TrackAgent(BaseAgent):
     ) -> dict[str, Any]:
         """Execute track creation operation using LLM with context awareness."""
         context = context or {}
-        context_manager = context.get("context_manager")
-        
+        # context_manager = context.get("context_manager")  # TODO: Use context manager for track resolution
+
         # Use LLM to parse track operation and generate DAW command
         track_info = self._parse_track_operation_with_llm(operation)
 

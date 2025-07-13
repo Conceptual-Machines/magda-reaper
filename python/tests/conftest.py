@@ -6,13 +6,12 @@ import os
 from unittest.mock import Mock, patch
 
 import pytest
-from typing import Optional
 
 from magda.models import AgentResponse, Operation, OperationType
 
 
 @pytest.fixture(scope="session")
-def openai_api_key() -> Optional[str]:
+def openai_api_key() -> str | None:
     """Get OpenAI API key from environment."""
     return os.getenv("OPENAI_API_KEY")
 
@@ -178,11 +177,10 @@ def pytest_configure(config):
     """Configure pytest for integration tests."""
     # Add markers
     config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests (deselect with '-m \"not integration\"')"
+        "markers",
+        "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
     )
-    config.addinivalue_line(
-        "markers", "api: marks tests that make real API calls"
-    )
+    config.addinivalue_line("markers", "api: marks tests that make real API calls")
     config.addinivalue_line("markers", "slow: mark test as slow running")
     config.addinivalue_line("markers", "unit: mark test as unit test")
 
@@ -194,7 +192,7 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.integration)
         if "test_integration" in item.nodeid:
             item.add_marker(pytest.mark.api)
-    
+
     # Skip API tests unless --run-api flag is provided
     if not config.getoption("--run-api"):
         skip_api = pytest.mark.skip(reason="API tests require --run-api flag")

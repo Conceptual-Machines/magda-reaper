@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import openai
 from dotenv import load_dotenv
@@ -38,25 +38,25 @@ class EffectAgent(BaseAgent):
         """Execute effect operation using LLM with context awareness."""
         context = context or {}
         context_manager = context.get("context_manager")
-        
+
         # Use LLM to parse effect operation and extract parameters
         effect_info = self._parse_effect_operation_with_llm(operation)
 
         # Get track information from context
-        track_id = "unknown"
+        track_id: str = "unknown"
         if context_manager:
             # Try to get track from context parameters
             if "track_id" in context:
-                track_id = context["track_id"]
+                track_id = str(context["track_id"])
             elif "track_daw_id" in context:
-                track_id = context["track_daw_id"]
+                track_id = str(context["track_daw_id"])
         else:
             # Fallback to old context method
-            track_id = context.get("track_id")
-            if not track_id:
+            track_id = context.get("track_id", "unknown")
+            if track_id == "unknown":
                 track_context = context.get("track")
                 if track_context and "id" in track_context:
-                    track_id = track_context["id"]
+                    track_id = str(track_context["id"])
 
         # Generate unique effect ID
         effect_id = str(uuid.uuid4())

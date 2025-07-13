@@ -39,7 +39,7 @@ nlohmann::json BaseAgent::parseOperationWithLLM(const std::string& operation,
 
         // Create the request
         llmcpp::LLMRequest request(config, instructions);
-        
+
         // Add the operation as context
         llmcpp::LLMContext context = {{{"role", "user"}, {"content", operation}}};
         request.context = context;
@@ -114,11 +114,11 @@ std::string BaseAgent::generateUniqueId() const {
     auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-    
+
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 65535);
-    
+
     std::ostringstream oss;
     oss << std::hex << std::setfill('0') << std::setw(8) << (millis & 0xFFFFFFFF);
     oss << "-";
@@ -129,8 +129,8 @@ std::string BaseAgent::generateUniqueId() const {
     oss << std::hex << std::setfill('0') << std::setw(4) << dis(gen);
     oss << "-";
     oss << std::hex << std::setfill('0') << std::setw(12) << (dis(gen) << 16 | dis(gen));
-    
+
     return oss.str();
 }
 
-} // namespace magda 
+} // namespace magda

@@ -10,7 +10,7 @@ TrackAgent::TrackAgent(const std::string& api_key)
 bool TrackAgent::canHandle(const std::string& operation) const {
     std::string op_lower = operation;
     std::transform(op_lower.begin(), op_lower.end(), op_lower.begin(), ::tolower);
-    
+
     return op_lower.find("track") != std::string::npos ||
            op_lower.find("create track") != std::string::npos ||
            op_lower.find("add track") != std::string::npos;
@@ -20,31 +20,31 @@ AgentResponse TrackAgent::execute(const std::string& operation,
                                   const nlohmann::json& context) {
     // Parse the operation with LLM
     auto track_info = parseTrackOperationWithLLM(operation);
-    
+
     // Get track information from context
     std::string track_id = getTrackIdFromContext(context);
     if (track_id.empty()) {
         track_id = generateUniqueId();
     }
-    
+
     std::string track_name = getTrackNameFromContext(context);
     if (track_name == "unknown") {
         track_name = track_info.value("name", "track_" + track_id.substr(0, 8));
     }
-    
+
     // Create track result
     TrackResult track_result(
         track_id,
         track_name,
         track_info.value("vst", std::string())
     );
-    
+
     // Store track for future reference
     created_tracks_[track_id] = track_result.toJson();
-    
+
     // Generate DAW command
     std::string daw_command = generateDAWCommand(track_result.toJson());
-    
+
     return AgentResponse(track_result.toJson(), daw_command, context);
 }
 
@@ -63,11 +63,11 @@ nlohmann::json TrackAgent::getTrackById(const std::string& track_id) const {
 std::vector<nlohmann::json> TrackAgent::listTracks() const {
     std::vector<nlohmann::json> tracks;
     tracks.reserve(created_tracks_.size());
-    
+
     for (const auto& [id, track] : created_tracks_) {
         tracks.push_back(track);
     }
-    
+
     return tracks;
 }
 
@@ -110,28 +110,28 @@ Return a JSON object with the extracted parameters following the provided schema
 std::string TrackAgent::generateDAWCommand(const nlohmann::json& result) const {
     std::ostringstream oss;
     oss << "track(";
-    
+
     bool first = true;
-    
+
     if (result.contains("track_name") && !result["track_name"].get<std::string>().empty()) {
         if (!first) oss << ", ";
         oss << "name:" << result["track_name"].get<std::string>();
         first = false;
     }
-    
+
     if (result.contains("vst") && !result["vst"].is_null()) {
         if (!first) oss << ", ";
         oss << "vst:" << result["vst"].get<std::string>();
         first = false;
     }
-    
+
     if (result.contains("track_id") && !result["track_id"].get<std::string>().empty()) {
         if (!first) oss << ", ";
         oss << "id:" << result["track_id"].get<std::string>();
     }
-    
+
     oss << ")";
     return oss.str();
 }
 
-} // namespace magda 
+} // namespace magda

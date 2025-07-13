@@ -49,19 +49,19 @@ cmake --build .
 int main() {
     // Set your OpenAI API key
     setenv("OPENAI_API_KEY", "your-api-key-here", 1);
-    
+
     // Create agents
     magda::TrackAgent track_agent;
     magda::VolumeAgent volume_agent;
-    
+
     // Create a track
     auto track_response = track_agent.execute("create a bass track with Serum");
     std::cout << "DAW Command: " << track_response.daw_command << std::endl;
-    
+
     // Set volume
     auto volume_response = volume_agent.execute("set volume to 75%");
     std::cout << "DAW Command: " << volume_response.daw_command << std::endl;
-    
+
     return 0;
 }
 ```
@@ -243,4 +243,4 @@ Licensed under the MIT License. See LICENSE for details.
 - [llmcpp](https://github.com/lucaromagnoli/llmcpp): LLM API library
 - nlohmann/json: JSON parsing and manipulation
 - OpenSSL: HTTPS support
-- CMake: Build system 
+- CMake: Build system

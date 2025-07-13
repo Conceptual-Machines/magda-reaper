@@ -12,7 +12,7 @@ namespace magda {
 
 /**
  * @brief Base class for all MAGDA agents
- * 
+ *
  * This class provides the common interface and functionality that all agents
  * must implement. It integrates with the llmcpp library for LLM operations.
  */
@@ -24,7 +24,7 @@ public:
      * @param api_key The OpenAI API key
      */
     BaseAgent(const std::string& name, const std::string& api_key = "");
-    
+
     virtual ~BaseAgent() = default;
 
     /**
@@ -40,7 +40,7 @@ public:
      * @param context Optional context for the operation
      * @return AgentResponse containing the result
      */
-    virtual AgentResponse execute(const std::string& operation, 
+    virtual AgentResponse execute(const std::string& operation,
                                  const nlohmann::json& context = nlohmann::json::object()) = 0;
 
     /**
@@ -58,7 +58,7 @@ public:
 protected:
     std::string name_;
     std::unique_ptr<llmcpp::OpenAIClient> client_;
-    
+
     /**
      * @brief Parse operation with LLM using structured output
      * @param operation The operation string
@@ -98,4 +98,4 @@ protected:
     std::string generateUniqueId() const;
 };
 
-} // namespace magda 
+} // namespace magda

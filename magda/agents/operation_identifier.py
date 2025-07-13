@@ -1,7 +1,9 @@
 import os
+from typing import Any
+
 import openai
 from dotenv import load_dotenv
-from typing import Dict, Any, List
+
 from .base import BaseAgent
 
 load_dotenv()
@@ -86,9 +88,10 @@ Output:
 # End of static prompt
 """
 
+
 class OperationIdentifier(BaseAgent):
     """Agent responsible for identifying operations in natural language prompts using LLM."""
-    
+
     def __init__(self):
         super().__init__()
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -97,16 +100,18 @@ class OperationIdentifier(BaseAgent):
         """This agent can handle any operation as it's the entry point."""
         return True
 
-    def execute(self, prompt: str, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    def execute(
+        self, prompt: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Parse the prompt and identify operations using LLM."""
         operations = self.identify_operations_with_llm(prompt)
         return {
             "operations": operations,
             "original_prompt": prompt,
-            "context": context or {}
+            "context": context or {},
         }
 
-    def identify_operations_with_llm(self, user_prompt: str) -> List[Dict[str, Any]]:
+    def identify_operations_with_llm(self, user_prompt: str) -> list[dict[str, Any]]:
         """Use LLM to identify operations in the prompt using optimized prompt structure and cache monitoring."""
         # Build the full prompt: static first, dynamic last
         full_prompt = OPTIMIZED_STATIC_PROMPT + "\n\n# USER REQUEST\n" + user_prompt
@@ -115,14 +120,17 @@ class OperationIdentifier(BaseAgent):
                 model="gpt-4o",
                 instructions=full_prompt,
                 input=user_prompt,
-                user="magda-daw-api"
+                user="magda-daw-api",
             )
             import json
+
             content = response.output_text
             # Cache monitoring (if available)
             usage = getattr(response, "usage", None)
             if usage is not None:
-                cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0)
+                cached = getattr(
+                    getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0
+                )
                 if cached > 0:
                     print(f"[MAGDA] Cache hit: {cached} tokens")
             if content is None:
@@ -134,11 +142,11 @@ class OperationIdentifier(BaseAgent):
             print(f"Error identifying operations: {e}")
             return []
 
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can identify."""
         return ["track", "clip", "volume", "effect", "midi"]
 
-    def extract_operation_chain(self, prompt: str) -> List[Dict[str, Any]]:
+    def extract_operation_chain(self, prompt: str) -> list[dict[str, Any]]:
         operations = self.identify_operations_with_llm(prompt)
         operation_chain = []
         current_context = {}
@@ -146,13 +154,11 @@ class OperationIdentifier(BaseAgent):
             if op["type"] == "track":
                 track_info = op.get("parameters", {})
                 current_context["track"] = track_info
-                operation_chain.append({
-                    "operation": op,
-                    "context": current_context.copy()
-                })
+                operation_chain.append(
+                    {"operation": op, "context": current_context.copy()}
+                )
             else:
-                operation_chain.append({
-                    "operation": op,
-                    "context": current_context.copy()
-                })
+                operation_chain.append(
+                    {"operation": op, "context": current_context.copy()}
+                )
         return operation_chain

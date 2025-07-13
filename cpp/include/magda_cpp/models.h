@@ -30,7 +30,7 @@ public:
     std::optional<std::string> instrument;
 
     TrackResult() = default;
-    TrackResult(const std::string& id, const std::string& name, 
+    TrackResult(const std::string& id, const std::string& name,
                 const std::optional<std::string>& vst_plugin = std::nullopt);
 
     nlohmann::json toJson() const override;
@@ -50,7 +50,7 @@ public:
     int end_bar = 4;
 
     ClipResult() = default;
-    ClipResult(const std::string& id, const std::string& track_name, 
+    ClipResult(const std::string& id, const std::string& track_name,
                const std::string& track_id, int start = 1, int end = 4);
 
     nlohmann::json toJson() const override;
@@ -68,7 +68,7 @@ public:
     std::optional<bool> mute;
 
     VolumeResult() = default;
-    VolumeResult(const std::string& track_name, const std::string& track_id, 
+    VolumeResult(const std::string& track_name, const std::string& track_id,
                  float vol = 0.0f);
 
     nlohmann::json toJson() const override;
@@ -182,4 +182,4 @@ public:
     nlohmann::json toJson() const;
 };
 
-} // namespace magda 
+} // namespace magda

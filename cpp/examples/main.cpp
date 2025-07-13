@@ -4,46 +4,46 @@
 #include "magda_cpp/agents/track_agent.h"
 #include "magda_cpp/agents/volume_agent.h"
 
-void testAgent(const std::string& agent_name, 
-               magda::BaseAgent& agent, 
+void testAgent(const std::string& agent_name,
+               magda::BaseAgent& agent,
                const std::vector<std::string>& operations) {
     std::cout << "\n" << agent_name << " Agent Test" << std::endl;
     std::cout << std::string(agent_name.length() + 12, '=') << std::endl;
 
     for (const auto& operation : operations) {
         std::cout << "\nTesting operation: " << operation << std::endl;
-        
+
         if (agent.canHandle(operation)) {
             std::cout << "✓ " << agent_name << " agent can handle this operation" << std::endl;
-            
+
             try {
                 // Execute the operation
                 auto response = agent.execute(operation);
-                
+
                 std::cout << "Result:" << std::endl;
                 std::cout << "  DAW Command: " << response.daw_command << std::endl;
-                
+
                 // Show result details based on agent type
                 if (agent_name == "Track") {
                     std::cout << "  Track ID: " << response.result["track_id"].get<std::string>() << std::endl;
                     std::cout << "  Track Name: " << response.result["track_name"].get<std::string>() << std::endl;
-                    
+
                     if (response.result.contains("vst") && !response.result["vst"].is_null()) {
                         std::cout << "  VST: " << response.result["vst"].get<std::string>() << std::endl;
                     }
                 } else if (agent_name == "Volume") {
                     std::cout << "  Track Name: " << response.result["track_name"].get<std::string>() << std::endl;
                     std::cout << "  Volume: " << response.result["volume"].get<float>() << std::endl;
-                    
+
                     if (response.result.contains("pan") && !response.result["pan"].is_null()) {
                         std::cout << "  Pan: " << response.result["pan"].get<float>() << std::endl;
                     }
-                    
+
                     if (response.result.contains("mute") && !response.result["mute"].is_null()) {
                         std::cout << "  Mute: " << (response.result["mute"].get<bool>() ? "true" : "false") << std::endl;
                     }
                 }
-                
+
             } catch (const std::exception& e) {
                 std::cout << "✗ Error executing operation: " << e.what() << std::endl;
             }
@@ -91,7 +91,7 @@ int main() {
         std::cout << "\nCreated tracks:" << std::endl;
         auto tracks = track_agent.listTracks();
         for (const auto& track : tracks) {
-            std::cout << "  - " << track["track_name"].get<std::string>() 
+            std::cout << "  - " << track["track_name"].get<std::string>()
                       << " (ID: " << track["track_id"].get<std::string>() << ")" << std::endl;
         }
 
@@ -99,7 +99,7 @@ int main() {
         std::cout << "\nVolume settings:" << std::endl;
         auto volume_settings = volume_agent.listVolumeSettings();
         for (const auto& setting : volume_settings) {
-            std::cout << "  - " << setting["track_name"].get<std::string>() 
+            std::cout << "  - " << setting["track_name"].get<std::string>()
                       << " (Volume: " << setting["volume"].get<float>() << ")" << std::endl;
         }
 
@@ -111,4 +111,4 @@ int main() {
 
     std::cout << "\nExample completed successfully!" << std::endl;
     return 0;
-} 
+}
