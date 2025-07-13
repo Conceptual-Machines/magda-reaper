@@ -1,10 +1,21 @@
 # MAGDA
 
+[![CI/CD Pipeline](https://github.com/lucaromagnoli/magda/workflows/MAGDA%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/lucaromagnoli/magda/actions)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type checked with mypy](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/lucaromagnoli/magda)
+
 Multi Agent Generative DAW API
 
 MAGDA is an AI-driven system that translates natural language prompts into generic DAW (Digital Audio Workstation) commands using a multi-agent architecture powered by OpenAI's Responses API.
 
 ## 🎵 Features
+
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4.1-green.svg)](https://openai.com/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-2.11+-blue.svg)](https://pydantic.dev/)
+[![Multi-Agent](https://img.shields.io/badge/Architecture-Multi--Agent-orange.svg)](https://en.wikipedia.org/wiki/Multi-agent_system)
 
 - **Natural Language Processing**: Convert plain English (and other languages) into precise DAW commands
 - **Multi-Agent Architecture**: Specialized agents for different DAW operations
@@ -26,6 +37,9 @@ MAGDA uses a dual-stage pipeline:
    - **MIDI Agent**: Manage MIDI data and events
 
 ## 🚀 Quick Start
+
+[![uv](https://img.shields.io/badge/uv-Package%20Manager-purple.svg)](https://docs.astral.sh/uv/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
 ### Prerequisites
 
