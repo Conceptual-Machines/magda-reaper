@@ -2,17 +2,7 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Type checked with mypy](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
 [![codecov](https://codecov.io/gh/lucaromagnoli/magda/branch/main/graph/badge.svg)](https://codecov.io/gh/lucaromagnoli/magda)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4.1-green.svg)](https://openai.com/)
-[![Pydantic](https://img.shields.io/badge/Pydantic-2.11+-blue.svg)](https://pydantic.dev/)
-[![Multi-Agent](https://img.shields.io/badge/Architecture-Multi--Agent-orange.svg)](https://en.wikipedia.org/wiki/Multi-agent_system)
-[![uv](https://img.shields.io/badge/uv-Package%20Manager-purple.svg)](https://docs.astral.sh/uv/)
-[![CMake](https://img.shields.io/badge/CMake-3.22+-blue.svg)](https://cmake.org/)
-[![Ninja](https://img.shields.io/badge/Ninja-Build-orange.svg)](https://ninja-build.org/)
-[![OpenSSL](https://img.shields.io/badge/OpenSSL-Required-green.svg)](https://www.openssl.org/)
-[![nlohmann/json](https://img.shields.io/badge/nlohmann%2Fjson-3.11+-blue.svg)](https://github.com/nlohmann/json)
 
 # MAGDA
 
@@ -315,11 +305,7 @@ The release script will:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🤝 Acknowledgments
 
-- OpenAI for the Responses API and GPT models
-- The DAW community for inspiration and feedback
-- Contributors and early adopters
 
 ## 📞 Support
 
