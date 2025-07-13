@@ -87,7 +87,7 @@ jobs:
   build-and-release:
     runs-on: ubuntu-latest
     needs: [test-and-quality]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/release')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       packages: write
