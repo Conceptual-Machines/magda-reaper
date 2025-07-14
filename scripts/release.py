@@ -3,7 +3,7 @@
 MAGDA Release Script
 
 Automates the entire release process:
-1. Bump version in pyproject.toml
+1. Bump version in pyproject.toml and CMakeLists.txt
 2. Create git tag
 3. Push changes and tag
 4. Optionally create GitHub release
@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 PYPROJECT_PATH = Path("python/pyproject.toml")
+CMAKE_PATH = Path("cpp/CMakeLists.txt")
 
 
 def run_command(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
@@ -41,8 +42,18 @@ def get_current_version() -> str:
     return match.group(1)
 
 
+def get_cmake_version() -> str:
+    """Get the current version from CMakeLists.txt."""
+    text = CMAKE_PATH.read_text()
+    match = re.search(r"project\(magda_cpp VERSION (\d+\.\d+\.\d+)", text)
+    if not match:
+        raise ValueError("Could not find version in CMakeLists.txt")
+    return match.group(1)
+
+
 def bump_version(bump_type: str) -> tuple[str, str]:
     """Bump the version and return (old_version, new_version)."""
+    # Get version from pyproject.toml
     text = PYPROJECT_PATH.read_text()
     match = re.search(
         r'^version\s*=\s*["\'](\d+)\.(\d+)\.(\d+)["\']', text, re.MULTILINE
@@ -67,15 +78,24 @@ def bump_version(bump_type: str) -> tuple[str, str]:
 
     new_version = f"{major}.{minor}.{patch}"
 
-    # Replace the version in the file
+    # Update pyproject.toml
     new_text = re.sub(
         r'(^version\s*=\s*["\'])(\d+\.\d+\.\d+)(["\'])',
         rf"\g<1>{new_version}\3",
         text,
         flags=re.MULTILINE,
     )
-
     PYPROJECT_PATH.write_text(new_text)
+
+    # Update CMakeLists.txt
+    cmake_text = CMAKE_PATH.read_text()
+    new_cmake_text = re.sub(
+        r"(project\(magda_cpp VERSION )(\d+\.\d+\.\d+)",
+        rf"\g<1>{new_version}",
+        cmake_text,
+    )
+    CMAKE_PATH.write_text(new_cmake_text)
+
     return old_version, new_version
 
 
@@ -113,7 +133,7 @@ def push_changes_and_tag(
         return
 
     # Add and commit changes
-    run_command(["git", "add", "python/pyproject.toml"])
+    run_command(["git", "add", "python/pyproject.toml", "cpp/CMakeLists.txt"])
     run_command(["git", "commit", "-m", f"chore: bump version to {version}"])
 
     # Push changes
@@ -144,17 +164,6 @@ def main():
     print("🎵 MAGDA Release Script")
     print("=" * 50)
 
-    # Check if we're on main branch
-    result = run_command(["git", "branch", "--show-current"], check=False)
-    current_branch = result.stdout.strip()
-    if current_branch != "main":
-        print(f"⚠️  Warning: You're on branch '{current_branch}', not 'main'")
-        if not args.dry_run:
-            response = input("Continue anyway? (y/N): ")
-            if response.lower() != "y":
-                print("Aborted.")
-                sys.exit(1)
-
     # Check git status
     if not check_git_status() and not args.dry_run:
         print("❌ Error: Git working directory is not clean")
@@ -162,9 +171,18 @@ def main():
         sys.exit(1)
 
     try:
-        # Get current version
+        # Get current versions
         current_version = get_current_version()
-        print(f"Current version: {current_version}")
+        cmake_version = get_cmake_version()
+        print(f"Current version (Python): {current_version}")
+        print(f"Current version (C++): {cmake_version}")
+
+        # Verify versions are in sync
+        if current_version != cmake_version:
+            print(
+                f"⚠️  Warning: Version mismatch! Python: {current_version}, C++: {cmake_version}"
+            )
+            print("The release script will sync both versions.")
 
         # Bump version
         if args.dry_run:

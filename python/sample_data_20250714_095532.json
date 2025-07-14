@@ -1,0 +1,698 @@
+[
+  {
+    "timestamp": "2025-07-14T09:55:01.579819",
+    "scenario": "basic_track_creation",
+    "prompt": "Create a new track called 'Electric Guitar'",
+    "expected_type": "track",
+    "result": {
+      "success": true,
+      "operations_count": 2,
+      "operations": [
+        {
+          "type": "track",
+          "description": "Create a new track called 'Electric Guitar'",
+          "parameters": {
+            "note": null,
+            "velocity": null,
+            "duration": null,
+            "track_id": null
+          }
+        },
+        {
+          "type": "track",
+          "description": "Create a new track called 'Electric Guitar'",
+          "parameters": {
+            "vst": null,
+            "name": "Electric Guitar",
+            "type": null
+          }
+        }
+      ],
+      "daw_commands": [
+        "track(name:track_3ce38304, id:3ce38304-0bdf-4361-bbed-e9094ecb22ab)",
+        "track(name:track_d5c7c5a3, id:d5c7c5a3-901d-4060-982b-c4978df06902)"
+      ],
+      "results": [
+        {
+          "daw_command": "track(name:track_3ce38304, id:3ce38304-0bdf-4361-bbed-e9094ecb22ab)",
+          "result": {
+            "track_id": "3ce38304-0bdf-4361-bbed-e9094ecb22ab",
+            "track_name": "track_3ce38304",
+            "instrument": null,
+            "vst": null,
+            "type": "track",
+            "magda_id": "track_1_323ed7d1"
+          },
+          "context": {}
+        },
+        {
+          "daw_command": "track(name:track_d5c7c5a3, id:d5c7c5a3-901d-4060-982b-c4978df06902)",
+          "result": {
+            "track_id": "d5c7c5a3-901d-4060-982b-c4978df06902",
+            "track_name": "track_d5c7c5a3",
+            "instrument": null,
+            "vst": null,
+            "type": "track",
+            "magda_id": "track_2_95a1f688"
+          },
+          "context": {}
+        }
+      ],
+      "context_summary": {
+        "tracks": {
+          "track_1_323ed7d1": {
+            "name": "track_0",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_2_95a1f688": {
+            "name": "Electric Guitar",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          }
+        },
+        "clips_count": 0,
+        "effects_count": 0,
+        "automations_count": 0,
+        "total_objects": 2,
+        "current_selection": []
+      }
+    }
+  },
+  {
+    "timestamp": "2025-07-14T09:55:05.624628",
+    "scenario": "volume_adjustment",
+    "prompt": "Set the volume of track 'Guitar' to -6dB",
+    "expected_type": "volume",
+    "result": {
+      "success": true,
+      "operations_count": 1,
+      "operations": [
+        {
+          "type": "volume",
+          "description": "Set the volume of track 'Guitar' to -6dB",
+          "parameters": {
+            "start_value": -6.0,
+            "end_value": -6.0,
+            "start_bar": null,
+            "end_bar": null
+          }
+        }
+      ],
+      "daw_commands": [
+        "volume(track:unknown, start:1, end:5, start_value:-6.0, end_value:-6.0)"
+      ],
+      "results": [
+        {
+          "daw_command": "volume(track:unknown, start:1, end:5, start_value:-6.0, end_value:-6.0)",
+          "result": {
+            "track_name": null,
+            "volume": null,
+            "fade_type": null,
+            "fade_duration": null,
+            "start_value": -6.0,
+            "end_value": -6.0,
+            "start_bar": 1,
+            "end_bar": 5
+          },
+          "context": {}
+        }
+      ],
+      "context_summary": {
+        "tracks": {
+          "track_1_323ed7d1": {
+            "name": "track_0",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_2_95a1f688": {
+            "name": "Electric Guitar",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          }
+        },
+        "clips_count": 0,
+        "effects_count": 0,
+        "automations_count": 0,
+        "total_objects": 2,
+        "current_selection": []
+      }
+    }
+  },
+  {
+    "timestamp": "2025-07-14T09:55:10.254121",
+    "scenario": "effect_addition",
+    "prompt": "Add reverb to the 'Guitar' track",
+    "expected_type": "effect",
+    "result": {
+      "success": true,
+      "operations_count": 1,
+      "operations": [
+        {
+          "type": "effect",
+          "description": "Add reverb to the Guitar track",
+          "parameters": {
+            "start_bar": null,
+            "end_bar": null,
+            "track_id": null,
+            "track_name": "Guitar"
+          }
+        }
+      ],
+      "daw_commands": [
+        "effect(track:track_2_95a1f688, type:reverb, position:insert, params:{wet_mix:0.5, dry_mix:0.5, decay:0.5})"
+      ],
+      "results": [
+        {
+          "daw_command": "effect(track:track_2_95a1f688, type:reverb, position:insert, params:{wet_mix:0.5, dry_mix:0.5, decay:0.5})",
+          "result": {
+            "track_name": null,
+            "effect_type": "reverb",
+            "parameters": {
+              "wet_mix": 0.5,
+              "dry_mix": 0.5,
+              "threshold": -20.0,
+              "ratio": 4.0,
+              "attack": 0.01,
+              "release": 0.1,
+              "decay": 0.5,
+              "feedback": 0.3,
+              "delay_time": 0.5,
+              "frequency": 1000.0,
+              "q_factor": 1.0,
+              "gain": 0.0,
+              "wet": 0.5,
+              "dry": 0.5
+            },
+            "track_id": "track_2_95a1f688",
+            "position": "insert",
+            "magda_id": "effect_3_c7b3e7f6"
+          },
+          "context": {}
+        }
+      ],
+      "context_summary": {
+        "tracks": {
+          "track_1_323ed7d1": {
+            "name": "track_0",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_2_95a1f688": {
+            "name": "Electric Guitar",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 1,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 1,
+            "automations_count": 0
+          }
+        },
+        "clips_count": 0,
+        "effects_count": 1,
+        "automations_count": 0,
+        "total_objects": 3,
+        "current_selection": []
+      }
+    }
+  },
+  {
+    "timestamp": "2025-07-14T09:55:14.149516",
+    "scenario": "clip_creation",
+    "prompt": "Create a 4-bar clip on track 'Guitar'",
+    "expected_type": "clip",
+    "result": {
+      "success": true,
+      "operations_count": 1,
+      "operations": [
+        {
+          "type": "clip",
+          "description": "Create a 4-bar clip on track 'Guitar'",
+          "parameters": {
+            "start_bar": 1,
+            "end_bar": 4,
+            "track_id": null,
+            "track_name": "Guitar"
+          }
+        }
+      ],
+      "daw_commands": [
+        "clip(track:Guitar, start:1, end:4)"
+      ],
+      "results": [
+        {
+          "daw_command": "clip(track:Guitar, start:1, end:4)",
+          "result": {
+            "clip_id": "04f02632-e751-45b8-a2a0-30719b69a9be",
+            "track_name": "Guitar",
+            "track_id": "track_2_95a1f688",
+            "start_time": null,
+            "duration": null,
+            "start_bar": 1,
+            "end_bar": 4,
+            "magda_id": "clip_4_34cb3bad"
+          },
+          "context": {}
+        }
+      ],
+      "context_summary": {
+        "tracks": {
+          "track_1_323ed7d1": {
+            "name": "track_0",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_2_95a1f688": {
+            "name": "Electric Guitar",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 1,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 1,
+            "effects_count": 1,
+            "automations_count": 0
+          }
+        },
+        "clips_count": 1,
+        "effects_count": 1,
+        "automations_count": 0,
+        "total_objects": 4,
+        "current_selection": []
+      }
+    }
+  },
+  {
+    "timestamp": "2025-07-14T09:55:18.094111",
+    "scenario": "midi_operation",
+    "prompt": "Add a C major chord at bar 1 on 'Piano'",
+    "expected_type": "midi",
+    "result": {
+      "success": true,
+      "operations_count": 1,
+      "operations": [
+        {
+          "type": "midi",
+          "description": "Add a C major chord at bar 1 on 'Piano' track",
+          "parameters": {
+            "note": "C major",
+            "velocity": null,
+            "duration": null,
+            "track_id": null
+          }
+        }
+      ],
+      "daw_commands": [
+        "midi(track:unknown, note:C4, velocity:100, duration:2.0, bar:1, channel:1)"
+      ],
+      "results": [
+        {
+          "daw_command": "midi(track:unknown, note:C4, velocity:100, duration:2.0, bar:1, channel:1)",
+          "result": {
+            "track_name": "unknown",
+            "operation": "chord",
+            "quantization": null,
+            "transpose_semitones": null,
+            "velocity": 100,
+            "track_id": "unknown",
+            "note": "C4",
+            "duration": 2.0,
+            "start_bar": 1,
+            "channel": 1
+          },
+          "context": {}
+        }
+      ],
+      "context_summary": {
+        "tracks": {
+          "track_1_323ed7d1": {
+            "name": "track_0",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_2_95a1f688": {
+            "name": "Electric Guitar",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 1,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 1,
+            "effects_count": 1,
+            "automations_count": 0
+          }
+        },
+        "clips_count": 1,
+        "effects_count": 1,
+        "automations_count": 0,
+        "total_objects": 4,
+        "current_selection": []
+      }
+    }
+  },
+  {
+    "timestamp": "2025-07-14T09:55:22.649230",
+    "scenario": "multilingual_spanish",
+    "prompt": "Crea una nueva pista llamada 'Guitarra Espa\u00f1ola'",
+    "expected_type": "track",
+    "result": {
+      "success": true,
+      "operations_count": 2,
+      "operations": [
+        {
+          "type": "track",
+          "description": "Crear una nueva pista llamada 'Guitarra Espa\u00f1ola'",
+          "parameters": {
+            "note": null,
+            "velocity": null,
+            "duration": null,
+            "track_id": null
+          }
+        },
+        {
+          "type": "track",
+          "description": "Crear una nueva pista llamada 'Guitarra Espa\u00f1ola'",
+          "parameters": {
+            "vst": null,
+            "name": "Guitarra Espa\u00f1ola",
+            "type": null
+          }
+        }
+      ],
+      "daw_commands": [
+        "track(name:track_aa2517bf, id:aa2517bf-0d90-4c33-b311-ad934fb854e0)",
+        "track(name:track_9b26b0bd, id:9b26b0bd-3e77-4355-8e4c-8c096c842c96)"
+      ],
+      "results": [
+        {
+          "daw_command": "track(name:track_aa2517bf, id:aa2517bf-0d90-4c33-b311-ad934fb854e0)",
+          "result": {
+            "track_id": "aa2517bf-0d90-4c33-b311-ad934fb854e0",
+            "track_name": "track_aa2517bf",
+            "instrument": null,
+            "vst": null,
+            "type": "track",
+            "magda_id": "track_5_3d85ba8e"
+          },
+          "context": {}
+        },
+        {
+          "daw_command": "track(name:track_9b26b0bd, id:9b26b0bd-3e77-4355-8e4c-8c096c842c96)",
+          "result": {
+            "track_id": "9b26b0bd-3e77-4355-8e4c-8c096c842c96",
+            "track_name": "track_9b26b0bd",
+            "instrument": null,
+            "vst": null,
+            "type": "track",
+            "magda_id": "track_6_e30f9b87"
+          },
+          "context": {}
+        }
+      ],
+      "context_summary": {
+        "tracks": {
+          "track_1_323ed7d1": {
+            "name": "track_0",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_2_95a1f688": {
+            "name": "Electric Guitar",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 1,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 1,
+            "effects_count": 1,
+            "automations_count": 0
+          },
+          "track_5_3d85ba8e": {
+            "name": "track_2",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_6_e30f9b87": {
+            "name": "Guitarra Espa\u00f1ola",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          }
+        },
+        "clips_count": 1,
+        "effects_count": 1,
+        "automations_count": 0,
+        "total_objects": 6,
+        "current_selection": []
+      }
+    }
+  },
+  {
+    "timestamp": "2025-07-14T09:55:32.303119",
+    "scenario": "complex_multi_operation",
+    "prompt": "Create a new track called 'Lead Guitar', set its volume to -3dB, and add reverb with 40% wet level",
+    "expected_type": [
+      "track",
+      "volume",
+      "effect"
+    ],
+    "result": {
+      "success": true,
+      "operations_count": 3,
+      "operations": [
+        {
+          "type": "track",
+          "description": "Create a new track called 'Lead Guitar'",
+          "parameters": {
+            "note": null,
+            "velocity": null,
+            "duration": null,
+            "track_id": null
+          }
+        },
+        {
+          "type": "volume",
+          "description": "Set volume of 'Lead Guitar' track to -3dB",
+          "parameters": {
+            "start_value": -3.0,
+            "end_value": -3.0,
+            "start_bar": null,
+            "end_bar": null
+          }
+        },
+        {
+          "type": "effect",
+          "description": "Add reverb to 'Lead Guitar' track with 40% wet level",
+          "parameters": {
+            "vst": "reverb",
+            "name": null,
+            "type": null
+          }
+        }
+      ],
+      "daw_commands": [
+        "track(name:track_61d6b3db, id:61d6b3db-a871-4301-ac49-75d4a0175eaf)",
+        "volume(track:unknown, start:1, end:5, start_value:-3.0, end_value:-3.0)",
+        "effect(track:unknown, type:reverb, position:insert, params:{wet_mix:0.5, dry_mix:0.5, decay:0.5})"
+      ],
+      "results": [
+        {
+          "daw_command": "track(name:track_61d6b3db, id:61d6b3db-a871-4301-ac49-75d4a0175eaf)",
+          "result": {
+            "track_id": "61d6b3db-a871-4301-ac49-75d4a0175eaf",
+            "track_name": "track_61d6b3db",
+            "instrument": null,
+            "vst": null,
+            "type": "track",
+            "magda_id": "track_7_bf735e4f"
+          },
+          "context": {}
+        },
+        {
+          "daw_command": "volume(track:unknown, start:1, end:5, start_value:-3.0, end_value:-3.0)",
+          "result": {
+            "track_name": null,
+            "volume": null,
+            "fade_type": null,
+            "fade_duration": null,
+            "start_value": -3.0,
+            "end_value": -3.0,
+            "start_bar": 1,
+            "end_bar": 5
+          },
+          "context": {}
+        },
+        {
+          "daw_command": "effect(track:unknown, type:reverb, position:insert, params:{wet_mix:0.5, dry_mix:0.5, decay:0.5})",
+          "result": {
+            "track_name": null,
+            "effect_type": "reverb",
+            "parameters": {
+              "wet_mix": 0.5,
+              "dry_mix": 0.5,
+              "threshold": -20.0,
+              "ratio": 4.0,
+              "attack": 0.01,
+              "release": 0.1,
+              "decay": 0.5,
+              "feedback": 0.3,
+              "delay_time": 0.5,
+              "frequency": 1000.0,
+              "q_factor": 1.0,
+              "gain": 0.0,
+              "wet": 0.5,
+              "dry": 0.5
+            },
+            "track_id": "unknown",
+            "position": "insert"
+          },
+          "context": {}
+        }
+      ],
+      "context_summary": {
+        "tracks": {
+          "track_1_323ed7d1": {
+            "name": "track_0",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_2_95a1f688": {
+            "name": "Electric Guitar",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 1,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 1,
+            "effects_count": 1,
+            "automations_count": 0
+          },
+          "track_5_3d85ba8e": {
+            "name": "track_2",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_6_e30f9b87": {
+            "name": "Guitarra Espa\u00f1ola",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          },
+          "track_7_bf735e4f": {
+            "name": "track_4",
+            "daw_id": null,
+            "type": "audio",
+            "vst": null,
+            "effects": 0,
+            "volume_automations": 0,
+            "midi_events": 0,
+            "clips_count": 0,
+            "effects_count": 0,
+            "automations_count": 0
+          }
+        },
+        "clips_count": 1,
+        "effects_count": 1,
+        "automations_count": 0,
+        "total_objects": 7,
+        "current_selection": []
+      }
+    }
+  }
+]

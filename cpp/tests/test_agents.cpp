@@ -9,7 +9,7 @@
 // #include "magda_cpp/agents/effect_agent.h"
 // #include "magda_cpp/agents/clip_agent.h"
 // #include "magda_cpp/agents/midi_agent.h"
-#include "magda_cpp/agents/operation_identifier.h"
+#include "magda_cpp/agents/orchestrator_agent.h"
 #include "magda_cpp/models.h"
 
 /**
@@ -147,11 +147,11 @@ TEST_CASE("MIDI agent unit tests", "[agents][midi]") {
 }
 */
 
-TEST_CASE("Operation identifier unit tests", "[agents][operation_identifier]") {
-    magda::OperationIdentifier identifier;
+TEST_CASE("Orchestrator agent unit tests", "[agents][orchestrator_agent]") {
+    magda::OrchestratorAgent identifier;
 
     SECTION("Agent name is correct") {
-        REQUIRE(identifier.getName() == "operation_identifier");
+        REQUIRE(identifier.getName() == "orchestrator_agent");
     }
 
     SECTION("Can handle any operation type") {

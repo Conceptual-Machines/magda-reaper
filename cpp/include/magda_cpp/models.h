@@ -6,6 +6,7 @@
 #include <optional>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include "openai/OpenAITypes.h"
 
 namespace magda {
 
@@ -189,59 +190,36 @@ public:
  * model choices for different stages of the pipeline.
  */
 struct ModelConfig {
-    // First stage: Operation identification (cost-effective, fast)
-    static constexpr const char* OPERATION_IDENTIFIER = "o3-mini";
-    // TODO: Use enum when llmcpp library is updated
-    // static constexpr OpenAI::Model OPERATION_IDENTIFIER_ENUM = OpenAI::Model::O3_Mini;
+    // First stage: Operation orchestration (cost-effective, fast)
+    static constexpr OpenAI::Model ORCHESTRATOR_AGENT = OpenAI::Model::GPT_4_1_Nano;
 
     // Second stage: Specialized agents (higher quality, structured output)
-    static constexpr const char* SPECIALIZED_AGENTS = "gpt-4.1";
-    // TODO: Use enum when llmcpp library is updated
-    // static constexpr OpenAI::Model SPECIALIZED_AGENTS_ENUM = OpenAI::Model::GPT_4_1;
+    static constexpr OpenAI::Model SPECIALIZED_AGENTS = OpenAI::Model::GPT_4_1;
 
     // Alternative for specialized agents (cost-effective but still high quality)
-    static constexpr const char* SPECIALIZED_AGENTS_MINI = "gpt-4.1-mini";
-    // TODO: Use enum when llmcpp library is updated
-    // static constexpr OpenAI::Model SPECIALIZED_AGENTS_MINI_ENUM = OpenAI::Model::GPT_4_1_Mini;
+    static constexpr OpenAI::Model SPECIALIZED_AGENTS_MINI = OpenAI::Model::GPT_4_1_Mini;
 
     // Fallback model for error cases
-    static constexpr const char* FALLBACK = "gpt-4o-mini";
-    // TODO: Use enum when llmcpp library is updated
-    // static constexpr OpenAI::Model FALLBACK_ENUM = OpenAI::Model::GPT_4o_Mini;
+    static constexpr OpenAI::Model FALLBACK = OpenAI::Model::GPT_4o_Mini;
 
     // Current model choices (easy to change in one place)
-    static constexpr const char* CURRENT_DECISION_AGENT = "o3-mini";
-    static constexpr const char* CURRENT_SPECIALIZED_AGENTS = "gpt-4.1-mini";
+    static constexpr OpenAI::Model CURRENT_DECISION_AGENT = OpenAI::Model::GPT_4_1_Mini;
+    static constexpr OpenAI::Model CURRENT_SPECIALIZED_AGENTS = OpenAI::Model::GPT_4o_Mini;
 
     // Convenience methods for common use cases
-    static std::string getOperationIdentifierModel() {
-        return OPERATION_IDENTIFIER;
+    static std::string getOrchestratorAgentModel() {
+        return OpenAI::toString(ORCHESTRATOR_AGENT);
     }
 
     static std::string getSpecializedAgentModel() {
-        return SPECIALIZED_AGENTS;
+        return OpenAI::toString(SPECIALIZED_AGENTS);
     }
 
     static std::string getFallbackModel() {
-        return FALLBACK;
+        return OpenAI::toString(FALLBACK);
     }
 
-    // TODO: Use enums when llmcpp library is updated
-    // static OpenAI::Model getOperationIdentifierEnum() {
-    //     return OPERATION_IDENTIFIER_ENUM;
-    // }
 
-    // static OpenAI::Model getSpecializedAgentEnum() {
-    //     return SPECIALIZED_AGENTS_ENUM;
-    // }
-
-    // static OpenAI::Model getSpecializedAgentMiniEnum() {
-    //     return SPECIALIZED_AGENTS_MINI_ENUM;
-    // }
-
-    // static OpenAI::Model getFallbackEnum() {
-    //     return FALLBACK_ENUM;
-    // }
 };
 
 } // namespace magda

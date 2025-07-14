@@ -32,8 +32,7 @@ nlohmann::json BaseAgent::parseOperationWithLLM(const std::string& operation,
         // Create LLM request with structured output
         LLMRequestConfig config;
         config.client = "openai";
-        config.model = ModelConfig::CURRENT_SPECIALIZED_AGENTS;  // Use current specialized agents model
-        config.maxTokens = 500;
+        config.model = ModelConfig::getSpecializedAgentModel();  // Use current specialized agents model
         config.temperature = 0.1f;
         config.schemaObject = schema.build();
         config.functionName = "parse_operation";

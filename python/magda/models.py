@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OperationType(str, Enum):
@@ -22,6 +22,8 @@ class OperationType(str, Enum):
 
 class Operation(BaseModel):
     """Model for a single operation."""
+
+    model_config = ConfigDict(extra="forbid")
 
     operation_type: OperationType = Field(..., description="Type of operation")
     parameters: dict[str, Any] = Field(
@@ -180,10 +182,32 @@ class MidiParameters(OperationParameters):
     track_id: str | None = Field(None, description="Target track ID")
 
 
+ParameterUnion = TrackParameters | ClipParameters | VolumeParameters | MidiParameters
+
+
+class IdentifiedOperation(BaseModel):
+    """Model for an operation as identified by the orchestrator agent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: str = Field(
+        ..., description="Operation type (track, clip, volume, effect, midi)"
+    )
+    description: str = Field(
+        ..., description="Human-readable description of the operation"
+    )
+    parameters: ParameterUnion = Field(
+        default_factory=lambda: TrackParameters(vst=None, name=None, type=None),
+        description="Operation parameters",
+    )
+
+
 class OperationList(BaseModel):
     """Model for a list of operations."""
 
-    operations: list[Operation] = Field(
+    model_config = ConfigDict(extra="forbid")
+
+    operations: list[IdentifiedOperation] = Field(
         ..., description="List of identified operations"
     )
 

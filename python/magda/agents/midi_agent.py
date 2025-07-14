@@ -5,6 +5,7 @@ from typing import Any
 import openai
 from dotenv import load_dotenv
 
+from ..config import APIConfig, ModelConfig
 from ..models import MIDIResult
 from ..prompt_loader import get_prompt
 from .base import BaseAgent
@@ -85,11 +86,11 @@ class MidiAgent(BaseAgent):
 
         try:
             response = self.client.responses.parse(
-                model="gpt-4.1",
+                model=ModelConfig.SPECIALIZED_AGENTS,
                 instructions=instructions,
                 input=operation,
                 text_format=MIDIResult,
-                temperature=0.1,
+                temperature=APIConfig.DEFAULT_TEMPERATURE,
             )
 
             # The parse method returns the parsed object directly

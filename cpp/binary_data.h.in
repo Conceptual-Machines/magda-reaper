@@ -1,0 +1,61 @@
+#pragma once
+
+#include <cstddef>
+#include <string>
+
+namespace magda {
+
+/**
+ * @brief Binary data structure for embedded prompts and schemas
+ */
+struct BinaryData {
+    const char* name;
+    const char* data;
+    size_t size;
+};
+
+// Binary data content
+@BINARY_DATA_CONTENT@
+
+/**
+ * @brief Get binary data by name
+ * @param name Name of the data (without extension)
+ * @return Pointer to binary data structure, or nullptr if not found
+ */
+inline const BinaryData* getBinaryData(const std::string& name) {
+    // Simple lookup for now - could be optimized with a map if needed
+    if (name == "orchestrator_agent") {
+        static const BinaryData data = {"orchestrator_agent", orchestrator_agent_prompt_data, orchestrator_agent_prompt_size};
+        return &data;
+    } else if (name == "track_agent") {
+        static const BinaryData data = {"track_agent", track_agent_prompt_data, track_agent_prompt_size};
+        return &data;
+    } else if (name == "effect_agent") {
+        static const BinaryData data = {"effect_agent", effect_agent_prompt_data, effect_agent_prompt_size};
+        return &data;
+    } else if (name == "volume_agent") {
+        static const BinaryData data = {"volume_agent", volume_agent_prompt_data, volume_agent_prompt_size};
+        return &data;
+    } else if (name == "midi_agent") {
+        static const BinaryData data = {"midi_agent", midi_agent_prompt_data, midi_agent_prompt_size};
+        return &data;
+    } else if (name == "clip_agent") {
+        static const BinaryData data = {"clip_agent", clip_agent_prompt_data, clip_agent_prompt_size};
+        return &data;
+    }
+    return nullptr;
+}
+
+/**
+ * @brief Convert binary data to string
+ * @param data Binary data structure
+ * @return String representation
+ */
+inline std::string binaryDataToString(const BinaryData* data) {
+    if (!data || !data->data) {
+        return "";
+    }
+    return std::string(data->data, data->size);
+}
+
+} // namespace magda

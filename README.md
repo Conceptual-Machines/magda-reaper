@@ -2,7 +2,6 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
-[![codecov](https://codecov.io/gh/lucaromagnoli/magda/branch/main/graph/badge.svg)](https://codecov.io/gh/lucaromagnoli/magda)
 
 # MAGDA
 
@@ -51,15 +50,69 @@ MAGDA is implemented in both **Python** and **C++** to provide maximum flexibili
 - **Cross-platform** compatibility
 - **Production-ready** DAW integration
 
-### Dual-Stage Pipeline
+### Two-Stage Pipeline Architecture
 
-1. **Operation Identifier Agent** (`o3-mini`): Analyzes prompts and identifies operations
-2. **Specialized Agents** (`gpt-4.1`): Handle specific DAW operations:
-   - **Track Agent**: Create, modify, and manage tracks
-   - **Clip Agent**: Handle audio/MIDI clips and regions
-   - **Volume Agent**: Control track and clip volumes
-   - **Effect Agent**: Apply and configure audio effects
-   - **MIDI Agent**: Manage MIDI data and events
+MAGDA uses a sophisticated two-stage pipeline that separates **operation identification** from **command generation** for optimal performance and accuracy:
+
+#### Stage 1: Orchestration & Analysis
+The **Orchestrator Agent** (`gpt-4.1-nano`) acts as the "brain" of the system:
+- **Natural Language Understanding**: Parses complex, multi-step prompts
+- **Operation Identification**: Determines which DAW operations are needed
+- **Context Analysis**: Understands track references, effect chains, and dependencies
+- **Workflow Planning**: Orders operations logically (create track → add effect → set volume)
+
+#### Stage 2: Specialized Command Generation
+**Specialized Agents** (`gpt-4o-mini`) handle domain-specific operations:
+- **Track Agent**: Create, modify, rename, and manage tracks
+- **Clip Agent**: Handle audio/MIDI clips, regions, and editing operations
+- **Volume Agent**: Control track/clip volumes, fades, and mixing
+- **Effect Agent**: Apply and configure audio effects and plugins
+- **MIDI Agent**: Manage MIDI data, quantization, and note manipulation
+
+#### Pipeline Flow Diagram
+
+```mermaid
+graph TD
+    A[Natural Language Prompt] --> B[Orchestrator Agent<br/>gpt-4.1-nano]
+    B --> C{Analyze & Identify<br/>Operations}
+
+    C --> D[Track Operations]
+    C --> E[Clip Operations]
+    C --> F[Volume Operations]
+    C --> G[Effect Operations]
+    C --> H[MIDI Operations]
+
+    D --> I[Track Agent<br/>gpt-4o-mini]
+    E --> J[Clip Agent<br/>gpt-4o-mini]
+    F --> K[Volume Agent<br/>gpt-4o-mini]
+    G --> L[Effect Agent<br/>gpt-4o-mini]
+    H --> M[MIDI Agent<br/>gpt-4o-mini]
+
+    I --> N[Structured DAW Commands]
+    J --> N
+    K --> N
+    L --> N
+    M --> N
+
+    N --> O[Validated Output<br/>JSON Schema]
+
+    style B fill:#e1f5fe
+    style I fill:#f3e5f5
+    style J fill:#f3e5f5
+    style K fill:#f3e5f5
+    style L fill:#f3e5f5
+    style M fill:#f3e5f5
+    style O fill:#e8f5e8
+```
+
+#### Benefits of Two-Stage Design
+
+**🎯 Accuracy**: Orchestrator ensures correct operation identification before execution
+**⚡ Performance**: Specialized agents are optimized for their specific domains
+**🔄 Scalability**: Easy to add new agent types without changing the core pipeline
+**🛡️ Reliability**: Each stage validates its output with structured schemas
+**💰 Cost Efficiency**: Uses faster, cheaper models for specialized tasks
+**🧠 Intelligence**: Orchestrator can handle complex reasoning and multi-step workflows
 
 ## 🚀 Quick Start
 
@@ -191,8 +244,8 @@ OPENAI_API_KEY=your_openai_api_key_here
 ### Model Selection
 
 MAGDA uses different models for different tasks:
-- **Operation Identifier**: `o3-mini` (reasoning and analysis)
-- **Specialized Agents**: `gpt-4.1` (structured output generation)
+- **Orchestrator Agent**: `gpt-4.1-nano` (fast, accurate operation identification)
+- **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective DAW command generation)
 
 ## 🧪 Testing
 
@@ -239,7 +292,7 @@ magda/
 │   │   └── agents/
 │   │       ├── __init__.py
 │   │       ├── base.py      # Base agent class
-│   │       ├── operation_identifier.py
+│   │       ├── orchestrator_agent.py
 │   │       ├── track_agent.py
 │   │       ├── clip_agent.py
 │   │       ├── volume_agent.py
@@ -291,7 +344,7 @@ The release script will:
 1. Create a new agent class inheriting from `BaseAgent`
 2. Implement the `process` method with structured output
 3. Add the agent to the pipeline's agent registry
-4. Update the operation identifier to recognize new operations
+4. Update the orchestrator agent to recognize new operations
 
 ### Contributing
 
@@ -303,7 +356,7 @@ The release script will:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
 
 
@@ -318,10 +371,10 @@ For questions, issues, or contributions:
 
 MAGDA uses multiple OpenAI models for different stages of the pipeline. The defaults are:
 
-- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate reasoning)
+- **Orchestrator Agent**: `gpt-4.1-nano` (fast, accurate operation identification)
 - **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective for DAW commands)
 
-You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex or creative tasks, you may use larger models (e.g., `gpt-4o`, `o3-mini`, `o1-pro`) as a fallback.
+You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex reasoning tasks, you may use O-series models (e.g., `o3-mini`, `o1-pro`) which excel at multi-step reasoning but are slower and more expensive.
 
 ### Model Summary Table
 | Model           | Latency | Token Usage | Cost | Reasoning | Recommended For         |
@@ -329,7 +382,8 @@ You can override the model for any agent or operation by passing a `model` param
 | gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
 | gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
 | gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐⭐        | Fallback, complex tasks|
-| o3-mini, o1-pro | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Only if needed         |
+| o3-mini         | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
+| o1-pro          | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
 
 ## 📊 Model Benchmarking
 

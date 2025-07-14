@@ -69,14 +69,6 @@ jobs:
       run: |
         uv run pytest --cov=magda --cov-report=xml --cov-report=term-missing --ignore=tests/test_simple_integration.py
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./python/coverage.xml
-        flags: python-tests
-        name: codecov-python
-        fail_ci_if_error: false
-
     - name: Upload test artifacts
       if: failure()
       uses: actions/upload-artifact@v4

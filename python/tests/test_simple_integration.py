@@ -19,7 +19,7 @@ class TestSimpleIntegration:
         return MAGDAPipeline()
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_basic_track_creation(self, mock_identify, pipeline):
         """Test basic track creation."""
@@ -51,7 +51,7 @@ class TestSimpleIntegration:
             print(f"✓ Track creation passed: {result}")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_volume_adjustment(self, mock_identify, pipeline):
         """Test volume adjustment."""
@@ -83,7 +83,7 @@ class TestSimpleIntegration:
             print(f"✓ Volume adjustment passed: {result}")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_effect_addition(self, mock_identify, pipeline):
         """Test effect addition."""
@@ -115,7 +115,7 @@ class TestSimpleIntegration:
             print(f"✓ Effect addition passed: {result}")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_spanish_prompt(self, mock_identify, pipeline):
         """Test Spanish prompt."""
@@ -147,7 +147,7 @@ class TestSimpleIntegration:
             print(f"✓ Spanish prompt passed: {result}")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_french_prompt(self, mock_identify, pipeline):
         """Test French prompt."""

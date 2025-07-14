@@ -78,7 +78,7 @@ class ModelPerformanceTester:
             # Make a direct API call to test the model
             from magda.prompt_loader import get_prompt
 
-            instructions = get_prompt("operation_identifier")
+            instructions = get_prompt("orchestrator_agent")
 
             print(f"DEBUG: Making direct API call to {model}")
             response = self.client.responses.create(

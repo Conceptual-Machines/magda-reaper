@@ -1,10 +1,11 @@
-import json
 import os
 from typing import Any
 
 import openai
 from dotenv import load_dotenv
 
+from magda.config import APIConfig, ModelConfig
+from magda.models import IdentifiedOperation, OperationList
 from magda.prompt_loader import get_prompt
 
 from .base import BaseAgent
@@ -12,7 +13,7 @@ from .base import BaseAgent
 load_dotenv()
 
 
-class OperationIdentifier(BaseAgent):
+class OrchestratorAgent(BaseAgent):
     """Agent responsible for identifying operations in natural language prompts using LLM."""
 
     def __init__(self) -> None:
@@ -30,27 +31,31 @@ class OperationIdentifier(BaseAgent):
         operations = self.identify_operations_with_llm(prompt)
 
         return {
+            # Return Pydantic models directly
             "operations": operations,
             "original_prompt": prompt,
             "context": context or {},
         }
 
-    def identify_operations_with_llm(self, prompt: str) -> list[dict[str, Any]]:
+    def identify_operations_with_llm(self, prompt: str) -> list[IdentifiedOperation]:
         """Use LLM to identify operations in the prompt using reasoning with Responses API."""
 
-        instructions = get_prompt("operation_identifier")
+        instructions = get_prompt("orchestrator_agent")
 
-        operations: list[dict[str, Any]] = []
+        operations: list[IdentifiedOperation] = []
         try:
-            response = self.client.responses.create(
-                model="o3-mini", instructions=instructions, input=prompt
+            response = self.client.responses.parse(
+                model=ModelConfig.ORCHESTRATOR_AGENT,
+                instructions=instructions,
+                input=prompt,
+                text_format=OperationList,
+                temperature=APIConfig.DEFAULT_TEMPERATURE,
             )
-            content = response.output_text
-            if content is not None:
-                result = json.loads(content)
-                ops = result.get("operations", [])
-                if isinstance(ops, list):
-                    operations = ops
+
+            # The parse method returns the parsed object directly
+            if response.output_parsed is None:
+                return []
+            return response.output_parsed.operations
         except Exception as e:
             print(f"Error identifying operations: {e}")
         return operations
@@ -68,9 +73,9 @@ class OperationIdentifier(BaseAgent):
         current_context = {}
 
         for op in operations:
-            if op["type"] == "track":
+            if op.type == "track":
                 # Track creation creates context for subsequent operations
-                track_info = op.get("parameters", {})
+                track_info = op.parameters
                 current_context["track"] = track_info
                 operation_chain.append(
                     {"operation": op, "context": current_context.copy()}

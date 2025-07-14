@@ -11,8 +11,8 @@ MAGDAPipeline::MAGDAPipeline(const std::string& api_key) : api_key_(api_key) {
 }
 
 void MAGDAPipeline::initializeAgents() {
-    // Initialize operation identifier
-    operation_identifier_ = std::make_unique<OperationIdentifier>(api_key_);
+    // Initialize orchestrator agent
+    orchestrator_agent_ = std::make_unique<OrchestratorAgent>(api_key_);
 
     // Initialize specialized agents
     agents_["track"] = std::make_unique<TrackAgent>(api_key_);
@@ -24,12 +24,18 @@ void MAGDAPipeline::initializeAgents() {
 
 std::optional<PipelineResult> MAGDAPipeline::processPrompt(const std::string& prompt) {
     try {
+        // Input validation
+        if (prompt.empty() || prompt.find_first_not_of(" \t\n\r") == std::string::npos) {
+            std::cout << "Empty or whitespace-only prompt provided" << std::endl;
+            return PipelineResult({}, {}, context_);
+        }
+
         std::vector<Operation> operations;
         std::vector<std::string> daw_commands;
 
         // Stage 1: Identify operations
         std::cout << "Stage 1: Identifying operations..." << std::endl;
-        auto identification_result = operation_identifier_->identifyOperations(prompt);
+        auto identification_result = orchestrator_agent_->identifyOperations(prompt);
 
         if (!identification_result.success) {
             std::cout << "Error identifying operations: " << identification_result.error_message << std::endl;
