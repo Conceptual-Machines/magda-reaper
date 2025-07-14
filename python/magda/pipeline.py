@@ -26,11 +26,17 @@ class MAGDAPipeline:
 
     def process_prompt(self, prompt: str) -> dict[str, Any]:
         """Process a natural language prompt through the MAGDA pipeline with context awareness."""
-
+        context: dict[str, Any] = {}
         # Stage 1: Identify operations
         print("Stage 1: Identifying operations...")
-        identification_result = self.operation_identifier.execute(prompt)
-        operations = identification_result["operations"]
+        # Identify operations
+        operations = self.operation_identifier.execute(prompt, context).get(
+            "operations", []
+        )
+        # Convert to dict if needed
+        operations = [
+            op.model_dump() if hasattr(op, "model_dump") else op for op in operations
+        ]
 
         print(f"Identified {len(operations)} operations:")
         for op in operations:

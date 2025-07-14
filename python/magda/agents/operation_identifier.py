@@ -1,10 +1,11 @@
-import json
 import os
 from typing import Any
 
 import openai
 from dotenv import load_dotenv
 
+from magda.config import APIConfig, ModelConfig
+from magda.models import OperationList
 from magda.prompt_loader import get_prompt
 
 from .base import BaseAgent
@@ -42,15 +43,18 @@ class OperationIdentifier(BaseAgent):
 
         operations: list[dict[str, Any]] = []
         try:
-            response = self.client.responses.create(
-                model="o3-mini", instructions=instructions, input=prompt
+            response = self.client.responses.parse(
+                model=ModelConfig.OPERATION_IDENTIFIER,
+                instructions=instructions,
+                input=prompt,
+                text_format=OperationList,
+                temperature=APIConfig.DEFAULT_TEMPERATURE,
             )
-            content = response.output_text
-            if content is not None:
-                result = json.loads(content)
-                ops = result.get("operations", [])
-                if isinstance(ops, list):
-                    operations = ops
+
+            # The parse method returns the parsed object directly
+            if response.output_parsed is None:
+                return []
+            return response.output_parsed.operations
         except Exception as e:
             print(f"Error identifying operations: {e}")
         return operations
