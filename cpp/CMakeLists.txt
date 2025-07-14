@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(magda_cpp VERSION 0.2.3 LANGUAGES CXX)
+project(magda_cpp VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++20 standard
 set(CMAKE_CXX_STANDARD 20)
