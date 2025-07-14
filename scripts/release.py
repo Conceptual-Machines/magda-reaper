@@ -144,17 +144,6 @@ def main():
     print("🎵 MAGDA Release Script")
     print("=" * 50)
 
-    # Check if we're on main branch
-    result = run_command(["git", "branch", "--show-current"], check=False)
-    current_branch = result.stdout.strip()
-    if current_branch != "main":
-        print(f"⚠️  Warning: You're on branch '{current_branch}', not 'main'")
-        if not args.dry_run:
-            response = input("Continue anyway? (y/N): ")
-            if response.lower() != "y":
-                print("Aborted.")
-                sys.exit(1)
-
     # Check git status
     if not check_git_status() and not args.dry_run:
         print("❌ Error: Git working directory is not clean")
