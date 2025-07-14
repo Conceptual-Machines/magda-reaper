@@ -5,7 +5,7 @@ import openai
 from dotenv import load_dotenv
 
 from magda.config import APIConfig, ModelConfig
-from magda.models import OperationList
+from magda.models import IdentifiedOperation, OperationList
 from magda.prompt_loader import get_prompt
 
 from .base import BaseAgent
@@ -31,17 +31,18 @@ class OperationIdentifier(BaseAgent):
         operations = self.identify_operations_with_llm(prompt)
 
         return {
+            # Return Pydantic models directly
             "operations": operations,
             "original_prompt": prompt,
             "context": context or {},
         }
 
-    def identify_operations_with_llm(self, prompt: str) -> list[dict[str, Any]]:
+    def identify_operations_with_llm(self, prompt: str) -> list[IdentifiedOperation]:
         """Use LLM to identify operations in the prompt using reasoning with Responses API."""
 
         instructions = get_prompt("operation_identifier")
 
-        operations: list[dict[str, Any]] = []
+        operations: list[IdentifiedOperation] = []
         try:
             response = self.client.responses.parse(
                 model=ModelConfig.OPERATION_IDENTIFIER,
@@ -72,9 +73,9 @@ class OperationIdentifier(BaseAgent):
         current_context = {}
 
         for op in operations:
-            if op["type"] == "track":
+            if op.type == "track":
                 # Track creation creates context for subsequent operations
-                track_info = op.get("parameters", {})
+                track_info = op.parameters
                 current_context["track"] = track_info
                 operation_chain.append(
                     {"operation": op, "context": current_context.copy()}

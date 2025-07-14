@@ -1,0 +1,74 @@
+[
+  {
+    "model": "gpt-4.1",
+    "prompt": "Create a new track called 'Bass'",
+    "latency_ms": 224.43103790283203,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "success": false,
+    "error": "Error code: 401 - {'error': {'message': 'Incorrect API key provided: test-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
+    "daw_commands": null,
+    "operations_count": 0
+  },
+  {
+    "model": "gpt-4.1",
+    "prompt": "Set the volume of track 'Bass' to -3dB",
+    "latency_ms": 193.81213188171387,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "success": false,
+    "error": "Error code: 401 - {'error': {'message': 'Incorrect API key provided: test-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
+    "daw_commands": null,
+    "operations_count": 0
+  },
+  {
+    "model": "gpt-4.1",
+    "prompt": "Add reverb to the 'Bass' track",
+    "latency_ms": 196.48098945617676,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "success": false,
+    "error": "Error code: 401 - {'error': {'message': 'Incorrect API key provided: test-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
+    "daw_commands": null,
+    "operations_count": 0
+  },
+  {
+    "model": "gpt-4.1-mini",
+    "prompt": "Create a new track called 'Bass'",
+    "latency_ms": 189.0542507171631,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "success": false,
+    "error": "Error code: 401 - {'error': {'message': 'Incorrect API key provided: test-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
+    "daw_commands": null,
+    "operations_count": 0
+  },
+  {
+    "model": "gpt-4.1-mini",
+    "prompt": "Set the volume of track 'Bass' to -3dB",
+    "latency_ms": 188.62223625183105,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "success": false,
+    "error": "Error code: 401 - {'error': {'message': 'Incorrect API key provided: test-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
+    "daw_commands": null,
+    "operations_count": 0
+  },
+  {
+    "model": "gpt-4.1-mini",
+    "prompt": "Add reverb to the 'Bass' track",
+    "latency_ms": 190.00792503356934,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "success": false,
+    "error": "Error code: 401 - {'error': {'message': 'Incorrect API key provided: test-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
+    "daw_commands": null,
+    "operations_count": 0
+  }
+]

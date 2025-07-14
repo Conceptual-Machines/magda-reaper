@@ -197,7 +197,8 @@ class IdentifiedOperation(BaseModel):
         ..., description="Human-readable description of the operation"
     )
     parameters: ParameterUnion = Field(
-        default_factory=dict, description="Operation parameters"
+        default_factory=lambda: TrackParameters(vst=None, name=None, type=None),
+        description="Operation parameters",
     )
 
 
