@@ -3,11 +3,19 @@ Pytest configuration for integration tests.
 """
 
 import os
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from dotenv import load_dotenv
 
 from magda.models import AgentResponse, Operation, OperationType
+
+# Load environment variables from .env file in project root
+project_root = Path(__file__).parent.parent.parent
+env_file = project_root / ".env"
+if env_file.exists():
+    load_dotenv(env_file)
 
 
 @pytest.fixture(scope="session")

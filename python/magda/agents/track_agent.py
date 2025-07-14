@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from ..config import APIConfig, ModelConfig
 from ..models import TrackResult
 from ..prompt_loader import get_prompt
+from ..utils import assess_task_complexity, retry_with_backoff, select_model_for_task
 from .base import BaseAgent
 
 load_dotenv()
@@ -20,7 +21,10 @@ class TrackAgent(BaseAgent):
         super().__init__()
         self.name = "track"
         self.created_tracks: dict[str, Any] = {}
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = openai.OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            timeout=APIConfig.SPECIALIZED_AGENT_TIMEOUT,
+        )
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle track operations."""
@@ -61,26 +65,62 @@ class TrackAgent(BaseAgent):
         }
 
     def _parse_track_operation_with_llm(self, operation: str) -> dict[str, Any]:
-        """Use LLM to parse track operation and extract parameters using Responses API."""
+        """Use LLM to parse track operation and extract parameters using dynamic model selection and retry logic."""
 
         instructions = get_prompt("track_agent")
 
-        try:
-            response = self.client.responses.parse(
-                model=ModelConfig.SPECIALIZED_AGENTS,
-                instructions=instructions,
-                input=operation,
-                text_format=TrackResult,
-                temperature=APIConfig.DEFAULT_TEMPERATURE,
-            )
+        # Assess task complexity and select appropriate model
+        complexity = assess_task_complexity(operation)
+        selected_model = select_model_for_task("specialized", complexity, operation)
+
+        print(
+            f"Track agent - Task complexity: {complexity}, using model: {selected_model}"
+        )
+
+        def _make_api_call() -> dict[str, Any]:
+            """Make the API call with retry logic."""
+            params = {
+                "model": selected_model,
+                "instructions": instructions,
+                "input": operation,
+                "text_format": TrackResult,
+            }
+
+            # Only add temperature for models that support it
+            if not selected_model.startswith("o3"):
+                params["temperature"] = APIConfig.DEFAULT_TEMPERATURE
+
+            response = self.client.responses.parse(**params)
 
             # The parse method returns the parsed object directly
             if response.output_parsed is None:
                 return {}
             return response.output_parsed.model_dump()
 
+        # Use retry logic with exponential backoff
+        try:
+            result = retry_with_backoff(_make_api_call)
+            return result
         except Exception as e:
-            print(f"Error parsing track operation: {e}")
+            print(f"All retries failed for track agent: {e}")
+            # Fallback to a simpler model if the selected model fails
+            if selected_model != ModelConfig.FALLBACK_MODELS["specialized"]:
+                print(f"Falling back to {ModelConfig.FALLBACK_MODELS['specialized']}")
+                try:
+                    fallback_params = {
+                        "model": ModelConfig.FALLBACK_MODELS["specialized"],
+                        "instructions": instructions,
+                        "input": operation,
+                        "text_format": TrackResult,
+                        "temperature": APIConfig.DEFAULT_TEMPERATURE,
+                    }
+                    response = self.client.responses.parse(**fallback_params)
+                    if response.output_parsed is None:
+                        return {}
+                    return response.output_parsed.model_dump()
+                except Exception as fallback_error:
+                    print(f"Fallback model also failed: {fallback_error}")
+                    return {}
             return {}
 
     def _generate_daw_command(self, track: TrackResult) -> str:

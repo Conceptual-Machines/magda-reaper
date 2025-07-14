@@ -1,7 +1,7 @@
 [project]
 name = "magda"
-version = "1.0.0"
-description = "Multi Agent Generative DAW API - Translate natural language prompts into DAW commands"
+version = "1.1.0"
+description = "Multi Agent Domain Automation - Translate natural language prompts into domain-specific commands"
 readme = "../README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -20,6 +20,12 @@ dev = [
     "safety>=2.3.0",
     "build>=1.0.0",
     "pre-commit>=3.7.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-autorefs>=0.5.0"
 ]
 
 [project.scripts]

@@ -1,0 +1,864 @@
+{
+  "metadata": {
+    "timestamp": "2025-07-14T22:04:15.086761",
+    "total_results": 51,
+    "approaches": [
+      "pipeline",
+      "semantic",
+      "algorithmic"
+    ]
+  },
+  "results": [
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Simple volume command",
+        "prompt": "set volume to -6db",
+        "expected_complexity": "simple",
+        "expected_operation": "volume"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 1293.752665980719
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Simple track creation",
+        "prompt": "create new track called guitar",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 172.7647500229068
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Simple mute command",
+        "prompt": "mute drums",
+        "expected_complexity": "simple",
+        "expected_operation": "volume"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 224.09908298868686
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Simple effect addition",
+        "prompt": "add reverb to bass track",
+        "expected_complexity": "simple",
+        "expected_operation": "effect"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 147.7590419817716
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Track + effect combination",
+        "prompt": "create track and add reverb",
+        "expected_complexity": "medium",
+        "expected_operation": "track"
+      },
+      "complexity": "medium",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 162.49862499535084
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Multiple volume operations",
+        "prompt": "mute drums and set bass volume -3db",
+        "expected_complexity": "medium",
+        "expected_operation": "volume"
+      },
+      "complexity": "medium",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 230.87479200330563
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Effect with parameters",
+        "prompt": "add compression to guitar track",
+        "expected_complexity": "medium",
+        "expected_operation": "effect"
+      },
+      "complexity": "medium",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 210.17249999567866
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Clip creation",
+        "prompt": "create 4 bar clip on drums track",
+        "expected_complexity": "medium",
+        "expected_operation": "clip"
+      },
+      "complexity": "medium",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 163.53645900380798
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Multi-step operation",
+        "prompt": "create track add reverb set volume -3db export mix",
+        "expected_complexity": "complex",
+        "expected_operation": "track"
+      },
+      "complexity": "complex",
+      "orchestrator_model": "o3-mini",
+      "specialized_model": "gpt-4.1",
+      "needs_reasoning": false,
+      "expected_complexity": "complex",
+      "complexity_correct": true,
+      "latency_ms": 242.65729100443423
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Conditional logic",
+        "prompt": "if guitar track exists add reverb 30% wet otherwise create it first",
+        "expected_complexity": "complex",
+        "expected_operation": "effect"
+      },
+      "complexity": "complex",
+      "orchestrator_model": "o3-mini",
+      "specialized_model": "gpt-4.1",
+      "needs_reasoning": false,
+      "expected_complexity": "complex",
+      "complexity_correct": true,
+      "latency_ms": 233.2053749996703
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Complex multi-step with parameters",
+        "prompt": "create bass track with serum add compression 4:1 ratio set volume -6db pan left",
+        "expected_complexity": "complex",
+        "expected_operation": "track"
+      },
+      "complexity": "complex",
+      "orchestrator_model": "o3-mini",
+      "specialized_model": "gpt-4.1",
+      "needs_reasoning": false,
+      "expected_complexity": "complex",
+      "complexity_correct": true,
+      "latency_ms": 180.83162500988692
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Track + clip with specific parameters",
+        "prompt": "create a track called bass and add a 8 bar clip starting from bar 17",
+        "expected_complexity": "medium",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": false,
+      "latency_ms": 159.9404160224367
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Spanish track creation",
+        "prompt": "crea una nueva pista llamada guitarra",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 248.22199999471195
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "French track creation",
+        "prompt": "ajoute une nouvelle piste nomm\u00e9e guitare",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 245.82949999603443
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Japanese track creation",
+        "prompt": "\u65b0\u3057\u3044\u30c8\u30e9\u30c3\u30af\u300c\u30ae\u30bf\u30fc\u300d\u3092\u4f5c\u6210\u3057\u3066\u304f\u3060\u3055\u3044",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "medium",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": false,
+      "latency_ms": 255.99166698521003
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Invalid input",
+        "prompt": "this is not a valid daw command",
+        "expected_complexity": "simple",
+        "expected_operation": "unknown"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 262.0123329979833
+    },
+    {
+      "approach": "algorithmic",
+      "test_case": {
+        "description": "Nonsense input",
+        "prompt": "random text that doesn't make sense",
+        "expected_complexity": "simple",
+        "expected_operation": "unknown"
+      },
+      "complexity": "simple",
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 168.3347919897642
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Simple volume command",
+        "prompt": "set volume to -6db",
+        "expected_complexity": "simple",
+        "expected_operation": "volume"
+      },
+      "complexity": "simple",
+      "operation_type": "volume",
+      "confidence": 1.0,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 172.3821659979876
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Simple track creation",
+        "prompt": "create new track called guitar",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "operation_type": "track",
+      "confidence": 1.0,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 178.6980839970056
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Simple mute command",
+        "prompt": "mute drums",
+        "expected_complexity": "simple",
+        "expected_operation": "volume"
+      },
+      "complexity": "simple",
+      "operation_type": "volume",
+      "confidence": 1.0000001192092896,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 176.83166699134745
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Simple effect addition",
+        "prompt": "add reverb to bass track",
+        "expected_complexity": "simple",
+        "expected_operation": "effect"
+      },
+      "complexity": "simple",
+      "operation_type": "effect",
+      "confidence": 1.0,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 172.74379197624512
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Track + effect combination",
+        "prompt": "create track and add reverb",
+        "expected_complexity": "medium",
+        "expected_operation": "track"
+      },
+      "complexity": "medium",
+      "operation_type": "effect",
+      "confidence": 1.0,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 181.35404100758024
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Multiple volume operations",
+        "prompt": "mute drums and set bass volume -3db",
+        "expected_complexity": "medium",
+        "expected_operation": "volume"
+      },
+      "complexity": "medium",
+      "operation_type": "volume",
+      "confidence": 1.0,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 388.31500001833774
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Effect with parameters",
+        "prompt": "add compression to guitar track",
+        "expected_complexity": "medium",
+        "expected_operation": "effect"
+      },
+      "complexity": "medium",
+      "operation_type": "effect",
+      "confidence": 0.8901509046554565,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 181.82491601328366
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Clip creation",
+        "prompt": "create 4 bar clip on drums track",
+        "expected_complexity": "medium",
+        "expected_operation": "clip"
+      },
+      "complexity": "medium",
+      "operation_type": "clip",
+      "confidence": 0.6489543914794922,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": true,
+      "latency_ms": 188.46750000375323
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Multi-step operation",
+        "prompt": "create track add reverb set volume -3db export mix",
+        "expected_complexity": "complex",
+        "expected_operation": "track"
+      },
+      "complexity": "complex",
+      "operation_type": "effect",
+      "confidence": 1.0,
+      "orchestrator_model": "o3-mini",
+      "specialized_model": "gpt-4.1",
+      "needs_reasoning": false,
+      "expected_complexity": "complex",
+      "complexity_correct": true,
+      "latency_ms": 182.45012499392033
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Conditional logic",
+        "prompt": "if guitar track exists add reverb 30% wet otherwise create it first",
+        "expected_complexity": "complex",
+        "expected_operation": "effect"
+      },
+      "complexity": "complex",
+      "operation_type": "effect",
+      "confidence": 1.0000001192092896,
+      "orchestrator_model": "o3-mini",
+      "specialized_model": "gpt-4.1",
+      "needs_reasoning": false,
+      "expected_complexity": "complex",
+      "complexity_correct": true,
+      "latency_ms": 189.26691700471565
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Complex multi-step with parameters",
+        "prompt": "create bass track with serum add compression 4:1 ratio set volume -6db pan left",
+        "expected_complexity": "complex",
+        "expected_operation": "track"
+      },
+      "complexity": "complex",
+      "operation_type": "volume",
+      "confidence": 1.0000001192092896,
+      "orchestrator_model": "o3-mini",
+      "specialized_model": "gpt-4.1",
+      "needs_reasoning": false,
+      "expected_complexity": "complex",
+      "complexity_correct": true,
+      "latency_ms": 192.21599999582395
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Track + clip with specific parameters",
+        "prompt": "create a track called bass and add a 8 bar clip starting from bar 17",
+        "expected_complexity": "medium",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "operation_type": "clip",
+      "confidence": 0.5880092978477478,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "medium",
+      "complexity_correct": false,
+      "latency_ms": 176.94291597581469
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Spanish track creation",
+        "prompt": "crea una nueva pista llamada guitarra",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "operation_type": "track",
+      "confidence": 0.3181304931640625,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 177.2199160186574
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "French track creation",
+        "prompt": "ajoute une nouvelle piste nomm\u00e9e guitare",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "simple",
+      "operation_type": "track",
+      "confidence": 0.42043763399124146,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 179.60845900233835
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Japanese track creation",
+        "prompt": "\u65b0\u3057\u3044\u30c8\u30e9\u30c3\u30af\u300c\u30ae\u30bf\u30fc\u300d\u3092\u4f5c\u6210\u3057\u3066\u304f\u3060\u3055\u3044",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "complexity": "medium",
+      "operation_type": "midi",
+      "confidence": 0.1737222969532013,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": false,
+      "latency_ms": 193.60841598245315
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Invalid input",
+        "prompt": "this is not a valid daw command",
+        "expected_complexity": "simple",
+        "expected_operation": "unknown"
+      },
+      "complexity": "simple",
+      "operation_type": "effect",
+      "confidence": 0.18377065658569336,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 462.2748749970924
+    },
+    {
+      "approach": "semantic",
+      "test_case": {
+        "description": "Nonsense input",
+        "prompt": "random text that doesn't make sense",
+        "expected_complexity": "simple",
+        "expected_operation": "unknown"
+      },
+      "complexity": "simple",
+      "operation_type": "effect",
+      "confidence": 0.13961419463157654,
+      "orchestrator_model": "gpt-4.1-mini",
+      "specialized_model": "gpt-4.1-mini",
+      "needs_reasoning": false,
+      "expected_complexity": "simple",
+      "complexity_correct": true,
+      "latency_ms": 275.95954202115536
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Simple volume command",
+        "prompt": "set volume to -6db",
+        "expected_complexity": "simple",
+        "expected_operation": "volume"
+      },
+      "success": true,
+      "daw_commands": [
+        "volume(track:unknown, start:1, end:5)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 1882.9887920001056
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Simple track creation",
+        "prompt": "create new track called guitar",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "track(name:track_fdd5a953, id:fdd5a953-863f-4198-a298-243f1a873256)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 1380.637416994432
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Simple mute command",
+        "prompt": "mute drums",
+        "expected_complexity": "simple",
+        "expected_operation": "volume"
+      },
+      "success": true,
+      "daw_commands": [
+        "volume(track:drums, start:1, end:5)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 2132.43212501402
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Simple effect addition",
+        "prompt": "add reverb to bass track",
+        "expected_complexity": "simple",
+        "expected_operation": "effect"
+      },
+      "success": true,
+      "daw_commands": [
+        "effect(track:bass, type:reverb, position:insert, params:{wet_mix:0.5,dry_mix:0.5,threshold:0.0,ratio:1.0,attack:0.01,release:0.1,decay:2.0,feedback:0.0,delay_time:0.5,frequency:1000.0,q_factor:1.0,gain:0.0,wet:0.5,dry:0.5})"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 3294.439874996897
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Track + effect combination",
+        "prompt": "create track and add reverb",
+        "expected_complexity": "medium",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "effect(track:unknown, type:reverb, position:insert, params:{wet_mix:0.5,dry_mix:0.5,threshold:0.0,ratio:1.0,attack:0.001,release:0.001,decay:2.0,feedback:0.0,delay_time:0.001,frequency:1000.0,q_factor:1.0,gain:0.0,wet:0.5,dry:0.5})"
+      ],
+      "command_count": 1,
+      "expected_complexity": "medium",
+      "latency_ms": 2382.9966669727582
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Multiple volume operations",
+        "prompt": "mute drums and set bass volume -3db",
+        "expected_complexity": "medium",
+        "expected_operation": "volume"
+      },
+      "success": true,
+      "daw_commands": [
+        "volume(track:drums, start:1, end:5)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "medium",
+      "latency_ms": 4870.749875000911
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Effect with parameters",
+        "prompt": "add compression to guitar track",
+        "expected_complexity": "medium",
+        "expected_operation": "effect"
+      },
+      "success": true,
+      "daw_commands": [
+        "effect(track:guitar, type:compressor, position:insert, params:{wet_mix:1.0,dry_mix:0.0,threshold:-24.0,ratio:4.0,attack:0.01,release:0.1,decay:0.5,feedback:0.0,delay_time:0.01,frequency:1000.0,q_factor:1.0,gain:0.0})"
+      ],
+      "command_count": 1,
+      "expected_complexity": "medium",
+      "latency_ms": 2555.54500001017
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Clip creation",
+        "prompt": "create 4 bar clip on drums track",
+        "expected_complexity": "medium",
+        "expected_operation": "clip"
+      },
+      "success": true,
+      "daw_commands": [
+        "clip(track:drums, start:1, end:4)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "medium",
+      "latency_ms": 4113.997499982361
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Multi-step operation",
+        "prompt": "create track add reverb set volume -3db export mix",
+        "expected_complexity": "complex",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "effect(track:unknown, type:reverb, position:insert, params:{wet_mix:0.5,dry_mix:0.5,threshold:0.0,ratio:1.0,attack:0.01,release:0.1,decay:2.0,feedback:0.0,delay_time:0.5,frequency:1000.0,q_factor:1.0,gain:0.0,wet:0.5,dry:0.5})"
+      ],
+      "command_count": 1,
+      "expected_complexity": "complex",
+      "latency_ms": 2855.8907090045977
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Conditional logic",
+        "prompt": "if guitar track exists add reverb 30% wet otherwise create it first",
+        "expected_complexity": "complex",
+        "expected_operation": "effect"
+      },
+      "success": true,
+      "daw_commands": [
+        "effect(track:guitar, type:reverb, position:insert, params:{wet_mix:0.3,dry_mix:0.7,threshold:0.0,ratio:1.0,attack:0.01,release:0.1,decay:1.5,feedback:0.0,delay_time:0.25,frequency:1000.0,q_factor:1.0,gain:0.0,wet:0.3,dry:0.7})"
+      ],
+      "command_count": 1,
+      "expected_complexity": "complex",
+      "latency_ms": 3421.2825410068035
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Complex multi-step with parameters",
+        "prompt": "create bass track with serum add compression 4:1 ratio set volume -6db pan left",
+        "expected_complexity": "complex",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "effect(track:bass, type:compressor, position:insert, params:{wet_mix:1.0,dry_mix:1.0,threshold:-24.0,ratio:4.0,attack:0.01,release:0.1,decay:0.5,feedback:0.0,delay_time:0.01,frequency:100.0,q_factor:1.0,gain:0.0})"
+      ],
+      "command_count": 1,
+      "expected_complexity": "complex",
+      "latency_ms": 3121.813707984984
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Track + clip with specific parameters",
+        "prompt": "create a track called bass and add a 8 bar clip starting from bar 17",
+        "expected_complexity": "medium",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "track(name:track_1d4991b1, id:1d4991b1-e9ac-4ade-bcc3-d9f61ecba427)",
+        "clip(track:bass, start:17, end:24)"
+      ],
+      "command_count": 2,
+      "expected_complexity": "medium",
+      "latency_ms": 6461.259457981214
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Spanish track creation",
+        "prompt": "crea una nueva pista llamada guitarra",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "track(name:track_4fcc825f, id:4fcc825f-a992-4e88-894e-8fe777b3de51)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 1311.5545409964398
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "French track creation",
+        "prompt": "ajoute une nouvelle piste nomm\u00e9e guitare",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "track(name:track_e4eb3427, id:e4eb3427-e44a-414e-98a7-b6d1b884483a)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 1554.1763750079554
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Japanese track creation",
+        "prompt": "\u65b0\u3057\u3044\u30c8\u30e9\u30c3\u30af\u300c\u30ae\u30bf\u30fc\u300d\u3092\u4f5c\u6210\u3057\u3066\u304f\u3060\u3055\u3044",
+        "expected_complexity": "simple",
+        "expected_operation": "track"
+      },
+      "success": true,
+      "daw_commands": [
+        "track(name:track_c831fac0, id:c831fac0-914a-4f81-b1a0-6e548c5459c0)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 1328.72354099527
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Invalid input",
+        "prompt": "this is not a valid daw command",
+        "expected_complexity": "simple",
+        "expected_operation": "unknown"
+      },
+      "success": true,
+      "daw_commands": [
+        "midi(track:unknown)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 2064.37237499631
+    },
+    {
+      "approach": "pipeline",
+      "test_case": {
+        "description": "Nonsense input",
+        "prompt": "random text that doesn't make sense",
+        "expected_complexity": "simple",
+        "expected_operation": "unknown"
+      },
+      "success": true,
+      "daw_commands": [
+        "midi(track:unknown)"
+      ],
+      "command_count": 1,
+      "expected_complexity": "simple",
+      "latency_ms": 2238.6152079852764
+    }
+  ]
+}

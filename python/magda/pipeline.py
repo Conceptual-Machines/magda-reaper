@@ -1,3 +1,4 @@
+import signal
 from typing import Any
 
 from .agents.base import BaseAgent
@@ -7,7 +8,9 @@ from .agents.midi_agent import MidiAgent
 from .agents.orchestrator_agent import OrchestratorAgent
 from .agents.track_agent import TrackAgent
 from .agents.volume_agent import VolumeAgent
+from .config import APIConfig
 from .context_manager import ContextManager
+from .utils import fast_path_route
 
 
 class MAGDAPipeline:
@@ -24,19 +27,62 @@ class MAGDAPipeline:
             "midi": MidiAgent(),
         }
 
+    def _timeout_handler(self, signum, frame):
+        """Handle timeout signals."""
+        raise TimeoutError(
+            f"Operation timed out after {APIConfig.TOTAL_TIMEOUT} seconds"
+        )
+
+    def _execute_with_timeout(self, func, *args, **kwargs):
+        """Execute a function with a timeout."""
+        # Set up signal handler for timeout
+        old_handler = signal.signal(signal.SIGALRM, self._timeout_handler)
+        signal.alarm(APIConfig.TOTAL_TIMEOUT)
+
+        try:
+            result = func(*args, **kwargs)
+            signal.alarm(0)  # Cancel the alarm
+            return result
+        except TimeoutError:
+            raise TimeoutError(
+                f"Operation timed out after {APIConfig.TOTAL_TIMEOUT} seconds"
+            )
+        finally:
+            signal.signal(signal.SIGALRM, old_handler)  # Restore original handler
+
     def process_prompt(self, prompt: str) -> dict[str, Any]:
         """Process a natural language prompt through the MAGDA pipeline with context awareness."""
         context: dict[str, Any] = {}
-        # Stage 1: Identify operations
-        print("Stage 1: Identifying operations...")
-        # Identify operations
-        operations = self.orchestrator_agent.execute(prompt, context).get(
-            "operations", []
-        )
-        # Convert to dict if needed
-        operations = [
-            op.model_dump() if hasattr(op, "model_dump") else op for op in operations
-        ]
+
+        # Fast-path routing: Check if we can bypass the orchestrator
+        fast_operation_type = fast_path_route(prompt)
+
+        if fast_operation_type:
+            print(f"Fast-path routing: Direct to {fast_operation_type} agent")
+            # Create a simple operation structure for direct routing
+            operations = [
+                {"type": fast_operation_type, "description": prompt, "parameters": {}}
+            ]
+        else:
+            # Stage 1: Identify operations using orchestrator
+            print("Stage 1: Identifying operations...")
+            try:
+                orchestrator_result = self._execute_with_timeout(
+                    self.orchestrator_agent.execute, prompt, context
+                )
+                operations = orchestrator_result.get("operations", [])
+            except TimeoutError as e:
+                print(f"  ⏰ Timeout identifying operations: {e}")
+                operations = []
+            except Exception as e:
+                print(f"  ✗ Error identifying operations: {e}")
+                operations = []
+
+            # Convert to dict if needed
+            operations = [
+                op.model_dump() if hasattr(op, "model_dump") else op
+                for op in operations
+            ]
 
         print(f"Identified {len(operations)} operations:")
         for op in operations:
@@ -61,7 +107,7 @@ class MAGDAPipeline:
                 print(f"Warning: No agent found for operation type '{op_type}'")
                 continue
 
-            # Execute operation with context awareness
+            # Execute operation with context awareness and timeout
             try:
                 # Resolve track references in parameters
                 resolved_parameters = self._resolve_parameters(op_parameters)
@@ -77,8 +123,10 @@ class MAGDAPipeline:
                     **resolved_parameters,  # Include resolved parameters in context
                 }
 
-                # Execute with context
-                result = agent.execute(operation_text, agent_context)
+                # Execute with context and timeout
+                result = self._execute_with_timeout(
+                    agent.execute, operation_text, agent_context
+                )
                 results.append(result)
 
                 # Update context based on operation result
@@ -86,6 +134,8 @@ class MAGDAPipeline:
 
                 print(f"  ✓ {result['daw_command']}")
 
+            except TimeoutError as e:
+                print(f"  ⏰ Timeout executing {op_type} operation: {e}")
             except Exception as e:
                 print(f"  ✗ Error executing {op_type} operation: {e}")
 

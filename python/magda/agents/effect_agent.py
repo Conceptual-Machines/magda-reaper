@@ -1,13 +1,13 @@
 import os
-import uuid
 from typing import Any
 
 import openai
 from dotenv import load_dotenv
 
 from ..config import APIConfig, ModelConfig
-from ..models import EffectParameters, EffectResult
+from ..models import EffectResult
 from ..prompt_loader import get_prompt
+from ..utils import assess_task_complexity, retry_with_backoff, select_model_for_task
 from .base import BaseAgent
 
 load_dotenv()
@@ -19,19 +19,20 @@ class EffectAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__()
         self.name = "effect"
-        self.effects: dict[str, Any] = {}
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = openai.OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            timeout=APIConfig.SPECIALIZED_AGENT_TIMEOUT,
+        )
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle effect operations."""
         return operation.lower() in [
             "effect",
+            "add effect",
+            "remove effect",
             "reverb",
             "delay",
             "compressor",
-            "eq",
-            "filter",
-            "distortion",
         ]
 
     def execute(
@@ -39,56 +40,18 @@ class EffectAgent(BaseAgent):
     ) -> dict[str, Any]:
         """Execute effect operation using LLM with context awareness."""
         context = context or {}
-        context_manager = context.get("context_manager")
 
-        # Use LLM to parse effect operation and extract parameters
+        # Use LLM to parse effect operation and generate DAW command
         effect_info = self._parse_effect_operation_with_llm(operation)
-
-        # Get track information from context
-        track_id: str = "unknown"
-        if context_manager:
-            # Try to get track from context parameters
-            if "track_id" in context:
-                track_id = str(context["track_id"])
-            elif "track_daw_id" in context:
-                track_id = str(context["track_daw_id"])
-        else:
-            # Fallback to old context method
-            track_id = context.get("track_id", "unknown")
-            if track_id == "unknown":
-                track_context = context.get("track")
-                if track_context and "id" in track_context:
-                    track_id = str(track_context["id"])
-
-        # Generate unique effect ID
-        effect_id = str(uuid.uuid4())
 
         # Create effect result
         effect_result = EffectResult(
-            track_name=None,
-            track_id=track_id,
-            effect_type=effect_info.get("effect_type", "reverb"),
-            parameters=EffectParameters(
-                wet_mix=0.5,
-                dry_mix=0.5,
-                threshold=-20.0,
-                ratio=4.0,
-                attack=0.01,
-                release=0.1,
-                decay=0.5,
-                feedback=0.3,
-                delay_time=0.5,
-                frequency=1000.0,
-                q_factor=1.0,
-                gain=0.0,
-                wet=0.5,
-                dry=0.5,
-            ),
+            track_name=effect_info.get("track_name"),
+            effect_type=effect_info.get("effect_type"),
+            parameters=effect_info.get("parameters"),
+            track_id=effect_info.get("track_id"),
             position=effect_info.get("position", "insert"),
         )
-
-        # Store effect for future reference
-        self.effects[effect_id] = effect_result.model_dump()
 
         # Generate DAW command
         daw_command = self._generate_daw_command(effect_result)
@@ -100,43 +63,97 @@ class EffectAgent(BaseAgent):
         }
 
     def _parse_effect_operation_with_llm(self, operation: str) -> dict[str, Any]:
-        """Use LLM to parse effect operation and extract parameters using Responses API."""
+        """Use LLM to parse effect operation and extract parameters using dynamic model selection and retry logic."""
 
         instructions = get_prompt("effect_agent")
 
-        try:
-            response = self.client.responses.parse(
-                model=ModelConfig.SPECIALIZED_AGENTS,
-                instructions=instructions,
-                input=operation,
-                text_format=EffectResult,
-                temperature=APIConfig.DEFAULT_TEMPERATURE,
-            )
+        # Assess task complexity and select appropriate model
+        complexity = assess_task_complexity(operation)
+        selected_model = select_model_for_task("specialized", complexity, operation)
+
+        print(
+            f"Effect agent - Task complexity: {complexity}, using model: {selected_model}"
+        )
+
+        def _make_api_call() -> dict[str, Any]:
+            """Make the API call with retry logic."""
+            params = {
+                "model": selected_model,
+                "instructions": instructions,
+                "input": operation,
+                "text_format": EffectResult,
+            }
+
+            # Only add temperature for models that support it
+            if not selected_model.startswith("o3"):
+                params["temperature"] = APIConfig.DEFAULT_TEMPERATURE
+
+            response = self.client.responses.parse(**params)
 
             # The parse method returns the parsed object directly
             if response.output_parsed is None:
                 return {}
             return response.output_parsed.model_dump()
 
+        # Use retry logic with exponential backoff
+        try:
+            result = retry_with_backoff(_make_api_call)
+            return result
         except Exception as e:
-            print(f"Error parsing effect operation: {e}")
+            print(f"All retries failed for effect agent: {e}")
+            # Fallback to a simpler model if the selected model fails
+            if selected_model != ModelConfig.FALLBACK_MODELS["specialized"]:
+                print(f"Falling back to {ModelConfig.FALLBACK_MODELS['specialized']}")
+                try:
+                    fallback_params = {
+                        "model": ModelConfig.FALLBACK_MODELS["specialized"],
+                        "instructions": instructions,
+                        "input": operation,
+                        "text_format": EffectResult,
+                        "temperature": APIConfig.DEFAULT_TEMPERATURE,
+                    }
+                    response = self.client.responses.parse(**fallback_params)
+                    if response.output_parsed is None:
+                        return {}
+                    return response.output_parsed.model_dump()
+                except Exception as fallback_error:
+                    print(f"Fallback model also failed: {fallback_error}")
+                    return {}
             return {}
 
     def _generate_daw_command(self, effect: EffectResult) -> str:
         """Generate DAW command string from effect result."""
-        params = effect.parameters
-        if params is None:
-            return f"effect(track:{effect.track_id}, type:{effect.effect_type}, position:{effect.position})"
+        params = []
 
-        params_str = f"wet_mix:{params.wet_mix}, dry_mix:{params.dry_mix}"
-        if effect.effect_type == "compressor":
-            params_str += f", threshold:{params.threshold}, ratio:{params.ratio}"
-        elif effect.effect_type == "reverb":
-            params_str += f", decay:{params.decay}"
-        elif effect.effect_type == "delay":
-            params_str += f", feedback:{params.feedback}"
-        return f"effect(track:{effect.track_id}, type:{effect.effect_type}, position:{effect.position}, params:{{{params_str}}})"
+        # Track parameter
+        track_name = effect.track_name or effect.track_id or "unknown"
+        params.append(f"track:{track_name}")
+
+        # Effect type
+        if effect.effect_type:
+            params.append(f"type:{effect.effect_type}")
+
+        # Position
+        if effect.position:
+            params.append(f"position:{effect.position}")
+
+        # Parameters
+        if effect.parameters:
+            # Convert EffectParameters model to dict and filter out None values
+            param_dict = effect.parameters.model_dump(exclude_none=True)
+            if param_dict:
+                param_str = ",".join([f"{k}:{v}" for k, v in param_dict.items()])
+                params.append(f"params:{{{param_str}}}")
+
+        return f"effect({', '.join(params)})"
 
     def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can handle."""
-        return ["effect", "reverb", "delay", "compressor", "eq", "filter", "distortion"]
+        return [
+            "effect",
+            "add effect",
+            "remove effect",
+            "reverb",
+            "delay",
+            "compressor",
+        ]

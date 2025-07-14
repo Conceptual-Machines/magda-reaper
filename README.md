@@ -1,5 +1,5 @@
 [![CI/CD Pipeline](https://github.com/lucaromagnoli/magda/workflows/MAGDA%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/lucaromagnoli/magda/actions)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
 
@@ -12,112 +12,115 @@
    🎵 🎹 🎤 🐍 ⚡ 🦀
 
   Multi Agent
- Generic DAW API
+ Domain Automation
 ```
 
 </div>
 
-Multi Agent Generic DAW API
+**Multi Agent Domain Automation**
 
-MAGDA is an AI-driven system that translates natural language prompts into generic DAW (Digital Audio Workstation) commands using a multi-agent architecture powered by OpenAI's Responses API.
+MAGDA is a revolutionary AI-driven system that translates natural language prompts into domain-specific commands using a sophisticated multi-agent architecture. While currently implemented for DAW (Digital Audio Workstation) automation, the architecture is designed to support any domain - from desktop automation to cloud operations.
 
-## 🎵 Features
+## 🌟 Features
 
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4.1-green.svg)](https://openai.com/)
 [![Pydantic](https://img.shields.io/badge/Pydantic-2.11+-blue.svg)](https://pydantic.dev/)
 [![Multi-Agent](https://img.shields.io/badge/Architecture-Multi--Agent-orange.svg)](https://en.wikipedia.org/wiki/Multi-agent_system)
+[![Domain-Agnostic](https://img.shields.io/badge/Design-Domain--Agnostic-purple.svg)](https://en.wikipedia.org/wiki/Domain-driven_design)
 
-- **Natural Language Processing**: Convert plain English (and other languages) into precise DAW commands
-- **Multi-Agent Architecture**: Specialized agents for different DAW operations
+### 🎯 Core Capabilities
+- **Natural Language Processing**: Convert plain English into precise domain commands
+- **Multi-Agent Architecture**: Specialized agents for different operations
+- **Domain-Agnostic Design**: Support for any domain (DAW, Desktop, Web, Cloud, etc.)
+- **Host Integration**: Context-aware operations with host-provided data
 - **Structured Output**: Validated JSON responses with Pydantic models
 - **Multilingual Support**: Works with English, Spanish, French, German, Italian, and more
 - **Operation Chaining**: Handle complex multi-step operations in a single prompt
 - **Real-time Processing**: Fast response times with OpenAI's latest models
 
+### 🏗️ Supported Domains
+
+| Domain | Status | Description | Example Operations |
+|--------|--------|-------------|-------------------|
+| **DAW** | ✅ Implemented | Digital Audio Workstation automation | Create tracks, add effects, control volume |
+| **Desktop** | 🚧 Planned | Desktop automation | File operations, window management |
+| **Web** | 🚧 Planned | Browser automation | Navigation, form filling, scraping |
+| **Mobile** | 🚧 Planned | Mobile app automation | App interactions, device control |
+| **Cloud** | 🚧 Planned | Cloud platform automation | AWS, Azure, GCP operations |
+| **Business** | 🚧 Planned | Business process automation | CRM, email, reporting |
+
 ## 🏗️ Architecture
 
-MAGDA is implemented in both **Python** and **C++** to provide maximum flexibility and performance:
+MAGDA uses a **domain-agnostic architecture** that separates core functionality from domain-specific implementations:
 
-### Python Implementation
-- **High-level orchestration** and AI integration
-- **Multi-agent pipeline** with OpenAI's Responses API
-- **Rapid prototyping** and development
-- **Rich ecosystem** of AI/ML libraries
+### 🎯 Domain-Agnostic Core
 
-### C++ Implementation
-- **High-performance** core components
-- **Low-latency** audio processing
-- **Cross-platform** compatibility
-- **Production-ready** DAW integration
+```python
+# Core interfaces that work for any domain
+from magda.core.domain import DomainType, DomainAgent, DomainOrchestrator
+from magda.core.pipeline import MAGDACorePipeline
 
-### Two-Stage Pipeline Architecture
+# Domain-specific implementations
+from magda.domains.daw import DAWFactory
+from magda.domains.desktop import DesktopFactory  # Future
+from magda.domains.web import WebFactory         # Future
+```
 
-MAGDA uses a sophisticated two-stage pipeline that separates **operation identification** from **command generation** for optimal performance and accuracy:
+### 🏗️ Architecture Components
 
-#### Stage 1: Orchestration & Analysis
-The **Orchestrator Agent** (`gpt-4.1-nano`) acts as the "brain" of the system:
-- **Natural Language Understanding**: Parses complex, multi-step prompts
-- **Operation Identification**: Determines which DAW operations are needed
-- **Context Analysis**: Understands track references, effect chains, and dependencies
-- **Workflow Planning**: Orders operations logically (create track → add effect → set volume)
+#### **1. Domain-Agnostic Interfaces**
+- **`DomainAgent`**: Abstract base for all agents
+- **`DomainOrchestrator`**: Abstract base for orchestrators
+- **`DomainPipeline`**: Abstract base for pipelines
+- **`DomainFactory`**: Factory pattern for domain creation
 
-#### Stage 2: Specialized Command Generation
-**Specialized Agents** (`gpt-4o-mini`) handle domain-specific operations:
-- **Track Agent**: Create, modify, rename, and manage tracks
-- **Clip Agent**: Handle audio/MIDI clips, regions, and editing operations
-- **Volume Agent**: Control track/clip volumes, fades, and mixing
-- **Effect Agent**: Apply and configure audio effects and plugins
-- **MIDI Agent**: Manage MIDI data, quantization, and note manipulation
+#### **2. Domain Implementations**
+- **DAW Domain**: Track, Volume, Effect, Clip, MIDI agents
+- **Desktop Domain**: File, Window, App, System agents (planned)
+- **Web Domain**: Browser, Form, Navigation agents (planned)
 
-#### Pipeline Flow Diagram
+#### **3. Two-Stage Pipeline**
+1. **Orchestration**: Identify operations from natural language
+2. **Execution**: Route to specialized domain agents
+
+### 🔄 Pipeline Flow
 
 ```mermaid
 graph TD
-    A[Natural Language Prompt] --> B[Orchestrator Agent<br/>gpt-4.1-nano]
-    B --> C{Analyze & Identify<br/>Operations}
+    A[Natural Language Prompt] --> B[Domain-Agnostic Core]
+    B --> C{Domain Selection}
 
-    C --> D[Track Operations]
-    C --> E[Clip Operations]
-    C --> F[Volume Operations]
-    C --> G[Effect Operations]
-    C --> H[MIDI Operations]
+    C --> D[DAW Domain]
+    C --> E[Desktop Domain]
+    C --> F[Web Domain]
+    C --> G[Other Domains]
 
-    D --> I[Track Agent<br/>gpt-4o-mini]
-    E --> J[Clip Agent<br/>gpt-4o-mini]
-    F --> K[Volume Agent<br/>gpt-4o-mini]
-    G --> L[Effect Agent<br/>gpt-4o-mini]
-    H --> M[MIDI Agent<br/>gpt-4o-mini]
+    D --> H[DAW Orchestrator]
+    E --> I[Desktop Orchestrator]
+    F --> J[Web Orchestrator]
+    G --> K[Domain Orchestrator]
 
-    I --> N[Structured DAW Commands]
-    J --> N
-    K --> N
-    L --> N
-    M --> N
+    H --> L[DAW Agents]
+    I --> M[Desktop Agents]
+    J --> N[Web Agents]
+    K --> O[Domain Agents]
 
-    N --> O[Validated Output<br/>JSON Schema]
+    L --> P[Domain Commands]
+    M --> P
+    N --> P
+    O --> P
+
+    P --> Q[Validated Output]
 
     style B fill:#e1f5fe
-    style I fill:#f3e5f5
-    style J fill:#f3e5f5
-    style K fill:#f3e5f5
-    style L fill:#f3e5f5
-    style M fill:#f3e5f5
-    style O fill:#e8f5e8
+    style D fill:#f3e5f5
+    style E fill:#f3e5f5
+    style F fill:#f3e5f5
+    style G fill:#f3e5f5
+    style Q fill:#e8f5e8
 ```
 
-#### Benefits of Two-Stage Design
-
-**🎯 Accuracy**: Orchestrator ensures correct operation identification before execution
-**⚡ Performance**: Specialized agents are optimized for their specific domains
-**🔄 Scalability**: Easy to add new agent types without changing the core pipeline
-**🛡️ Reliability**: Each stage validates its output with structured schemas
-**💰 Cost Efficiency**: Uses faster, cheaper models for specialized tasks
-**🧠 Intelligence**: Orchestrator can handle complex reasoning and multi-step workflows
-
 ## 🚀 Quick Start
-
-[![uv](https://img.shields.io/badge/uv-Package%20Manager-purple.svg)](https://docs.astral.sh/uv/)
-[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
 ### Prerequisites
 
@@ -127,11 +130,9 @@ graph TD
 
 ### Installation
 
-#### Python Implementation
-
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/lucaromagnoli/magda.git
    cd magda
    ```
 
@@ -152,27 +153,75 @@ graph TD
    uv pip install -e .
    ```
 
-#### C++ Implementation
+### Usage Examples
 
-1. **Build C++ components**:
-   ```bash
-   cd cpp
-   mkdir build && cd build
-   cmake ..
-   make
-   ```
+#### 🎵 DAW Domain (Current Implementation)
 
-2. **Run C++ examples**:
-   ```bash
-   ./examples/magda_example
-   ```
+```python
+from magda.core.domain import DomainType
+from magda.core.pipeline import MAGDACorePipeline
+from magda.domains.daw import DAWFactory
 
-### Usage
+# Create DAW pipeline
+daw_factory = DAWFactory()
+pipeline = MAGDACorePipeline(daw_factory, DomainType.DAW)
 
-#### Command Line Interface
+# Set host context (from Reaper, Logic, etc.)
+pipeline.set_host_context({
+    "vst_plugins": ["serum", "addictive drums", "kontakt"],
+    "track_names": ["bass", "drums", "guitar", "lead"],
+    "fx_chain": ["reverb", "compression", "eq"]
+})
+
+# Process DAW prompts
+result = pipeline.process_prompt("create bass track with serum")
+print(result["commands"])
+```
+
+#### 🖥️ Desktop Domain (Future)
+
+```python
+from magda.domains.desktop import DesktopFactory
+
+# Create Desktop pipeline
+desktop_factory = DesktopFactory()
+pipeline = MAGDACorePipeline(desktop_factory, DomainType.DESKTOP)
+
+# Set host context (from OS)
+pipeline.set_host_context({
+    "installed_apps": ["chrome", "vscode", "terminal"],
+    "file_system": "/home/user"
+})
+
+# Process Desktop prompts
+result = pipeline.process_prompt("open chrome and navigate to google.com")
+```
+
+#### 🌐 Web Domain (Future)
+
+```python
+from magda.domains.web import WebFactory
+
+# Create Web pipeline
+web_factory = WebFactory()
+pipeline = MAGDACorePipeline(web_factory, DomainType.WEB)
+
+# Set host context (from browser)
+pipeline.set_host_context({
+    "current_url": "https://example.com",
+    "available_forms": ["login", "search", "contact"]
+})
+
+# Process Web prompts
+result = pipeline.process_prompt("fill login form with username and password")
+```
+
+## 📝 Examples
+
+### 🎵 DAW Operations
 
 ```bash
-# Basic usage
+# Basic track creation
 magda "create a track for bass and one for drums"
 
 # Complex multi-step operations
@@ -182,228 +231,143 @@ magda "create a bass track with Serum, add a compressor effect with 4:1 ratio, a
 magda "crear una pista de bajo con Serum y aplicar compresión"
 ```
 
-#### Python API
+### 🖥️ Desktop Operations (Future)
+
+```bash
+# File operations
+magda "create a new folder called 'projects' and move all .py files there"
+
+# Application management
+magda "open Chrome, navigate to github.com, and search for 'python projects'"
+
+# System operations
+magda "take a screenshot and save it to the desktop"
+```
+
+### 🌐 Web Operations (Future)
+
+```bash
+# Browser automation
+magda "go to amazon.com, search for 'python books', and add the first result to cart"
+
+# Form filling
+magda "fill the contact form with my email and message"
+
+# Data extraction
+magda "scrape all product prices from the current page"
+```
+
+## 🏗️ Adding New Domains
+
+MAGDA's domain-agnostic design makes it easy to add new domains:
+
+### 1. Create Domain Agents
 
 ```python
-from magda.pipeline import MAGDAPipeline
+# magda/domains/desktop/desktop_agents.py
+from magda.core.domain import DomainAgent, DomainType
 
-pipeline = MAGDAPipeline()
-result = pipeline.process_prompt("create a track for bass with Serum")
-print(result["daw_commands"])
+class DesktopFileAgent(DomainAgent):
+    def __init__(self):
+        super().__init__(DomainType.DESKTOP)
+
+    def can_handle(self, operation: str) -> bool:
+        return operation.lower() in ["file", "create file", "delete file"]
+
+    def execute(self, operation: str, context: DomainContext) -> OperationResult:
+        # Desktop-specific implementation
+        pass
 ```
 
-## 📝 Examples
+### 2. Create Domain Factory
 
-### Track Operations
-```bash
-# Create tracks
-magda "create a track for bass and one for drums"
-# Output: track(bass, serum), track(drums, addictive_drums)
+```python
+# magda/domains/desktop/desktop_factory.py
+from magda.core.domain import DomainFactory
 
-# Modify tracks
-magda "rename the bass track to 'Deep Bass' and change its color to blue"
+class DesktopFactory(DomainFactory):
+    def create_agents(self, domain_type: DomainType) -> Dict[str, DomainAgent]:
+        return {
+            "file": DesktopFileAgent(),
+            "window": DesktopWindowAgent(),
+            "app": DesktopAppAgent(),
+        }
 ```
 
-### Effect Operations
-```bash
-# Add effects
-magda "add a compressor to the bass track with 4:1 ratio and -20dB threshold"
-# Output: effect(bass, compressor, ratio=4, threshold=-20)
+### 3. Use the New Domain
 
-# Complex effect chains
-magda "add reverb with 0.3 wet mix and 2.5s decay, then add delay with 0.25 feedback"
+```python
+# Create and use the new domain
+desktop_factory = DesktopFactory()
+pipeline = MAGDACorePipeline(desktop_factory, DomainType.DESKTOP)
+result = pipeline.process_prompt("create a new folder called 'documents'")
 ```
-
-### Volume and Mixing
-```bash
-# Volume control
-magda "set the bass track volume to -6dB and the drums to -3dB"
-# Output: volume(bass, -6), volume(drums, -3)
-
-# Fade operations
-magda "create a 2-second fade-in on the vocal track"
-```
-
-### MIDI Operations
-```bash
-# MIDI editing
-magda "quantize the piano MIDI to 16th notes and transpose up by 2 semitones"
-# Output: midi(piano, quantize=16th, transpose=2)
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file with:
-
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-```
-
-### Model Selection
-
-MAGDA uses different models for different tasks:
-- **Orchestrator Agent**: `gpt-4.1-nano` (fast, accurate operation identification)
-- **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective DAW command generation)
 
 ## 🧪 Testing
 
-### Python Tests
-
-Run the Python test suite:
+### Run Tests
 
 ```bash
-cd python
-uv run pytest
+# Run all tests
+pytest
+
+# Run specific domain tests
+pytest tests/test_daw_domain.py
+pytest tests/test_desktop_domain.py  # Future
+
+# Run with coverage
+pytest --cov=magda --cov-report=html
 ```
 
-Run with coverage:
+### Run Examples
 
 ```bash
-uv run pytest --cov=magda
+# Run domain-agnostic demo
+python example_domain_agnostic.py
+
+# Run DAW-specific tests
+python test_operations_benchmark.py
 ```
 
-### C++ Tests
+## 🤝 Contributing
 
-Run the C++ test suite:
+We welcome contributions! Here's how you can help:
 
-```bash
-cd cpp
-mkdir build && cd build
-cmake ..
-make
-ctest
-```
+### 🎯 Adding New Domains
 
-## 🏗️ Development
+1. **Create domain directory**: `magda/domains/your_domain/`
+2. **Implement agents**: Inherit from `DomainAgent`
+3. **Create factory**: Implement `DomainFactory`
+4. **Add tests**: Create comprehensive test suite
+5. **Update docs**: Document your domain
 
-### Project Structure
+### 🐛 Bug Reports
 
-```
-magda/
-├── python/                  # Python implementation
-│   ├── magda/
-│   │   ├── __init__.py
-│   │   ├── main.py          # CLI entry point
-│   │   ├── models.py        # Pydantic data models
-│   │   ├── pipeline.py      # Main orchestration pipeline
-│   │   ├── context_manager.py # Context management
-│   │   └── agents/
-│   │       ├── __init__.py
-│   │       ├── base.py      # Base agent class
-│   │       ├── orchestrator_agent.py
-│   │       ├── track_agent.py
-│   │       ├── clip_agent.py
-│   │       ├── volume_agent.py
-│   │       ├── effect_agent.py
-│   │       └── midi_agent.py
-│   ├── tests/               # Python test suite
-│   ├── pyproject.toml       # Python package config
-│   └── uv.lock
-├── cpp/                     # C++ implementation
-│   ├── include/magda_cpp/   # C++ headers
-│   ├── src/                 # C++ source files
-│   ├── examples/            # C++ examples
-│   ├── tests/               # C++ test suite
-│   └── CMakeLists.txt       # CMake configuration
-├── scripts/
-│   └── release.py           # Release automation script
-├── .github/workflows/       # CI/CD pipelines
-├── pyproject.toml           # Root project config
-└── README.md
-```
+Please use the [GitHub issue tracker](https://github.com/lucaromagnoli/magda/issues) for bug reports and feature requests.
 
-### Release Process
+### 📝 Code Style
 
-MAGDA uses semantic versioning and automated releases. To create a new release:
-
-1. **Bump version and release**:
-   ```bash
-   python scripts/release.py patch   # or 'minor' or 'major'
-   ```
-
-2. **Dry run** (see what would happen):
-   ```bash
-   python scripts/release.py patch --dry-run
-   ```
-
-3. **Prepare without pushing**:
-   ```bash
-   python scripts/release.py patch --no-push
-   ```
-
-The release script will:
-- Bump the version in `pyproject.toml`
-- Create a git tag
-- Push changes and tag to GitHub
-- Trigger the GitHub Actions workflow to create a release
-
-### Adding New Agents
-
-1. Create a new agent class inheriting from `BaseAgent`
-2. Implement the `process` method with structured output
-3. Add the agent to the pipeline's agent registry
-4. Update the orchestrator agent to recognize new operations
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+- Use [Ruff](https://github.com/astral-sh/ruff) for linting
+- Follow [Black](https://black.readthedocs.io/) formatting
+- Use type hints throughout
+- Write comprehensive docstrings
 
 ## 📄 License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 
+## 🙏 Acknowledgments
 
-
-## 📞 Support
-
-For questions, issues, or contributions:
-- Open an issue on GitHub
-- Join our community discussions
-- Check the documentation for common solutions
-
-## 🤖 Model Selection & Defaults
-
-MAGDA uses multiple OpenAI models for different stages of the pipeline. The defaults are:
-
-- **Orchestrator Agent**: `gpt-4.1-nano` (fast, accurate operation identification)
-- **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective for DAW commands)
-
-You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex reasoning tasks, you may use O-series models (e.g., `o3-mini`, `o1-pro`) which excel at multi-step reasoning but are slower and more expensive.
-
-### Model Summary Table
-| Model           | Latency | Token Usage | Cost | Reasoning | Recommended For         |
-|-----------------|---------|-------------|------|-----------|------------------------|
-| gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐⭐⭐       | All DAW tasks          |
-| gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐⭐        | All DAW tasks          |
-| gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐         | Good for most tasks    |
-| o3-mini         | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
-| o1-pro          | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
-
-## 📊 Model Benchmarking
-
-MAGDA includes a benchmarking framework to evaluate model performance (latency, token usage, cost, etc.) for DAW tasks.
-
-- **Run the benchmark:**
-  ```bash
-  python python/run_model_benchmark.py --config quick
-  ```
-  (Other configs: `full`, `latency`, `multistep`, or custom YAML)
-
-- **Analyze results:**
-  ```bash
-  python python/analyze_benchmark_results.py
-  ```
-  This prints per-model and overall stats for latency, token usage, and more.
-
-- **Customize:**
-  Edit `python/run_model_benchmark.py` or provide your own config to test different prompts, models, or metrics.
+- **OpenAI** for providing the LLM capabilities
+- **Pydantic** for structured data validation
+- **The open-source community** for inspiration and feedback
 
 ---
 
-For more details, see the `python/run_model_benchmark.py` and `python/analyze_benchmark_results.py` scripts for benchmarking methodology and results.
+<div align="center">
+
+**MAGDA - Multi Agent Domain Automation**
+
+*Transforming natural language into domain-specific automation*
+
+</div>

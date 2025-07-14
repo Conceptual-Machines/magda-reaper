@@ -1,5 +1,4 @@
 import os
-import uuid
 from typing import Any
 
 import openai
@@ -8,76 +7,56 @@ from dotenv import load_dotenv
 from ..config import APIConfig, ModelConfig
 from ..models import VolumeResult
 from ..prompt_loader import get_prompt
+from ..utils import assess_task_complexity, retry_with_backoff, select_model_for_task
 from .base import BaseAgent
 
 load_dotenv()
 
 
 class VolumeAgent(BaseAgent):
-    """Agent responsible for handling volume automation operations using LLM."""
+    """Agent responsible for handling volume operations using LLM."""
 
     def __init__(self) -> None:
         super().__init__()
         self.name = "volume"
-        self.volume_automations: dict[str, Any] = {}
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = openai.OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            timeout=APIConfig.SPECIALIZED_AGENT_TIMEOUT,
+        )
 
     def can_handle(self, operation: str) -> bool:
         """Check if this agent can handle volume operations."""
         return operation.lower() in [
             "volume",
-            "fade",
-            "automation",
-            "fade in",
-            "fade out",
+            "set volume",
+            "adjust volume",
+            "mute",
+            "unmute",
         ]
 
     def execute(
         self, operation: str, context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """Execute volume automation operation using LLM with context awareness."""
+        """Execute volume operation using LLM with context awareness."""
         context = context or {}
-        context_manager = context.get("context_manager")
 
-        # Use LLM to parse volume operation and extract parameters
+        # Use LLM to parse volume operation and generate DAW command
         volume_info = self._parse_volume_operation_with_llm(operation)
-
-        # Get track information from context
-        track_id: str = "unknown"
-        if context_manager:
-            # Try to get track from context parameters
-            if "track_id" in context:
-                track_id = str(context["track_id"])
-            elif "track_daw_id" in context:
-                track_id = str(context["track_daw_id"])
-        else:
-            # Fallback to old context method
-            track_id = context.get("track_id", "unknown")
-            if track_id == "unknown":
-                track_context = context.get("track")
-                if track_context and "id" in track_context:
-                    track_id = str(track_context["id"])
-
-        # Generate unique volume automation ID
-        volume_id = str(uuid.uuid4())
 
         # Create volume result
         volume_result = VolumeResult(
-            track_name=None,
-            volume=None,
-            fade_type=None,
-            fade_duration=None,
-            start_value=volume_info.get("start_value", 0.0),
-            end_value=volume_info.get("end_value", 1.0),
+            track_name=volume_info.get("track_name"),
+            volume=volume_info.get("volume"),
+            fade_type=volume_info.get("fade_type"),
+            fade_duration=volume_info.get("fade_duration"),
+            start_value=volume_info.get("start_value"),
+            end_value=volume_info.get("end_value"),
             start_bar=volume_info.get("start_bar", 1),
-            end_bar=volume_info.get("end_bar", volume_info.get("start_bar", 1) + 4),
+            end_bar=volume_info.get("end_bar", 5),
         )
 
-        # Store volume automation for future reference
-        self.volume_automations[volume_id] = volume_result.model_dump()
-
         # Generate DAW command
-        daw_command = self._generate_daw_command(volume_result, track_id)
+        daw_command = self._generate_daw_command(volume_result)
 
         return {
             "daw_command": daw_command,
@@ -86,32 +65,86 @@ class VolumeAgent(BaseAgent):
         }
 
     def _parse_volume_operation_with_llm(self, operation: str) -> dict[str, Any]:
-        """Use LLM to parse volume operation and extract parameters using Responses API."""
+        """Use LLM to parse volume operation and extract parameters using dynamic model selection and retry logic."""
 
         instructions = get_prompt("volume_agent")
 
-        try:
-            response = self.client.responses.parse(
-                model=ModelConfig.SPECIALIZED_AGENTS,
-                instructions=instructions,
-                input=operation,
-                text_format=VolumeResult,
-                temperature=APIConfig.DEFAULT_TEMPERATURE,
-            )
+        # Assess task complexity and select appropriate model
+        complexity = assess_task_complexity(operation)
+        selected_model = select_model_for_task("specialized", complexity, operation)
+
+        print(
+            f"Volume agent - Task complexity: {complexity}, using model: {selected_model}"
+        )
+
+        def _make_api_call() -> dict[str, Any]:
+            """Make the API call with retry logic."""
+            params = {
+                "model": selected_model,
+                "instructions": instructions,
+                "input": operation,
+                "text_format": VolumeResult,
+            }
+
+            # Only add temperature for models that support it
+            if not selected_model.startswith("o3"):
+                params["temperature"] = APIConfig.DEFAULT_TEMPERATURE
+
+            response = self.client.responses.parse(**params)
 
             # The parse method returns the parsed object directly
             if response.output_parsed is None:
                 return {}
             return response.output_parsed.model_dump()
 
+        # Use retry logic with exponential backoff
+        try:
+            result = retry_with_backoff(_make_api_call)
+            return result
         except Exception as e:
-            print(f"Error parsing volume operation: {e}")
+            print(f"All retries failed for volume agent: {e}")
+            # Fallback to a simpler model if the selected model fails
+            if selected_model != ModelConfig.FALLBACK_MODELS["specialized"]:
+                print(f"Falling back to {ModelConfig.FALLBACK_MODELS['specialized']}")
+                try:
+                    fallback_params = {
+                        "model": ModelConfig.FALLBACK_MODELS["specialized"],
+                        "instructions": instructions,
+                        "input": operation,
+                        "text_format": VolumeResult,
+                        "temperature": APIConfig.DEFAULT_TEMPERATURE,
+                    }
+                    response = self.client.responses.parse(**fallback_params)
+                    if response.output_parsed is None:
+                        return {}
+                    return response.output_parsed.model_dump()
+                except Exception as fallback_error:
+                    print(f"Fallback model also failed: {fallback_error}")
+                    return {}
             return {}
 
-    def _generate_daw_command(self, volume: VolumeResult, track_id: str) -> str:
+    def _generate_daw_command(self, volume: VolumeResult) -> str:
         """Generate DAW command string from volume result."""
-        return f"volume(track:{track_id}, start:{volume.start_bar}, end:{volume.end_bar}, start_value:{volume.start_value}, end_value:{volume.end_value})"
+        params = []
+
+        # Track parameter
+        track_name = volume.track_name or "unknown"
+        params.append(f"track:{track_name}")
+
+        # Bar range
+        start_bar = volume.start_bar or 1
+        end_bar = volume.end_bar or 5
+        params.append(f"start:{start_bar}")
+        params.append(f"end:{end_bar}")
+
+        # Volume values
+        if volume.start_value is not None:
+            params.append(f"start_value:{volume.start_value}")
+        if volume.end_value is not None:
+            params.append(f"end_value:{volume.end_value}")
+
+        return f"volume({', '.join(params)})"
 
     def get_capabilities(self) -> list[str]:
         """Return list of operations this agent can handle."""
-        return ["volume", "fade", "automation", "fade in", "fade out"]
+        return ["volume", "set volume", "adjust volume", "mute", "unmute"]

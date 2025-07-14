@@ -15,21 +15,46 @@ class ModelConfig:
     model choices for different stages of the pipeline.
     """
 
-    # First stage: Operation identification (cost-effective, fast)
-    ORCHESTRATOR_AGENT = "gpt-4.1-nano"
+    # Fast models for simple tasks (quick responses, lower cost)
+    FAST_MODELS = {
+        "orchestrator": "gpt-4.1-mini",  # Fast reasoning
+        "specialized": "gpt-4.1-mini",  # Fast specialized tasks
+    }
 
-    # Second stage: Specialized agents (higher quality, structured output)
+    # High-quality models for complex tasks (better reasoning, higher cost)
+    QUALITY_MODELS = {
+        "orchestrator": "o3-mini",  # Best reasoning
+        "specialized": "gpt-4.1",  # Best specialized tasks
+    }
+
+    # Fallback models
+    FALLBACK_MODELS = {
+        "orchestrator": "gpt-4.1-mini",
+        "specialized": "gpt-4.1-mini",
+    }
+
+    # Current default model choices
+    ORCHESTRATOR_AGENT = "o3-mini"
     SPECIALIZED_AGENTS = "gpt-4o-mini"
 
-    # Alternative for specialized agents (cost-effective but still high quality)
-    SPECIALIZED_AGENTS_MINI = "gpt-4.1-mini"
-
-    # Fallback model for error cases
-    FALLBACK = "gpt-4o-mini"
-
-    # Current model choices (easy to change in one place)
-    CURRENT_DECISION_AGENT = ORCHESTRATOR_AGENT
-    CURRENT_SPECIALIZED_AGENTS = SPECIALIZED_AGENTS
+    # Model selection thresholds
+    COMPLEXITY_THRESHOLDS = {
+        "simple": {
+            "max_words": 20,
+            "max_operations": 1,
+            "languages": ["en"],  # Only English
+        },
+        "medium": {
+            "max_words": 50,
+            "max_operations": 3,
+            "languages": ["en", "es", "fr"],  # Common languages
+        },
+        "complex": {
+            "max_words": float("inf"),
+            "max_operations": float("inf"),
+            "languages": ["en", "es", "fr", "de", "ja"],  # All languages
+        },
+    }
 
 
 class APIConfig:
@@ -38,8 +63,23 @@ class APIConfig:
     # Default temperature for LLM requests
     DEFAULT_TEMPERATURE = 0.1
 
-    # Timeout for API requests (seconds)
-    REQUEST_TIMEOUT = 30
+    # Short timeouts for better UX
+    REQUEST_TIMEOUT = 10  # Reduced from 30
+
+    # Connection timeout (seconds)
+    CONNECT_TIMEOUT = 5  # Reduced from 10
+
+    # Read timeout (seconds)
+    READ_TIMEOUT = 10  # Reduced from 30
+
+    # Total timeout for operations (seconds)
+    TOTAL_TIMEOUT = 15  # Reduced from 60
+
+    # Timeout for orchestrator operations (seconds)
+    ORCHESTRATOR_TIMEOUT = 10  # Reduced from 25
+
+    # Timeout for specialized agent operations (seconds)
+    SPECIALIZED_AGENT_TIMEOUT = 10  # Reduced from 30
 
 
 class AgentConfig:
@@ -48,8 +88,12 @@ class AgentConfig:
     # Default context for agents
     DEFAULT_CONTEXT: dict[str, Any] = {}
 
-    # Maximum number of retries for failed operations
+    # Retry configuration
     MAX_RETRIES = 3
+    RETRY_DELAY = 0.5  # Reduced from 1.0 for faster retries
 
-    # Delay between retries (seconds)
-    RETRY_DELAY = 1.0
+    # Exponential backoff for retries
+    RETRY_BACKOFF_FACTOR = 1.5
+
+    # Maximum retry delay
+    MAX_RETRY_DELAY = 2.0
