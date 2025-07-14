@@ -51,15 +51,69 @@ MAGDA is implemented in both **Python** and **C++** to provide maximum flexibili
 - **Cross-platform** compatibility
 - **Production-ready** DAW integration
 
-### Dual-Stage Pipeline
+### Two-Stage Pipeline Architecture
 
-1. **Orchestrator Agent** (`gpt-4.1-nano`): Analyzes prompts and identifies operations
-2. **Specialized Agents** (`gpt-4o-mini`): Handle specific DAW operations:
-   - **Track Agent**: Create, modify, and manage tracks
-   - **Clip Agent**: Handle audio/MIDI clips and regions
-   - **Volume Agent**: Control track and clip volumes
-   - **Effect Agent**: Apply and configure audio effects
-   - **MIDI Agent**: Manage MIDI data and events
+MAGDA uses a sophisticated two-stage pipeline that separates **operation identification** from **command generation** for optimal performance and accuracy:
+
+#### Stage 1: Orchestration & Analysis
+The **Orchestrator Agent** (`gpt-4.1-nano`) acts as the "brain" of the system:
+- **Natural Language Understanding**: Parses complex, multi-step prompts
+- **Operation Identification**: Determines which DAW operations are needed
+- **Context Analysis**: Understands track references, effect chains, and dependencies
+- **Workflow Planning**: Orders operations logically (create track → add effect → set volume)
+
+#### Stage 2: Specialized Command Generation
+**Specialized Agents** (`gpt-4o-mini`) handle domain-specific operations:
+- **Track Agent**: Create, modify, rename, and manage tracks
+- **Clip Agent**: Handle audio/MIDI clips, regions, and editing operations
+- **Volume Agent**: Control track/clip volumes, fades, and mixing
+- **Effect Agent**: Apply and configure audio effects and plugins
+- **MIDI Agent**: Manage MIDI data, quantization, and note manipulation
+
+#### Pipeline Flow Diagram
+
+```mermaid
+graph TD
+    A[Natural Language Prompt] --> B[Orchestrator Agent<br/>gpt-4.1-nano]
+    B --> C{Analyze & Identify<br/>Operations}
+
+    C --> D[Track Operations]
+    C --> E[Clip Operations]
+    C --> F[Volume Operations]
+    C --> G[Effect Operations]
+    C --> H[MIDI Operations]
+
+    D --> I[Track Agent<br/>gpt-4o-mini]
+    E --> J[Clip Agent<br/>gpt-4o-mini]
+    F --> K[Volume Agent<br/>gpt-4o-mini]
+    G --> L[Effect Agent<br/>gpt-4o-mini]
+    H --> M[MIDI Agent<br/>gpt-4o-mini]
+
+    I --> N[Structured DAW Commands]
+    J --> N
+    K --> N
+    L --> N
+    M --> N
+
+    N --> O[Validated Output<br/>JSON Schema]
+
+    style B fill:#e1f5fe
+    style I fill:#f3e5f5
+    style J fill:#f3e5f5
+    style K fill:#f3e5f5
+    style L fill:#f3e5f5
+    style M fill:#f3e5f5
+    style O fill:#e8f5e8
+```
+
+#### Benefits of Two-Stage Design
+
+**🎯 Accuracy**: Orchestrator ensures correct operation identification before execution
+**⚡ Performance**: Specialized agents are optimized for their specific domains
+**🔄 Scalability**: Easy to add new agent types without changing the core pipeline
+**🛡️ Reliability**: Each stage validates its output with structured schemas
+**💰 Cost Efficiency**: Uses faster, cheaper models for specialized tasks
+**🧠 Intelligence**: Orchestrator can handle complex reasoning and multi-step workflows
 
 ## 🚀 Quick Start
 
