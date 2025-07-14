@@ -53,8 +53,8 @@ MAGDA is implemented in both **Python** and **C++** to provide maximum flexibili
 
 ### Dual-Stage Pipeline
 
-1. **Operation Identifier Agent** (`o3-mini`): Analyzes prompts and identifies operations
-2. **Specialized Agents** (`gpt-4.1`): Handle specific DAW operations:
+1. **Operation Identifier Agent** (`gpt-4.1-mini`): Analyzes prompts and identifies operations
+2. **Specialized Agents** (`gpt-4o-mini`): Handle specific DAW operations:
    - **Track Agent**: Create, modify, and manage tracks
    - **Clip Agent**: Handle audio/MIDI clips and regions
    - **Volume Agent**: Control track and clip volumes

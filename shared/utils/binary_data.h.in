@@ -42,9 +42,6 @@ inline const BinaryData* getBinaryData(const std::string& name) {
     } else if (name == "clip_agent") {
         static const BinaryData data = {"clip_agent", clip_agent_prompt_data, clip_agent_prompt_size};
         return &data;
-    } else if (name == "daw_operation") {
-        static const BinaryData data = {"daw_operation", daw_operation_schema_data, daw_operation_schema_size};
-        return &data;
     }
     return nullptr;
 }

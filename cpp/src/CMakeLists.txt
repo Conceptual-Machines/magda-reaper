@@ -12,13 +12,11 @@ add_library(magda_cpp
     ../../shared/utils/prompt_loader.cpp
 )
 
-# Generate binary data headers from prompt files
+# Generate binary data headers from prompt files only
 set(PROMPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../shared/prompts)
-set(SCHEMAS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../shared/schemas)
 
 # Read prompt files and convert to C++ string literals
-file(GLOB PROMPT_FILES ${PROMPTS_DIR}/*.md)
-file(GLOB SCHEMA_FILES ${SCHEMAS_DIR}/*.json)
+file(GLOB PROMPT_FILES ${PROMPTS_DIR}/*.txt)
 
 # Create binary data variables
 set(BINARY_DATA_CONTENT "")
@@ -27,25 +25,10 @@ set(BINARY_DATA_CONTENT "")
 foreach(PROMPT_FILE ${PROMPT_FILES})
     get_filename_component(PROMPT_NAME ${PROMPT_FILE} NAME_WE)
     file(READ ${PROMPT_FILE} PROMPT_CONTENT)
-    # No escaping needed for raw string literal
-    set(PROMPT_ESCAPED "${PROMPT_CONTENT}")
-    set(BINARY_DATA_CONTENT "${BINARY_DATA_CONTENT}
-// ${PROMPT_NAME}.md
-static const char* ${PROMPT_NAME}_prompt_data = R"(${PROMPT_ESCAPED})";
+    string(APPEND BINARY_DATA_CONTENT "
+// ${PROMPT_NAME}.txt
+static const char* ${PROMPT_NAME}_prompt_data = R\"(${PROMPT_CONTENT})\";
 static const size_t ${PROMPT_NAME}_prompt_size = sizeof(${PROMPT_NAME}_prompt_data) - 1;
-")
-endforeach()
-
-# Process schema files
-foreach(SCHEMA_FILE ${SCHEMA_FILES})
-    get_filename_component(SCHEMA_NAME ${SCHEMA_FILE} NAME_WE)
-    file(READ ${SCHEMA_FILE} SCHEMA_CONTENT)
-    # No escaping needed for raw string literal
-    set(SCHEMA_ESCAPED "${SCHEMA_CONTENT}")
-    set(BINARY_DATA_CONTENT "${BINARY_DATA_CONTENT}
-// ${SCHEMA_NAME}.json
-static const char* ${SCHEMA_NAME}_schema_data = R"(${SCHEMA_ESCAPED})";
-static const size_t ${SCHEMA_NAME}_schema_size = sizeof(${SCHEMA_NAME}_schema_data) - 1;
 ")
 endforeach()
 

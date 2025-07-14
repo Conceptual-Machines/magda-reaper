@@ -50,10 +50,7 @@ std::string SharedResources::loadPrompt(const std::string& prompt_name) const {
 }
 
 nlohmann::json SharedResources::loadSchema(const std::string& schema_name) const {
-    if (use_binary_data_) {
-        return loadSchemaFromBinary(schema_name);
-    }
-
+    // Temporarily disable binary data for schemas due to JSON parsing issues
     std::string schema_path = (base_path_ / "schemas" / (schema_name + ".json")).string();
     if (std::filesystem::exists(schema_path)) {
         std::ifstream file(schema_path);
@@ -112,7 +109,7 @@ void SharedResources::loadPrompts() {
 }
 
 std::string SharedResources::loadPromptFile(const std::string& prompt_name) const {
-    std::string prompt_path = (base_path_ / "prompts" / (prompt_name + ".md")).string();
+    std::string prompt_path = (base_path_ / "prompts" / (prompt_name + ".txt")).string();
     if (std::filesystem::exists(prompt_path)) {
         std::ifstream file(prompt_path);
         if (file.is_open()) {

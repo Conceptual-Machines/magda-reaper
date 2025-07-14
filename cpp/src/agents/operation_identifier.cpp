@@ -20,11 +20,8 @@ OperationIdentificationResult OperationIdentifier::identifyOperations(const std:
         config.client = "openai";
         config.model = ModelConfig::CURRENT_DECISION_AGENT;
 
-        // Only set temperature and maxTokens if the model supports them
-        if (config.model != std::string("o3-mini")) {
-            config.temperature = 0.1f;
-            config.maxTokens = 1000;
-        }
+        // Set temperature for models that support it
+        config.temperature = 0.1f;
 
         std::string system_prompt = buildSystemPrompt();
         std::string full_prompt = system_prompt + "\n" + prompt;
@@ -36,30 +33,89 @@ OperationIdentificationResult OperationIdentifier::identifyOperations(const std:
         std::cout << "🔍 DEBUG: Model: " << config.model << std::endl;
         std::cout << "🔍 DEBUG: Using structured output: " << (use_structured_output ? "YES" : "NO") << std::endl;
         std::cout << "🔍 DEBUG: Temperature: " << (config.temperature.has_value() ? std::to_string(config.temperature.value()) : "not set") << std::endl;
-        std::cout << "🔍 DEBUG: Max tokens: " << (config.maxTokens.has_value() ? std::to_string(config.maxTokens.value()) : "not set") << std::endl;
 
-        LLMRequest request = use_structured_output
-            ? LLMRequest(config, full_prompt, context, getOperationSchema())
-            : LLMRequest(config, full_prompt, context);
+        LLMRequest request = [&]() -> LLMRequest {
+            if (use_structured_output) {
+                // Use JsonSchemaBuilder for structured output
+                auto schema = JsonSchemaBuilder()
+                    .type("object")
+                    .title("Operation Identification")
+                    .description("Identify operations from natural language prompt")
+                    .property("operations", JsonSchemaBuilder()
+                        .type("array")
+                        .description("Array of identified operations")
+                        .items(JsonSchemaBuilder()
+                            .type("object")
+                            .description("Individual operation")
+                            .property("type", JsonSchemaBuilder()
+                                .type("string")
+                                .description("Operation type")
+                                .enumValues({"track", "clip", "volume", "effect", "midi"}))
+                            .property("description", JsonSchemaBuilder()
+                                .type("string")
+                                .description("Human-readable description"))
+                                                    .property("parameters", JsonSchemaBuilder()
+                            .type("object")
+                            .description("Operation parameters")
+                            .additionalProperties(false))
+                        .required({"type", "description"})
+                        .additionalProperties(false)))
+                    .required({"operations"})
+                    .additionalProperties(false);
+
+                // Convert schema to JSON and set it in the config
+                config.schemaObject = schema.build();
+                config.functionName = "identify_operations";
+                return LLMRequest(config, full_prompt, context);
+            } else {
+                return LLMRequest(config, full_prompt, context);
+            }
+        }();
 
         auto response = client_->sendRequest(request);
 
+        // Print the raw LLM response before any parsing
+        std::cout << "🔍 DEBUG: Response result (raw, pre-parse): " << response.result.dump(2) << std::endl;
         std::cout << "🔍 DEBUG: Response success: " << (response.success ? "YES" : "NO") << std::endl;
         std::cout << "🔍 DEBUG: Response type: " << typeid(response.result).name() << std::endl;
-        std::cout << "🔍 DEBUG: Response result: " << response.result.dump() << std::endl;
 
-        if (response.success) {
-            if (use_structured_output) {
-                result.operations = parseStructuredOperations(response);
-            } else {
-                result.operations = parseFreeFormOperations(response);
+        // Print detailed response structure
+        std::cout << "🔍 DEBUG: Response.result type: " << (response.result.is_object() ? "object" : response.result.is_string() ? "string" : "other") << std::endl;
+        std::cout << "🔍 DEBUG: Response.result keys: ";
+        if (response.result.is_object()) {
+            for (auto it = response.result.begin(); it != response.result.end(); ++it) {
+                std::cout << "'" << it.key() << "'(" << (it.value().is_string() ? "string" : it.value().is_object() ? "object" : "other") << ") ";
             }
-            result.success = true;
-        } else {
-            result.error_message = "LLM request failed: " + response.errorMessage;
+        }
+        std::cout << std::endl;
+
+        // Print each field individually
+        if (response.result.is_object()) {
+            for (auto it = response.result.begin(); it != response.result.end(); ++it) {
+                std::cout << "🔍 DEBUG: Field '" << it.key() << "' = " << it.value().dump(2) << std::endl;
+            }
+        }
+
+        try {
+            if (response.success) {
+                if (use_structured_output) {
+                    std::cout << "🔍 DEBUG: About to call parseStructuredOperations" << std::endl;
+                    result.operations = parseStructuredOperations(response);
+                } else {
+                    result.operations = parseFreeFormOperations(response);
+                }
+                result.success = true;
+            } else {
+                result.error_message = "LLM request failed: " + response.errorMessage;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "🔍 EXCEPTION during result parsing: " << e.what() << std::endl;
+            std::cerr << "🔍 DEBUG: Response.result at exception: " << response.result.dump(2) << std::endl;
+            result.error_message = std::string("Exception during result parsing: ") + e.what();
         }
 
     } catch (const std::exception& e) {
+        std::cerr << "🔍 EXCEPTION in identifyOperations: " << e.what() << std::endl;
         result.error_message = "Exception during operation identification: " + std::string(e.what());
     }
 
@@ -67,7 +123,7 @@ OperationIdentificationResult OperationIdentifier::identifyOperations(const std:
 }
 
 bool OperationIdentifier::shouldUseStructuredOutput() {
-    // Use structured output for models that support it well (like gpt-4.1)
+    // Use structured output for models that support it well (like gpt-4.1-mini)
     // Use free-form output for reasoning models (like o3-mini)
     std::string model = ModelConfig::CURRENT_DECISION_AGENT;
 
@@ -77,7 +133,7 @@ bool OperationIdentifier::shouldUseStructuredOutput() {
         return false;  // Reasoning models - use free-form output
     }
 
-    return true;  // Other models - use structured output
+    return true;  // Other models (gpt-4.1-mini, gpt-4o-mini, etc.) - use structured output
 }
 
 std::string OperationIdentifier::getRecommendedModel() {
@@ -141,19 +197,64 @@ std::vector<DAWOperation> OperationIdentifier::parseStructuredOperations(const L
     std::vector<DAWOperation> operations;
 
     try {
-        // Parse structured output (like gpt-4.1 with schema)
-        // The response should contain structured data directly
+        // Parse structured output (like gpt-4.1-mini with JsonSchemaBuilder)
         std::cout << "🔍 DEBUG: Parsing structured operations" << std::endl;
+        std::cout << "🔍 DEBUG: Response structure: " << response.result.dump(2) << std::endl;
 
-        // For structured output, the response should already be parsed
-        // This would be similar to Python's response.output_parsed
-        // Implementation depends on how the llmcpp library handles structured responses
+        // For JsonSchemaBuilder structured output, the response should contain the parsed data directly
+        // Check if the response has the expected structure
+        if (response.result.contains("operations") && response.result["operations"].is_array()) {
+            std::cout << "🔍 DEBUG: Found operations array in structured response" << std::endl;
 
-        // For now, fall back to free-form parsing as a safety measure
-        return parseFreeFormOperations(response);
+            for (const auto& op : response.result["operations"]) {
+                std::cout << "🔍 DEBUG: Processing structured operation: " << op.dump(2) << std::endl;
+
+                DAWOperation operation;
+                if (op.contains("type") && op["type"].is_string()) {
+                    operation.type = op["type"];
+                }
+                if (op.contains("description") && op["description"].is_string()) {
+                    operation.description = op["description"];
+                }
+                if (op.contains("parameters") && op["parameters"].is_object()) {
+                    operation.parameters = op["parameters"];
+                }
+                operations.push_back(operation);
+            }
+        } else if (response.result.contains("text") && response.result["text"].is_string()) {
+            // Fallback: if the response has a "text" field, try to parse it as JSON
+            std::cout << "🔍 DEBUG: Found 'text' field in structured response, parsing as JSON" << std::endl;
+            try {
+                auto parsed = nlohmann::json::parse(response.result["text"].get<std::string>());
+                if (parsed.contains("operations") && parsed["operations"].is_array()) {
+                    for (const auto& op : parsed["operations"]) {
+                        DAWOperation operation;
+                        if (op.contains("type") && op["type"].is_string()) {
+                            operation.type = op["type"];
+                        }
+                        if (op.contains("description") && op["description"].is_string()) {
+                            operation.description = op["description"];
+                        }
+                        if (op.contains("parameters") && op["parameters"].is_object()) {
+                            operation.parameters = op["parameters"];
+                        }
+                        operations.push_back(operation);
+                    }
+                }
+            } catch (const nlohmann::json::parse_error& e) {
+                std::cout << "🔍 DEBUG: Failed to parse 'text' field as JSON: " << e.what() << std::endl;
+            }
+        } else {
+            std::cout << "🔍 DEBUG: No 'operations' array or 'text' field found in structured response, falling back to free-form parsing" << std::endl;
+            // Fall back to free-form parsing if structured parsing fails
+            return parseFreeFormOperations(response);
+        }
 
     } catch (const std::exception& e) {
         std::cerr << "Error parsing structured operations: " << e.what() << std::endl;
+        std::cout << "🔍 DEBUG: Falling back to free-form parsing due to error" << std::endl;
+        // Fall back to free-form parsing if structured parsing fails
+        return parseFreeFormOperations(response);
     }
 
     return operations;
@@ -164,36 +265,63 @@ std::vector<DAWOperation> OperationIdentifier::parseFreeFormOperations(const LLM
 
     try {
         // Parse free-form text output (like o3-mini)
-        // The response is a JSON object with a "text" field containing the actual JSON string
+        // The response is a JSON object with a "text" field containing the actual JSON string or object
         std::cout << "🔍 DEBUG: Parsing free-form operations" << std::endl;
 
         // Extract the text field from the response
-        if (response.result.contains("text") && response.result["text"].is_string()) {
-            std::string json_text = response.result["text"];
-            std::cout << "🔍 DEBUG: Extracted text: " << json_text << std::endl;
+        if (response.result.contains("text")) {
+            const auto& text_field = response.result["text"];
+            std::cout << "🔍 DEBUG: 'text' field type: " << (text_field.is_string() ? "string" : text_field.is_object() ? "object" : "other") << std::endl;
+            std::cout << "🔍 DEBUG: 'text' field content: " << text_field.dump(2) << std::endl;
 
-            // Parse the JSON string
-            auto result = nlohmann::json::parse(json_text);
-            std::cout << "🔍 DEBUG: Parsed JSON: " << result.dump(2) << std::endl;
-
-            if (result.contains("operations") && result["operations"].is_array()) {
-                for (const auto& op : result["operations"]) {
-                    std::cout << "🔍 DEBUG: Processing operation: " << op.dump(2) << std::endl;
-
-                    DAWOperation operation;
-                    if (op.contains("type") && op["type"].is_string()) {
-                        operation.type = op["type"];
+            if (text_field.is_string()) {
+                std::string json_text = text_field;
+                std::cout << "🔍 DEBUG: Extracted text: " << json_text << std::endl;
+                // Parse the JSON string
+                auto result = nlohmann::json::parse(json_text);
+                std::cout << "🔍 DEBUG: Parsed JSON: " << result.dump(2) << std::endl;
+                if (result.contains("operations") && result["operations"].is_array()) {
+                    for (const auto& op : result["operations"]) {
+                        std::cout << "🔍 DEBUG: Processing operation: " << op.dump(2) << std::endl;
+                        DAWOperation operation;
+                        if (op.contains("type") && op["type"].is_string()) {
+                            operation.type = op["type"];
+                        }
+                        if (op.contains("description") && op["description"].is_string()) {
+                            operation.description = op["description"];
+                        }
+                        if (op.contains("parameters") && op["parameters"].is_object()) {
+                            operation.parameters = op["parameters"];
+                        }
+                        operations.push_back(operation);
                     }
-                    if (op.contains("description") && op["description"].is_string()) {
-                        operation.description = op["description"];
+                } else {
+                    std::cout << "🔍 DEBUG: No 'operations' array found in JSON" << std::endl;
+                }
+            } else if (text_field.is_object()) {
+                // Already parsed JSON object
+                const auto& result = text_field;
+                std::cout << "🔍 DEBUG: Parsed JSON (object): " << result.dump(2) << std::endl;
+                if (result.contains("operations") && result["operations"].is_array()) {
+                    for (const auto& op : result["operations"]) {
+                        std::cout << "🔍 DEBUG: Processing operation: " << op.dump(2) << std::endl;
+                        DAWOperation operation;
+                        if (op.contains("type") && op["type"].is_string()) {
+                            operation.type = op["type"];
+                        }
+                        if (op.contains("description") && op["description"].is_string()) {
+                            operation.description = op["description"];
+                        }
+                        if (op.contains("parameters") && op["parameters"].is_object()) {
+                            operation.parameters = op["parameters"];
+                        }
+                        operations.push_back(operation);
                     }
-                    if (op.contains("parameters") && op["parameters"].is_object()) {
-                        operation.parameters = op["parameters"];
-                    }
-                    operations.push_back(operation);
+                } else {
+                    std::cout << "🔍 DEBUG: No 'operations' array found in JSON object" << std::endl;
                 }
             } else {
-                std::cout << "🔍 DEBUG: No 'operations' array found in JSON" << std::endl;
+                std::cout << "🔍 DEBUG: 'text' field is neither string nor object" << std::endl;
             }
         } else {
             std::cout << "🔍 DEBUG: No 'text' field found in response" << std::endl;

@@ -210,8 +210,8 @@ struct ModelConfig {
     // static constexpr OpenAI::Model FALLBACK_ENUM = OpenAI::Model::GPT_4o_Mini;
 
     // Current model choices (easy to change in one place)
-    static constexpr const char* CURRENT_DECISION_AGENT = "o3-mini";
-    static constexpr const char* CURRENT_SPECIALIZED_AGENTS = "gpt-4.1-mini";
+    static constexpr const char* CURRENT_DECISION_AGENT = "gpt-4.1-mini";
+    static constexpr const char* CURRENT_SPECIALIZED_AGENTS = "gpt-4o-mini";
 
     // Convenience methods for common use cases
     static std::string getOperationIdentifierModel() {
