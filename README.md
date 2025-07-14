@@ -2,7 +2,6 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
-[![codecov](https://codecov.io/gh/lucaromagnoli/magda/branch/main/graph/badge.svg)](https://codecov.io/gh/lucaromagnoli/magda)
 
 # MAGDA
 
