@@ -118,25 +118,35 @@ result = pipeline.process_prompt("Delete the drums track")
 
 # Volume operations
 result = pipeline.process_prompt("Set guitar volume to -6dB")
-print(f"Volume command: {result['daw_commands']}")
-# Output: Volume command: ['volume(track:Guitar, start:1, end:5, start_value:-6.0, end_value:-6.0)']
+result['daw_commands']
+# Output: ['volume(track:Guitar, start:1, end:5, start_value:-6.0, end_value:-6.0)']
 
 result = pipeline.process_prompt("Mute the bass track")
+result['daw_commands']
+# Output: ['volume(track:bass, start:1, end:5)']
 
 # Effect operations
 result = pipeline.process_prompt("Add reverb to the vocals")
+result['daw_commands']
+# Output: ['effect(track:vocals, type:reverb, position:insert)']
+
 result = pipeline.process_prompt("Add compression to the drums")
+result['daw_commands']
+# Output: ['effect(track:drums, type:compression, position:insert)']
 
 # MIDI operations
 result = pipeline.process_prompt("Create a 4-bar clip with a C major chord")
-print(f"MIDI command: {result['daw_commands']}")
-# Output: MIDI command: ['midi(track:unknown, note:C,E,G, velocity:100, duration:2.0, bar:1, channel:1)']
+result['daw_commands']
+# Output: ['midi(track:unknown, note:C,E,G, velocity:100, duration:2.0, bar:1, channel:1)']
 
 result = pipeline.process_prompt("Quantize the MIDI notes to 16th notes")
+result['daw_commands']
+# Output: ['midi(track:unknown, quantize:16th)']
 
+# Complex operations
 result = pipeline.process_prompt("Mute all tracks except the vocals")
-print(f"Complex commands: {result['daw_commands']}")
-# Output: Complex commands: ['mute(track:all_except_vocals)']
+result['daw_commands']
+# Output: ['mute(track:all_except_vocals)']
 ```
 
 ### Multi-Language Support

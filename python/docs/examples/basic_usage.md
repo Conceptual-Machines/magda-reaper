@@ -60,13 +60,13 @@ print(f"DAW Commands: {result['daw_commands']}")
 ```python
 # Set volume
 result = pipeline.process_prompt("Set the volume of track 'Guitar' to -6dB")
-print(f"Volume command: {result['daw_commands']}")
-# Output: Volume command: ['volume(track:Guitar, start:1, end:5, start_value:-6.0, end_value:-6.0)']
+result['daw_commands']
+# Output: ['volume(track:Guitar, start:1, end:5, start_value:-6.0, end_value:-6.0)']
 
 # Mute a track
 result = pipeline.process_prompt("Mute the drums track")
-print(f"Mute command: {result['daw_commands']}")
-# Output: Mute command: ['volume(track:drums, start:1, end:5)']
+result['daw_commands']
+# Output: ['volume(track:drums, start:1, end:5)']
 ```
 
 ### Effect Processing
@@ -83,13 +83,13 @@ print(f"Full result: {result}")
 #   'model_used': 'gpt-4o-mini'
 # }
 
-print(f"Reverb command: {result['daw_commands']}")
-# Output: Reverb command: ['effect(track:vocals, type:reverb, position:insert)']
+result['daw_commands']
+# Output: ['effect(track:vocals, type:reverb, position:insert)']
 
 # Add compression
 result = pipeline.process_prompt("Add compression to the bass")
-print(f"Compression command: {result['daw_commands']}")
-# Output: Compression command: ['effect(track:bass, type:compression, position:insert)']
+result['daw_commands']
+# Output: ['effect(track:bass, type:compression, position:insert)']
 ```
 
 ### MIDI Operations
@@ -97,13 +97,13 @@ print(f"Compression command: {result['daw_commands']}")
 ```python
 # Create a clip with chord
 result = pipeline.process_prompt("Create a 4-bar clip with a C major chord")
-print(f"MIDI command: {result['daw_commands']}")
-# Output: MIDI command: ['midi(track:unknown, note:C,E,G, velocity:100, duration:2.0, bar:1, channel:1)']
+result['daw_commands']
+# Output: ['midi(track:unknown, note:C,E,G, velocity:100, duration:2.0, bar:1, channel:1)']
 
 # Quantize notes
 result = pipeline.process_prompt("Quantize the MIDI notes to 16th notes")
-print(f"Quantize command: {result['daw_commands']}")
-# Output: Quantize command: ['midi(track:unknown, quantize:16th)']
+result['daw_commands']
+# Output: ['midi(track:unknown, quantize:16th)']
 ```
 
 ## Complex Operations
@@ -130,8 +130,8 @@ print(f"Full result: {result}")
 #   'model_used': 'gpt-4o-2024-07-18'
 # }
 
-print(f"Multiple commands: {result['daw_commands']}")
-# Output: Multiple commands: [
+result['daw_commands']
+# Output: [
 #   'track(name:bass, id:uuid-1234-5678)',
 #   'effect(track:bass, type:compression, position:insert)',
 #   'volume(track:bass, start:1, end:5, start_value:-3.0, end_value:-3.0)'
@@ -158,8 +158,8 @@ print(f"Full result: {result}")
 #   'model_used': 'gpt-4o-2024-07-18'
 # }
 
-print(f"Conditional commands: {result['daw_commands']}")
-# Output: Conditional commands: ['track(name:guitar, id:uuid-5678-9012)', 'effect(track:guitar, type:reverb, position:insert)']
+result['daw_commands']
+# Output: ['track(name:guitar, id:uuid-5678-9012)', 'effect(track:guitar, type:reverb, position:insert)']
 ```
 
 ## Multi-Language Examples
@@ -169,8 +169,8 @@ print(f"Conditional commands: {result['daw_commands']}")
 ```python
 # Japanese prompt
 result = pipeline.process_prompt("トラック「ベース」の音量を-6dBに設定してください")
-print(f"Japanese command: {result['daw_commands']}")
-# Output: Japanese command: ['volume(track:ベース, start:1, end:5, start_value:-6.0, end_value:-6.0)']
+result['daw_commands']
+# Output: ['volume(track:ベース, start:1, end:5, start_value:-6.0, end_value:-6.0)']
 ```
 
 ### Spanish
@@ -178,8 +178,8 @@ print(f"Japanese command: {result['daw_commands']}")
 ```python
 # Spanish prompt
 result = pipeline.process_prompt("Crear una nueva pista llamada 'Guitarra'")
-print(f"Spanish command: {result['daw_commands']}")
-# Output: Spanish command: ['track(name:Guitarra, id:uuid-1234-5678)']
+result['daw_commands']
+# Output: ['track(name:Guitarra, id:uuid-1234-5678)']
 ```
 
 ### French
@@ -187,8 +187,8 @@ print(f"Spanish command: {result['daw_commands']}")
 ```python
 # French prompt
 result = pipeline.process_prompt("Ajouter de la réverbération à la piste de batterie")
-print(f"French command: {result['daw_commands']}")
-# Output: French command: ['effect(track:batterie, type:reverb, position:insert)']
+result['daw_commands']
+# Output: ['effect(track:batterie, type:reverb, position:insert)']
 ```
 
 ## Error Handling
