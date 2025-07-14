@@ -37,10 +37,10 @@ public:
     nlohmann::json loadSchema(const std::string& schema_name) const;
 
     /**
-     * @brief Get the operation identifier system prompt
-     * @return The operation identifier prompt
+     * @brief Get the orchestrator agent system prompt
+     * @return The orchestrator agent prompt
      */
-    std::string getOperationIdentifierPrompt() const;
+    std::string getOrchestratorAgentPrompt() const;
 
     /**
      * @brief Get the track agent system prompt
@@ -83,7 +83,7 @@ private:
     bool use_binary_data_;
 
     // Cached prompts
-    std::string operation_identifier_prompt_;
+    std::string orchestrator_agent_prompt_;
     std::string track_agent_prompt_;
     std::string effect_agent_prompt_;
     std::string volume_agent_prompt_;

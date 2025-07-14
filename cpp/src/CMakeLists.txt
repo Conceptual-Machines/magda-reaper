@@ -7,7 +7,7 @@ add_library(magda_cpp
     agents/effect_agent.cpp
     agents/midi_agent.cpp
     agents/clip_agent.cpp
-    agents/operation_identifier.cpp
+    agents/orchestrator_agent.cpp
     pipeline.cpp
     prompt_loader.cpp
 )

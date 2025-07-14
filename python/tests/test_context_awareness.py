@@ -18,7 +18,7 @@ class TestContextAwareness:
         return MAGDAPipeline()
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_track_creation_and_reference(self, mock_identify, pipeline):
         """Test creating a track and then referencing it by name."""
@@ -79,7 +79,7 @@ class TestContextAwareness:
                 print("✓ Track reference resolution working")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_multiple_tracks_and_effects(self, mock_identify, pipeline):
         """Test creating multiple tracks and adding effects to specific ones."""
@@ -174,7 +174,7 @@ class TestContextAwareness:
                 print("✓ Multiple track management working")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_volume_automation_context(self, mock_identify, pipeline):
         """Test volume automation with proper track context."""
@@ -242,7 +242,7 @@ class TestContextAwareness:
                 print("✓ Volume automation context working")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_complex_workflow(self, mock_identify, pipeline):
         """Test a complex workflow with multiple operations."""
@@ -383,7 +383,7 @@ class TestContextAwareness:
                         print("✓ Complex workflow working")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_context_persistence(self, mock_identify, pipeline):
         """Test that context persists across multiple operations."""
@@ -474,7 +474,7 @@ class TestContextAwareness:
                     print("✓ Context persistence working")
 
     @patch(
-        "magda.agents.operation_identifier.OperationIdentifier.identify_operations_with_llm"
+        "magda.agents.orchestrator_agent.OrchestratorAgent.identify_operations_with_llm"
     )
     def test_track_finding_methods(self, mock_identify, pipeline):
         """Test track finding by name and ID."""

@@ -15,8 +15,8 @@ class TestMAGDAPipeline:
         return MAGDAPipeline()
 
     @pytest.fixture
-    def mock_operation_identifier(self):
-        """Mock operation identifier response."""
+    def mock_orchestrator_agent(self):
+        """Mock orchestrator agent response."""
         return [
             {
                 "type": "track",
@@ -42,15 +42,15 @@ class TestMAGDAPipeline:
     def test_pipeline_initialization(self, pipeline):
         """Test that pipeline initializes correctly."""
         assert pipeline is not None
-        assert hasattr(pipeline, "operation_identifier")
+        assert hasattr(pipeline, "orchestrator_agent")
         assert hasattr(pipeline, "agents")
 
-    @patch("magda.agents.operation_identifier.OperationIdentifier.execute")
+    @patch("magda.agents.orchestrator_agent.OrchestratorAgent.execute")
     def test_process_prompt_single_operation(
-        self, mock_identifier, pipeline, mock_operation_identifier
+        self, mock_identifier, pipeline, mock_orchestrator_agent
     ):
         """Test processing a prompt with a single operation."""
-        mock_identifier.return_value = {"operations": mock_operation_identifier[:1]}
+        mock_identifier.return_value = {"operations": mock_orchestrator_agent[:1]}
 
         with patch.object(pipeline.agents["track"], "execute") as mock_track:
             mock_track.return_value = {
@@ -63,12 +63,12 @@ class TestMAGDAPipeline:
 
             assert result["daw_commands"] == ["track(bass, serum)"]
 
-    @patch("magda.agents.operation_identifier.OperationIdentifier.execute")
+    @patch("magda.agents.orchestrator_agent.OrchestratorAgent.execute")
     def test_process_prompt_multiple_operations(
-        self, mock_identifier, pipeline, mock_operation_identifier
+        self, mock_identifier, pipeline, mock_orchestrator_agent
     ):
         """Test processing a prompt with multiple operations."""
-        mock_identifier.return_value = {"operations": mock_operation_identifier}
+        mock_identifier.return_value = {"operations": mock_orchestrator_agent}
 
         with patch.object(pipeline.agents["track"], "execute") as mock_track:
             mock_track.return_value = {
@@ -83,7 +83,7 @@ class TestMAGDAPipeline:
             assert "track(bass, serum)" in result["daw_commands"][0]
             assert "track(drums, addictive_drums)" in result["daw_commands"][1]
 
-    @patch("magda.agents.operation_identifier.OperationIdentifier.execute")
+    @patch("magda.agents.orchestrator_agent.OrchestratorAgent.execute")
     def test_process_prompt_context_passing(self, mock_identifier, pipeline):
         """Test that context is passed between operations."""
         operations = [
@@ -126,7 +126,7 @@ class TestMAGDAPipeline:
     def test_process_prompt_empty_operations(self, pipeline):
         """Test handling of empty operations list."""
         with patch(
-            "magda.agents.operation_identifier.OperationIdentifier.execute"
+            "magda.agents.orchestrator_agent.OrchestratorAgent.execute"
         ) as mock_identifier:
             mock_identifier.return_value = {"operations": []}
 
@@ -135,7 +135,7 @@ class TestMAGDAPipeline:
             assert result["daw_commands"] == []
             assert result["results"] == []
 
-    @patch("magda.agents.operation_identifier.OperationIdentifier.execute")
+    @patch("magda.agents.orchestrator_agent.OrchestratorAgent.execute")
     def test_process_prompt_agent_not_found(self, mock_identifier, pipeline):
         """Test handling of unknown agent types."""
         operations = [
@@ -154,7 +154,7 @@ class TestMAGDAPipeline:
     def test_pipeline_error_handling(self, pipeline):
         """Test pipeline error handling."""
         with patch(
-            "magda.agents.operation_identifier.OperationIdentifier.execute"
+            "magda.agents.orchestrator_agent.OrchestratorAgent.execute"
         ) as mock_identifier:
             mock_identifier.side_effect = Exception("API Error")
 
@@ -175,7 +175,7 @@ class TestPipelineIntegration:
         """Integration test for simple track creation."""
         # This would require actual API calls, so we'll mock them
         with patch(
-            "magda.agents.operation_identifier.OperationIdentifier.execute"
+            "magda.agents.orchestrator_agent.OrchestratorAgent.execute"
         ) as mock_identifier:
             mock_identifier.return_value = {
                 "operations": [
@@ -224,7 +224,7 @@ class TestPipelineIntegration:
         ]
 
         with patch(
-            "magda.agents.operation_identifier.OperationIdentifier.execute"
+            "magda.agents.orchestrator_agent.OrchestratorAgent.execute"
         ) as mock_identifier:
             mock_identifier.return_value = {"operations": operations}
 

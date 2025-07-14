@@ -15,8 +15,8 @@ SharedResources::SharedResources(const std::string& base_path, bool use_binary_d
     loadSchemas();
 }
 
-std::string SharedResources::getOperationIdentifierPrompt() const {
-    return operation_identifier_prompt_;
+std::string SharedResources::getOrchestratorAgentPrompt() const {
+    return orchestrator_agent_prompt_;
 }
 
 std::string SharedResources::getTrackAgentPrompt() const {
@@ -75,9 +75,7 @@ std::string SharedResources::loadPromptFromBinary(const std::string& prompt_name
         return binaryDataToString(data);
     }
 
-    // Fallback to file loading if binary data not found
-    std::cout << "Binary data not found for: " << prompt_name << ", falling back to file I/O" << std::endl;
-    return loadPromptFile(prompt_name);
+    throw std::runtime_error("Binary data not available for prompt: " + prompt_name + ". This indicates a build configuration issue.");
 }
 
 nlohmann::json SharedResources::loadSchemaFromBinary(const std::string& schema_name) const {
@@ -92,14 +90,12 @@ nlohmann::json SharedResources::loadSchemaFromBinary(const std::string& schema_n
         }
     }
 
-    // Fallback to file loading if binary data not found
-    std::cout << "Binary data not found for: " << schema_name << ", falling back to file I/O" << std::endl;
-    return loadSchema(schema_name);
+    throw std::runtime_error("Binary data not available for schema: " + schema_name + ". This indicates a build configuration issue.");
 }
 
 void SharedResources::loadPrompts() {
-    // Load operation identifier prompt
-    operation_identifier_prompt_ = loadPrompt("operation_identifier");
+    // Load orchestrator agent prompt
+    orchestrator_agent_prompt_ = loadPrompt("orchestrator_agent");
 
     // Load agent prompts
     track_agent_prompt_ = loadPrompt("track_agent");
@@ -121,97 +117,7 @@ std::string SharedResources::loadPromptFile(const std::string& prompt_name) cons
         }
     }
 
-    // Return fallback prompts based on agent type
-    if (prompt_name == "operation_identifier") {
-        return R"(
-You are an operation identifier for a DAW (Digital Audio Workstation) system.
-Your job is to analyze natural language prompts and break them down into discrete operations.
-
-For each operation, return an object with:
-- type: the operation type (track, clip, volume, effect, midi)
-- description: a short human-readable description of the operation
-- parameters: a dictionary of parameters for the operation
-
-Return your analysis as a JSON object with an 'operations' array, where each operation has 'type', 'description', and 'parameters'.
-
-Example output:
-{"operations": [
-  {"type": "track", "description": "Create a track with Serum VST named 'bass'", "parameters": {"name": "bass", "vst": "serum"}},
-  {"type": "clip", "description": "Add a clip starting from bar 17", "parameters": {"start_bar": 17}}
-]}
-)";
-    } else if (prompt_name == "track_agent") {
-        return R"(
-You are a track creation specialist for a DAW system.
-Your job is to parse track creation requests and extract the necessary parameters.
-
-Extract the following information:
-- vst: The VST plugin name (e.g., "serum", "addictive drums")
-- name: The track name (e.g., "bass", "drums")
-- type: Track type (usually "audio" or "midi")
-
-Return a JSON object with the extracted parameters following the provided schema.
-)";
-    } else if (prompt_name == "effect_agent") {
-        return R"(
-You are an effect specialist for a DAW system.
-Your job is to parse effect requests and extract the necessary parameters.
-
-Extract the following information:
-- effect_type: The type of effect (reverb, delay, compressor, eq, filter, distortion, etc.)
-- parameters: A dictionary of effect parameters (e.g., {"wet": 0.5, "decay": 2.0})
-- position: Where to insert the effect (insert, send, master, default: insert)
-
-Return a JSON object with the extracted parameters following the provided schema.
-)";
-    } else if (prompt_name == "volume_agent") {
-        return R"(
-You are a volume automation specialist for a DAW system.
-Your job is to parse volume automation requests and extract the necessary parameters.
-
-Extract the following information:
-- start_value: The starting volume value (0.0 to 1.0, default: 0.0)
-- end_value: The ending volume value (0.0 to 1.0, default: 1.0)
-- start_bar: The starting bar number (default: 1)
-- end_bar: The ending bar number (default: start_bar + 4)
-
-Return a JSON object with the extracted parameters following the provided schema.
-)";
-    } else if (prompt_name == "midi_agent") {
-        return R"(
-You are a MIDI specialist for a DAW system.
-Your job is to parse MIDI requests and extract the necessary parameters.
-
-Extract the following information:
-- operation: The type of MIDI operation (note, chord, quantize, transpose, etc.)
-- note: The MIDI note (e.g., "C4", "A#3", default: "C4")
-- velocity: Note velocity (0-127, default: 100)
-- duration: Note duration in seconds (default: 1.0)
-- start_bar: Starting bar number (default: 1)
-- channel: MIDI channel (1-16, default: 1)
-- quantization: Quantization value if specified
-- transpose_semitones: Transpose amount in semitones if specified
-
-Return a JSON object with the extracted parameters following the provided schema.
-)";
-    } else if (prompt_name == "clip_agent") {
-        return R"(
-You are a clip specialist for a DAW system.
-Your job is to parse clip requests and extract the necessary parameters.
-
-Extract the following information:
-- start_bar: Starting bar number (default: 1)
-- end_bar: Ending bar number (default: start_bar + 4)
-- start_time: Start time in seconds (optional)
-- duration: Clip duration in seconds (optional)
-- track_name: Target track name (optional)
-
-Return a JSON object with the extracted parameters following the provided schema.
-)";
-    }
-
-    std::cout << "Using fallback hardcoded prompt for: " << prompt_name << std::endl;
-    return "Fallback prompt for " + prompt_name;
+    throw std::runtime_error("Binary data not available for prompt: " + prompt_name + ". This indicates a build configuration issue.");
 }
 
 void SharedResources::loadSchemas() {
@@ -224,27 +130,7 @@ void SharedResources::loadSchemas() {
 }
 
 void SharedResources::loadDefaultSchema() {
-    // Fallback to hardcoded schema using JsonSchemaBuilder
-    daw_operation_schema_ = JsonSchemaBuilder()
-        .type("object")
-        .property("operations", JsonSchemaBuilder()
-            .type("array")
-            .items(JsonSchemaBuilder()
-                .type("object")
-                .property("type", JsonSchemaBuilder()
-                    .type("string")
-                    .enumValues({"track", "clip", "volume", "effect", "midi"}))
-                .property("description", JsonSchemaBuilder()
-                    .type("string"))
-                .property("parameters", JsonSchemaBuilder()
-                    .type("object"))
-                .required({"type", "description"})
-                .additionalProperties(false))
-            )
-        .required({"operations"})
-        .additionalProperties(false)
-        .build();
-    std::cout << "Using fallback hardcoded schema (JsonSchemaBuilder)" << std::endl;
+    throw std::runtime_error("Binary data not available for DAW operation schema. This indicates a build configuration issue.");
 }
 
 std::filesystem::path SharedResources::findSharedResourcesPath() {

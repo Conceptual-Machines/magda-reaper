@@ -1,4 +1,4 @@
-#include "magda_cpp/agents/operation_identifier.h"
+#include "magda_cpp/agents/orchestrator_agent.h"
 #include "prompt_loader.hpp"
 #include <fstream>
 #include <sstream>
@@ -6,11 +6,11 @@
 
 namespace magda {
 
-OperationIdentifier::OperationIdentifier(const std::string& api_key)
-    : BaseAgent("operation_identifier", api_key) {
+OrchestratorAgent::OrchestratorAgent(const std::string& api_key)
+    : BaseAgent("orchestrator_agent", api_key) {
 }
 
-OperationIdentificationResult OperationIdentifier::identifyOperations(const std::string& prompt) {
+OperationIdentificationResult OrchestratorAgent::identifyOperations(const std::string& prompt) {
     OperationIdentificationResult result;
     result.original_prompt = prompt;
     result.success = false;
@@ -18,7 +18,7 @@ OperationIdentificationResult OperationIdentifier::identifyOperations(const std:
     try {
         LLMRequestConfig config;
         config.client = "openai";
-        config.model = ModelConfig::CURRENT_DECISION_AGENT;
+        config.model = ModelConfig::getOrchestratorAgentModel();
 
         // Set temperature for models that support it
         config.temperature = 0.1f;
@@ -122,10 +122,10 @@ OperationIdentificationResult OperationIdentifier::identifyOperations(const std:
     return result;
 }
 
-bool OperationIdentifier::shouldUseStructuredOutput() {
+bool OrchestratorAgent::shouldUseStructuredOutput() {
     // Use structured output for models that support it well (like gpt-4.1-mini)
     // Use free-form output for reasoning models (like o3-mini)
-    std::string model = ModelConfig::CURRENT_DECISION_AGENT;
+    std::string model = ModelConfig::getOrchestratorAgentModel();
 
     if (model.find("o3") != std::string::npos ||
         model.find("o1") != std::string::npos ||
@@ -136,11 +136,11 @@ bool OperationIdentifier::shouldUseStructuredOutput() {
     return true;  // Other models (gpt-4.1-mini, gpt-4o-mini, etc.) - use structured output
 }
 
-std::string OperationIdentifier::getRecommendedModel() {
-    return ModelConfig::CURRENT_DECISION_AGENT; // Use current decision agent model
+std::string OrchestratorAgent::getRecommendedModel() {
+    return ModelConfig::getOrchestratorAgentModel(); // Use current orchestrator agent model
 }
 
-nlohmann::json OperationIdentifier::getOperationSchema() {
+nlohmann::json OrchestratorAgent::getOperationSchema() {
     return {
         {"type", "object"},
         {"additionalProperties", false},
@@ -166,34 +166,17 @@ nlohmann::json OperationIdentifier::getOperationSchema() {
     };
 }
 
-std::string OperationIdentifier::buildSystemPrompt() {
+std::string OrchestratorAgent::buildSystemPrompt() {
     try {
         // Try to use shared prompt loader
         static SharedResources resources;
-        return resources.getOperationIdentifierPrompt();
+        return resources.getOrchestratorAgentPrompt();
     } catch (...) {
-        // Fallback to hardcoded prompt
-        return R"(
-You are an operation identifier for a DAW (Digital Audio Workstation) system.
-Your job is to analyze natural language prompts and break them down into discrete operations.
-
-For each operation, return an object with:
-- type: the operation type (track, clip, volume, effect, midi)
-- description: a short human-readable description of the operation
-- parameters: a dictionary of parameters for the operation
-
-Return your analysis as a JSON object with an 'operations' array, where each operation has 'type', 'description', and 'parameters'.
-
-Example output:
-{"operations": [
-  {"type": "track", "description": "Create a track with Serum VST named 'bass'", "parameters": {"name": "bass", "vst": "serum"}},
-  {"type": "clip", "description": "Add a clip starting from bar 17", "parameters": {"start_bar": 17}}
-]}
-)";
+        throw std::runtime_error("Binary data not available for orchestrator agent prompt. This indicates a build configuration issue.");
     }
 }
 
-std::vector<DAWOperation> OperationIdentifier::parseStructuredOperations(const LLMResponse& response) {
+std::vector<DAWOperation> OrchestratorAgent::parseStructuredOperations(const LLMResponse& response) {
     std::vector<DAWOperation> operations;
 
     try {
@@ -260,7 +243,7 @@ std::vector<DAWOperation> OperationIdentifier::parseStructuredOperations(const L
     return operations;
 }
 
-std::vector<DAWOperation> OperationIdentifier::parseFreeFormOperations(const LLMResponse& response) {
+std::vector<DAWOperation> OrchestratorAgent::parseFreeFormOperations(const LLMResponse& response) {
     std::vector<DAWOperation> operations;
 
     try {
@@ -334,12 +317,12 @@ std::vector<DAWOperation> OperationIdentifier::parseFreeFormOperations(const LLM
 }
 
 // BaseAgent interface implementation
-bool OperationIdentifier::canHandle(const std::string& operation) const {
-    // OperationIdentifier can handle any operation type
+bool OrchestratorAgent::canHandle(const std::string& operation) const {
+    // OrchestratorAgent can handle any operation type
     return true;
 }
 
-AgentResponse OperationIdentifier::execute(const std::string& operation, const nlohmann::json& context) {
+AgentResponse OrchestratorAgent::execute(const std::string& operation, const nlohmann::json& context) {
     // Execute operation identification
     auto result = identifyOperations(operation);
 
@@ -374,12 +357,12 @@ AgentResponse OperationIdentifier::execute(const std::string& operation, const n
     }
 }
 
-std::vector<std::string> OperationIdentifier::getCapabilities() const {
+std::vector<std::string> OrchestratorAgent::getCapabilities() const {
     return {"operation_identification", "track", "clip", "volume", "effect", "midi"};
 }
 
-std::string OperationIdentifier::generateDAWCommand(const nlohmann::json& result) const {
-    // OperationIdentifier doesn't generate DAW commands directly
+std::string OrchestratorAgent::generateDAWCommand(const nlohmann::json& result) const {
+    // OrchestratorAgent doesn't generate DAW commands directly
     return "operation_identification";
 }
 

@@ -4,7 +4,7 @@ from .agents.base import BaseAgent
 from .agents.clip_agent import ClipAgent
 from .agents.effect_agent import EffectAgent
 from .agents.midi_agent import MidiAgent
-from .agents.operation_identifier import OperationIdentifier
+from .agents.orchestrator_agent import OrchestratorAgent
 from .agents.track_agent import TrackAgent
 from .agents.volume_agent import VolumeAgent
 from .context_manager import ContextManager
@@ -14,7 +14,7 @@ class MAGDAPipeline:
     """Main pipeline orchestrator for MAGDA with context awareness."""
 
     def __init__(self) -> None:
-        self.operation_identifier = OperationIdentifier()
+        self.orchestrator_agent = OrchestratorAgent()
         self.context_manager = ContextManager()
         self.agents: dict[str, BaseAgent] = {
             "track": TrackAgent(),
@@ -30,7 +30,7 @@ class MAGDAPipeline:
         # Stage 1: Identify operations
         print("Stage 1: Identifying operations...")
         # Identify operations
-        operations = self.operation_identifier.execute(prompt, context).get(
+        operations = self.orchestrator_agent.execute(prompt, context).get(
             "operations", []
         )
         # Convert to dict if needed

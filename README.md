@@ -53,7 +53,7 @@ MAGDA is implemented in both **Python** and **C++** to provide maximum flexibili
 
 ### Dual-Stage Pipeline
 
-1. **Operation Identifier Agent** (`gpt-4.1-mini`): Analyzes prompts and identifies operations
+1. **Orchestrator Agent** (`gpt-4.1-nano`): Analyzes prompts and identifies operations
 2. **Specialized Agents** (`gpt-4o-mini`): Handle specific DAW operations:
    - **Track Agent**: Create, modify, and manage tracks
    - **Clip Agent**: Handle audio/MIDI clips and regions
@@ -191,7 +191,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 ### Model Selection
 
 MAGDA uses different models for different tasks:
-- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate operation identification)
+- **Orchestrator Agent**: `gpt-4.1-nano` (fast, accurate operation identification)
 - **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective DAW command generation)
 
 ## 🧪 Testing
@@ -239,7 +239,7 @@ magda/
 │   │   └── agents/
 │   │       ├── __init__.py
 │   │       ├── base.py      # Base agent class
-│   │       ├── operation_identifier.py
+│   │       ├── orchestrator_agent.py
 │   │       ├── track_agent.py
 │   │       ├── clip_agent.py
 │   │       ├── volume_agent.py
@@ -291,7 +291,7 @@ The release script will:
 1. Create a new agent class inheriting from `BaseAgent`
 2. Implement the `process` method with structured output
 3. Add the agent to the pipeline's agent registry
-4. Update the operation identifier to recognize new operations
+4. Update the orchestrator agent to recognize new operations
 
 ### Contributing
 
@@ -318,7 +318,7 @@ For questions, issues, or contributions:
 
 MAGDA uses multiple OpenAI models for different stages of the pipeline. The defaults are:
 
-- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate operation identification)
+- **Orchestrator Agent**: `gpt-4.1-nano` (fast, accurate operation identification)
 - **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective for DAW commands)
 
 You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex reasoning tasks, you may use O-series models (e.g., `o3-mini`, `o1-pro`) which excel at multi-step reasoning but are slower and more expensive.

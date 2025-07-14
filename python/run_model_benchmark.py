@@ -20,8 +20,8 @@ sys.path.insert(0, str(project_root))
 # Load environment variables from .env file
 load_dotenv("../.env")
 
-# Load operation identifier prompt
-OPERATION_IDENTIFIER_PROMPT = get_prompt("operation_identifier")
+# Load orchestrator agent prompt
+ORCHESTRATOR_AGENT_PROMPT = get_prompt("orchestrator_agent")
 
 
 def test_model_performance(model_name, prompt, client):
@@ -33,9 +33,9 @@ def test_model_performance(model_name, prompt, client):
     try:
         print(f"DEBUG: Making direct API call to {model_name}")
 
-        # Make direct API call to the operation identifier stage
+        # Make direct API call to the orchestrator agent stage
         response = client.responses.create(
-            input=prompt, instructions=OPERATION_IDENTIFIER_PROMPT, model=model_name
+            input=prompt, instructions=ORCHESTRATOR_AGENT_PROMPT, model=model_name
         )
 
         end_time = time.time()

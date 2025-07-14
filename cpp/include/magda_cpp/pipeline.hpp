@@ -7,7 +7,7 @@
 #include <optional>
 #include <nlohmann/json.hpp>
 #include "magda_cpp/agents/base_agent.h"
-#include "magda_cpp/agents/operation_identifier.h"
+#include "magda_cpp/agents/orchestrator_agent.h"
 #include "magda_cpp/agents/track_agent.h"
 #include "magda_cpp/agents/volume_agent.h"
 #include "magda_cpp/agents/effect_agent.h"
@@ -36,7 +36,7 @@ struct PipelineResult {
  * @brief Main MAGDA pipeline class
  *
  * This class orchestrates the two-stage pipeline:
- * 1. Operation identification using the OperationIdentifier agent
+ * 1. Operation orchestration using the OrchestratorAgent
  * 2. Operation execution using specialized agents
  */
 class MAGDAPipeline {
@@ -71,7 +71,7 @@ private:
     nlohmann::json context_;
 
     // Agents
-    std::unique_ptr<OperationIdentifier> operation_identifier_;
+    std::unique_ptr<OrchestratorAgent> orchestrator_agent_;
     std::map<std::string, std::unique_ptr<BaseAgent>> agents_;
 
     /**

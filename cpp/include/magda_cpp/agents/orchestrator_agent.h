@@ -30,18 +30,18 @@ struct OperationIdentificationResult {
 };
 
 /**
- * @brief Agent responsible for identifying DAW operations from natural language prompts
+ * @brief Agent responsible for orchestrating DAW operations from natural language prompts
  *
  * Uses OpenAI's GPT models via llmcpp to analyze prompts and extract structured
  * DAW operations that can be executed by specialized agents.
  */
-class OperationIdentifier : public BaseAgent {
+class OrchestratorAgent : public BaseAgent {
 public:
     /**
      * @brief Constructor
      * @param api_key OpenAI API key (can be nullptr to use environment variable)
      */
-    explicit OperationIdentifier(const std::string& api_key = "");
+    explicit OrchestratorAgent(const std::string& api_key = "");
 
     // BaseAgent interface implementation
     bool canHandle(const std::string& operation) const override;
@@ -56,7 +56,7 @@ public:
     OperationIdentificationResult identifyOperations(const std::string& prompt);
 
     /**
-     * @brief Get the recommended model for operation identification
+     * @brief Get the recommended model for operation orchestration
      * @return Model string for optimal performance/cost balance
      */
     static std::string getRecommendedModel();
@@ -72,7 +72,7 @@ private:
     std::string generateDAWCommand(const nlohmann::json& result) const override;
 
     /**
-     * @brief Build the system prompt for operation identification
+     * @brief Build the system prompt for operation orchestration
      * @return System prompt string
      */
     static std::string buildSystemPrompt();

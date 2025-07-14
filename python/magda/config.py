@@ -16,7 +16,7 @@ class ModelConfig:
     """
 
     # First stage: Operation identification (cost-effective, fast)
-    OPERATION_IDENTIFIER = "gpt-4.1-mini"
+    ORCHESTRATOR_AGENT = "gpt-4.1-nano"
 
     # Second stage: Specialized agents (higher quality, structured output)
     SPECIALIZED_AGENTS = "gpt-4o-mini"
@@ -28,7 +28,7 @@ class ModelConfig:
     FALLBACK = "gpt-4o-mini"
 
     # Current model choices (easy to change in one place)
-    CURRENT_DECISION_AGENT = OPERATION_IDENTIFIER
+    CURRENT_DECISION_AGENT = ORCHESTRATOR_AGENT
     CURRENT_SPECIALIZED_AGENTS = SPECIALIZED_AGENTS
 
 

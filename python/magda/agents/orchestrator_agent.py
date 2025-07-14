@@ -13,7 +13,7 @@ from .base import BaseAgent
 load_dotenv()
 
 
-class OperationIdentifier(BaseAgent):
+class OrchestratorAgent(BaseAgent):
     """Agent responsible for identifying operations in natural language prompts using LLM."""
 
     def __init__(self) -> None:
@@ -40,12 +40,12 @@ class OperationIdentifier(BaseAgent):
     def identify_operations_with_llm(self, prompt: str) -> list[IdentifiedOperation]:
         """Use LLM to identify operations in the prompt using reasoning with Responses API."""
 
-        instructions = get_prompt("operation_identifier")
+        instructions = get_prompt("orchestrator_agent")
 
         operations: list[IdentifiedOperation] = []
         try:
             response = self.client.responses.parse(
-                model=ModelConfig.OPERATION_IDENTIFIER,
+                model=ModelConfig.ORCHESTRATOR_AGENT,
                 instructions=instructions,
                 input=prompt,
                 text_format=OperationList,

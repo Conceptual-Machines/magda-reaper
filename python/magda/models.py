@@ -186,7 +186,7 @@ ParameterUnion = TrackParameters | ClipParameters | VolumeParameters | MidiParam
 
 
 class IdentifiedOperation(BaseModel):
-    """Model for an operation as identified by the operation identifier."""
+    """Model for an operation as identified by the orchestrator agent."""
 
     model_config = ConfigDict(extra="forbid")
 
