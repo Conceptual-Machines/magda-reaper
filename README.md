@@ -379,9 +379,9 @@ You can override the model for any agent or operation by passing a `model` param
 ### Model Summary Table
 | Model           | Latency | Token Usage | Cost | Reasoning | Recommended For         |
 |-----------------|---------|-------------|------|-----------|------------------------|
-| gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
-| gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
-| gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐⭐        | Fallback, complex tasks|
+| gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐⭐⭐       | All DAW tasks          |
+| gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐⭐        | All DAW tasks          |
+| gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐         | Legacy support only    |
 | o3-mini         | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
 | o1-pro          | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
 
