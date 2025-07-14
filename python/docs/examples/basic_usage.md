@@ -60,15 +60,6 @@ print(f"DAW Commands: {result['daw_commands']}")
 ```python
 # Set volume
 result = pipeline.process_prompt("Set the volume of track 'Guitar' to -6dB")
-print(f"Full result: {result}")
-# Output: Full result: {
-#   'success': True,
-#   'commands': ['volume(track:Guitar, start:1, end:5, start_value:-6.0, end_value:-6.0)'],
-#   'daw_commands': ['volume(track:Guitar, start:1, end:5, start_value:-6.0, end_value:-6.0)'],
-#   'complexity': 'simple',
-#   'model_used': 'gpt-4o-mini'
-# }
-
 print(f"Volume command: {result['daw_commands']}")
 # Output: Volume command: ['volume(track:Guitar, start:1, end:5, start_value:-6.0, end_value:-6.0)']
 
@@ -106,15 +97,6 @@ print(f"Compression command: {result['daw_commands']}")
 ```python
 # Create a clip with chord
 result = pipeline.process_prompt("Create a 4-bar clip with a C major chord")
-print(f"Full result: {result}")
-# Output: Full result: {
-#   'success': True,
-#   'commands': ['midi(track:unknown, note:C,E,G, velocity:100, duration:2.0, bar:1, channel:1)'],
-#   'daw_commands': ['midi(track:unknown, note:C,E,G, velocity:100, duration:2.0, bar:1, channel:1)'],
-#   'complexity': 'medium',
-#   'model_used': 'gpt-4o'
-# }
-
 print(f"MIDI command: {result['daw_commands']}")
 # Output: MIDI command: ['midi(track:unknown, note:C,E,G, velocity:100, duration:2.0, bar:1, channel:1)']
 
