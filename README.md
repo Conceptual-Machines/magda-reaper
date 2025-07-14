@@ -381,7 +381,7 @@ You can override the model for any agent or operation by passing a `model` param
 |-----------------|---------|-------------|------|-----------|------------------------|
 | gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐⭐⭐       | All DAW tasks          |
 | gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐⭐        | All DAW tasks          |
-| gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐         | Legacy support only    |
+| gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐         | Good for most tasks    |
 | o3-mini         | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
 | o1-pro          | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
 
