@@ -1,4 +1,5 @@
 #include "prompt_loader.hpp"
+#include "binary_data.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -6,8 +7,9 @@
 
 namespace magda {
 
-SharedResources::SharedResources(const std::string& base_path) {
+SharedResources::SharedResources(const std::string& base_path, bool use_binary_data) {
     base_path_ = base_path.empty() ? findSharedResourcesPath() : std::filesystem::path(base_path);
+    use_binary_data_ = use_binary_data;
     loadPrompts();
     loadSchemas();
 }
@@ -41,10 +43,17 @@ nlohmann::json SharedResources::getDawOperationSchema() const {
 }
 
 std::string SharedResources::loadPrompt(const std::string& prompt_name) const {
+    if (use_binary_data_) {
+        return loadPromptFromBinary(prompt_name);
+    }
     return loadPromptFile(prompt_name);
 }
 
 nlohmann::json SharedResources::loadSchema(const std::string& schema_name) const {
+    if (use_binary_data_) {
+        return loadSchemaFromBinary(schema_name);
+    }
+
     std::string schema_path = (base_path_ / "schemas" / (schema_name + ".json")).string();
     if (std::filesystem::exists(schema_path)) {
         std::ifstream file(schema_path);
@@ -61,16 +70,45 @@ nlohmann::json SharedResources::loadSchema(const std::string& schema_name) const
     return nlohmann::json::object();
 }
 
+std::string SharedResources::loadPromptFromBinary(const std::string& prompt_name) const {
+    const BinaryData* data = getBinaryData(prompt_name);
+    if (data) {
+        std::cout << "Loaded binary prompt: " << prompt_name << std::endl;
+        return binaryDataToString(data);
+    }
+
+    // Fallback to file loading if binary data not found
+    std::cout << "Binary data not found for: " << prompt_name << ", falling back to file I/O" << std::endl;
+    return loadPromptFile(prompt_name);
+}
+
+nlohmann::json SharedResources::loadSchemaFromBinary(const std::string& schema_name) const {
+    const BinaryData* data = getBinaryData(schema_name);
+    if (data) {
+        std::cout << "Loaded binary schema: " << schema_name << std::endl;
+        std::string schema_str = binaryDataToString(data);
+        try {
+            return nlohmann::json::parse(schema_str);
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing binary schema: " << e.what() << std::endl;
+        }
+    }
+
+    // Fallback to file loading if binary data not found
+    std::cout << "Binary data not found for: " << schema_name << ", falling back to file I/O" << std::endl;
+    return loadSchema(schema_name);
+}
+
 void SharedResources::loadPrompts() {
     // Load operation identifier prompt
-    operation_identifier_prompt_ = loadPromptFile("operation_identifier");
+    operation_identifier_prompt_ = loadPrompt("operation_identifier");
 
     // Load agent prompts
-    track_agent_prompt_ = loadPromptFile("track_agent");
-    effect_agent_prompt_ = loadPromptFile("effect_agent");
-    volume_agent_prompt_ = loadPromptFile("volume_agent");
-    midi_agent_prompt_ = loadPromptFile("midi_agent");
-    clip_agent_prompt_ = loadPromptFile("clip_agent");
+    track_agent_prompt_ = loadPrompt("track_agent");
+    effect_agent_prompt_ = loadPrompt("effect_agent");
+    volume_agent_prompt_ = loadPrompt("volume_agent");
+    midi_agent_prompt_ = loadPrompt("midi_agent");
+    clip_agent_prompt_ = loadPrompt("clip_agent");
 }
 
 std::string SharedResources::loadPromptFile(const std::string& prompt_name) const {
@@ -180,19 +218,9 @@ Return a JSON object with the extracted parameters following the provided schema
 
 void SharedResources::loadSchemas() {
     // Try to load DAW operation schema
-    std::string schema_path = (base_path_ / "schemas" / "daw_operation.json").string();
-    if (std::filesystem::exists(schema_path)) {
-        std::ifstream file(schema_path);
-        if (file.is_open()) {
-            try {
-                file >> daw_operation_schema_;
-                std::cout << "Loaded shared schema from: " << schema_path << std::endl;
-            } catch (const std::exception& e) {
-                std::cerr << "Error parsing schema file: " << e.what() << std::endl;
-                loadDefaultSchema();
-            }
-        }
-    } else {
+    daw_operation_schema_ = loadSchema("daw_operation");
+
+    if (daw_operation_schema_.empty()) {
         loadDefaultSchema();
     }
 }
