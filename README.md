@@ -191,8 +191,8 @@ OPENAI_API_KEY=your_openai_api_key_here
 ### Model Selection
 
 MAGDA uses different models for different tasks:
-- **Operation Identifier**: `o3-mini` (reasoning and analysis)
-- **Specialized Agents**: `gpt-4.1` (structured output generation)
+- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate operation identification)
+- **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective DAW command generation)
 
 ## 🧪 Testing
 
@@ -318,10 +318,10 @@ For questions, issues, or contributions:
 
 MAGDA uses multiple OpenAI models for different stages of the pipeline. The defaults are:
 
-- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate reasoning)
+- **Operation Identifier**: `gpt-4.1-nano` (fast, accurate operation identification)
 - **Specialized Agents**: `gpt-4o-mini` (ultra-fast, cost-effective for DAW commands)
 
-You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex or creative tasks, you may use larger models (e.g., `gpt-4o`, `o3-mini`, `o1-pro`) as a fallback.
+You can override the model for any agent or operation by passing a `model` parameter to the pipeline or agent call. For complex reasoning tasks, you may use O-series models (e.g., `o3-mini`, `o1-pro`) which excel at multi-step reasoning but are slower and more expensive.
 
 ### Model Summary Table
 | Model           | Latency | Token Usage | Cost | Reasoning | Recommended For         |
@@ -329,7 +329,8 @@ You can override the model for any agent or operation by passing a `model` param
 | gpt-4o-mini     | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
 | gpt-4.1-nano    | ⭐⭐⭐    | ⭐⭐⭐        | ⭐⭐⭐ | ⭐         | All DAW tasks          |
 | gpt-4o          | ⭐⭐     | ⭐⭐         | ⭐⭐  | ⭐⭐        | Fallback, complex tasks|
-| o3-mini, o1-pro | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Only if needed         |
+| o3-mini         | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
+| o1-pro          | ⭐      | ⭐          | ⭐   | ⭐⭐⭐       | Complex reasoning tasks|
 
 ## 📊 Model Benchmarking
 
