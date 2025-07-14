@@ -10,7 +10,8 @@ import time
 from pathlib import Path
 
 from dotenv import load_dotenv
-from shared.utils.prompt_loader import SharedResources
+
+from magda.prompt_loader import get_prompt
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent
@@ -19,9 +20,8 @@ sys.path.insert(0, str(project_root))
 # Load environment variables from .env file
 load_dotenv("../.env")
 
-# Load shared resources
-shared_resources = SharedResources()
-OPERATION_IDENTIFIER_PROMPT = shared_resources.get_operation_identifier_prompt()
+# Load operation identifier prompt
+OPERATION_IDENTIFIER_PROMPT = get_prompt("operation_identifier")
 
 
 def test_model_performance(model_name, prompt, client):

@@ -9,7 +9,7 @@ add_library(magda_cpp
     agents/clip_agent.cpp
     agents/operation_identifier.cpp
     pipeline.cpp
-    ../../shared/utils/prompt_loader.cpp
+    prompt_loader.cpp
 )
 
 # Generate binary data headers from prompt files only
@@ -34,7 +34,7 @@ endforeach()
 
 # Generate the binary data header file
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../shared/utils/binary_data.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/../binary_data.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/binary_data.h
     @ONLY
 )
@@ -60,7 +60,6 @@ target_link_libraries(magda_cpp
 target_include_directories(magda_cpp
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../shared/utils>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
