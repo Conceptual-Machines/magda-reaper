@@ -3,10 +3,11 @@
 Debug script to test Japanese prompt processing in isolation.
 """
 
-import os
 import time
+
 from magda.pipeline import MAGDAPipeline
-from magda.utils import fast_path_route, assess_task_complexity, select_model_for_task
+from magda.utils import assess_task_complexity, fast_path_route, select_model_for_task
+
 
 def test_japanese_prompt():
     """Test Japanese prompt processing step by step."""
@@ -14,7 +15,7 @@ def test_japanese_prompt():
     # Test prompt
     prompt = "トラック「ベース」の音量を-6dBに設定してください"
     print(f"Testing Japanese prompt: {prompt}")
-    print(f"Prompt meaning: Please set the volume of track 'Bass' to -6dB")
+    print("Prompt meaning: Please set the volume of track 'Bass' to -6dB")
 
     # Step 1: Test fast-path routing with detailed debug
     print("\n1. Testing fast-path routing...")
@@ -22,6 +23,7 @@ def test_japanese_prompt():
 
     # Debug: Check all keywords that match
     from magda.utils import OPERATION_KEYWORDS
+
     prompt_lower = prompt.lower()
     matched_keywords = []
     for keyword, operation_type in OPERATION_KEYWORDS.items():
@@ -59,6 +61,7 @@ def test_japanese_prompt():
         processing_time = time.time() - start_time
         print(f"   Error after {processing_time:.3f}s: {e}")
         print(f"   Error type: {type(e)}")
+
 
 if __name__ == "__main__":
     test_japanese_prompt()

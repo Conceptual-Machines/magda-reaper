@@ -1,17 +1,36 @@
 """
-MAGDA - Multi Agent Generative DAW API
+MAGDA - Multi Agent Domain Automation
 
-A Python implementation of the MAGDA system for natural language DAW control.
+A Python library for translating natural language prompts into domain-specific commands.
+Supports multiple domains including DAW (Digital Audio Workstation) automation.
+
+Example:
+    >>> from magda import MAGDAPipeline
+    >>> pipeline = MAGDAPipeline()
+    >>> result = pipeline.process_prompt("Create a new track called 'Bass'")
+    >>> print(result['commands'])
 """
 
-from pathlib import Path
-
-# Calculate paths relative to this package
-PACKAGE_ROOT = Path(__file__).parent
-PROJECT_ROOT = PACKAGE_ROOT.parent.parent
-SHARED_UTILS_PATH = PROJECT_ROOT / "shared" / "utils"
-SHARED_PROMPTS_PATH = PROJECT_ROOT / "shared" / "prompts"
-SHARED_SCHEMAS_PATH = PROJECT_ROOT / "shared" / "schemas"
+from .complexity.semantic_detector import (
+    SemanticComplexityDetector,
+    get_complexity_detector,
+)
+from .core.domain import DomainContext, DomainFactory, DomainOrchestrator
+from .core.pipeline import DomainPipeline
+from .domains.daw.daw_factory import DAWFactory
+from .pipeline import MAGDAPipeline
 
 # Version
-__version__ = "0.1.0"
+__version__ = "1.1.0"
+
+# Public API
+__all__ = [
+    "MAGDAPipeline",
+    "DomainPipeline",
+    "DomainFactory",
+    "DomainContext",
+    "DomainOrchestrator",
+    "DAWFactory",
+    "SemanticComplexityDetector",
+    "get_complexity_detector",
+]

@@ -5,13 +5,16 @@ This factory implements the domain-agnostic DomainFactory interface to create
 DAW-specific orchestrators, agents, and pipelines.
 """
 
+from ...agents.orchestrator_agent import OrchestratorAgent
 from ...core.domain import (
     DomainAgent,
+    DomainContext,
     DomainFactory,
     DomainOrchestrator,
     DomainPipeline,
     DomainType,
 )
+from ...pipeline import MAGDAPipeline
 from .daw_agents import (
     DAWClipAgent,
     DAWEffectAgent,
@@ -19,24 +22,17 @@ from .daw_agents import (
     DAWTrackAgent,
     DAWVolumeAgent,
 )
-from .daw_orchestrator import DAWOrchestrator
-from .daw_pipeline import DAWPipeline
 
 
 class DAWFactory(DomainFactory):
     """Factory for creating DAW-specific components."""
 
-    def create_orchestrator(self, domain_type: DomainType) -> DomainOrchestrator:
+    def create_orchestrator(self) -> DomainOrchestrator:
         """Create a DAW-specific orchestrator."""
-        if domain_type != DomainType.DAW:
-            raise ValueError(f"Expected DAW domain type, got {domain_type}")
-        return DAWOrchestrator()
+        return OrchestratorAgent()
 
-    def create_agents(self, domain_type: DomainType) -> dict[str, DomainAgent]:
+    def create_agents(self) -> dict[str, DomainAgent]:
         """Create DAW-specific agents."""
-        if domain_type != DomainType.DAW:
-            raise ValueError(f"Expected DAW domain type, got {domain_type}")
-
         return {
             "track": DAWTrackAgent(),
             "volume": DAWVolumeAgent(),
@@ -45,9 +41,15 @@ class DAWFactory(DomainFactory):
             "midi": DAWMidiAgent(),
         }
 
-    def create_pipeline(self, domain_type: DomainType) -> DomainPipeline:
+    def create_pipeline(self) -> DomainPipeline:
         """Create a DAW-specific pipeline."""
-        if domain_type != DomainType.DAW:
-            raise ValueError(f"Expected DAW domain type, got {domain_type}")
+        return MAGDAPipeline()
 
-        return DAWPipeline()
+    def create_context(self) -> DomainContext:
+        """Create a DAW-specific context."""
+        return DomainContext(
+            domain_type=DomainType.DAW,
+            domain_config={},
+            host_context={},
+            session_state={},
+        )
