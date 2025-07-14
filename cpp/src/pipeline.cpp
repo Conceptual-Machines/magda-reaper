@@ -24,6 +24,12 @@ void MAGDAPipeline::initializeAgents() {
 
 std::optional<PipelineResult> MAGDAPipeline::processPrompt(const std::string& prompt) {
     try {
+        // Input validation
+        if (prompt.empty() || prompt.find_first_not_of(" \t\n\r") == std::string::npos) {
+            std::cout << "Empty or whitespace-only prompt provided" << std::endl;
+            return PipelineResult({}, {}, context_);
+        }
+
         std::vector<Operation> operations;
         std::vector<std::string> daw_commands;
 

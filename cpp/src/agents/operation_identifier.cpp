@@ -158,7 +158,7 @@ nlohmann::json OperationIdentifier::getOperationSchema() {
                         {"description", {{"type", "string"}}},
                         {"parameters", {{"type", "object"}}}
                     }},
-                    {"required", {"type", "description", "parameters"}}
+                    {"required", {"type", "description"}}
                 }}
             }}
         }},

@@ -44,7 +44,7 @@ AgentResponse EffectAgent::execute(const std::string& operation, const nlohmann:
             .property("position", JsonSchemaBuilder()
                 .type("string")
                 .description("Where to insert the effect (insert, send, master)"))
-            .required({"effect_type", "parameters", "position"})
+            .required({"effect_type", "position"})
             .additionalProperties(false);
 
         // Parse effect operation using base class method

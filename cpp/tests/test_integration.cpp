@@ -242,7 +242,7 @@ TEST_CASE("Multilingual support integration", "[integration][multilingual]") {
         {"Réduis le volume de 'Synth' de 2dB", magda::OperationType::SET_VOLUME},
         {"Ajoute un filtre passe-bas à la piste 'Guitare'", magda::OperationType::ADD_EFFECT},
         // German
-        {"Füge eine neue MIDI-Spur namens 'Klavier' hinzu", magda::OperationType::CREATE_TRACK},
+        {"Füge eine neue MIDI-Spur namens 'Klavier' hinzu", magda::OperationType::CREATE_MIDI},
         {"Erhöhe die Lautstärke der 'Bass'-Spur um 3dB", magda::OperationType::SET_VOLUME},
         {"Füge einen Chorus-Effekt zur 'Gitarre'-Spur hinzu", magda::OperationType::ADD_EFFECT},
         // Italian

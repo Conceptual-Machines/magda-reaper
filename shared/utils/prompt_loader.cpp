@@ -1,5 +1,6 @@
 #include "prompt_loader.hpp"
 #include "binary_data.h"
+#include <core/JsonSchemaBuilder.h>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -223,29 +224,27 @@ void SharedResources::loadSchemas() {
 }
 
 void SharedResources::loadDefaultSchema() {
-    // Fallback to hardcoded schema
-    daw_operation_schema_ = {
-        {"type", "object"},
-        {"properties", {
-            {"operations", {
-                {"type", "array"},
-                {"items", {
-                    {"type", "object"},
-                    {"properties", {
-                        {"type", {
-                            {"type", "string"},
-                            {"enum", {"track", "clip", "volume", "effect", "midi"}}
-                        }},
-                        {"description", {{"type", "string"}}},
-                        {"parameters", {{"type", "object"}}}
-                    }},
-                    {"required", {"type", "description", "parameters"}}
-                }}
-            }}
-        }},
-        {"required", {"operations"}}
-    };
-    std::cout << "Using fallback hardcoded schema" << std::endl;
+    // Fallback to hardcoded schema using JsonSchemaBuilder
+    daw_operation_schema_ = JsonSchemaBuilder()
+        .type("object")
+        .property("operations", JsonSchemaBuilder()
+            .type("array")
+            .items(JsonSchemaBuilder()
+                .type("object")
+                .property("type", JsonSchemaBuilder()
+                    .type("string")
+                    .enumValues({"track", "clip", "volume", "effect", "midi"}))
+                .property("description", JsonSchemaBuilder()
+                    .type("string"))
+                .property("parameters", JsonSchemaBuilder()
+                    .type("object"))
+                .required({"type", "description"})
+                .additionalProperties(false))
+            )
+        .required({"operations"})
+        .additionalProperties(false)
+        .build();
+    std::cout << "Using fallback hardcoded schema (JsonSchemaBuilder)" << std::endl;
 }
 
 std::filesystem::path SharedResources::findSharedResourcesPath() {
