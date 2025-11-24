@@ -1,6 +1,6 @@
 # MAGDA Reaper Edition
 
-Native Reaper extension for MAGDA (Multi Agent DAW Automation) - AI-powered DAW control via natural language commands.
+Native Reaper extension for MAGDA (Multi Agent Generative DAW Automation) - AI-powered DAW control via natural language commands.
 
 ## Overview
 

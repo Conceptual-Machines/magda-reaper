@@ -1,6 +1,6 @@
 # MAGDA
 
-**Multi Agent DAW Automation**
+**Multi Agent Generative DAW Automation**
 
 MAGDA is an AI-powered system that enables natural language control of Digital Audio Workstations (DAWs) through a sophisticated multi-agent architecture.
 
