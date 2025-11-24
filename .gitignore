@@ -157,3 +157,20 @@ Desktop.ini
 # Project specific
 responses
 *.log
+
+# Reaper Extension build artifacts
+reaper/build/
+reaper/cmake-build-*/
+reaper/*.dylib
+reaper/*.dll
+reaper/*.so
+reaper/*.dylib.dSYM/
+reaper/CMakeCache.txt
+reaper/CMakeFiles/
+reaper/cmake_install.cmake
+reaper/compile_commands.json
+reaper/*.o
+reaper/*.obj
+reaper/*.a
+reaper/*.lib
+reaper/reaper-sdk/WDL  # Symlink, not committed
