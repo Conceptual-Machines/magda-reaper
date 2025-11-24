@@ -43,6 +43,20 @@ The SDK headers will be in `reaper-sdk/sdk/` and WDL will be in `WDL/`
 
 ### Build Instructions
 
+**Using Make (Recommended):**
+
+```bash
+cd reaper
+make build
+```
+
+This will automatically:
+- Initialize submodules (Reaper SDK and WDL)
+- Create the WDL symlink
+- Configure and build the extension
+
+**Using CMake directly:**
+
 ```bash
 cd reaper
 mkdir build
@@ -50,6 +64,12 @@ cd build
 cmake ..
 cmake --build .
 ```
+
+**Other Make commands:**
+- `make setup` - Initialize submodules and create symlink
+- `make clean` - Remove build directory
+- `make rebuild` - Clean and rebuild
+- `make help` - Show all available commands
 
 The CMake configuration will automatically find the SDK if it's in `reaper-sdk/sdk/` relative to the project root, or you can set `REAPER_SDK_PATH` to point to the `sdk/` directory.
 
