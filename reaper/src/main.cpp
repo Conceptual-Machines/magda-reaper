@@ -1,6 +1,5 @@
 #include "magda_chat_window.h"
 #include "reaper_plugin.h"
-// #include <ReaWrap/ReaperAPI.h>  // Temporarily disabled for debugging
 // SWELL is already included by reaper_plugin.h
 
 // Plugin instance handle
@@ -254,8 +253,6 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
       ShowConsoleMsg("MAGDA: ERROR - Failed to register hookcustommenu!\n");
     }
   }
-
-  // ReaWrap removed - using plain REAPER API via MagdaActions instead
 
   if (ShowConsoleMsg) {
     ShowConsoleMsg("MAGDA Reaper Extension loaded successfully!\n");

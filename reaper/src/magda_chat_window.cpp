@@ -45,17 +45,81 @@ void MagdaChatWindow::Show(bool toggle) {
     CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAGDA_CHAT),
                       NULL, // NULL parent = top-level floating window
                       sDialogProc, (LPARAM)this);
+
+    // Show window first as floating, then add to dock system
+    // This ensures it can be properly undocked
+    if (m_hwnd) {
+      ShowWindow(m_hwnd, SW_SHOW);
+
+      // Add window to REAPER's dock system AFTER showing
+      // This makes it dockable while keeping it undockable
+      if (g_rec) {
+        void (*DockWindowAddEx)(HWND hwnd, const char *name, const char *identstr, bool allowShow) =
+            (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc("DockWindowAddEx");
+        if (DockWindowAddEx) {
+          // allowShow=false: Don't auto-show if docked, let user control visibility
+          DockWindowAddEx(m_hwnd, "MAGDA Chat", "MAGDA_CHAT_WINDOW", false);
+
+          // Refresh the dock system
+          void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
+          if (DockWindowRefresh) {
+            DockWindowRefresh();
+          }
+        }
+      }
+    }
   }
 
   if (m_hwnd) {
-    ShowWindow(m_hwnd, SW_SHOW);
-    SetFocus(m_hwnd);
+    // Check if window is docked
+    bool isDocked = false;
+    if (g_rec) {
+      int (*DockIsChildOfDock)(HWND hwnd, bool *isFloatingDockerOut) =
+          (int (*)(HWND, bool *))g_rec->GetFunc("DockIsChildOfDock");
+      if (DockIsChildOfDock) {
+        bool isFloating = false;
+        int dockIndex = DockIsChildOfDock(m_hwnd, &isFloating);
+        isDocked = (dockIndex >= 0);
+      }
+    }
+
+    if (isDocked) {
+      // Window is docked - activate the dock tab
+      void (*DockWindowActivate)(HWND hwnd) = (void (*)(HWND))g_rec->GetFunc("DockWindowActivate");
+      if (DockWindowActivate) {
+        DockWindowActivate(m_hwnd);
+      }
+    } else {
+      // Window is floating - show it normally
+      ShowWindow(m_hwnd, SW_SHOW);
+      SetForegroundWindow(m_hwnd);
+      SetFocus(m_hwnd);
+    }
   }
 }
 
 void MagdaChatWindow::Hide() {
   if (m_hwnd) {
-    ShowWindow(m_hwnd, SW_HIDE);
+    // Check if window is docked
+    bool isDocked = false;
+    if (g_rec) {
+      int (*DockIsChildOfDock)(HWND hwnd, bool *isFloatingDockerOut) =
+          (int (*)(HWND, bool *))g_rec->GetFunc("DockIsChildOfDock");
+      if (DockIsChildOfDock) {
+        bool isFloating = false;
+        int dockIndex = DockIsChildOfDock(m_hwnd, &isFloating);
+        isDocked = (dockIndex >= 0);
+      }
+    }
+
+    if (isDocked) {
+      // For docked windows, REAPER manages visibility
+      // We can't really "hide" a docked window, but we can deactivate it
+      // The user can close the dock tab manually
+    } else {
+      // Floating window - hide normally
+      ShowWindow(m_hwnd, SW_HIDE);
+    }
   }
 }
 
@@ -118,6 +182,121 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
   case WM_CLOSE:
     Hide();
     return 0;
+
+  case WM_CONTEXTMENU: {
+    // Check if window is docked
+    bool isDocked = false;
+    if (g_rec) {
+      int (*DockIsChildOfDock)(HWND hwnd, bool *isFloatingDockerOut) =
+          (int (*)(HWND, bool *))g_rec->GetFunc("DockIsChildOfDock");
+      if (DockIsChildOfDock) {
+        bool isFloating = false;
+        int dockIndex = DockIsChildOfDock(m_hwnd, &isFloating);
+        isDocked = (dockIndex >= 0);
+      }
+    }
+
+    // Show context menu with Dock/Undock option
+    HMENU hMenu = CreatePopupMenu();
+    if (hMenu) {
+      MENUITEMINFO mi = {sizeof(MENUITEMINFO)};
+      mi.fMask = MIIM_ID | MIIM_TYPE | MIIM_STATE;
+      mi.fType = MFT_STRING;
+      mi.fState = MFS_ENABLED;
+
+      if (isDocked) {
+        // Window is docked - show "Undock" option
+        mi.wID = 1000; // Undock command ID
+        mi.dwTypeData = (char *)"Undock";
+        InsertMenuItem(hMenu, 0, TRUE, &mi);
+      } else {
+        // Window is floating - show "Dock" option
+        mi.wID = 1001; // Dock command ID
+        mi.dwTypeData = (char *)"Dock";
+        InsertMenuItem(hMenu, 0, TRUE, &mi);
+      }
+
+      POINT pt;
+      GetCursorPos(&pt);
+      int cmd = TrackPopupMenu(hMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_LEFTALIGN, pt.x, pt.y, 0,
+                               m_hwnd, NULL);
+      DestroyMenu(hMenu);
+
+      if (cmd == 1000) {
+        // Undock: Remove from dock system and show as floating
+        if (g_rec) {
+          void (*DockWindowRemove)(HWND hwnd) = (void (*)(HWND))g_rec->GetFunc("DockWindowRemove");
+          if (DockWindowRemove) {
+            // Remove from dock first
+            DockWindowRemove(m_hwnd);
+
+            // Refresh dock system
+            void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
+            if (DockWindowRefresh) {
+              DockWindowRefresh();
+            }
+
+            // Ensure window has no parent (top-level window)
+            SetParent(m_hwnd, NULL);
+
+            // Get current window position and size
+            RECT rect;
+            GetWindowRect(m_hwnd, &rect);
+            int width = rect.right - rect.left;
+            int height = rect.bottom - rect.top;
+
+            // If window has no valid size (was docked), set default size
+            if (width < 100 || height < 100) {
+              width = 1000;
+              height = 600;
+            }
+
+            // Center window on screen if position is invalid
+            if (rect.left < 0 || rect.top < 0) {
+              int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+              int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+              rect.left = (screenWidth - width) / 2;
+              rect.top = (screenHeight - height) / 2;
+            }
+
+            // Show as floating window with proper positioning
+            // Use SWP_FRAMECHANGED to ensure proper window frame
+            SetWindowPos(m_hwnd, HWND_TOP, rect.left, rect.top, width, height,
+                         SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+            ShowWindow(m_hwnd, SW_SHOW);
+            UpdateWindow(m_hwnd);
+            SetForegroundWindow(m_hwnd);
+            SetFocus(m_hwnd);
+          }
+        }
+      } else if (cmd == 1001) {
+        // Dock: Add back to dock system
+        if (g_rec) {
+          void (*DockWindowAddEx)(HWND hwnd, const char *name, const char *identstr,
+                                  bool allowShow) =
+              (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc("DockWindowAddEx");
+          if (DockWindowAddEx) {
+            // Add back to dock system
+            DockWindowAddEx(m_hwnd, "MAGDA Chat", "MAGDA_CHAT_WINDOW", true);
+
+            // Refresh dock system
+            void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
+            if (DockWindowRefresh) {
+              DockWindowRefresh();
+            }
+
+            // Activate the docked window
+            void (*DockWindowActivate)(HWND hwnd) =
+                (void (*)(HWND))g_rec->GetFunc("DockWindowActivate");
+            if (DockWindowActivate) {
+              DockWindowActivate(m_hwnd);
+            }
+          }
+        }
+      }
+    }
+    return 0;
+  }
 
   case WM_DESTROY:
     m_hwnd = nullptr;

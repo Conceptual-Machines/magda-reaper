@@ -17,7 +17,7 @@ endif
 # Setup submodules and symlink
 setup:
 	@echo "Setting up Reaper SDK and WDL submodules..."
-	git submodule update --init --recursive
+	@git submodule update --init --recursive 2>&1 | grep -v "fatal: No url found" || true
 	@if [ ! -e reaper-sdk/WDL ]; then \
 		echo "Creating WDL symlink..."; \
 		cd reaper-sdk && ln -s ../WDL/WDL WDL; \
