@@ -104,4 +104,3 @@ if(APPLE)
         COMMENT "Copying MAGDA extension to Reaper UserPlugins directory..."
     )
 endif()
-

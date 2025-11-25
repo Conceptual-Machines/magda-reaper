@@ -46,14 +46,36 @@ clean:
 # Rebuild from scratch
 rebuild: clean build
 
+# Format code using clang-format
+format:
+	@echo "Formatting code with clang-format..."
+	@if command -v clang-format >/dev/null 2>&1; then \
+		find src include -name "*.cpp" -o -name "*.h" | xargs clang-format -i; \
+		echo "Formatting complete!"; \
+	else \
+		echo "Error: clang-format not found. Install with: brew install clang-format"; \
+		exit 1; \
+	fi
+
+# Check code formatting (dry run)
+format-check:
+	@echo "Checking code formatting..."
+	@if command -v clang-format >/dev/null 2>&1; then \
+		find src include -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror; \
+	else \
+		echo "Error: clang-format not found. Install with: brew install clang-format"; \
+		exit 1; \
+	fi
+
 # Show help
 help:
 	@echo "MAGDA Reaper Extension - Build Commands"
 	@echo ""
-	@echo "  make setup    - Initialize submodules and create WDL symlink"
-	@echo "  make build    - Build the extension (runs setup if needed)"
-	@echo "  make clean    - Remove build directory"
-	@echo "  make rebuild  - Clean and rebuild"
-	@echo "  make help     - Show this help message"
+	@echo "  make setup       - Initialize submodules and create WDL symlink"
+	@echo "  make build       - Build the extension (runs setup if needed)"
+	@echo "  make clean       - Remove build directory"
+	@echo "  make rebuild     - Clean and rebuild"
+	@echo "  make format      - Format code with clang-format"
+	@echo "  make format-check - Check code formatting (dry run)"
+	@echo "  make help        - Show this help message"
 	@echo ""
-

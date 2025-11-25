@@ -19,17 +19,24 @@ SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_CHAT, 0, "MAGDA Chat", 1000, 600, 1
 
 BEGIN
 // Question display (left pane) - multiline read-only edit
-EDITTEXT IDC_QUESTION_DISPLAY, 10, 10, 485, 540, ES_MULTILINE | ES_READONLY | ES_WANTRETURN | WS_VSCROLL | WS_BORDER
+EDITTEXT IDC_QUESTION_DISPLAY, 10, 10, 485, 540,
+    ES_MULTILINE | ES_READONLY | ES_WANTRETURN | WS_VSCROLL |
+        WS_BORDER
 
-// Reply display (right pane) - multiline read-only edit  
-EDITTEXT IDC_REPLY_DISPLAY, 505, 10, 485, 540, ES_MULTILINE | ES_READONLY | ES_WANTRETURN | WS_VSCROLL | WS_BORDER
+            // Reply display (right pane) - multiline read-only edit
+            EDITTEXT IDC_REPLY_DISPLAY,
+    505, 10, 485, 540,
+    ES_MULTILINE | ES_READONLY | ES_WANTRETURN | WS_VSCROLL |
+        WS_BORDER
 
-// Question input field (bottom, spans both panes)
-EDITTEXT IDC_QUESTION_INPUT, 10, 560, 920, 25, ES_AUTOHSCROLL | WS_BORDER
+            // Question input field (bottom, spans both panes)
+            EDITTEXT IDC_QUESTION_INPUT,
+    10, 560, 920, 25,
+    ES_AUTOHSCROLL | WS_BORDER
 
-// Send button
-PUSHBUTTON "Send", IDC_SEND_BUTTON, 940, 560, 50, 25
-END
+        // Send button
+        PUSHBUTTON "Send",
+    IDC_SEND_BUTTON, 940, 560, 50,
+    25 END
 
-SWELL_DEFINE_DIALOG_RESOURCE_END(IDD_MAGDA_CHAT)
-
+    SWELL_DEFINE_DIALOG_RESOURCE_END(IDD_MAGDA_CHAT)

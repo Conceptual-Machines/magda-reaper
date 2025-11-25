@@ -95,4 +95,3 @@ This extension will integrate with the MAGDA multi-agent system to provide:
 - Context-aware command interpretation
 - Specialized agents for different DAW operations
 - Natural language to Reaper API translation
-
