@@ -1,5 +1,6 @@
 #include "magda_chat_window.h"
 #include "magda_chat_resource.h"
+#include "magda_executor.h"
 #include <cstring>
 
 #ifndef _WIN32
@@ -161,12 +162,21 @@ void MagdaChatWindow::OnSendMessage() {
       SetWindowText(m_hwndQuestionInput, "");
     }
 
-    // TODO: Process command and add response to reply pane
-    if (m_hwndReplyDisplay) {
-      char response[2048];
-      snprintf(response, sizeof(response),
-               "MAGDA: Command received: %s\n(Processing not yet implemented)\n\n", buffer);
-      AddReply(response);
+    // Execute action using MagdaExecutor
+    WDL_FastString error_msg;
+    if (MagdaExecutor::ExecuteAction(buffer, error_msg)) {
+      if (m_hwndReplyDisplay) {
+        char response[2048];
+        snprintf(response, sizeof(response), "MAGDA: Executed action for: \"%s\"\n\n", buffer);
+        AddReply(response);
+      }
+    } else {
+      if (m_hwndReplyDisplay) {
+        char response[2048];
+        snprintf(response, sizeof(response), "MAGDA: Error executing action: %s\n\n",
+                 error_msg.Get());
+        AddReply(response);
+      }
     }
   }
 }

@@ -24,6 +24,7 @@ endif()
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/WDL/WDL
 )
 
 if(REAPER_SDK_FOUND)
@@ -38,7 +39,11 @@ endif()
 set(SOURCES
     src/main.cpp
     src/magda_chat_window.cpp
+    src/magda_executor.cpp
+    src/magda_actions.cpp
 )
+
+# Test extensions removed - no longer needed
 
 # Add SWELL stub library to initialize SWELL function pointers
 # This is required for SWELL functions to work at runtime
@@ -65,6 +70,8 @@ add_library(reaper_magda MODULE ${SOURCES})
 
 # Link against SWELL stub to initialize function pointers
 target_link_libraries(reaper_magda PRIVATE swell_stub)
+
+# Using plain REAPER API via MagdaActions
 
 # Platform-specific settings
 if(APPLE)
