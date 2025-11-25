@@ -20,17 +20,22 @@ setup:
 	git submodule update --init --recursive
 	@if [ ! -e reaper-sdk/WDL ]; then \
 		echo "Creating WDL symlink..."; \
-		cd reaper-sdk && ln -s ../WDL WDL; \
+		cd reaper-sdk && ln -s ../WDL/WDL WDL; \
 	fi
 	@echo "Setup complete!"
 
 # Configure and build
 build: setup
+	@echo "Closing Reaper (if running)..."
+	@-killall REAPER 2>/dev/null || true
+	@sleep 1
 	@echo "Building MAGDA Reaper extension for $(PLATFORM)..."
 	@mkdir -p $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(CMAKE) ..
 	$(CMAKE) --build $(BUILD_DIR)
 	@echo "Build complete!"
+	@echo "Opening Reaper..."
+	@open -a REAPER
 
 # Clean build artifacts
 clean:

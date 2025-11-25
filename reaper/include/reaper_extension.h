@@ -12,3 +12,5 @@ extern int command_id;
 extern void hook_command(int command, int flag);
 extern void hook_command2(int command, int flag);
 
+
+
