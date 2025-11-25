@@ -1,6 +1,7 @@
 #include "magda_chat_window.h"
+#include "magda_api_client.h"
 #include "magda_chat_resource.h"
-#include "magda_executor.h"
+// #include "magda_login_window.h"  // Temporarily disabled
 #include <cstring>
 
 #ifndef _WIN32
@@ -341,13 +342,37 @@ void MagdaChatWindow::OnSendMessage() {
       SetWindowText(m_hwndQuestionInput, "");
     }
 
-    // Execute action using MagdaExecutor
-    WDL_FastString error_msg;
-    if (MagdaExecutor::ExecuteAction(buffer, error_msg)) {
+    // Show "Thinking..." message
+    if (m_hwndReplyDisplay) {
+      AddReply("MAGDA: Thinking...\n");
+    }
+
+    // Call backend API
+    static MagdaHTTPClient httpClient;
+
+    // Set JWT token if available (temporarily disabled - login window removed)
+    // const char *token = MagdaLoginWindow::GetStoredToken();
+    // if (token) {
+    //   httpClient.SetJWTToken(token);
+    // }
+
+    WDL_FastString response_json, error_msg;
+
+    if (httpClient.SendQuestion(buffer, response_json, error_msg)) {
       if (m_hwndReplyDisplay) {
-        char response[2048];
-        snprintf(response, sizeof(response), "MAGDA: Executed action for: \"%s\"\n\n", buffer);
-        AddReply(response);
+        AddReply("MAGDA: Response received\n");
+        if (response_json.GetLength() > 0) {
+          // Show response (truncated if too long)
+          char response_display[2048];
+          int len = response_json.GetLength();
+          if (len > sizeof(response_display) - 1) {
+            len = sizeof(response_display) - 1;
+          }
+          memcpy(response_display, response_json.Get(), len);
+          response_display[len] = '\0';
+          AddReply(response_display);
+          AddReply("\n");
+        }
       }
     } else {
       if (m_hwndReplyDisplay) {

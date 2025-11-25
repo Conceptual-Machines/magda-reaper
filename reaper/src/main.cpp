@@ -1,5 +1,6 @@
 #include "magda_chat_window.h"
 #include "reaper_plugin.h"
+// #include "magda_login_window.h"  // Temporarily disabled for debugging
 // SWELL is already included by reaper_plugin.h
 
 // Plugin instance handle
@@ -8,12 +9,15 @@ reaper_plugin_info_t *g_rec = nullptr;
 
 // Global chat window instance
 static MagdaChatWindow *g_chatWindow = nullptr;
+// Global login window instance
+// static MagdaLoginWindow *g_loginWindow = nullptr;  // Temporarily disabled
 
 // Command IDs for MAGDA menu items
 #define MAGDA_MENU_CMD_ID 1000
 #define MAGDA_CMD_OPEN 1001
-#define MAGDA_CMD_SETTINGS 1002
-#define MAGDA_CMD_ABOUT 1003
+#define MAGDA_CMD_LOGIN 1002
+#define MAGDA_CMD_SETTINGS 1003
+#define MAGDA_CMD_ABOUT 1004
 
 // Action callbacks for MAGDA menu items
 void magdaAction(int command_id, int flag) {
@@ -29,6 +33,16 @@ void magdaAction(int command_id, int flag) {
       g_chatWindow = new MagdaChatWindow();
     }
     g_chatWindow->Show(true); // Toggle - show if hidden, hide if shown
+    break;
+  case MAGDA_CMD_LOGIN:
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Login - temporarily disabled for debugging\n");
+    }
+    // Temporarily disabled
+    // if (!g_loginWindow) {
+    //   g_loginWindow = new MagdaLoginWindow();
+    // }
+    // g_loginWindow->Show();
     break;
   case MAGDA_CMD_SETTINGS:
     if (ShowConsoleMsg) {
@@ -128,6 +142,19 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.fType = MFT_SEPARATOR;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
+    // "Login" item
+    subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
+    subMi.fType = MFT_STRING;
+    subMi.fState = MFS_UNCHECKED;
+    subMi.dwTypeData = (char *)"Login...";
+    subMi.wID = MAGDA_CMD_LOGIN;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // Separator
+    subMi.fMask = MIIM_TYPE;
+    subMi.fType = MFT_SEPARATOR;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
     // "Settings" item
     subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
     subMi.fType = MFT_STRING;
@@ -167,6 +194,10 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
       delete g_chatWindow;
       g_chatWindow = nullptr;
     }
+    // if (g_loginWindow) {
+    //   delete g_loginWindow;
+    //   g_loginWindow = nullptr;
+    // }
     return 0;
   }
 
@@ -190,12 +221,18 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
 
   // Register actions for all menu items
   gaccel_register_t gaccel_open = {{0, 0, MAGDA_CMD_OPEN}, "MAGDA: Open MAGDA"};
+  gaccel_register_t gaccel_login = {{0, 0, MAGDA_CMD_LOGIN}, "MAGDA: Login"};
   gaccel_register_t gaccel_settings = {{0, 0, MAGDA_CMD_SETTINGS}, "MAGDA: Settings"};
   gaccel_register_t gaccel_about = {{0, 0, MAGDA_CMD_ABOUT}, "MAGDA: About"};
 
   if (rec->Register("gaccel", &gaccel_open)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Open MAGDA' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_login)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'Login' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_settings)) {
@@ -215,7 +252,7 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
   typedef bool (*hookcommand2_t)(KbdSectionInfo *, int, int, int, int, HWND);
   hookcommand2_t hookcmd = [](KbdSectionInfo *sec, int command, int val, int val2, int relmode,
                               HWND hwnd) -> bool {
-    if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN ||
+    if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN || command == MAGDA_CMD_LOGIN ||
         command == MAGDA_CMD_SETTINGS || command == MAGDA_CMD_ABOUT) {
       magdaAction(command, 0);
       return true; // handled

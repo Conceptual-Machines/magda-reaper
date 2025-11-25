@@ -1,4 +1,7 @@
 #include "magda_api_client.h"
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 #include "../WDL/WDL/jnetlib/asyncdns.h"
 #include "../WDL/WDL/timing.h"
 #include "magda_actions.h"
@@ -16,6 +19,7 @@
 MagdaHTTPClient::MagdaHTTPClient() : m_http_get(nullptr), m_dns(nullptr) {
   m_dns = new JNL_AsyncDNS;
   m_backend_url.Set("http://localhost:8080");
+  // JNL_HTTPGet will use the DNS object
 }
 
 MagdaHTTPClient::~MagdaHTTPClient() {
@@ -30,6 +34,14 @@ MagdaHTTPClient::~MagdaHTTPClient() {
 void MagdaHTTPClient::SetBackendURL(const char *url) {
   if (url) {
     m_backend_url.Set(url);
+  }
+}
+
+void MagdaHTTPClient::SetJWTToken(const char *token) {
+  if (token) {
+    m_jwt_token.Set(token);
+  } else {
+    m_jwt_token.Set("");
   }
 }
 
@@ -199,7 +211,7 @@ bool MagdaHTTPClient::SendQuestion(const char *question, WDL_FastString &respons
   if (m_http_get) {
     delete m_http_get;
   }
-  m_http_get = new JNL_HTTPGet(m_dns);
+  m_http_get = new JNL_HTTPGet((JNL_IAsyncDNS *)m_dns);
 
   // Set headers
   char content_length_header[128];
@@ -207,6 +219,13 @@ bool MagdaHTTPClient::SendQuestion(const char *question, WDL_FastString &respons
            request_json_len);
   m_http_get->addheader("Content-Type: application/json");
   m_http_get->addheader(content_length_header);
+
+  // Add JWT token if set
+  if (m_jwt_token.GetLength() > 0) {
+    char auth_header[512];
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_jwt_token.Get());
+    m_http_get->addheader(auth_header);
+  }
 
   // Connect with POST method
   m_http_get->connect(url.Get(), 1, "POST");

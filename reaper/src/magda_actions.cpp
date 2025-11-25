@@ -88,6 +88,80 @@ bool MagdaActions::CreateClip(int track_index, double position, double length,
   return true;
 }
 
+bool MagdaActions::CreateClipAtBar(int track_index, int bar, int length_bars,
+                                   WDL_FastString &error_msg) {
+  // Convert bars to time using helper functions
+  double position = BarToTime(bar);
+  double length = BarsToTime(length_bars);
+
+  // Use existing CreateClip implementation
+  return CreateClip(track_index, position, length, error_msg);
+}
+
+bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
+                              WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+  if (!GetTrack || !TrackFX_AddByName) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  if (!fxname || !fxname[0]) {
+    error_msg.Set("FX name cannot be empty");
+    return false;
+  }
+
+  // Get FX count before adding (for verification)
+  int (*TrackFX_GetCount)(MediaTrack *, bool) =
+      (int (*)(MediaTrack *, bool))g_rec->GetFunc("TrackFX_GetCount");
+  int fx_count_before = 0;
+  if (TrackFX_GetCount) {
+    fx_count_before = TrackFX_GetCount(track, recFX);
+  }
+
+  // Add FX - instantiate = -1 means always create new instance
+  int fx_index = TrackFX_AddByName(track, fxname, recFX, -1);
+  if (fx_index < 0) {
+    error_msg.Set("Failed to add FX: ");
+    error_msg.Append(fxname);
+    error_msg.Append(" (FX may not be installed or name format incorrect)");
+    return false;
+  }
+
+  // Verify FX was actually added by checking count
+  if (TrackFX_GetCount) {
+    int fx_count_after = TrackFX_GetCount(track, recFX);
+    if (fx_count_after <= fx_count_before) {
+      error_msg.Set("FX add reported success but FX count did not increase. Name: ");
+      error_msg.Append(fxname);
+      return false;
+    }
+  }
+
+  // Update UI
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  return true;
+}
+
 bool MagdaActions::SetTrackVolume(int track_index, double volume_db, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
@@ -278,9 +352,9 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
     }
     return false;
   } else if (strcmp(action_type, "create_clip") == 0) {
-    const char *track_str = action->get_string_by_name("track");
-    const char *position_str = action->get_string_by_name("position");
-    const char *length_str = action->get_string_by_name("length");
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *position_str = action->get_string_by_name("position", true);
+    const char *length_str = action->get_string_by_name("length", true);
     if (!track_str || !position_str || !length_str) {
       error_msg.Set("Missing 'track', 'position', or 'length' field");
       return false;
@@ -293,8 +367,45 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
       return true;
     }
     return false;
+  } else if (strcmp(action_type, "create_clip_at_bar") == 0) {
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *bar_str = action->get_string_by_name("bar", true);
+    const char *length_bars_str = action->get_string_by_name("length_bars", true);
+    if (!track_str || !bar_str) {
+      error_msg.Set("Missing 'track' or 'bar' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    int bar = atoi(bar_str);
+    int length_bars = length_bars_str ? atoi(length_bars_str) : 4; // Default to 4 bars
+    if (CreateClipAtBar(track_index, bar, length_bars, error_msg)) {
+      result.Append("{\"action\":\"create_clip_at_bar\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "add_track_fx") == 0 ||
+             strcmp(action_type, "add_instrument") == 0) {
+    // Get track - can be string or number, so use allow_unquoted=true
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *fxname = action->get_string_by_name("fxname");
+    const char *recFX_str = action->get_string_by_name("recFX", true);
+
+    if (!track_str || !fxname) {
+      error_msg.Set("Missing 'track' or 'fxname' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    bool recFX = recFX_str && (strcmp(recFX_str, "true") == 0 || strcmp(recFX_str, "1") == 0);
+
+    if (AddTrackFX(track_index, fxname, recFX, error_msg)) {
+      result.Append("{\"action\":\"");
+      result.Append(action_type);
+      result.Append("\",\"success\":true}");
+      return true;
+    }
+    return false;
   } else if (strcmp(action_type, "set_track_name") == 0) {
-    const char *track_str = action->get_string_by_name("track");
+    const char *track_str = action->get_string_by_name("track", true);
     const char *name = action->get_string_by_name("name");
     if (!track_str || !name) {
       error_msg.Set("Missing 'track' or 'name' field");
@@ -307,8 +418,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
     }
     return false;
   } else if (strcmp(action_type, "set_track_volume") == 0) {
-    const char *track_str = action->get_string_by_name("track");
-    const char *volume_str = action->get_string_by_name("volume_db");
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *volume_str = action->get_string_by_name("volume_db", true);
     if (!track_str || !volume_str) {
       error_msg.Set("Missing 'track' or 'volume_db' field");
       return false;
@@ -321,8 +432,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
     }
     return false;
   } else if (strcmp(action_type, "set_track_pan") == 0) {
-    const char *track_str = action->get_string_by_name("track");
-    const char *pan_str = action->get_string_by_name("pan");
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *pan_str = action->get_string_by_name("pan", true);
     if (!track_str || !pan_str) {
       error_msg.Set("Missing 'track' or 'pan' field");
       return false;
@@ -335,8 +446,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
     }
     return false;
   } else if (strcmp(action_type, "set_track_mute") == 0) {
-    const char *track_str = action->get_string_by_name("track");
-    const char *mute_str = action->get_string_by_name("mute");
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *mute_str = action->get_string_by_name("mute", true);
     if (!track_str || !mute_str) {
       error_msg.Set("Missing 'track' or 'mute' field");
       return false;
@@ -349,8 +460,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
     }
     return false;
   } else if (strcmp(action_type, "set_track_solo") == 0) {
-    const char *track_str = action->get_string_by_name("track");
-    const char *solo_str = action->get_string_by_name("solo");
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *solo_str = action->get_string_by_name("solo", true);
     if (!track_str || !solo_str) {
       error_msg.Set("Missing 'track' or 'solo' field");
       return false;
@@ -427,4 +538,67 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
 
   result.Append("]}");
   return true;
+}
+
+// Helper function: Convert bar number (1-based) to time position
+double MagdaActions::BarToTime(int bar) {
+  if (!g_rec) {
+    return 0.0;
+  }
+
+  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *, int *, double *) =
+      (double (*)(ReaProject *, int, double *, double *, int *, int *, double *))g_rec->GetFunc(
+          "TimeMap_GetMeasureInfo");
+  double (*TimeMap2_QNToTime)(ReaProject *, double) =
+      (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
+
+  if (!TimeMap_GetMeasureInfo || !TimeMap2_QNToTime) {
+    return 0.0;
+  }
+
+  // Bar is 1-based, measure is 0-based
+  int measure = bar - 1;
+  double qn_start = 0.0;
+  double qn_end = 0.0;
+  int timesig_num = 4;
+  int timesig_denom = 4;
+  double tempo = 120.0;
+
+  TimeMap_GetMeasureInfo(nullptr, measure, &qn_start, &qn_end, &timesig_num, &timesig_denom,
+                         &tempo);
+  return TimeMap2_QNToTime(nullptr, qn_start);
+}
+
+// Helper function: Convert number of bars to time duration
+double MagdaActions::BarsToTime(int bars) {
+  if (!g_rec) {
+    return 0.0;
+  }
+
+  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *, int *, double *) =
+      (double (*)(ReaProject *, int, double *, double *, int *, int *, double *))g_rec->GetFunc(
+          "TimeMap_GetMeasureInfo");
+  double (*TimeMap2_QNToTime)(ReaProject *, double) =
+      (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
+
+  if (!TimeMap_GetMeasureInfo || !TimeMap2_QNToTime) {
+    return 0.0;
+  }
+
+  // Get QN for start of first bar and end of last bar
+  int start_bar = 1;
+  int end_bar = bars;
+  double qn_start = 0.0;
+  double qn_end = 0.0;
+  int timesig_num = 4;
+  int timesig_denom = 4;
+  double tempo = 120.0;
+
+  TimeMap_GetMeasureInfo(nullptr, start_bar - 1, &qn_start, nullptr, &timesig_num, &timesig_denom,
+                         &tempo);
+  TimeMap_GetMeasureInfo(nullptr, end_bar, nullptr, &qn_end, nullptr, nullptr, nullptr);
+
+  double time_start = TimeMap2_QNToTime(nullptr, qn_start);
+  double time_end = TimeMap2_QNToTime(nullptr, qn_end);
+  return time_end - time_start;
 }

@@ -39,8 +39,16 @@ endif()
 set(SOURCES
     src/main.cpp
     src/magda_chat_window.cpp
+    src/magda_api_client.cpp
+    src/magda_state.cpp
+    # src/magda_login_window.cpp  # Temporarily disabled for debugging
     src/magda_executor.cpp
     src/magda_actions.cpp
+    # WDL networking implementation
+    WDL/WDL/jnetlib/httpget.cpp
+    WDL/WDL/jnetlib/connection.cpp
+    WDL/WDL/jnetlib/asyncdns.cpp
+    WDL/WDL/jnetlib/util.cpp
 )
 
 # Test extensions removed - no longer needed
@@ -76,7 +84,8 @@ target_link_libraries(reaper_magda PRIVATE swell_stub)
 # Platform-specific settings
 if(APPLE)
     # macOS: .dylib extension (no bundle needed for Reaper extensions)
-    set_target_properties(reaper_magda PROPERTIES SUFFIX ".dylib")
+    # REAPER requires extensions to start with "reaper_" (no "lib" prefix)
+    set_target_properties(reaper_magda PROPERTIES PREFIX "" SUFFIX ".dylib")
 elseif(WIN32)
     # Windows: .dll extension
     set_target_properties(reaper_magda PROPERTIES SUFFIX ".dll")

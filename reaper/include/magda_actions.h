@@ -22,10 +22,16 @@ private:
   static bool CreateTrack(int index, const char *name, WDL_FastString &error_msg);
   static bool CreateClip(int track_index, double position, double length,
                          WDL_FastString &error_msg);
+  static bool CreateClipAtBar(int track_index, int bar, int length_bars, WDL_FastString &error_msg);
+  static bool AddTrackFX(int track_index, const char *fxname, bool recFX,
+                         WDL_FastString &error_msg);
   static bool SetTrackVolume(int track_index, double volume_db, WDL_FastString &error_msg);
   static bool SetTrackPan(int track_index, double pan, WDL_FastString &error_msg);
   static bool SetTrackMute(int track_index, bool mute, WDL_FastString &error_msg);
   static bool SetTrackSolo(int track_index, bool solo, WDL_FastString &error_msg);
   static bool SetTrackName(int track_index, const char *name, WDL_FastString &error_msg);
-  // Add more action handlers as needed
+
+  // Helper functions
+  static double BarToTime(int bar);
+  static double BarsToTime(int bars);
 };
