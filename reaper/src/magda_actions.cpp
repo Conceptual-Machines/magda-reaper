@@ -1,0 +1,430 @@
+#include "magda_actions.h"
+// Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject -> ReaProject)
+// This is a typo in the REAPER SDK itself, not our code
+typedef ReaProject Reaproject;
+#include "../WDL/WDL/wdlcstring.h"
+#include "reaper_plugin_functions.h"
+#include <cmath>
+#include <cstring>
+
+extern reaper_plugin_info_t *g_rec;
+
+bool MagdaActions::CreateTrack(int index, const char *name, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  void (*InsertTrackInProject)(ReaProject *, int, int) =
+      (void (*)(ReaProject *, int, int))g_rec->GetFunc("InsertTrackInProject");
+  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+
+  if (!InsertTrackInProject || !GetSetMediaTrackInfo || !GetTrack) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  // Insert track with default envelopes/FX (flags = 1)
+  InsertTrackInProject(nullptr, index, 1);
+
+  // Set track name if provided
+  if (name && name[0]) {
+    MediaTrack *track = GetTrack(nullptr, index);
+    if (track) {
+      GetSetMediaTrackInfo((INT_PTR)track, "P_NAME", (void *)name, nullptr);
+    }
+  }
+
+  return true;
+}
+
+bool MagdaActions::CreateClip(int track_index, double position, double length,
+                              WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  MediaItem *(*AddMediaItemToTrack)(MediaTrack *) =
+      (MediaItem * (*)(MediaTrack *)) g_rec->GetFunc("AddMediaItemToTrack");
+  bool (*SetMediaItemPosition)(MediaItem *, double, bool) =
+      (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
+  bool (*SetMediaItemLength)(MediaItem *, double, bool) =
+      (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemLength");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+  if (!GetTrack || !AddMediaItemToTrack || !SetMediaItemPosition || !SetMediaItemLength) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Create media item
+  MediaItem *item = AddMediaItemToTrack(track);
+  if (!item) {
+    error_msg.Set("Failed to create media item");
+    return false;
+  }
+
+  // Set position and length
+  SetMediaItemPosition(item, position, false);
+  SetMediaItemLength(item, length, false);
+
+  // Update UI
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  return true;
+}
+
+bool MagdaActions::SetTrackVolume(int track_index, double volume_db, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+
+  if (!GetTrack || !GetSetMediaTrackInfo) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Convert dB to linear volume
+  double volume = pow(10.0, volume_db / 20.0);
+
+  // Set volume
+  GetSetMediaTrackInfo((INT_PTR)track, "D_VOL", &volume, nullptr);
+
+  return true;
+}
+
+bool MagdaActions::SetTrackPan(int track_index, double pan, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+
+  if (!GetTrack || !GetSetMediaTrackInfo) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Clamp pan to -1.0 to 1.0
+  if (pan < -1.0)
+    pan = -1.0;
+  if (pan > 1.0)
+    pan = 1.0;
+
+  // Set pan
+  GetSetMediaTrackInfo((INT_PTR)track, "D_PAN", &pan, nullptr);
+
+  return true;
+}
+
+bool MagdaActions::SetTrackMute(int track_index, bool mute, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+
+  if (!GetTrack || !GetSetMediaTrackInfo) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  int mute_val = mute ? 1 : 0;
+  GetSetMediaTrackInfo((INT_PTR)track, "B_MUTE", &mute_val, nullptr);
+
+  return true;
+}
+
+bool MagdaActions::SetTrackSolo(int track_index, bool solo, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+
+  if (!GetTrack || !GetSetMediaTrackInfo) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  int solo_val = solo ? 1 : 0;
+  GetSetMediaTrackInfo((INT_PTR)track, "I_SOLO", &solo_val, nullptr);
+
+  return true;
+}
+
+bool MagdaActions::SetTrackName(int track_index, const char *name, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+
+  if (!GetTrack || !GetSetMediaTrackInfo) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  if (!name) {
+    error_msg.Set("Name cannot be null");
+    return false;
+  }
+
+  // Set track name
+  GetSetMediaTrackInfo((INT_PTR)track, "P_NAME", (void *)name, nullptr);
+
+  return true;
+}
+
+bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString &result,
+                                 WDL_FastString &error_msg) {
+  if (!action || !action->is_object()) {
+    error_msg.Set("Action must be an object");
+    return false;
+  }
+
+  const char *action_type = action->get_string_by_name("action");
+  if (!action_type) {
+    error_msg.Set("Missing 'action' field");
+    return false;
+  }
+
+  if (strcmp(action_type, "create_track") == 0) {
+    const char *index_str = action->get_string_by_name("index");
+    const char *name = action->get_string_by_name("name");
+    int index = index_str ? atoi(index_str) : -1;
+    if (index < 0) {
+      // Default to end of track list
+      int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
+      if (GetNumTracks) {
+        index = GetNumTracks();
+      } else {
+        index = 0;
+      }
+    }
+    if (CreateTrack(index, name, error_msg)) {
+      result.Append("{\"action\":\"create_track\",\"success\":true,\"index\":");
+      char buf[32];
+      snprintf(buf, sizeof(buf), "%d", index);
+      result.Append(buf);
+      result.Append("}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "create_clip") == 0) {
+    const char *track_str = action->get_string_by_name("track");
+    const char *position_str = action->get_string_by_name("position");
+    const char *length_str = action->get_string_by_name("length");
+    if (!track_str || !position_str || !length_str) {
+      error_msg.Set("Missing 'track', 'position', or 'length' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    double position = atof(position_str);
+    double length = atof(length_str);
+    if (CreateClip(track_index, position, length, error_msg)) {
+      result.Append("{\"action\":\"create_clip\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_track_name") == 0) {
+    const char *track_str = action->get_string_by_name("track");
+    const char *name = action->get_string_by_name("name");
+    if (!track_str || !name) {
+      error_msg.Set("Missing 'track' or 'name' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    if (SetTrackName(track_index, name, error_msg)) {
+      result.Append("{\"action\":\"set_track_name\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_track_volume") == 0) {
+    const char *track_str = action->get_string_by_name("track");
+    const char *volume_str = action->get_string_by_name("volume_db");
+    if (!track_str || !volume_str) {
+      error_msg.Set("Missing 'track' or 'volume_db' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    double volume_db = atof(volume_str);
+    if (SetTrackVolume(track_index, volume_db, error_msg)) {
+      result.Append("{\"action\":\"set_track_volume\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_track_pan") == 0) {
+    const char *track_str = action->get_string_by_name("track");
+    const char *pan_str = action->get_string_by_name("pan");
+    if (!track_str || !pan_str) {
+      error_msg.Set("Missing 'track' or 'pan' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    double pan = atof(pan_str);
+    if (SetTrackPan(track_index, pan, error_msg)) {
+      result.Append("{\"action\":\"set_track_pan\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_track_mute") == 0) {
+    const char *track_str = action->get_string_by_name("track");
+    const char *mute_str = action->get_string_by_name("mute");
+    if (!track_str || !mute_str) {
+      error_msg.Set("Missing 'track' or 'mute' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    bool mute = (strcmp(mute_str, "true") == 0 || strcmp(mute_str, "1") == 0);
+    if (SetTrackMute(track_index, mute, error_msg)) {
+      result.Append("{\"action\":\"set_track_mute\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_track_solo") == 0) {
+    const char *track_str = action->get_string_by_name("track");
+    const char *solo_str = action->get_string_by_name("solo");
+    if (!track_str || !solo_str) {
+      error_msg.Set("Missing 'track' or 'solo' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    bool solo = (strcmp(solo_str, "true") == 0 || strcmp(solo_str, "1") == 0);
+    if (SetTrackSolo(track_index, solo, error_msg)) {
+      result.Append("{\"action\":\"set_track_solo\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else {
+    error_msg.Set("Unknown action type");
+    return false;
+  }
+}
+
+bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
+                                  WDL_FastString &error_msg) {
+  if (!json || !json[0]) {
+    error_msg.Set("Empty JSON input");
+    return false;
+  }
+
+  wdl_json_parser parser;
+  wdl_json_element *root = parser.parse(json, (int)strlen(json));
+  if (parser.m_err) {
+    error_msg.Set(parser.m_err);
+    return false;
+  }
+
+  if (!root) {
+    error_msg.Set("Failed to parse JSON");
+    return false;
+  }
+
+  result.Append("{\"results\":[");
+
+  // Check if it's an array of actions or a single action
+  if (root->is_array()) {
+    int num_actions = 0;
+    wdl_json_element *item = root->enum_item(0);
+    while (item) {
+      if (num_actions > 0)
+        result.Append(",");
+
+      WDL_FastString action_result, action_error;
+      if (ExecuteAction(item, action_result, action_error)) {
+        result.Append(action_result.Get());
+      } else {
+        result.Append("{\"error\":");
+        result.Append("\"");
+        result.Append(action_error.Get());
+        result.Append("\"}");
+      }
+      num_actions++;
+      item = root->enum_item(num_actions);
+    }
+  } else if (root->is_object()) {
+    // Single action
+    WDL_FastString action_result, action_error;
+    if (ExecuteAction(root, action_result, action_error)) {
+      result.Append(action_result.Get());
+    } else {
+      result.Append("{\"error\":");
+      result.Append("\"");
+      result.Append(action_error.Get());
+      result.Append("\"}");
+    }
+  } else {
+    error_msg.Set("JSON must be an object or array");
+    return false;
+  }
+
+  result.Append("]}");
+  return true;
+}
