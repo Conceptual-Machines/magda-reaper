@@ -121,6 +121,16 @@ void MagdaLoginWindow::Show(bool toggle) {
   if (m_hwnd) {
     ShowWindow(m_hwnd, SW_SHOW);
     SetForegroundWindow(m_hwnd);
+
+    // Ensure controls are initialized
+    if (!m_hwndEmailInput || !m_hwndPasswordInput || !m_hwndLoginButton) {
+      m_hwndEmailInput = GetDlgItem(m_hwnd, IDC_EMAIL_INPUT);
+      m_hwndPasswordInput = GetDlgItem(m_hwnd, IDC_PASSWORD_INPUT);
+      m_hwndLoginButton = GetDlgItem(m_hwnd, IDC_LOGIN_BUTTON);
+      m_hwndStatusLabel = GetDlgItem(m_hwnd, IDC_STATUS_LABEL);
+      m_hwndStatusIcon = GetDlgItem(m_hwnd, IDC_STATUS_ICON);
+    }
+
     SetFocus(m_hwndEmailInput);
     // Clear previous status
     SetStatus("", false);
@@ -138,12 +148,25 @@ void MagdaLoginWindow::Show(bool toggle) {
       ShowConsoleMsg(log_msg);
     }
 
-    // Check if already logged in and update UI accordingly
-    const char *token = GetStoredToken();
-    if (token && strlen(token) > 0) {
-      UpdateUIForLoggedInState();
-    } else {
-      UpdateUIForLoggedOutState();
+    // If dialog already exists, refresh UI state based on login status
+    if (m_hwndEmailInput && m_hwndPasswordInput && m_hwndLoginButton) {
+      // Load and populate saved credentials if available
+      WDL_FastString stored_email, stored_password;
+      LoadCredentials(stored_email, stored_password);
+      if (stored_email.GetLength() > 0) {
+        SetWindowText(m_hwndEmailInput, stored_email.Get());
+      }
+      if (stored_password.GetLength() > 0) {
+        SetWindowText(m_hwndPasswordInput, stored_password.Get());
+      }
+
+      // Check if already logged in (have valid token) and set UI state accordingly
+      const char *token = GetStoredToken();
+      if (token && strlen(token) > 0) {
+        UpdateUIForLoggedInState();
+      } else {
+        UpdateUIForLoggedOutState();
+      }
     }
   }
 }
@@ -186,7 +209,25 @@ INT_PTR MagdaLoginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     SetFocus(m_hwndEmailInput);
     // Clear status
     SetStatus("", false);
-    UpdateUIForLoggedOutState(); // Initial UI state
+
+    // Load and populate saved credentials if available
+    WDL_FastString stored_email, stored_password;
+    LoadCredentials(stored_email, stored_password);
+    if (stored_email.GetLength() > 0) {
+      SetWindowText(m_hwndEmailInput, stored_email.Get());
+    }
+    if (stored_password.GetLength() > 0) {
+      SetWindowText(m_hwndPasswordInput, stored_password.Get());
+    }
+
+    // Check if already logged in (have valid token) and set UI state accordingly
+    // Only disable fields if we're actually logged in
+    const char *token = GetStoredToken();
+    if (token && strlen(token) > 0) {
+      UpdateUIForLoggedInState();
+    } else {
+      UpdateUIForLoggedOutState();
+    }
 
     return TRUE;
   }
