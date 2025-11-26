@@ -41,7 +41,7 @@ set(SOURCES
     src/magda_chat_window.cpp
     src/magda_api_client.cpp
     src/magda_state.cpp
-    # src/magda_login_window.cpp  # Temporarily disabled for debugging
+    src/magda_login_window.cpp
     src/magda_executor.cpp
     src/magda_actions.cpp
     # WDL networking implementation
@@ -119,4 +119,21 @@ if(APPLE)
             "${REAPER_USERPLUGINS_DIR}/reaper_magda.dylib"
         COMMENT "Copying MAGDA extension to Reaper UserPlugins directory..."
     )
+endif()
+
+# Test program for login (standalone, no REAPER dependencies)
+add_executable(test_login test_login.cpp
+    WDL/WDL/jnetlib/httpget.cpp
+    WDL/WDL/jnetlib/connection.cpp
+    WDL/WDL/jnetlib/asyncdns.cpp
+    WDL/WDL/jnetlib/util.cpp
+)
+target_include_directories(test_login PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/WDL
+)
+if(MSVC)
+    target_compile_options(test_login PRIVATE /W4)
+else()
+    target_compile_options(test_login PRIVATE -Wall -Wextra)
 endif()

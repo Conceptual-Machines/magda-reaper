@@ -1,6 +1,7 @@
 #include "magda_login_window.h"
 #include "../WDL/WDL/jnetlib/asyncdns.h"
 #include "../WDL/WDL/jnetlib/httpget.h"
+#include "../WDL/WDL/jnetlib/util.h" // For JNL::open_socketlib()
 #include "../WDL/WDL/jsonparse.h"
 #include "../WDL/WDL/wdlstring.h"
 #include "magda_api_client.h"
@@ -19,8 +20,11 @@ extern HINSTANCE g_hInst;
 #define IDC_LOGIN_BUTTON 2003
 #define IDC_STATUS_LABEL 2004
 
-// Static storage for JWT token
-WDL_FastString MagdaLoginWindow::s_jwt_token;
+// Static storage for JWT token (function-local static to avoid initialization order issues)
+WDL_FastString &MagdaLoginWindow::GetTokenStorage() {
+  static WDL_FastString s_jwt_token;
+  return s_jwt_token;
+}
 
 MagdaLoginWindow::MagdaLoginWindow()
     : m_hwnd(nullptr), m_hwndEmailInput(nullptr), m_hwndPasswordInput(nullptr),
@@ -34,14 +38,16 @@ MagdaLoginWindow::~MagdaLoginWindow() {
 }
 
 const char *MagdaLoginWindow::GetStoredToken() {
-  return s_jwt_token.GetLength() > 0 ? s_jwt_token.Get() : nullptr;
+  WDL_FastString &token = GetTokenStorage();
+  return token.GetLength() > 0 ? token.Get() : nullptr;
 }
 
 void MagdaLoginWindow::StoreToken(const char *token) {
+  WDL_FastString &storage = GetTokenStorage();
   if (token) {
-    s_jwt_token.Set(token);
+    storage.Set(token);
   } else {
-    s_jwt_token.Set("");
+    storage.Set("");
   }
 }
 
@@ -64,8 +70,11 @@ void MagdaLoginWindow::Show(bool toggle) {
   }
 
   // Prepare input fields: Email, Password
+  // Note: "*Password:" will hide the password input (REAPER feature)
+  // Use extrawidth=XXX to make fields wider (default is ~200px, we'll use 280px)
   char retvals[512] = {0};
-  bool result = GetUserInputs("MAGDA Login", 2, "Email:,Password:", retvals, sizeof(retvals));
+  bool result = GetUserInputs("MAGDA Login", 2, "Email:,extrawidth=280,*Password:,extrawidth=280",
+                              retvals, sizeof(retvals));
 
   if (!result) {
     // User cancelled
@@ -102,18 +111,8 @@ void MagdaLoginWindow::Show(bool toggle) {
     return;
   }
 
-  // For now, just show the credentials in console (incremental build - no HTTP call yet)
-  void (*ShowConsoleMsg)(const char *msg) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-  if (ShowConsoleMsg) {
-    char msg[512];
-    snprintf(msg, sizeof(msg), "MAGDA: Login dialog - Email: %s, Password: [hidden]\n", email);
-    ShowConsoleMsg(msg);
-    ShowConsoleMsg("MAGDA: HTTP login call will be added next\n");
-  }
-
-  // TODO: Add HTTP call in next step
-  // OnLoginWithCredentials(email, password);
+  // Perform login with HTTP call
+  OnLoginWithCredentials(email, password);
 }
 
 void MagdaLoginWindow::Hide() {
@@ -151,6 +150,8 @@ INT_PTR MagdaLoginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 
 void MagdaLoginWindow::OnLogin() {
+  // This is called from the old dialog-based approach
+  // For GetUserInputs approach, we call OnLoginWithCredentials directly
   if (!m_hwndEmailInput || !m_hwndPasswordInput) {
     return;
   }
@@ -160,216 +161,42 @@ void MagdaLoginWindow::OnLogin() {
   GetWindowText(m_hwndEmailInput, email, sizeof(email));
   GetWindowText(m_hwndPasswordInput, password, sizeof(password));
 
-  if (strlen(email) == 0 || strlen(password) == 0) {
-    SetStatus("Please enter email and password", true);
-    return;
-  }
+  OnLoginWithCredentials(email, password);
+}
 
-  SetStatus("Logging in...", false);
-
-  // Build login request JSON
-  WDL_FastString json;
-  json.Append("{\"email\":\"");
-  // Escape email
-  for (const char *p = email; *p; p++) {
-    if (*p == '"' || *p == '\\') {
-      json.Append("\\");
-    }
-    json.AppendFormatted(1, "%c", *p);
-  }
-  json.Append("\",\"password\":\"");
-  // Escape password
-  for (const char *p = password; *p; p++) {
-    if (*p == '"' || *p == '\\') {
-      json.Append("\\");
-    }
-    json.AppendFormatted(1, "%c", *p);
-  }
-  json.Append("\"}");
-
-  // Make HTTP request to login endpoint
-  static JNL_AsyncDNS *dns = new JNL_AsyncDNS;
-  JNL_HTTPGet *http_get = new JNL_HTTPGet(dns);
-
-  // Get backend URL (same as chat client)
-  static MagdaHTTPClient tempClient;
-  const char *backend_url = "http://localhost:8080"; // TODO: Get from config
-
-  WDL_FastString url;
-  url.Set(backend_url);
-  url.Append("/api/auth/login");
-
-  char content_length[128];
-  snprintf(content_length, sizeof(content_length), "Content-Length: %d\r\n", json.GetLength());
-  http_get->addheader("Content-Type: application/json");
-  http_get->addheader(content_length);
-
-  http_get->connect(url.Get(), 1, "POST");
-
-  JNL_IConnection *con = http_get->get_con();
-  if (!con) {
-    SetStatus("Failed to connect", true);
-    delete http_get;
-    return;
-  }
-
-  // Wait for connection
-  while (con->get_state() == JNL_Connection::STATE_CONNECTING ||
-         con->get_state() == JNL_Connection::STATE_RESOLVING) {
-    con->run();
-#ifdef _WIN32
-    Sleep(10);
-#else
-    usleep(10000); // 10ms
-#endif
-  }
-
-  if (con->get_state() != JNL_Connection::STATE_CONNECTED) {
+void MagdaLoginWindow::OnLoginWithCredentials(const char *email, const char *password) {
+  if (!email || !password || strlen(email) == 0 || strlen(password) == 0) {
     void (*ShowConsoleMsg)(const char *msg) =
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Connection failed\n");
+      ShowConsoleMsg("MAGDA: Email and password required\n");
     }
-    delete http_get;
     return;
   }
 
-  // Send POST body
-  int sent = 0;
-  int json_len = json.GetLength();
-  while (sent < json_len) {
-    con->run();
-    int available = con->send_bytes_available();
-    if (available > 0) {
-      int to_send = json_len - sent;
-      if (to_send > available)
-        to_send = available;
-      int result = con->send(json.Get() + sent, to_send);
-      if (result < 0) {
-        void (*ShowConsoleMsg)(const char *msg) =
-            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-        if (ShowConsoleMsg) {
-          ShowConsoleMsg("MAGDA: Failed to send login request\n");
-        }
-        delete http_get;
-        return;
-      }
-      sent += result;
-    } else {
-#ifdef _WIN32
-      Sleep(10);
-#else
-      usleep(10000);
-#endif
-    }
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Logging in...\n");
   }
 
-  // Receive response
-  while (http_get->get_status() < 2) {
-    int result = http_get->run();
-    if (result < 0) {
-      void (*ShowConsoleMsg)(const char *msg) =
-          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-      if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Login request failed\n");
-      }
-      delete http_get;
-      return;
-    }
-    if (result == 1) {
-      break;
-    }
-#ifdef _WIN32
-    Sleep(10);
-#else
-    usleep(10000);
-#endif
-  }
+  // Use MagdaHTTPClient for login
+  static MagdaHTTPClient httpClient;
+  WDL_FastString jwt_token, error_msg;
 
-  int reply_code = http_get->getreplycode();
-  if (reply_code != 200) {
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  if (httpClient.SendLoginRequest(email, password, jwt_token, error_msg)) {
+    StoreToken(jwt_token.Get());
     if (ShowConsoleMsg) {
-      char buf[256];
-      snprintf(buf, sizeof(buf), "MAGDA: Login failed (HTTP %d)\n", reply_code);
+      ShowConsoleMsg("MAGDA: Login successful! Token stored.\n");
+    }
+  } else {
+    if (ShowConsoleMsg) {
+      char buf[512];
+      snprintf(buf, sizeof(buf), "MAGDA: Login failed: %s\n",
+               error_msg.GetLength() > 0 ? error_msg.Get() : "Unknown error");
       ShowConsoleMsg(buf);
     }
-    delete http_get;
-    return;
   }
-
-  // Read response
-  WDL_FastString response;
-  char buffer[4096];
-  while (http_get->get_status() == 2) {
-    int available = http_get->bytes_available();
-    if (available > 0) {
-      int to_read = available > (int)sizeof(buffer) - 1 ? (int)sizeof(buffer) - 1 : available;
-      int read = http_get->get_bytes(buffer, to_read);
-      if (read > 0) {
-        buffer[read] = '\0';
-        response.Append(buffer, read);
-      }
-    } else {
-      int result = http_get->run();
-      if (result < 0) {
-        break;
-      }
-#ifdef _WIN32
-      Sleep(10);
-#else
-      usleep(10000);
-#endif
-    }
-  }
-
-  // Parse response to extract access_token
-  wdl_json_parser parser;
-  wdl_json_element *root = parser.parse(response.Get(), (int)response.GetLength());
-  if (parser.m_err || !root) {
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Failed to parse login response\n");
-    }
-    delete http_get;
-    return;
-  }
-
-  wdl_json_element *token_elem = root->get_item_by_name("access_token");
-  if (!token_elem || !token_elem->m_value_string) {
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Login failed: Invalid response\n");
-    }
-    delete http_get;
-    return;
-  }
-
-  const char *token = token_elem->m_value;
-  if (token) {
-    StoreToken(token);
-    SetStatus("Login successful!", false);
-
-    // Clear password field
-    if (m_hwndPasswordInput) {
-      SetWindowText(m_hwndPasswordInput, "");
-    }
-
-    // Hide window after successful login
-#ifdef _WIN32
-    Sleep(1000);
-#else
-    usleep(1000000); // 1 second
-#endif
-    Hide();
-  } else {
-    SetStatus("Login failed: No token received", true);
-  }
-
-  delete http_get;
 }
 
 void MagdaLoginWindow::SetStatus(const char *status, bool isError) {

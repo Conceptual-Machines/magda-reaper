@@ -26,6 +26,13 @@ public:
   // The actions are automatically executed after receiving the response
   bool SendQuestion(const char *question, WDL_FastString &response_json, WDL_FastString &error_msg);
 
+  // Send login request to backend
+  // Returns true on success, false on error
+  // jwt_token_out contains the JWT token on success
+  // error_msg contains error description on failure
+  bool SendLoginRequest(const char *email, const char *password, WDL_FastString &jwt_token_out,
+                        WDL_FastString &error_msg);
+
 private:
   WDL_FastString m_backend_url;
   WDL_FastString m_jwt_token;

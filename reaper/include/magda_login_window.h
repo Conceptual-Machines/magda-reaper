@@ -38,6 +38,6 @@ private:
   void OnLoginWithCredentials(const char *email, const char *password);
   void SetStatus(const char *status, bool isError = false);
 
-  // Static storage for JWT token
-  static WDL_FastString s_jwt_token;
+  // Static storage for JWT token (using function-local static to avoid initialization issues)
+  static WDL_FastString &GetTokenStorage();
 };

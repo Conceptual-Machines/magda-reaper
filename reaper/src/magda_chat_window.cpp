@@ -1,7 +1,7 @@
 #include "magda_chat_window.h"
 #include "magda_api_client.h"
 #include "magda_chat_resource.h"
-// #include "magda_login_window.h"  // Temporarily disabled
+#include "magda_login_window.h"
 #include <cstring>
 
 #ifndef _WIN32
@@ -350,11 +350,11 @@ void MagdaChatWindow::OnSendMessage() {
     // Call backend API
     static MagdaHTTPClient httpClient;
 
-    // Set JWT token if available (temporarily disabled - login window removed)
-    // const char *token = MagdaLoginWindow::GetStoredToken();
-    // if (token) {
-    //   httpClient.SetJWTToken(token);
-    // }
+    // Set JWT token if available
+    const char *token = MagdaLoginWindow::GetStoredToken();
+    if (token && token[0]) {
+      httpClient.SetJWTToken(token);
+    }
 
     WDL_FastString response_json, error_msg;
 

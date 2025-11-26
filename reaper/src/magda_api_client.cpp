@@ -3,6 +3,7 @@
 #include <pthread.h>
 #endif
 #include "../WDL/WDL/jnetlib/asyncdns.h"
+#include "../WDL/WDL/jsonparse.h"
 #include "../WDL/WDL/timing.h"
 #include "magda_actions.h"
 #include "magda_state.h"
@@ -251,26 +252,19 @@ bool MagdaHTTPClient::SendQuestion(const char *question, WDL_FastString &respons
     return false;
   }
 
-  // Send POST body
-  int sent = 0;
-  while (sent < request_json_len) {
+  // Wait for HTTP headers to be sent, then send POST body
+  int header_wait_ms = 0;
+  while (header_wait_ms < 1000) {
     con->run();
-    int available = con->send_bytes_available();
-    if (available > 0) {
-      int to_send = request_json_len - sent;
-      if (to_send > available)
-        to_send = available;
-      int result = con->send(request_json + sent, to_send);
-      if (result < 0) {
-        free(request_json);
-        error_msg.Set("Failed to send POST body");
-        return false;
-      }
-      sent += result;
-    } else {
-      SLEEP_MS(10);
+    SLEEP_MS(10);
+    header_wait_ms += 10;
+    if (con->send_bytes_available() > 0) {
+      break;
     }
   }
+
+  // Send POST body using send_string (works better than send())
+  con->send_string(request_json);
 
   free(request_json);
 
@@ -361,4 +355,189 @@ bool MagdaHTTPClient::SendQuestion(const char *question, WDL_FastString &respons
   }
 
   return true;
+}
+
+bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
+                                       WDL_FastString &jwt_token_out, WDL_FastString &error_msg) {
+  if (!email || !email[0] || !password || !password[0]) {
+    error_msg.Set("Email and password are required.");
+    return false;
+  }
+
+  // Build login request JSON
+  WDL_FastString request_json;
+  request_json.Append("{\"email\":\"");
+  // Escape email
+  for (const char *p = email; *p; p++) {
+    if (*p == '"' || *p == '\\') {
+      request_json.Append("\\");
+    }
+    request_json.AppendFormatted(1, "%c", *p);
+  }
+  request_json.Append("\",\"password\":\"");
+  // Escape password
+  for (const char *p = password; *p; p++) {
+    if (*p == '"' || *p == '\\') {
+      request_json.Append("\\");
+    }
+    request_json.AppendFormatted(1, "%c", *p);
+  }
+  request_json.Append("\"}");
+
+  int request_json_len = (int)request_json.GetLength();
+
+  // Build URL
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append("/api/auth/login");
+
+  // Create HTTP client
+  if (m_http_get) {
+    delete m_http_get;
+  }
+  m_http_get = new JNL_HTTPGet((JNL_IAsyncDNS *)m_dns);
+
+  // Set headers
+  char content_length_header[128];
+  snprintf(content_length_header, sizeof(content_length_header), "Content-Length: %d",
+           request_json_len);
+  m_http_get->addheader("Content-Type: application/json");
+  m_http_get->addheader(content_length_header);
+
+  // Connect with POST method
+  m_http_get->connect(url.Get(), 1, "POST");
+
+  // Get connection and send POST body
+  JNL_IConnection *con = m_http_get->get_con();
+  if (!con) {
+    error_msg.Set("Failed to get connection");
+    return false;
+  }
+
+  // Run connection until connected
+  int connection_timeout_ms = 5000;
+  int elapsed_ms = 0;
+  while (con->get_state() == JNL_Connection::STATE_CONNECTING ||
+         con->get_state() == JNL_Connection::STATE_RESOLVING) {
+    con->run();
+    SLEEP_MS(10);
+    elapsed_ms += 10;
+    if (elapsed_ms >= connection_timeout_ms) {
+      error_msg.Set("Connection timeout");
+      return false;
+    }
+  }
+
+  if (con->get_state() != JNL_Connection::STATE_CONNECTED) {
+    const char *error_str = m_http_get->geterrorstr();
+    if (error_str && error_str[0]) {
+      error_msg.Set(error_str);
+    } else {
+      error_msg.Set("Failed to connect");
+    }
+    return false;
+  }
+
+  // Wait for HTTP headers to be sent
+  int header_wait_ms = 0;
+  while (header_wait_ms < 1000) {
+    con->run();
+    SLEEP_MS(10);
+    header_wait_ms += 10;
+    if (con->send_bytes_available() > 0) {
+      break;
+    }
+  }
+
+  // Send POST body using send_string (works better than send())
+  con->send_string(request_json.Get());
+
+  // Run HTTP client to receive response
+  int response_timeout_ms = 10000;
+  int response_elapsed_ms = 0;
+  while (m_http_get->get_status() < 2) {
+    int result = m_http_get->run();
+    if (result < 0) {
+      error_msg.Set(m_http_get->geterrorstr() ? m_http_get->geterrorstr() : "HTTP request failed");
+      return false;
+    }
+    if (result == 1) {
+      break;
+    }
+    SLEEP_MS(10);
+    response_elapsed_ms += 10;
+    if (response_elapsed_ms >= response_timeout_ms) {
+      error_msg.Set("Response timeout");
+      return false;
+    }
+  }
+
+  // Check response code
+  int reply_code = m_http_get->getreplycode();
+  if (reply_code != 200) {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "HTTP error %d", reply_code);
+    error_msg.Set(buf);
+    return false;
+  }
+
+  // Read response body - match SendQuestion pattern
+  WDL_FastString response;
+  char buffer[4096];
+  int total_read = 0;
+  while (m_http_get->get_status() == 2) {
+    int available = m_http_get->bytes_available();
+    if (available > 0) {
+      int to_read = available > (int)sizeof(buffer) - 1 ? (int)sizeof(buffer) - 1 : available;
+      int read = m_http_get->get_bytes(buffer, to_read);
+      if (read > 0) {
+        buffer[read] = '\0';
+        response.Append(buffer, read);
+        total_read += read;
+      }
+    } else {
+      int result = m_http_get->run();
+      if (result < 0) {
+        break;
+      }
+      SLEEP_MS(10);
+    }
+  }
+
+  // Read any remaining data
+  while (m_http_get->bytes_available() > 0) {
+    int available = m_http_get->bytes_available();
+    int to_read = available > (int)sizeof(buffer) - 1 ? (int)sizeof(buffer) - 1 : available;
+    int read = m_http_get->get_bytes(buffer, to_read);
+    if (read > 0) {
+      buffer[read] = '\0';
+      response.Append(buffer, read);
+    } else {
+      break;
+    }
+  }
+
+  // Parse response to extract access_token
+  wdl_json_parser parser;
+  wdl_json_element *root = parser.parse(response.Get(), (int)response.GetLength());
+  if (parser.m_err || !root) {
+    error_msg.Set("Failed to parse login response");
+    return false;
+  }
+
+  wdl_json_element *token_elem = root->get_item_by_name("access_token");
+  if (!token_elem || !token_elem->m_value_string) {
+    error_msg.Set("No access_token in response");
+    return false;
+  }
+
+  const char *token = token_elem->m_value;
+  if (token) {
+    jwt_token_out.Set(token);
+    m_jwt_token.Set(token); // Store internally
+    return true;
+  }
+
+  error_msg.Set("Login successful, but access_token not found in response");
+  return false;
 }

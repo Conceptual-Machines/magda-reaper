@@ -1,6 +1,6 @@
 #include "magda_chat_window.h"
+#include "magda_login_window.h"
 #include "reaper_plugin.h"
-// #include "magda_login_window.h"  // Temporarily disabled for debugging
 // SWELL is already included by reaper_plugin.h
 
 // Plugin instance handle
@@ -10,7 +10,7 @@ reaper_plugin_info_t *g_rec = nullptr;
 // Global chat window instance
 static MagdaChatWindow *g_chatWindow = nullptr;
 // Global login window instance
-// static MagdaLoginWindow *g_loginWindow = nullptr;  // Temporarily disabled
+static MagdaLoginWindow *g_loginWindow = nullptr;
 
 // Command IDs for MAGDA menu items
 #define MAGDA_MENU_CMD_ID 1000
@@ -36,13 +36,12 @@ void magdaAction(int command_id, int flag) {
     break;
   case MAGDA_CMD_LOGIN:
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Login - temporarily disabled for debugging\n");
+      ShowConsoleMsg("MAGDA: Opening login dialog\n");
     }
-    // Temporarily disabled
-    // if (!g_loginWindow) {
-    //   g_loginWindow = new MagdaLoginWindow();
-    // }
-    // g_loginWindow->Show();
+    if (!g_loginWindow) {
+      g_loginWindow = new MagdaLoginWindow();
+    }
+    g_loginWindow->Show();
     break;
   case MAGDA_CMD_SETTINGS:
     if (ShowConsoleMsg) {
@@ -194,10 +193,10 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
       delete g_chatWindow;
       g_chatWindow = nullptr;
     }
-    // if (g_loginWindow) {
-    //   delete g_loginWindow;
-    //   g_loginWindow = nullptr;
-    // }
+    if (g_loginWindow) {
+      delete g_loginWindow;
+      g_loginWindow = nullptr;
+    }
     return 0;
   }
 
