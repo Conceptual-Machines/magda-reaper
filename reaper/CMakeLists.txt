@@ -88,12 +88,25 @@ if(APPLE)
     # macOS: .dylib extension (no bundle needed for Reaper extensions)
     # REAPER requires extensions to start with "reaper_" (no "lib" prefix)
     set_target_properties(reaper_magda PROPERTIES PREFIX "" SUFFIX ".dylib")
+    # Find and link libcurl for HTTPS support
+    find_package(CURL REQUIRED)
+    target_link_libraries(reaper_magda PRIVATE ${CURL_LIBRARIES})
+    target_include_directories(reaper_magda PRIVATE ${CURL_INCLUDE_DIRS})
 elseif(WIN32)
     # Windows: .dll extension
     set_target_properties(reaper_magda PROPERTIES SUFFIX ".dll")
+    # Link WinHTTP for HTTPS support (already included via #pragma comment)
+    find_library(WINHTTP_LIB winhttp)
+    if(WINHTTP_LIB)
+        target_link_libraries(reaper_magda PRIVATE ${WINHTTP_LIB})
+    endif()
 else()
     # Linux: .so extension
     set_target_properties(reaper_magda PROPERTIES SUFFIX ".so")
+    # Find and link libcurl for HTTPS support
+    find_package(CURL REQUIRED)
+    target_link_libraries(reaper_magda PRIVATE ${CURL_LIBRARIES})
+    target_include_directories(reaper_magda PRIVATE ${CURL_INCLUDE_DIRS})
 endif()
 
 # Compiler-specific flags
