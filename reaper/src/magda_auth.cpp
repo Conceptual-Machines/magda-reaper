@@ -30,6 +30,21 @@ WDL_FastString &MagdaAuth::GetTokenStorage() {
 }
 
 const char *MagdaAuth::GetStoredToken() {
+  // First try to get from persistent storage
+  if (g_rec) {
+    const char *(*GetExtState)(const char *section, const char *key) =
+        (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+    if (GetExtState) {
+      const char *stored = GetExtState("MAGDA", "jwt_token");
+      if (stored && strlen(stored) > 0) {
+        WDL_FastString &token = GetTokenStorage();
+        token.Set(stored);
+        return token.Get();
+      }
+    }
+  }
+
+  // Fallback to in-memory storage
   WDL_FastString &token = GetTokenStorage();
   return token.GetLength() > 0 ? token.Get() : nullptr;
 }
@@ -40,6 +55,15 @@ void MagdaAuth::StoreToken(const char *token) {
     storage.Set(token);
   } else {
     storage.Set("");
+  }
+
+  // Also persist to Reaper's configuration
+  if (g_rec) {
+    void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+        (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+    if (SetExtState) {
+      SetExtState("MAGDA", "jwt_token", token ? token : "", true);
+    }
   }
 }
 

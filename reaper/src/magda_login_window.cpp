@@ -60,16 +60,41 @@ MagdaLoginWindow::~MagdaLoginWindow() {
 }
 
 const char *MagdaLoginWindow::GetStoredToken() {
-  WDL_FastString &token = GetTokenStorage();
-  return token.GetLength() > 0 ? token.Get() : nullptr;
+  // Use MagdaAuth's persistent storage
+  return MagdaAuth::GetStoredToken();
 }
 
 void MagdaLoginWindow::StoreToken(const char *token) {
-  WDL_FastString &storage = GetTokenStorage();
-  if (token) {
-    storage.Set(token);
-  } else {
-    storage.Set("");
+  // Use MagdaAuth's persistent storage
+  MagdaAuth::StoreToken(token);
+}
+
+// Helper functions to store/load credentials persistently
+static void StoreCredentials(const char *email, const char *password) {
+  if (!g_rec)
+    return;
+  void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+  if (SetExtState) {
+    SetExtState("MAGDA", "email", email ? email : "", true);
+    SetExtState("MAGDA", "password", password ? password : "", true);
+  }
+}
+
+static void LoadCredentials(WDL_FastString &email, WDL_FastString &password) {
+  if (!g_rec)
+    return;
+  const char *(*GetExtState)(const char *section, const char *key) =
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+  if (GetExtState) {
+    const char *stored_email = GetExtState("MAGDA", "email");
+    const char *stored_password = GetExtState("MAGDA", "password");
+    if (stored_email && strlen(stored_email) > 0) {
+      email.Set(stored_email);
+    }
+    if (stored_password && strlen(stored_password) > 0) {
+      password.Set(stored_password);
+    }
   }
 }
 
@@ -112,7 +137,14 @@ void MagdaLoginWindow::Show(bool toggle) {
                MagdaEnv::Get("AIDEAS_PASSWORD", ""));
       ShowConsoleMsg(log_msg);
     }
-    UpdateUIForLoggedOutState(); // Ensure UI is in correct state on show
+
+    // Check if already logged in and update UI accordingly
+    const char *token = GetStoredToken();
+    if (token && strlen(token) > 0) {
+      UpdateUIForLoggedInState();
+    } else {
+      UpdateUIForLoggedOutState();
+    }
   }
 }
 
@@ -195,18 +227,38 @@ void MagdaLoginWindow::OnLogin() {
   // Check if already logged in - if so, logout
   const char *token = GetStoredToken();
   if (token && strlen(token) > 0) {
-    // Logout
+    // Logout - clear token and credentials
     StoreToken(nullptr);
+    if (g_rec) {
+      void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+          (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+      if (SetExtState) {
+        SetExtState("MAGDA", "email", "", true);
+        SetExtState("MAGDA", "password", "", true);
+      }
+    }
     UpdateUIForLoggedOutState();
     SetStatus("Logged out", false);
     return;
   }
 
-  // Read credentials from .env for development
-  const char *email = MagdaEnv::Get("AIDEAS_EMAIL", "");
-  const char *password = MagdaEnv::Get("AIDEAS_PASSWORD", "");
+  // Try to load stored credentials first
+  WDL_FastString stored_email, stored_password;
+  LoadCredentials(stored_email, stored_password);
 
-  if (strlen(email) == 0 || strlen(password) == 0) {
+  // Fallback to .env if no stored credentials
+  const char *email = nullptr;
+  const char *password = nullptr;
+  if (stored_email.GetLength() > 0 && stored_password.GetLength() > 0) {
+    email = stored_email.Get();
+    password = stored_password.Get();
+  } else {
+    // Read credentials from .env for development
+    email = MagdaEnv::Get("AIDEAS_EMAIL", "");
+    password = MagdaEnv::Get("AIDEAS_PASSWORD", "");
+  }
+
+  if (!email || strlen(email) == 0 || !password || strlen(password) == 0) {
     SetStatus("Please ensure AIDEAS_EMAIL and AIDEAS_PASSWORD are set in .env", true);
     return;
   }
@@ -239,6 +291,19 @@ void MagdaLoginWindow::OnLoginWithCredentials(const char *email, const char *pas
 void MagdaLoginWindow::OnLoginComplete(bool success, const char *token, const char *error) {
   if (success) {
     StoreToken(token);
+
+    // Store credentials persistently for next time
+    WDL_FastString stored_email, stored_password;
+    LoadCredentials(stored_email, stored_password);
+    if (stored_email.GetLength() == 0 || stored_password.GetLength() == 0) {
+      // Store from .env if not already stored
+      const char *email = MagdaEnv::Get("AIDEAS_EMAIL", "");
+      const char *password = MagdaEnv::Get("AIDEAS_PASSWORD", "");
+      if (strlen(email) > 0 && strlen(password) > 0) {
+        StoreCredentials(email, password);
+      }
+    }
+
     SetStatus("Login successful!", false);
     UpdateUIForLoggedInState();
   } else {
@@ -266,8 +331,10 @@ void MagdaLoginWindow::UpdateUIForLoggedInState() {
     EnableWindow(m_hwndEmailInput, FALSE);
   if (m_hwndPasswordInput)
     EnableWindow(m_hwndPasswordInput, FALSE);
-  if (m_hwndLoginButton)
+  if (m_hwndLoginButton) {
     SetWindowText(m_hwndLoginButton, "Logout");
+    EnableWindow(m_hwndLoginButton, TRUE); // Enable logout button
+  }
 }
 
 void MagdaLoginWindow::UpdateUIForLoggedOutState() {
