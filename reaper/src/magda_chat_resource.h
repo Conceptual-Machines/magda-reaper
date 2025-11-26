@@ -8,7 +8,7 @@
 #include "../WDL/WDL/swell/swell-dlggen.h"
 
 // Control IDs - must be defined before the resource
-#define IDD_MAGDA_CHAT 2000
+#define IDD_MAGDA_CHAT 3000
 #define IDC_QUESTION_DISPLAY 1002
 #define IDC_REPLY_DISPLAY 1003
 #define IDC_QUESTION_INPUT 1001
