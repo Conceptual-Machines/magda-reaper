@@ -46,6 +46,13 @@ public:
   bool SendLoginRequest(const char *email, const char *password, WDL_FastString &jwt_token_out,
                         WDL_FastString &error_msg);
 
+  // Send refresh token request to backend
+  // Returns true on success, false on error
+  // jwt_token_out contains the new JWT token on success
+  // error_msg contains error description on failure
+  bool SendRefreshRequest(const char *refresh_token, WDL_FastString &jwt_token_out,
+                          WDL_FastString &error_msg);
+
 private:
   WDL_FastString m_backend_url;
   WDL_FastString m_jwt_token;

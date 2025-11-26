@@ -9,7 +9,8 @@ typedef ReaProject Reaproject;
 
 extern reaper_plugin_info_t *g_rec;
 
-bool MagdaActions::CreateTrack(int index, const char *name, WDL_FastString &error_msg) {
+bool MagdaActions::CreateTrack(int index, const char *name, const char *instrument,
+                               WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -21,6 +22,8 @@ bool MagdaActions::CreateTrack(int index, const char *name, WDL_FastString &erro
       (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
 
   if (!InsertTrackInProject || !GetSetMediaTrackInfo || !GetTrack) {
     error_msg.Set("Required REAPER API functions not available");
@@ -30,11 +33,35 @@ bool MagdaActions::CreateTrack(int index, const char *name, WDL_FastString &erro
   // Insert track with default envelopes/FX (flags = 1)
   InsertTrackInProject(nullptr, index, 1);
 
+  // Get the newly created track
+  MediaTrack *track = GetTrack(nullptr, index);
+  if (!track) {
+    error_msg.Set("Failed to get created track");
+    return false;
+  }
+
   // Set track name if provided
   if (name && name[0]) {
-    MediaTrack *track = GetTrack(nullptr, index);
-    if (track) {
-      GetSetMediaTrackInfo((INT_PTR)track, "P_NAME", (void *)name, nullptr);
+    GetSetMediaTrackInfo((INT_PTR)track, "P_NAME", (void *)name, nullptr);
+  }
+
+  // Add instrument if provided
+  if (instrument && instrument[0] && TrackFX_AddByName) {
+    // recFX = false (track FX, not input FX), instantiate = -1 (always create new instance)
+    int fx_index = TrackFX_AddByName(track, instrument, false, -1);
+    if (fx_index < 0) {
+      // Log warning but don't fail - track was created successfully
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Warning - Failed to add instrument '%s' to track %d\n", instrument,
+                   index);
+          ShowConsoleMsg(log_msg);
+        }
+      }
     }
   }
 
@@ -332,6 +359,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
   if (strcmp(action_type, "create_track") == 0) {
     const char *index_str = action->get_string_by_name("index");
     const char *name = action->get_string_by_name("name");
+    const char *instrument = action->get_string_by_name("instrument");
     int index = index_str ? atoi(index_str) : -1;
     if (index < 0) {
       // Default to end of track list
@@ -342,7 +370,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
         index = 0;
       }
     }
-    if (CreateTrack(index, name, error_msg)) {
+    if (CreateTrack(index, name, instrument, error_msg)) {
       result.Append("{\"action\":\"create_track\",\"success\":true,\"index\":");
       char buf[32];
       snprintf(buf, sizeof(buf), "%d", index);

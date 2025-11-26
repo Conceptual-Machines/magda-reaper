@@ -49,6 +49,97 @@ const char *MagdaAuth::GetStoredToken() {
   return token.GetLength() > 0 ? token.Get() : nullptr;
 }
 
+const char *MagdaAuth::GetStoredRefreshToken() {
+  if (g_rec) {
+    const char *(*GetExtState)(const char *section, const char *key) =
+        (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+    if (GetExtState) {
+      const char *stored = GetExtState("MAGDA", "refresh_token");
+      if (stored && strlen(stored) > 0) {
+        static WDL_FastString s_refresh_token;
+        s_refresh_token.Set(stored);
+        return s_refresh_token.Get();
+      }
+    }
+  }
+  return nullptr;
+}
+
+void MagdaAuth::StoreRefreshToken(const char *token) {
+  if (g_rec) {
+    void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+        (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+    if (SetExtState) {
+      SetExtState("MAGDA", "refresh_token", token ? token : "", true);
+    }
+  }
+}
+
+bool MagdaAuth::RefreshToken(WDL_FastString &error_msg) {
+  const char *refresh_token = GetStoredRefreshToken();
+  if (!refresh_token || !refresh_token[0]) {
+    error_msg.Set("No refresh token available");
+
+    // Log for debugging
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: No refresh token found in storage\n");
+      }
+    }
+    return false;
+  }
+
+  // Log refresh attempt
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[256];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: Attempting token refresh (refresh token length: %d)\n",
+               (int)strlen(refresh_token));
+      ShowConsoleMsg(log_msg);
+    }
+  }
+
+  // Perform refresh request
+  static MagdaHTTPClient httpClient;
+  WDL_FastString new_token;
+
+  if (!httpClient.SendRefreshRequest(refresh_token, new_token, error_msg)) {
+    // Log refresh failure details
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Token refresh failed: %s\n", error_msg.Get());
+        ShowConsoleMsg(log_msg);
+      }
+    }
+    return false;
+  }
+
+  // Store new access token
+  StoreToken(new_token.Get());
+
+  // Log success
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[256];
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Token refresh successful (new token length: %d)\n",
+               (int)new_token.GetLength());
+      ShowConsoleMsg(log_msg);
+    }
+  }
+
+  return true;
+}
+
 void MagdaAuth::StoreToken(const char *token) {
   WDL_FastString &storage = GetTokenStorage();
   if (token) {
@@ -93,6 +184,7 @@ void *LoginThreadProc(void *param)
   // Store token if successful (thread-safe for static storage)
   if (data->success) {
     MagdaAuth::StoreToken(data->jwt_token.Get());
+    // Note: Refresh token is stored by SendLoginRequest
   }
 
   // Call callback - the callback should use PostMessage to update UI

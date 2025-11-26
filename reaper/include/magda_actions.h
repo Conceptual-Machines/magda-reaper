@@ -19,7 +19,8 @@ private:
                             WDL_FastString &error_msg);
 
   // Individual action handlers
-  static bool CreateTrack(int index, const char *name, WDL_FastString &error_msg);
+  static bool CreateTrack(int index, const char *name, const char *instrument,
+                          WDL_FastString &error_msg);
   static bool CreateClip(int track_index, double position, double length,
                          WDL_FastString &error_msg);
   static bool CreateClipAtBar(int track_index, int bar, int length_bars, WDL_FastString &error_msg);

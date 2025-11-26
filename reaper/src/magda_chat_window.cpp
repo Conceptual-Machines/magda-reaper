@@ -1,6 +1,7 @@
 #include "magda_chat_window.h"
 #include "magda_actions.h"
 #include "magda_api_client.h"
+#include "magda_auth.h"
 #include "magda_chat_resource.h"
 #include "magda_login_window.h"
 #include <cstring>
@@ -355,6 +356,27 @@ void MagdaChatWindow::OnSendMessage() {
     const char *token = MagdaLoginWindow::GetStoredToken();
     if (token && token[0]) {
       httpClient.SetJWTToken(token);
+
+      // Log token retrieval for debugging
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Retrieved JWT token (length: %d) from storage\n", (int)strlen(token));
+          ShowConsoleMsg(log_msg);
+        }
+      }
+    } else {
+      // Log missing token
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: WARNING - No JWT token found in storage\n");
+        }
+      }
     }
 
     WDL_FastString error_msg;
@@ -397,6 +419,59 @@ void MagdaChatWindow::OnSendMessage() {
         AddReply(msg);
       }
     } else {
+      // Check if error is 401 (unauthorized) - try to refresh token
+      if (strstr(error_msg.Get(), "401") || strstr(error_msg.Get(), "Unauthorized")) {
+        if (g_rec) {
+          void (*ShowConsoleMsg)(const char *msg) =
+              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: Token expired, attempting refresh...\n");
+          }
+        }
+
+        WDL_FastString refresh_error;
+        if (MagdaAuth::RefreshToken(refresh_error)) {
+          // Refresh succeeded - retry the request with new token
+          const char *new_token = MagdaLoginWindow::GetStoredToken();
+          if (new_token && new_token[0]) {
+            httpClient.SetJWTToken(new_token);
+            if (g_rec) {
+              void (*ShowConsoleMsg)(const char *msg) =
+                  (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+              if (ShowConsoleMsg) {
+                ShowConsoleMsg("MAGDA: Token refreshed, retrying request...\n");
+              }
+            }
+
+            // Reset action count and retry
+            s_ctx.action_count = 0;
+            if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx, error_msg)) {
+              if (m_hwndReplyDisplay) {
+                char msg[256];
+                snprintf(msg, sizeof(msg), "MAGDA: Stream complete (%d actions)\n\n",
+                         s_ctx.action_count);
+                AddReply(msg);
+              }
+              return; // Success after refresh
+            }
+          }
+        } else {
+          // Refresh failed - user needs to re-login
+          if (m_hwndReplyDisplay) {
+            AddReply("MAGDA: Session expired. Please log in again.\n\n");
+          }
+          if (g_rec) {
+            void (*ShowConsoleMsg)(const char *msg) =
+                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+              ShowConsoleMsg("MAGDA: Token refresh failed - user must re-login\n");
+            }
+          }
+          return;
+        }
+      }
+
+      // Other errors or refresh retry failed
       if (m_hwndReplyDisplay) {
         char response[2048];
         snprintf(response, sizeof(response), "MAGDA: Error: %s\n\n", error_msg.Get());

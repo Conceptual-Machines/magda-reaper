@@ -6,6 +6,7 @@
 #include "../WDL/WDL/jsonparse.h"
 #include "../WDL/WDL/timing.h"
 #include "magda_actions.h"
+#include "magda_auth.h"
 #include "magda_state.h"
 #include "reaper_plugin.h"
 #include <cstring>
@@ -92,9 +93,31 @@ char *MagdaHTTPClient::BuildRequestJSON(const char *question) {
   char *state_json = MagdaState::GetStateSnapshot();
   if (state_json) {
     json.Append(state_json);
+
+    // Log state JSON for debugging (truncate if too long)
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        int state_len = (int)strlen(state_json);
+        int preview_len = state_len > 500 ? 500 : state_len;
+        char log_msg[1024];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: State JSON (%d bytes): %.*s%s\n", state_len,
+                 preview_len, state_json, state_len > 500 ? "..." : "");
+        ShowConsoleMsg(log_msg);
+      }
+    }
+
     free(state_json);
   } else {
     json.Append("{}");
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Warning - GetStateSnapshot returned null\n");
+      }
+    }
   }
 
   json.Append("}");
@@ -105,6 +128,19 @@ char *MagdaHTTPClient::BuildRequestJSON(const char *question) {
   if (result) {
     memcpy(result, json.Get(), len);
     result[len] = '\0';
+
+    // Log full request JSON for debugging (truncate if too long)
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        int preview_len = len > 1000 ? 1000 : len;
+        char log_msg[2048];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Request JSON (%d bytes): %.*s%s\n", len,
+                 preview_len, result, len > 1000 ? "..." : "");
+        ShowConsoleMsg(log_msg);
+      }
+    }
   }
   return result;
 }
@@ -652,7 +688,7 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
   }
 
   // Extract JWT token from response
-  // Response format: {"token": "..."} or {"access_token": "..."}
+  // Response format: {"access_token": "...", "refresh_token": "..."}
   wdl_json_parser parser;
   wdl_json_element *root = parser.parse(response_str, (int)strlen(response_str));
   if (parser.m_err || !root) {
@@ -660,10 +696,10 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
     return false;
   }
 
-  // Try "token" first, then "access_token"
-  wdl_json_element *token_elem = root->get_item_by_name("token");
+  // Try "access_token" first, then "token" for backwards compatibility
+  wdl_json_element *token_elem = root->get_item_by_name("access_token");
   if (!token_elem || !token_elem->m_value_string) {
-    token_elem = root->get_item_by_name("access_token");
+    token_elem = root->get_item_by_name("token");
   }
 
   if (!token_elem || !token_elem->m_value_string) {
@@ -678,8 +714,319 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
   }
 
   jwt_token_out.Set(token);
+
+  // Also extract and store refresh_token if present
+  wdl_json_element *refresh_elem = root->get_item_by_name("refresh_token");
+  if (refresh_elem && refresh_elem->m_value_string && refresh_elem->m_value[0]) {
+    // Store refresh token via MagdaAuth
+    MagdaAuth::StoreRefreshToken(refresh_elem->m_value);
+  }
+
   return true;
 }
+
+bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token, WDL_FastString &jwt_token_out,
+                                         WDL_FastString &error_msg) {
+  if (!refresh_token || !refresh_token[0]) {
+    error_msg.Set("Refresh token is required");
+    return false;
+  }
+
+  // Build refresh request JSON
+  WDL_FastString request_json;
+  request_json.Append("{\"refresh_token\":\"");
+  // Escape refresh token
+  for (const char *p = refresh_token; *p; p++) {
+    if (*p == '"' || *p == '\\') {
+      request_json.Append("\\");
+    }
+    request_json.AppendFormatted(1, "%c", *p);
+  }
+  request_json.Append("\"}");
+
+  int request_json_len = (int)request_json.GetLength();
+
+  // Build URL
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append("/api/auth/refresh");
+
+  // Use platform-specific HTTPS implementation
+  WDL_FastString response;
+#ifdef _WIN32
+  if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json.Get(), request_json_len, response,
+                                error_msg, nullptr)) {
+    return false;
+  }
+#else
+  if (!SendHTTPSRequest_Curl(url.Get(), request_json.Get(), request_json_len, response, error_msg,
+                             nullptr)) {
+    return false;
+  }
+#endif
+
+  // Parse response JSON
+  const char *response_str = response.Get();
+  if (!response_str || !response_str[0]) {
+    error_msg.Set("Empty response from server");
+
+    // Log for debugging
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Refresh request returned empty response\n");
+      }
+    }
+    return false;
+  }
+
+  // Log response for debugging
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      int preview_len = strlen(response_str) > 200 ? 200 : (int)strlen(response_str);
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Refresh response (%d bytes): %.*s%s\n",
+               (int)strlen(response_str), preview_len, response_str,
+               strlen(response_str) > 200 ? "..." : "");
+      ShowConsoleMsg(log_msg);
+    }
+  }
+
+  // Extract new tokens from response
+  // Response format: {"access_token": "...", "refresh_token": "..."}
+  wdl_json_parser parser;
+  wdl_json_element *root = parser.parse(response_str, (int)strlen(response_str));
+  if (parser.m_err || !root) {
+    char parse_error[256];
+    snprintf(parse_error, sizeof(parse_error), "Failed to parse response JSON: %s",
+             parser.m_err ? parser.m_err : "unknown error");
+    error_msg.Set(parse_error);
+
+    // Log parse error
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: JSON parse error: %s\n", parse_error);
+        ShowConsoleMsg(log_msg);
+      }
+    }
+    return false;
+  }
+
+  // Extract access_token
+  wdl_json_element *token_elem = root->get_item_by_name("access_token");
+  if (!token_elem || !token_elem->m_value_string) {
+    error_msg.Set("No access_token found in response");
+    return false;
+  }
+
+  const char *token = token_elem->m_value;
+  if (!token || !token[0]) {
+    error_msg.Set("Access token is empty");
+    return false;
+  }
+
+  jwt_token_out.Set(token);
+
+  // Also extract and store new refresh_token if present
+  wdl_json_element *refresh_elem = root->get_item_by_name("refresh_token");
+  if (refresh_elem && refresh_elem->m_value_string && refresh_elem->m_value[0]) {
+    MagdaAuth::StoreRefreshToken(refresh_elem->m_value);
+  }
+
+  return true;
+}
+
+#ifndef _WIN32
+// Static write callback function for curl (required for C function pointer)
+// This processes SSE events line by line
+struct CurlStreamData {
+  MagdaHTTPClient::StreamActionCallback callback;
+  void *user_data;
+  WDL_FastString *error_msg;
+  bool success;
+  char line_buffer[8192];
+  int line_pos;
+  WDL_FastString accumulated_data; // For storing response body on errors
+};
+
+static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
+  if (!userdata || !ptr) {
+    return 0; // Safety check
+  }
+  CurlStreamData *data = (CurlStreamData *)userdata;
+  size_t total_size = size * nmemb;
+
+  // Accumulate all data for error handling
+  data->accumulated_data.Append(ptr, (int)total_size);
+
+  for (size_t i = 0; i < total_size; i++) {
+    if (ptr[i] == '\n' || data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
+      data->line_buffer[data->line_pos] = '\0';
+      if (data->line_pos > 0) {
+        // Process SSE line
+        if (strncmp(data->line_buffer, "data: ", 6) == 0) {
+          const char *json_data = data->line_buffer + 6;
+
+          // Log received data for debugging
+          if (g_rec) {
+            void (*ShowConsoleMsg)(const char *msg) =
+                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+              int preview_len = strlen(json_data) > 150 ? 150 : (int)strlen(json_data);
+              char log_msg[256];
+              snprintf(log_msg, sizeof(log_msg), "MAGDA: SSE data (%d bytes): %.*s%s\n",
+                       (int)strlen(json_data), preview_len, json_data,
+                       strlen(json_data) > 150 ? "..." : "");
+              ShowConsoleMsg(log_msg);
+            }
+          }
+
+          // API sends actions wrapped in an object with "type": "action" and "action": {...}
+          // Check if it's a control event (done/error) or an action
+          wdl_json_parser parser;
+          wdl_json_element *root = parser.parse(json_data, (int)strlen(json_data));
+          if (!parser.m_err && root) {
+            wdl_json_element *type_elem = root->get_item_by_name("type");
+            if (type_elem && type_elem->m_value_string) {
+              const char *event_type = type_elem->m_value;
+
+              if (strcmp(event_type, "action") == 0) {
+                // This is an action - extract the "action" field
+                wdl_json_element *action_elem = root->get_item_by_name("action");
+                if (action_elem) {
+                  // Serialize the action object back to JSON string
+                  // We need to get the raw JSON for the action object
+                  // Find where the "action" field starts in the original JSON
+                  const char *action_start = strstr(json_data, "\"action\"");
+                  if (action_start) {
+                    // Find the opening brace of the action object
+                    const char *brace = strchr(action_start, '{');
+                    if (brace) {
+                      // Find the matching closing brace
+                      int brace_count = 0;
+                      const char *end = brace;
+                      for (; *end; end++) {
+                        if (*end == '{')
+                          brace_count++;
+                        else if (*end == '}') {
+                          brace_count--;
+                          if (brace_count == 0) {
+                            // Found the end of the action object
+                            int action_len = (int)(end - brace + 1);
+                            // Allocate buffer for action JSON
+                            char *action_json = (char *)malloc(action_len + 1);
+                            if (action_json) {
+                              memcpy(action_json, brace, action_len);
+                              action_json[action_len] = '\0';
+
+                              if (g_rec) {
+                                void (*ShowConsoleMsg)(const char *msg) =
+                                    (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+                                if (ShowConsoleMsg) {
+                                  ShowConsoleMsg(
+                                      "MAGDA: Extracted action JSON, calling callback\n");
+                                }
+                              }
+
+                              if (data->callback) {
+                                data->callback(action_json, data->user_data);
+                              }
+
+                              free(action_json);
+                            }
+                            break;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              } else if (strcmp(event_type, "done") == 0) {
+                // Control event: done
+                if (g_rec) {
+                  void (*ShowConsoleMsg)(const char *msg) =
+                      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+                  if (ShowConsoleMsg) {
+                    ShowConsoleMsg("MAGDA: Control event: done\n");
+                  }
+                }
+                data->success = true;
+              } else if (strcmp(event_type, "error") == 0) {
+                // Control event: error
+                if (g_rec) {
+                  void (*ShowConsoleMsg)(const char *msg) =
+                      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+                  if (ShowConsoleMsg) {
+                    ShowConsoleMsg("MAGDA: Control event: error\n");
+                  }
+                }
+                wdl_json_element *msg_elem = root->get_item_by_name("message");
+                if (msg_elem && msg_elem->m_value_string) {
+                  data->error_msg->Set(msg_elem->m_value);
+                }
+              }
+            } else {
+              // No "type" field - this might be raw action JSON, use it directly
+              if (g_rec) {
+                void (*ShowConsoleMsg)(const char *msg) =
+                    (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+                if (ShowConsoleMsg) {
+                  ShowConsoleMsg("MAGDA: No type field, treating as raw action JSON\n");
+                }
+              }
+              if (data->callback) {
+                data->callback(json_data, data->user_data);
+              }
+            }
+          } else {
+            // Parse failed - might still be valid action JSON, try passing it anyway
+            // (API should send valid JSON, but be defensive)
+            if (g_rec) {
+              void (*ShowConsoleMsg)(const char *msg) =
+                  (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+              if (ShowConsoleMsg) {
+                char log_msg[256];
+                snprintf(log_msg, sizeof(log_msg),
+                         "MAGDA: JSON parse failed: %s, trying as raw action\n",
+                         parser.m_err ? parser.m_err : "unknown error");
+                ShowConsoleMsg(log_msg);
+              }
+            }
+            if (json_data[0] == '{' && data->callback) {
+              data->callback(json_data, data->user_data);
+            }
+          }
+        } else {
+          // Log non-data lines for debugging
+          if (g_rec && data->line_pos > 0 && strlen(data->line_buffer) > 0) {
+            void (*ShowConsoleMsg)(const char *msg) =
+                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+              int preview_len =
+                  strlen(data->line_buffer) > 50 ? 50 : (int)strlen(data->line_buffer);
+              char log_msg[256];
+              snprintf(log_msg, sizeof(log_msg), "MAGDA: SSE line (not data:): %.*s%s\n",
+                       preview_len, data->line_buffer, strlen(data->line_buffer) > 50 ? "..." : "");
+              ShowConsoleMsg(log_msg);
+            }
+          }
+        }
+      }
+      data->line_pos = 0;
+    } else if (ptr[i] != '\r') {
+      data->line_buffer[data->line_pos++] = ptr[i];
+    }
+  }
+
+  return total_size;
+}
+#endif
 
 bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallback callback,
                                          void *user_data, WDL_FastString &error_msg) {
@@ -705,7 +1052,7 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallb
   // Build URL - use streaming endpoint
   WDL_FastString url;
   url.Set(m_backend_url.Get());
-  url.Append("/api/v1/magda/chat/stream");
+  url.Append("/api/v1/magda/dsl/stream"); // Use DSL streaming endpoint
 
   // Use platform-specific HTTPS implementation for streaming
   const char *auth_token = m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
@@ -830,9 +1177,40 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallb
                       WINHTTP_NO_HEADER_INDEX);
 
   if (statusCode != 200) {
-    char error_buf[512];
-    snprintf(error_buf, sizeof(error_buf), "HTTP error %lu", statusCode);
+    // Read response body for error details
+    DWORD bytesAvailable = 0;
+    WDL_FastString error_response_body;
+    while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
+      char *buffer = (char *)malloc(bytesAvailable + 1);
+      if (!buffer)
+        break;
+      DWORD bytesRead = 0;
+      if (WinHttpReadData(hRequest, buffer, bytesAvailable, &bytesRead)) {
+        buffer[bytesRead] = '\0';
+        error_response_body.Append(buffer, bytesRead);
+      }
+      free(buffer);
+    }
+
+    char error_buf[1024];
+    if (error_response_body.GetLength() > 0) {
+      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu: %.500s", statusCode,
+               error_response_body.Get());
+    } else {
+      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu", statusCode);
+    }
     error_msg.Set(error_buf);
+
+    // Log error details
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg(error_buf);
+        ShowConsoleMsg("\n");
+      }
+    }
+
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
@@ -920,15 +1298,6 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallb
     return false;
   }
 
-  struct CurlStreamData {
-    StreamActionCallback callback;
-    void *user_data;
-    WDL_FastString *error_msg;
-    bool success;
-    char line_buffer[8192];
-    int line_pos;
-  };
-
   CurlStreamData stream_data;
   stream_data.callback = callback;
   stream_data.user_data = user_data;
@@ -937,63 +1306,10 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallb
   stream_data.line_pos = 0;
   stream_data.line_buffer[0] = '\0';
 
-  // Write callback for streaming
-  auto write_callback = [](char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t {
-    CurlStreamData *data = (CurlStreamData *)userdata;
-    size_t total_size = size * nmemb;
-
-    for (size_t i = 0; i < total_size; i++) {
-      if (ptr[i] == '\n' || data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
-        data->line_buffer[data->line_pos] = '\0';
-        if (data->line_pos > 0) {
-          // Process SSE line
-          if (strncmp(data->line_buffer, "data: ", 6) == 0) {
-            const char *json_data = data->line_buffer + 6;
-
-            // API now sends action JSON directly (no wrapper) to minimize parsing work
-            // Check if it's a control event (has "type" field) or an action (raw action JSON)
-            wdl_json_parser parser;
-            wdl_json_element *root = parser.parse(json_data, (int)strlen(json_data));
-            if (!parser.m_err && root) {
-              wdl_json_element *type_elem = root->get_item_by_name("type");
-              if (type_elem && type_elem->m_value_string) {
-                // Control event (done/error)
-                const char *event_type = type_elem->m_value;
-                if (strcmp(event_type, "done") == 0) {
-                  data->success = true;
-                } else if (strcmp(event_type, "error") == 0) {
-                  wdl_json_element *msg_elem = root->get_item_by_name("message");
-                  if (msg_elem && msg_elem->m_value_string) {
-                    data->error_msg->Set(msg_elem->m_value);
-                  }
-                }
-              } else {
-                // No "type" field - this is raw action JSON, use it directly
-                // API sends action JSON directly, so we can pass it to callback immediately
-                data->callback(json_data, data->user_data);
-              }
-            } else {
-              // Parse failed - might still be valid action JSON, try passing it anyway
-              // (API should send valid JSON, but be defensive)
-              if (json_data[0] == '{') {
-                data->callback(json_data, data->user_data);
-              }
-            }
-          }
-        }
-        data->line_pos = 0;
-      } else if (ptr[i] != '\r') {
-        data->line_buffer[data->line_pos++] = ptr[i];
-      }
-    }
-
-    return total_size;
-  };
-
   curl_easy_setopt(curl, CURLOPT_URL, url.Get());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request_json);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, request_json_len);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_stream_write_callback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream_data);
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
@@ -1007,6 +1323,28 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallb
     char auth_header[512];
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", auth_token);
     headers = curl_slist_append(headers, auth_header);
+
+    // Log token usage for debugging
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: Using JWT token (length: %d) for streaming request\n",
+                 (int)strlen(auth_token));
+        ShowConsoleMsg(log_msg);
+      }
+    }
+  } else {
+    // Log missing token
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: WARNING - No JWT token set for streaming request\n");
+      }
+    }
   }
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
@@ -1016,9 +1354,61 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallb
   if (res == CURLE_OK) {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code != 200) {
-      char error_buf[512];
-      snprintf(error_buf, sizeof(error_buf), "HTTP error %ld", response_code);
-      error_msg.Set(error_buf);
+      // For non-200 responses, use the accumulated data from the write callback
+      const char *error_body = stream_data.accumulated_data.Get();
+      int error_body_len = stream_data.accumulated_data.GetLength();
+
+      // Try to parse error response as JSON to extract error message
+      if (error_body && error_body_len > 0) {
+        wdl_json_parser parser;
+        wdl_json_element *root = parser.parse(error_body, error_body_len);
+        if (!parser.m_err && root) {
+          wdl_json_element *error_elem = root->get_item_by_name("error");
+          if (error_elem && error_elem->m_value_string) {
+            char error_buf[1024];
+            snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %s", response_code,
+                     error_elem->m_value);
+            error_msg.Set(error_buf);
+          } else {
+            // No "error" field, use full response body (truncated)
+            int preview_len = error_body_len > 500 ? 500 : error_body_len;
+            char error_buf[1024];
+            snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.*s%s", response_code,
+                     preview_len, error_body, error_body_len > 500 ? "..." : "");
+            error_msg.Set(error_buf);
+          }
+        } else {
+          // Not JSON or parse failed, use raw response (truncated)
+          int preview_len = error_body_len > 500 ? 500 : error_body_len;
+          char error_buf[1024];
+          snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.*s%s", response_code,
+                   preview_len, error_body, error_body_len > 500 ? "..." : "");
+          error_msg.Set(error_buf);
+        }
+      } else {
+        char error_buf[512];
+        snprintf(error_buf, sizeof(error_buf), "HTTP error %ld", response_code);
+        error_msg.Set(error_buf);
+      }
+
+      // Log error details
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[2048];
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: Request failed with HTTP %ld\n",
+                   response_code);
+          ShowConsoleMsg(log_msg);
+          if (error_body && error_body_len > 0) {
+            int preview_len = error_body_len > 1000 ? 1000 : error_body_len;
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Error response (%d bytes): %.*s%s\n",
+                     error_body_len, preview_len, error_body, error_body_len > 1000 ? "..." : "");
+            ShowConsoleMsg(log_msg);
+          }
+        }
+      }
+
       curl_slist_free_all(headers);
       curl_easy_cleanup(curl);
       free(request_json);

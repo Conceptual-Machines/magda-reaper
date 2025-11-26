@@ -20,6 +20,17 @@ public:
   // Store JWT token
   static void StoreToken(const char *token);
 
+  // Get stored refresh token
+  static const char *GetStoredRefreshToken();
+
+  // Store refresh token
+  static void StoreRefreshToken(const char *token);
+
+  // Refresh access token using refresh token
+  // Returns true on success, false on error
+  // New access token is automatically stored on success
+  static bool RefreshToken(WDL_FastString &error_msg);
+
 private:
   // Static storage for JWT token
   static WDL_FastString &GetTokenStorage();

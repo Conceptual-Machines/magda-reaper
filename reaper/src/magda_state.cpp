@@ -167,7 +167,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
     json.Append("{");
 
     // Track index
-    char buf[64];
+    char buf[256]; // Increased buffer size to handle all track fields
     snprintf(buf, sizeof(buf), "\"index\":%d", i);
     json.Append(buf);
 
@@ -190,6 +190,8 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       bool isSoloed = (flags & 16) != 0;
       bool isRecArmed = (flags & 64) != 0;
 
+      // Build flags string - no trailing comma after rec_armed since volume_db/pan and ui_muted are
+      // optional
       snprintf(buf, sizeof(buf),
                ",\"folder\":%s,\"selected\":%s,\"has_fx\":%s,\"muted\":%s,"
                "\"soloed\":%s,\"rec_armed\":%s",
@@ -199,7 +201,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       json.Append(buf);
     }
 
-    // Volume and pan
+    // Volume and pan (add comma before if we have flags)
     if (GetTrack && GetTrackUIVolPan) {
       MediaTrack *track = GetTrack(nullptr, i);
       if (track) {
@@ -213,7 +215,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       }
     }
 
-    // Mute state (from UI, more reliable)
+    // Mute state (from UI, more reliable) - comma already included in format string
     if (GetTrack && GetTrackUIMute) {
       MediaTrack *track = GetTrack(nullptr, i);
       if (track) {
