@@ -7,6 +7,9 @@
 #include "../WDL/WDL/wdlstring.h"
 #include "reaper_plugin.h"
 
+// Forward declaration
+class JNL_IAsyncDNS;
+
 // HTTP client for MAGDA extension to communicate with backend
 // The extension uses this to send questions and receive actions
 class MagdaHTTPClient {

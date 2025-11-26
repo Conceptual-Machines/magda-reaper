@@ -63,6 +63,22 @@ void magdaAction(int command_id, int flag) {
   }
 }
 
+// Static function for hookcommand2 - must be defined before entry point
+static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2, int relmode,
+                         HWND hwnd) {
+  (void)sec;
+  (void)val;
+  (void)val2;
+  (void)relmode;
+  (void)hwnd; // Suppress unused warnings
+  if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN || command == MAGDA_CMD_LOGIN ||
+      command == MAGDA_CMD_SETTINGS || command == MAGDA_CMD_ABOUT) {
+    magdaAction(command, 0);
+    return true; // handled
+  }
+  return false; // not handled
+}
+
 // Menu hook to populate MAGDA menu
 void menuHook(const char *menuidstr, void *menu, int flag) {
   if (!g_rec)
@@ -248,17 +264,8 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
   // Register command hook to handle the actions
   // hookcommand2 signature: bool onAction(KbdSectionInfo *sec, int command, int val, int val2, int
   // relmode, HWND hwnd)
-  typedef bool (*hookcommand2_t)(KbdSectionInfo *, int, int, int, int, HWND);
-  hookcommand2_t hookcmd = [](KbdSectionInfo *sec, int command, int val, int val2, int relmode,
-                              HWND hwnd) -> bool {
-    if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN || command == MAGDA_CMD_LOGIN ||
-        command == MAGDA_CMD_SETTINGS || command == MAGDA_CMD_ABOUT) {
-      magdaAction(command, 0);
-      return true; // handled
-    }
-    return false; // not handled
-  };
-  if (rec->Register("hookcommand2", (void *)hookcmd)) {
+  // Use the static function defined above instead of lambda for compatibility
+  if (rec->Register("hookcommand2", (void *)hookcmd_func)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered hookcommand2\n");
     }

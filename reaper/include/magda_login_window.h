@@ -26,6 +26,7 @@ private:
   HWND m_hwndPasswordInput;
   HWND m_hwndLoginButton;
   HWND m_hwndStatusLabel;
+  HWND m_hwndStatusIcon;
 
   // SWS pattern: static proc that gets 'this' from GWLP_USERDATA
   static INT_PTR WINAPI sDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -36,7 +37,10 @@ private:
   void OnCommand(int command, int notifyCode);
   void OnLogin();
   void OnLoginWithCredentials(const char *email, const char *password);
+  void OnLoginComplete(bool success, const char *token, const char *error);
   void SetStatus(const char *status, bool isError = false);
+  void UpdateUIForLoggedInState();
+  void UpdateUIForLoggedOutState();
 
   // Static storage for JWT token (using function-local static to avoid initialization issues)
   static WDL_FastString &GetTokenStorage();

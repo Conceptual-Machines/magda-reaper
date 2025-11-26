@@ -42,6 +42,8 @@ set(SOURCES
     src/magda_api_client.cpp
     src/magda_state.cpp
     src/magda_login_window.cpp
+    src/magda_auth.cpp
+    src/magda_env.cpp
     src/magda_executor.cpp
     src/magda_actions.cpp
     # WDL networking implementation
