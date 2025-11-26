@@ -7,7 +7,10 @@
 #include "../WDL/WDL/timing.h"
 #include "magda_actions.h"
 #include "magda_state.h"
+#include "reaper_plugin.h"
 #include <cstring>
+
+extern reaper_plugin_info_t *g_rec;
 
 #ifdef _WIN32
 #include <windows.h>
@@ -193,181 +196,13 @@ char *MagdaHTTPClient::ExtractActionsJSON(const char *json_str, int json_len) {
   return nullptr;
 }
 
-bool MagdaHTTPClient::SendQuestion(const char *question, WDL_FastString &response_json,
-                                   WDL_FastString &error_msg) {
-  if (!question || !question[0]) {
-    error_msg.Set("Empty question");
-    return false;
-  }
-
-  // Build request JSON
-  char *request_json = BuildRequestJSON(question);
-  if (!request_json) {
-    error_msg.Set("Failed to build request JSON");
-    return false;
-  }
-
-  int request_json_len = (int)strlen(request_json);
-
-  // Build URL
-  WDL_FastString url;
-  url.Set(m_backend_url.Get());
-  url.Append("/api/v1/magda/chat"); // Backend endpoint
-
-  // Create HTTP client
-  if (m_http_get) {
-    delete m_http_get;
-  }
-  m_http_get = new JNL_HTTPGet((JNL_IAsyncDNS *)m_dns);
-
-  // Set headers
-  char content_length_header[128];
-  snprintf(content_length_header, sizeof(content_length_header), "Content-Length: %d\r\n",
-           request_json_len);
-  m_http_get->addheader("Content-Type: application/json");
-  m_http_get->addheader(content_length_header);
-
-  // Add JWT token if set
-  if (m_jwt_token.GetLength() > 0) {
-    char auth_header[512];
-    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_jwt_token.Get());
-    m_http_get->addheader(auth_header);
-  }
-
-  // Connect with POST method
-  m_http_get->connect(url.Get(), 1, "POST");
-
-  // Get connection and send POST body
-  JNL_IConnection *con = m_http_get->get_con();
-  if (!con) {
-    free(request_json);
-    error_msg.Set("Failed to get connection");
-    return false;
-  }
-
-  // Run connection until connected
-  while (con->get_state() == JNL_Connection::STATE_CONNECTING ||
-         con->get_state() == JNL_Connection::STATE_RESOLVING) {
-    con->run();
-    SLEEP_MS(10); // Small delay
-  }
-
-  if (con->get_state() != JNL_Connection::STATE_CONNECTED) {
-    free(request_json);
-    error_msg.Set("Failed to connect");
-    return false;
-  }
-
-  // Wait for HTTP headers to be sent, then send POST body
-  int header_wait_ms = 0;
-  while (header_wait_ms < 1000) {
-    con->run();
-    SLEEP_MS(10);
-    header_wait_ms += 10;
-    if (con->send_bytes_available() > 0) {
-      break;
-    }
-  }
-
-  // Send POST body using send_string (works better than send())
-  con->send_string(request_json);
-
-  free(request_json);
-
-  // Run HTTP client to receive response
-  while (m_http_get->get_status() < 2) {
-    int result = m_http_get->run();
-    if (result < 0) {
-      error_msg.Set(m_http_get->geterrorstr() ? m_http_get->geterrorstr() : "HTTP request failed");
-      return false;
-    }
-    if (result == 1) {
-      // Connection closed
-      break;
-    }
-    SLEEP_MS(10);
-  }
-
-  // Check response code
-  int reply_code = m_http_get->getreplycode();
-  if (reply_code != 200) {
-    char buf[256];
-    snprintf(buf, sizeof(buf), "HTTP error %d", reply_code);
-    error_msg.Set(buf);
-    return false;
-  }
-
-  // Read response body
-  char buffer[4096];
-  int total_read = 0;
-  while (m_http_get->get_status() == 2) {
-    int available = m_http_get->bytes_available();
-    if (available > 0) {
-      int to_read = available > (int)sizeof(buffer) - 1 ? (int)sizeof(buffer) - 1 : available;
-      int read = m_http_get->get_bytes(buffer, to_read);
-      if (read > 0) {
-        buffer[read] = '\0';
-        response_json.Append(buffer, read);
-        total_read += read;
-      }
-    } else {
-      int result = m_http_get->run();
-      if (result < 0) {
-        break;
-      }
-      SLEEP_MS(10);
-    }
-  }
-
-  // Read any remaining data
-  while (m_http_get->bytes_available() > 0) {
-    int available = m_http_get->bytes_available();
-    int to_read = available > (int)sizeof(buffer) - 1 ? (int)sizeof(buffer) - 1 : available;
-    int read = m_http_get->get_bytes(buffer, to_read);
-    if (read > 0) {
-      buffer[read] = '\0';
-      response_json.Append(buffer, read);
-    } else {
-      break;
-    }
-  }
-
-  // Execute actions from the response
-  // The backend returns JSON with an "actions" field containing an array of actions
-  if (response_json.GetLength() > 0) {
-    WDL_FastString execution_result, execution_error;
-
-    // Try to extract actions JSON from response
-    char *actions_json = ExtractActionsJSON(response_json.Get(), (int)response_json.GetLength());
-
-    if (actions_json) {
-      // Execute the extracted actions
-      if (!MagdaActions::ExecuteActions(actions_json, execution_result, execution_error)) {
-        // Log error but don't fail the request
-        // Could append execution_error to error_msg if needed
-      }
-      free(actions_json);
-    } else {
-      // No "actions" field found - maybe the response IS the actions array/object
-      // Try executing the whole response
-      wdl_json_parser parser;
-      wdl_json_element *root = parser.parse(response_json.Get(), (int)response_json.GetLength());
-      if (!parser.m_err && root && (root->is_array() || root->is_object())) {
-        if (!MagdaActions::ExecuteActions(response_json.Get(), execution_result, execution_error)) {
-          // Log error but don't fail the request
-        }
-      }
-    }
-  }
-
-  return true;
-}
-
 // Platform-specific HTTPS POST request helpers
+// These must be defined before SendQuestion which uses them
 #ifdef _WIN32
 // Windows: WinHTTP implementation
 static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data, int post_data_len,
-                                     WDL_FastString &response, WDL_FastString &error_msg) {
+                                     WDL_FastString &response, WDL_FastString &error_msg,
+                                     const char *auth_token = nullptr) {
   HINTERNET hSession = nullptr;
   HINTERNET hConnect = nullptr;
   HINTERNET hRequest = nullptr;
@@ -440,8 +275,19 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data, int
   }
 
   // Set headers
-  wchar_t headers[] = L"Content-Type: application/json\r\n";
-  WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+  wchar_t headers[1024];
+  if (auth_token && strlen(auth_token) > 0) {
+    // Convert auth token to wide string
+    int auth_len = MultiByteToWideChar(CP_UTF8, 0, auth_token, -1, nullptr, 0);
+    wchar_t *auth_w = new wchar_t[auth_len + 100];
+    swprintf(auth_w, auth_len + 100,
+             L"Content-Type: application/json\r\nAuthorization: Bearer %S\r\n", auth_token);
+    WinHttpAddRequestHeaders(hRequest, auth_w, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+    delete[] auth_w;
+  } else {
+    wcscpy(headers, L"Content-Type: application/json\r\n");
+    WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+  }
 
   // Send request
   if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)post_data,
@@ -470,8 +316,30 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data, int
                       WINHTTP_NO_HEADER_INDEX);
 
   if (statusCode != 200) {
-    char error_buf[256];
-    snprintf(error_buf, sizeof(error_buf), "HTTP error %lu", statusCode);
+    // Read response body for error details
+    DWORD bytesAvailable = 0;
+    char *error_buffer = nullptr;
+    DWORD bytesRead = 0;
+
+    while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
+      error_buffer = (char *)realloc(error_buffer, bytesRead + bytesAvailable + 1);
+      if (!error_buffer)
+        break;
+      if (!WinHttpReadData(hRequest, error_buffer + bytesRead, bytesAvailable, &bytesRead)) {
+        break;
+      }
+      bytesRead += bytesAvailable;
+    }
+
+    char error_buf[512];
+    if (error_buffer && bytesRead > 0) {
+      error_buffer[bytesRead] = '\0';
+      int len = bytesRead > 200 ? 200 : bytesRead;
+      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu: %.200s", statusCode, error_buffer);
+      free(error_buffer);
+    } else {
+      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu", statusCode);
+    }
     error_msg.Set(error_buf);
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
@@ -525,7 +393,8 @@ static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb, void 
 }
 
 static bool SendHTTPSRequest_Curl(const char *url, const char *post_data, int post_data_len,
-                                  WDL_FastString &response, WDL_FastString &error_msg) {
+                                  WDL_FastString &response, WDL_FastString &error_msg,
+                                  const char *auth_token = nullptr) {
   CURL *curl = curl_easy_init();
   if (!curl) {
     error_msg.Set("Failed to initialize curl");
@@ -547,6 +416,24 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data, int po
 
   struct curl_slist *headers = nullptr;
   headers = curl_slist_append(headers, "Content-Type: application/json");
+  if (auth_token && strlen(auth_token) > 0) {
+    char auth_header[512];
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", auth_token);
+    headers = curl_slist_append(headers, auth_header);
+
+    // Log the Authorization header (first 50 chars of token for debugging)
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        int token_preview_len = strlen(auth_token) > 50 ? 50 : (int)strlen(auth_token);
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Authorization header: Bearer %.50s...\n",
+                 auth_token);
+        ShowConsoleMsg(log_msg);
+      }
+    }
+  }
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode res = curl_easy_perform(curl);
@@ -555,8 +442,15 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data, int po
   if (res == CURLE_OK) {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code != 200) {
-      char error_buf[256];
-      snprintf(error_buf, sizeof(error_buf), "HTTP error %ld", response_code);
+      // Response body is already in 'response' from the write callback
+      char error_buf[512];
+      if (response.GetLength() > 0) {
+        int body_len = response.GetLength() > 200 ? 200 : (int)response.GetLength();
+        snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.200s", response_code,
+                 response.Get());
+      } else {
+        snprintf(error_buf, sizeof(error_buf), "HTTP error %ld", response_code);
+      }
       error_msg.Set(error_buf);
       curl_slist_free_all(headers);
       curl_easy_cleanup(curl);
@@ -574,6 +468,133 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data, int po
   return true;
 }
 #endif
+
+bool MagdaHTTPClient::SendQuestion(const char *question, WDL_FastString &response_json,
+                                   WDL_FastString &error_msg) {
+  if (!question || !question[0]) {
+    error_msg.Set("Empty question");
+    return false;
+  }
+
+  // Build request JSON
+  char *request_json = BuildRequestJSON(question);
+  if (!request_json) {
+    error_msg.Set("Failed to build request JSON");
+    return false;
+  }
+
+  int request_json_len = (int)strlen(request_json);
+
+  // Build URL
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append("/api/v1/magda/chat"); // Backend endpoint
+
+  // Use platform-specific HTTPS implementation
+  WDL_FastString response;
+  const char *auth_token = m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+
+  // Log the request for debugging
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[1024];
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Sending request to %s\n", url.Get());
+      ShowConsoleMsg(log_msg);
+      if (auth_token) {
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Using JWT token (length: %d)\n",
+                 (int)m_jwt_token.GetLength());
+        ShowConsoleMsg(log_msg);
+      } else {
+        ShowConsoleMsg("MAGDA: No JWT token set\n");
+      }
+      // Log request body (truncate if too long)
+      int body_len = request_json_len;
+      if (body_len > 500) {
+        body_len = 500;
+      }
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Request body (%d bytes): %.500s%s\n",
+               request_json_len, request_json, body_len < request_json_len ? "..." : "");
+      ShowConsoleMsg(log_msg);
+    }
+  }
+
+#ifdef _WIN32
+  if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len, response, error_msg,
+                                auth_token)) {
+    free(request_json);
+    return false;
+  }
+#else
+  if (!SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len, response, error_msg,
+                             auth_token)) {
+    free(request_json);
+    return false;
+  }
+#endif
+
+  free(request_json);
+
+  // Log response for debugging
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      if (error_msg.GetLength() > 0) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Request failed: %s\n", error_msg.Get());
+        ShowConsoleMsg(log_msg);
+      } else if (response.GetLength() > 0) {
+        char log_msg[512];
+        int len = response.GetLength();
+        if (len > 200)
+          len = 200;
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Response received (%d bytes): %.200s...\n",
+                 (int)response.GetLength(), response.Get());
+        ShowConsoleMsg(log_msg);
+      }
+    }
+  }
+
+  // Parse response
+  if (response.GetLength() > 0) {
+    response_json.Set(response.Get());
+  } else {
+    error_msg.Set("Empty response from server");
+    return false;
+  }
+
+  // Execute actions from the response
+  // The backend returns JSON with an "actions" field containing an array of actions
+  if (response_json.GetLength() > 0) {
+    WDL_FastString execution_result, execution_error;
+
+    // Try to extract actions JSON from response
+    char *actions_json = ExtractActionsJSON(response_json.Get(), (int)response_json.GetLength());
+
+    if (actions_json) {
+      // Execute the extracted actions
+      if (!MagdaActions::ExecuteActions(actions_json, execution_result, execution_error)) {
+        // Log error but don't fail the request
+        // Could append execution_error to error_msg if needed
+      }
+      free(actions_json);
+    } else {
+      // No "actions" field found - maybe the response IS the actions array/object
+      // Try executing the whole response
+      wdl_json_parser parser;
+      wdl_json_element *root = parser.parse(response_json.Get(), (int)response_json.GetLength());
+      if (!parser.m_err && root && (root->is_array() || root->is_object())) {
+        if (!MagdaActions::ExecuteActions(response_json.Get(), execution_result, execution_error)) {
+          // Log error but don't fail the request
+        }
+      }
+    }
+  }
+
+  return true;
+}
 
 bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
                                        WDL_FastString &jwt_token_out, WDL_FastString &error_msg) {
@@ -613,12 +634,12 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
   WDL_FastString response;
 #ifdef _WIN32
   if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json.Get(), request_json_len, response,
-                                error_msg)) {
+                                error_msg, nullptr)) {
     return false;
   }
 #else
-  if (!SendHTTPSRequest_Curl(url.Get(), request_json.Get(), request_json_len, response,
-                             error_msg)) {
+  if (!SendHTTPSRequest_Curl(url.Get(), request_json.Get(), request_json_len, response, error_msg,
+                             nullptr)) {
     return false;
   }
 #endif
@@ -658,4 +679,362 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
 
   jwt_token_out.Set(token);
   return true;
+}
+
+bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallback callback,
+                                         void *user_data, WDL_FastString &error_msg) {
+  if (!question || !question[0]) {
+    error_msg.Set("Empty question");
+    return false;
+  }
+
+  if (!callback) {
+    error_msg.Set("Callback required for streaming");
+    return false;
+  }
+
+  // Build request JSON
+  char *request_json = BuildRequestJSON(question);
+  if (!request_json) {
+    error_msg.Set("Failed to build request JSON");
+    return false;
+  }
+
+  int request_json_len = (int)strlen(request_json);
+
+  // Build URL - use streaming endpoint
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append("/api/v1/magda/chat/stream");
+
+  // Use platform-specific HTTPS implementation for streaming
+  const char *auth_token = m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+
+#ifdef _WIN32
+  // Windows: WinHTTP streaming implementation
+  HINTERNET hSession = nullptr;
+  HINTERNET hConnect = nullptr;
+  HINTERNET hRequest = nullptr;
+  bool success = false;
+
+  // Parse URL
+  URL_COMPONENTSA urlComp;
+  ZeroMemory(&urlComp, sizeof(urlComp));
+  urlComp.dwStructSize = sizeof(urlComp);
+  urlComp.dwSchemeLength = (DWORD)-1;
+  urlComp.dwHostNameLength = (DWORD)-1;
+  urlComp.dwUrlPathLength = (DWORD)-1;
+
+  char scheme[16] = {0};
+  char hostname[256] = {0};
+  char path[512] = {0};
+  urlComp.lpszScheme = scheme;
+  urlComp.lpszHostName = hostname;
+  urlComp.lpszUrlPath = path;
+
+  if (!InternetCrackUrlA(url.Get(), (DWORD)url.GetLength(), 0, &urlComp)) {
+    error_msg.Set("Failed to parse URL");
+    free(request_json);
+    return false;
+  }
+
+  // Initialize WinHTTP
+  hSession = WinHttpOpen(L"MAGDA Reaper Extension/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                         WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+  if (!hSession) {
+    error_msg.Set("Failed to initialize WinHTTP");
+    free(request_json);
+    return false;
+  }
+
+  // Connect to server
+  int port = urlComp.nScheme == INTERNET_SCHEME_HTTPS ? INTERNET_DEFAULT_HTTPS_PORT
+                                                      : INTERNET_DEFAULT_HTTP_PORT;
+  if (urlComp.nPort != 0) {
+    port = urlComp.nPort;
+  }
+
+  int hostname_len = MultiByteToWideChar(CP_UTF8, 0, hostname, -1, nullptr, 0);
+  wchar_t *hostname_w = new wchar_t[hostname_len];
+  MultiByteToWideChar(CP_UTF8, 0, hostname, -1, hostname_w, hostname_len);
+
+  hConnect = WinHttpConnect(hSession, hostname_w, port, 0);
+  delete[] hostname_w;
+
+  if (!hConnect) {
+    error_msg.Set("Failed to connect to server");
+    WinHttpCloseHandle(hSession);
+    free(request_json);
+    return false;
+  }
+
+  // Create request
+  int path_len = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+  wchar_t *path_w = new wchar_t[path_len];
+  MultiByteToWideChar(CP_UTF8, 0, path, -1, path_w, path_len);
+
+  hRequest = WinHttpOpenRequest(hConnect, L"POST", path_w, nullptr, WINHTTP_NO_REFERER,
+                                WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                urlComp.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0);
+  delete[] path_w;
+
+  if (!hRequest) {
+    error_msg.Set("Failed to create request");
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    free(request_json);
+    return false;
+  }
+
+  // Set headers
+  if (auth_token && strlen(auth_token) > 0) {
+    int auth_len = MultiByteToWideChar(CP_UTF8, 0, auth_token, -1, nullptr, 0);
+    wchar_t *auth_w = new wchar_t[auth_len + 100];
+    swprintf(auth_w, auth_len + 100,
+             L"Content-Type: application/json\r\nAuthorization: Bearer %S\r\nAccept: "
+             L"text/event-stream\r\n",
+             auth_token);
+    WinHttpAddRequestHeaders(hRequest, auth_w, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+    delete[] auth_w;
+  } else {
+    wchar_t headers[] = L"Content-Type: application/json\r\nAccept: text/event-stream\r\n";
+    WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+  }
+
+  // Send request
+  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)request_json,
+                          request_json_len, request_json_len, 0)) {
+    error_msg.Set("Failed to send request");
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    free(request_json);
+    return false;
+  }
+
+  // Receive response
+  if (!WinHttpReceiveResponse(hRequest, nullptr)) {
+    error_msg.Set("Failed to receive response");
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    free(request_json);
+    return false;
+  }
+
+  // Check status code
+  DWORD statusCode = 0;
+  DWORD statusCodeSize = sizeof(statusCode);
+  WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize,
+                      WINHTTP_NO_HEADER_INDEX);
+
+  if (statusCode != 200) {
+    char error_buf[512];
+    snprintf(error_buf, sizeof(error_buf), "HTTP error %lu", statusCode);
+    error_msg.Set(error_buf);
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    free(request_json);
+    return false;
+  }
+
+  // Read stream line by line (SSE format)
+  char line_buffer[8192];
+  int line_pos = 0;
+  DWORD bytesAvailable = 0;
+  char read_buffer[4096];
+  DWORD bytesRead = 0;
+
+  while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
+    if (bytesAvailable > sizeof(read_buffer)) {
+      bytesAvailable = sizeof(read_buffer);
+    }
+
+    if (!WinHttpReadData(hRequest, read_buffer, bytesAvailable, &bytesRead)) {
+      break;
+    }
+
+    // Process received data line by line
+    for (DWORD i = 0; i < bytesRead; i++) {
+      if (read_buffer[i] == '\n' || line_pos >= (int)sizeof(line_buffer) - 1) {
+        line_buffer[line_pos] = '\0';
+        if (line_pos > 0) {
+          // Process SSE line
+          if (strncmp(line_buffer, "data: ", 6) == 0) {
+            const char *json_data = line_buffer + 6;
+
+            // API now sends action JSON directly (no wrapper) to minimize parsing work
+            // Check if it's a control event (has "type" field) or an action (raw action JSON)
+            wdl_json_parser parser;
+            wdl_json_element *root = parser.parse(json_data, (int)strlen(json_data));
+            if (!parser.m_err && root) {
+              wdl_json_element *type_elem = root->get_item_by_name("type");
+              if (type_elem && type_elem->m_value_string) {
+                // Control event (done/error)
+                const char *event_type = type_elem->m_value;
+                if (strcmp(event_type, "done") == 0) {
+                  success = true;
+                  break;
+                } else if (strcmp(event_type, "error") == 0) {
+                  wdl_json_element *msg_elem = root->get_item_by_name("message");
+                  if (msg_elem && msg_elem->m_value_string) {
+                    error_msg.Set(msg_elem->m_value);
+                  }
+                  break;
+                }
+              } else {
+                // No "type" field - this is raw action JSON, use it directly
+                // API sends action JSON directly, so we can pass it to callback immediately
+                callback(json_data, user_data);
+              }
+            } else {
+              // Parse failed - might still be valid action JSON, try passing it anyway
+              // (API should send valid JSON, but be defensive)
+              if (json_data[0] == '{') {
+                callback(json_data, user_data);
+              }
+            }
+          }
+        }
+        line_pos = 0;
+      } else if (read_buffer[i] != '\r') {
+        line_buffer[line_pos++] = read_buffer[i];
+      }
+    }
+  }
+
+  WinHttpCloseHandle(hRequest);
+  WinHttpCloseHandle(hConnect);
+  WinHttpCloseHandle(hSession);
+  free(request_json);
+  return success;
+
+#else
+  // macOS/Linux: libcurl streaming implementation
+  CURL *curl = curl_easy_init();
+  if (!curl) {
+    error_msg.Set("Failed to initialize curl");
+    free(request_json);
+    return false;
+  }
+
+  struct CurlStreamData {
+    StreamActionCallback callback;
+    void *user_data;
+    WDL_FastString *error_msg;
+    bool success;
+    char line_buffer[8192];
+    int line_pos;
+  };
+
+  CurlStreamData stream_data;
+  stream_data.callback = callback;
+  stream_data.user_data = user_data;
+  stream_data.error_msg = &error_msg;
+  stream_data.success = false;
+  stream_data.line_pos = 0;
+  stream_data.line_buffer[0] = '\0';
+
+  // Write callback for streaming
+  auto write_callback = [](char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t {
+    CurlStreamData *data = (CurlStreamData *)userdata;
+    size_t total_size = size * nmemb;
+
+    for (size_t i = 0; i < total_size; i++) {
+      if (ptr[i] == '\n' || data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
+        data->line_buffer[data->line_pos] = '\0';
+        if (data->line_pos > 0) {
+          // Process SSE line
+          if (strncmp(data->line_buffer, "data: ", 6) == 0) {
+            const char *json_data = data->line_buffer + 6;
+
+            // API now sends action JSON directly (no wrapper) to minimize parsing work
+            // Check if it's a control event (has "type" field) or an action (raw action JSON)
+            wdl_json_parser parser;
+            wdl_json_element *root = parser.parse(json_data, (int)strlen(json_data));
+            if (!parser.m_err && root) {
+              wdl_json_element *type_elem = root->get_item_by_name("type");
+              if (type_elem && type_elem->m_value_string) {
+                // Control event (done/error)
+                const char *event_type = type_elem->m_value;
+                if (strcmp(event_type, "done") == 0) {
+                  data->success = true;
+                } else if (strcmp(event_type, "error") == 0) {
+                  wdl_json_element *msg_elem = root->get_item_by_name("message");
+                  if (msg_elem && msg_elem->m_value_string) {
+                    data->error_msg->Set(msg_elem->m_value);
+                  }
+                }
+              } else {
+                // No "type" field - this is raw action JSON, use it directly
+                // API sends action JSON directly, so we can pass it to callback immediately
+                data->callback(json_data, data->user_data);
+              }
+            } else {
+              // Parse failed - might still be valid action JSON, try passing it anyway
+              // (API should send valid JSON, but be defensive)
+              if (json_data[0] == '{') {
+                data->callback(json_data, data->user_data);
+              }
+            }
+          }
+        }
+        data->line_pos = 0;
+      } else if (ptr[i] != '\r') {
+        data->line_buffer[data->line_pos++] = ptr[i];
+      }
+    }
+
+    return total_size;
+  };
+
+  curl_easy_setopt(curl, CURLOPT_URL, url.Get());
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request_json);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, request_json_len);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream_data);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
+
+  struct curl_slist *headers = nullptr;
+  headers = curl_slist_append(headers, "Content-Type: application/json");
+  headers = curl_slist_append(headers, "Accept: text/event-stream");
+  if (auth_token && strlen(auth_token) > 0) {
+    char auth_header[512];
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", auth_token);
+    headers = curl_slist_append(headers, auth_header);
+  }
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+  CURLcode res = curl_easy_perform(curl);
+
+  long response_code = 0;
+  if (res == CURLE_OK) {
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    if (response_code != 200) {
+      char error_buf[512];
+      snprintf(error_buf, sizeof(error_buf), "HTTP error %ld", response_code);
+      error_msg.Set(error_buf);
+      curl_slist_free_all(headers);
+      curl_easy_cleanup(curl);
+      free(request_json);
+      return false;
+    }
+  } else {
+    error_msg.Set(curl_easy_strerror(res));
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    free(request_json);
+    return false;
+  }
+
+  curl_slist_free_all(headers);
+  curl_easy_cleanup(curl);
+  free(request_json);
+  return stream_data.success;
+#endif
 }

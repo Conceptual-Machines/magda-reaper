@@ -1,4 +1,5 @@
 #include "magda_chat_window.h"
+#include "magda_actions.h"
 #include "magda_api_client.h"
 #include "magda_chat_resource.h"
 #include "magda_login_window.h"
@@ -347,7 +348,7 @@ void MagdaChatWindow::OnSendMessage() {
       AddReply("MAGDA: Thinking...\n");
     }
 
-    // Call backend API
+    // Call backend API with streaming
     static MagdaHTTPClient httpClient;
 
     // Set JWT token if available
@@ -356,29 +357,49 @@ void MagdaChatWindow::OnSendMessage() {
       httpClient.SetJWTToken(token);
     }
 
-    WDL_FastString response_json, error_msg;
+    WDL_FastString error_msg;
+    struct StreamContext {
+      MagdaChatWindow *window;
+      int action_count;
+    };
+    static StreamContext s_ctx;
+    s_ctx.window = this;
+    s_ctx.action_count = 0;
 
-    if (httpClient.SendQuestion(buffer, response_json, error_msg)) {
-      if (m_hwndReplyDisplay) {
-        AddReply("MAGDA: Response received\n");
-        if (response_json.GetLength() > 0) {
-          // Show response (truncated if too long)
-          char response_display[2048];
-          int len = response_json.GetLength();
-          if (len > sizeof(response_display) - 1) {
-            len = sizeof(response_display) - 1;
-          }
-          memcpy(response_display, response_json.Get(), len);
-          response_display[len] = '\0';
-          AddReply(response_display);
-          AddReply("\n");
+    // Stream callback - executes each action as it arrives
+    // Must be a plain function pointer (no lambda captures)
+    static auto stream_callback = [](const char *action_json, void *user_data) -> void {
+      StreamContext *ctx = (StreamContext *)user_data;
+      ctx->action_count++;
+
+      // Execute the action immediately
+      WDL_FastString result, action_error;
+      if (MagdaActions::ExecuteActions(action_json, result, action_error)) {
+        if (ctx->window->m_hwndReplyDisplay) {
+          char msg[256];
+          snprintf(msg, sizeof(msg), "MAGDA: Action #%d executed\n", ctx->action_count);
+          ctx->window->AddReply(msg);
         }
+      } else {
+        if (ctx->window->m_hwndReplyDisplay) {
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA: Action #%d failed: %s\n", ctx->action_count,
+                   action_error.Get());
+          ctx->window->AddReply(msg);
+        }
+      }
+    };
+
+    if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx, error_msg)) {
+      if (m_hwndReplyDisplay) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "MAGDA: Stream complete (%d actions)\n\n", s_ctx.action_count);
+        AddReply(msg);
       }
     } else {
       if (m_hwndReplyDisplay) {
         char response[2048];
-        snprintf(response, sizeof(response), "MAGDA: Error executing action: %s\n\n",
-                 error_msg.Get());
+        snprintf(response, sizeof(response), "MAGDA: Error: %s\n\n", error_msg.Get());
         AddReply(response);
       }
     }

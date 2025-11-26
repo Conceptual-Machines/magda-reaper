@@ -29,6 +29,16 @@ public:
   // The actions are automatically executed after receiving the response
   bool SendQuestion(const char *question, WDL_FastString &response_json, WDL_FastString &error_msg);
 
+  // Callback type for streaming actions - called for each action as it arrives
+  typedef void (*StreamActionCallback)(const char *action_json, void *user_data);
+
+  // Send question to backend with streaming (SSE)
+  // Executes actions one-by-one as they arrive instead of waiting for all
+  // callback is called for each action as it's received
+  // Returns true on success, false on error
+  bool SendQuestionStream(const char *question, StreamActionCallback callback, void *user_data,
+                          WDL_FastString &error_msg);
+
   // Send login request to backend
   // Returns true on success, false on error
   // jwt_token_out contains the JWT token on success
