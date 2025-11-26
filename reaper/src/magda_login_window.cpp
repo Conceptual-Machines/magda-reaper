@@ -1,24 +1,46 @@
 #include "magda_login_window.h"
-#include "../WDL/WDL/jnetlib/asyncdns.h"
-#include "../WDL/WDL/jnetlib/httpget.h"
-#include "../WDL/WDL/jnetlib/util.h" // For JNL::open_socketlib()
-#include "../WDL/WDL/jsonparse.h"
-#include "../WDL/WDL/wdlstring.h"
-#include "magda_api_client.h"
+#include "magda_auth.h"
+#include "magda_env.h"
+#include "magda_login_resource.h"
+#include <cstdio>
 #include <cstring>
-
-#ifndef _WIN32
-#include <WDL/wdltypes.h>
-#endif
 
 extern reaper_plugin_info_t *g_rec;
 extern HINSTANCE g_hInst;
 
-// Control IDs
-#define IDC_EMAIL_INPUT 2001
-#define IDC_PASSWORD_INPUT 2002
-#define IDC_LOGIN_BUTTON 2003
-#define IDC_STATUS_LABEL 2004
+// Global static variable to hold the window handle for the async callback
+static HWND g_loginWindowHwnd = nullptr;
+
+// Data structure for login completion message
+struct LoginCompleteData {
+  bool success;
+  WDL_FastString jwt_token;
+  WDL_FastString error_msg;
+};
+
+// Static callback wrapper - converts function pointer callback to PostMessage
+static void LoginCallbackWrapper(HWND hwnd, bool success, const char *token, const char *error) {
+  if (hwnd) {
+    LoginCompleteData *data = new LoginCompleteData();
+    data->success = success;
+    if (token) {
+      data->jwt_token.Set(token);
+    }
+    if (error) {
+      data->error_msg.Set(error);
+    }
+    // Post message to dialog window - will be handled on main thread
+    PostMessage(hwnd, WM_LOGIN_COMPLETE, 0, (LPARAM)data);
+  }
+}
+
+// Static callback function for LoginAsync - must be a plain C function pointer
+// This is called from the background thread, so it uses PostMessage to communicate
+// with the main thread safely
+static void LoginAsyncCallback(bool success, const char *token, const char *error) {
+  // Use static window handle set before starting login
+  LoginCallbackWrapper(g_loginWindowHwnd, success, token, error);
+}
 
 // Static storage for JWT token (function-local static to avoid initialization order issues)
 WDL_FastString &MagdaLoginWindow::GetTokenStorage() {
@@ -28,7 +50,7 @@ WDL_FastString &MagdaLoginWindow::GetTokenStorage() {
 
 MagdaLoginWindow::MagdaLoginWindow()
     : m_hwnd(nullptr), m_hwndEmailInput(nullptr), m_hwndPasswordInput(nullptr),
-      m_hwndLoginButton(nullptr), m_hwndStatusLabel(nullptr) {}
+      m_hwndLoginButton(nullptr), m_hwndStatusLabel(nullptr), m_hwndStatusIcon(nullptr) {}
 
 MagdaLoginWindow::~MagdaLoginWindow() {
   if (m_hwnd) {
@@ -52,67 +74,46 @@ void MagdaLoginWindow::StoreToken(const char *token) {
 }
 
 void MagdaLoginWindow::Show(bool toggle) {
-  if (!g_rec)
+  if (!g_rec || !g_hInst)
     return;
 
-  // Use REAPER's GetUserInputs API for simple login dialog
-  bool (*GetUserInputs)(const char *title, int num_inputs, const char *captions_csv,
-                        char *retvals_csv, int retvals_csv_sz) =
-      (bool (*)(const char *, int, const char *, char *, int))g_rec->GetFunc("GetUserInputs");
-
-  if (!GetUserInputs) {
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: GetUserInputs API not available\n");
-    }
-    return;
-  }
-
-  // Prepare input fields: Email, Password
-  // Note: "*Password:" will hide the password input (REAPER feature)
-  // Use extrawidth=XXX to make fields wider (default is ~200px, we'll use 280px)
-  char retvals[512] = {0};
-  bool result = GetUserInputs("MAGDA Login", 2, "Email:,extrawidth=280,*Password:,extrawidth=280",
-                              retvals, sizeof(retvals));
-
-  if (!result) {
-    // User cancelled
-    return;
-  }
-
-  // Parse the comma-separated return values
-  char email[256] = {0};
-  char password[256] = {0};
-  char *p = retvals;
-  int field = 0;
-  char *dest = email;
-
-  while (*p && field < 2) {
-    if (*p == ',') {
-      *dest = '\0';
-      field++;
-      if (field == 1) {
-        dest = password;
-      }
-      p++;
+  if (m_hwnd && IsWindowVisible(m_hwnd)) {
+    if (toggle) {
+      Hide();
     } else {
-      *dest++ = *p++;
-    }
-  }
-  *dest = '\0';
-
-  if (strlen(email) == 0 || strlen(password) == 0) {
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Email and password required\n");
+      SetForegroundWindow(m_hwnd);
+      SetFocus(m_hwndEmailInput);
     }
     return;
   }
 
-  // Perform login with HTTP call
-  OnLoginWithCredentials(email, password);
+  if (!m_hwnd) {
+    // Create a modeless dialog - SWS pattern
+    m_hwnd = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAGDA_LOGIN), NULL, sDialogProc,
+                               (LPARAM)this);
+  }
+
+  if (m_hwnd) {
+    ShowWindow(m_hwnd, SW_SHOW);
+    SetForegroundWindow(m_hwnd);
+    SetFocus(m_hwndEmailInput);
+    // Clear previous status
+    SetStatus("", false);
+
+    // Log credentials from .env when window opens (dev utility)
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg), "MAGDA Login (.env) - Email: %s\n",
+               MagdaEnv::Get("AIDEAS_EMAIL", ""));
+      ShowConsoleMsg(log_msg);
+      snprintf(log_msg, sizeof(log_msg), "MAGDA Login (.env) - Password: %s\n",
+               MagdaEnv::Get("AIDEAS_PASSWORD", ""));
+      ShowConsoleMsg(log_msg);
+    }
+    UpdateUIForLoggedOutState(); // Ensure UI is in correct state on show
+  }
 }
 
 void MagdaLoginWindow::Hide() {
@@ -122,8 +123,12 @@ void MagdaLoginWindow::Hide() {
 }
 
 INT_PTR WINAPI MagdaLoginWindow::sDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+  if (uMsg == WM_INITDIALOG) {
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, lParam);
+  }
   MagdaLoginWindow *pThis = (MagdaLoginWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
   if (pThis) {
+    pThis->m_hwnd = hwnd; // Store HWND in instance
     return pThis->DialogProc(uMsg, wParam, lParam);
   }
   return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -131,77 +136,146 @@ INT_PTR WINAPI MagdaLoginWindow::sDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam
 
 INT_PTR MagdaLoginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch (uMsg) {
+  case WM_INITDIALOG: {
+    // Get control handles
+    m_hwndEmailInput = GetDlgItem(m_hwnd, IDC_EMAIL_INPUT);
+    m_hwndPasswordInput = GetDlgItem(m_hwnd, IDC_PASSWORD_INPUT);
+    m_hwndLoginButton = GetDlgItem(m_hwnd, IDC_LOGIN_BUTTON);
+    m_hwndStatusLabel = GetDlgItem(m_hwnd, IDC_STATUS_LABEL);
+    m_hwndStatusIcon = GetDlgItem(m_hwnd, IDC_STATUS_ICON);
+
+    // Validate all controls were created
+    if (!m_hwndEmailInput || !m_hwndPasswordInput || !m_hwndLoginButton || !m_hwndStatusLabel ||
+        !m_hwndStatusIcon) {
+      return FALSE;
+    }
+
+    // Set initial focus to email field
+    SetFocus(m_hwndEmailInput);
+    // Clear status
+    SetStatus("", false);
+    UpdateUIForLoggedOutState(); // Initial UI state
+
+    return TRUE;
+  }
   case WM_COMMAND:
-    if (LOWORD(wParam) == IDC_LOGIN_BUTTON) {
-      OnLogin();
-      return 0;
-    }
-    // Handle Enter key in password field
-    if (LOWORD(wParam) == IDC_PASSWORD_INPUT && HIWORD(wParam) == EN_CHANGE) {
-      // Check if Enter was pressed (simplified - just check on button click)
-      // For now, only login button triggers login
-    }
-    break;
+    OnCommand(LOWORD(wParam), HIWORD(wParam));
+    return 0;
   case WM_CLOSE:
     Hide();
     return 0;
+  case WM_LOGIN_COMPLETE: {
+    LoginCompleteData *data = (LoginCompleteData *)lParam;
+    if (data) {
+      OnLoginComplete(data->success, data->jwt_token.Get(), data->error_msg.Get());
+      delete data; // Free the allocated data
+    }
+    return 0;
+  }
   }
   return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
+void MagdaLoginWindow::OnCommand(int command, int notifyCode) {
+  switch (command) {
+  case IDC_LOGIN_BUTTON:
+    OnLogin();
+    break;
+  case IDC_CANCEL_BUTTON:
+    Hide();
+    break;
+  }
+}
+
 void MagdaLoginWindow::OnLogin() {
-  // This is called from the old dialog-based approach
-  // For GetUserInputs approach, we call OnLoginWithCredentials directly
   if (!m_hwndEmailInput || !m_hwndPasswordInput) {
     return;
   }
 
-  char email[256] = {0};
-  char password[256] = {0};
-  GetWindowText(m_hwndEmailInput, email, sizeof(email));
-  GetWindowText(m_hwndPasswordInput, password, sizeof(password));
+  // Check if already logged in - if so, logout
+  const char *token = GetStoredToken();
+  if (token && strlen(token) > 0) {
+    // Logout
+    StoreToken(nullptr);
+    UpdateUIForLoggedOutState();
+    SetStatus("Logged out", false);
+    return;
+  }
+
+  // Read credentials from .env for development
+  const char *email = MagdaEnv::Get("AIDEAS_EMAIL", "");
+  const char *password = MagdaEnv::Get("AIDEAS_PASSWORD", "");
+
+  if (strlen(email) == 0 || strlen(password) == 0) {
+    SetStatus("Please ensure AIDEAS_EMAIL and AIDEAS_PASSWORD are set in .env", true);
+    return;
+  }
 
   OnLoginWithCredentials(email, password);
 }
 
 void MagdaLoginWindow::OnLoginWithCredentials(const char *email, const char *password) {
   if (!email || !password || strlen(email) == 0 || strlen(password) == 0) {
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Email and password required\n");
-    }
+    SetStatus("Email and password required", true);
     return;
   }
 
-  void (*ShowConsoleMsg)(const char *msg) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-  if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Logging in...\n");
-  }
+  // Disable all controls during login
+  EnableWindow(m_hwndEmailInput, FALSE);
+  EnableWindow(m_hwndPasswordInput, FALSE);
+  EnableWindow(m_hwndLoginButton, FALSE);
 
-  // Use MagdaHTTPClient for login
-  static MagdaHTTPClient httpClient;
-  WDL_FastString jwt_token, error_msg;
+  // Show "Logging in..." status
+  SetStatus("Logging in...", false);
 
-  if (httpClient.SendLoginRequest(email, password, jwt_token, error_msg)) {
-    StoreToken(jwt_token.Get());
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Login successful! Token stored.\n");
-    }
+  // Store window handle in static variable for callback
+  g_loginWindowHwnd = m_hwnd;
+
+  // Start login in background thread using MagdaAuth service
+  // Use static function pointer instead of lambda for thread safety
+  MagdaAuth::LoginAsync(email, password, LoginAsyncCallback);
+}
+
+void MagdaLoginWindow::OnLoginComplete(bool success, const char *token, const char *error) {
+  if (success) {
+    StoreToken(token);
+    SetStatus("Login successful!", false);
+    UpdateUIForLoggedInState();
   } else {
-    if (ShowConsoleMsg) {
-      char buf[512];
-      snprintf(buf, sizeof(buf), "MAGDA: Login failed: %s\n",
-               error_msg.GetLength() > 0 ? error_msg.Get() : "Unknown error");
-      ShowConsoleMsg(buf);
-    }
+    SetStatus(error ? error : "Login failed", true);
+    UpdateUIForLoggedOutState();
   }
 }
 
 void MagdaLoginWindow::SetStatus(const char *status, bool isError) {
-  if (m_hwndStatusLabel && status) {
-    SetWindowText(m_hwndStatusLabel, status);
-    // Could change text color for errors, but that requires more complex UI
+  if (m_hwndStatusLabel) {
+    SetWindowText(m_hwndStatusLabel, status ? status : "");
   }
+  // Set icon only if there's a status message
+  if (m_hwndStatusIcon) {
+    if (status && strlen(status) > 0) {
+      SetWindowText(m_hwndStatusIcon, isError ? "❌" : "✅"); // Unicode characters for status
+    } else {
+      SetWindowText(m_hwndStatusIcon, ""); // Clear icon if no status
+    }
+  }
+}
+
+void MagdaLoginWindow::UpdateUIForLoggedInState() {
+  if (m_hwndEmailInput)
+    EnableWindow(m_hwndEmailInput, FALSE);
+  if (m_hwndPasswordInput)
+    EnableWindow(m_hwndPasswordInput, FALSE);
+  if (m_hwndLoginButton)
+    SetWindowText(m_hwndLoginButton, "Logout");
+}
+
+void MagdaLoginWindow::UpdateUIForLoggedOutState() {
+  if (m_hwndEmailInput)
+    EnableWindow(m_hwndEmailInput, TRUE);
+  if (m_hwndPasswordInput)
+    EnableWindow(m_hwndPasswordInput, TRUE);
+  if (m_hwndLoginButton)
+    SetWindowText(m_hwndLoginButton, "Login");
+  SetStatus("", false); // Clear status on logout
 }
