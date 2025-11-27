@@ -159,18 +159,22 @@ responses
 *.log
 
 # Reaper Extension build artifacts
-reaper/build/
-reaper/cmake-build-*/
-reaper/*.dylib
-reaper/*.dll
-reaper/*.so
-reaper/*.dylib.dSYM/
-reaper/CMakeCache.txt
-reaper/CMakeFiles/
-reaper/cmake_install.cmake
-reaper/compile_commands.json
-reaper/*.o
-reaper/*.obj
-reaper/*.a
-reaper/*.lib
-reaper/reaper-sdk/WDL  # Symlink, not committed
+build/
+cmake-build-*/
+*.dylib
+*.dll
+*.so
+*.dylib.dSYM/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.o
+*.obj
+*.a
+*.lib
+reaper-sdk/WDL  # Symlink, not committed
+build/
+*.dylib
+*.so
+*.dll

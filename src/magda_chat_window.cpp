@@ -20,8 +20,9 @@ extern HINSTANCE g_hInst;
 #define IDC_SEND_BUTTON 1004
 
 MagdaChatWindow::MagdaChatWindow()
-    : m_hwnd(nullptr), m_hwndQuestionInput(nullptr), m_hwndQuestionDisplay(nullptr),
-      m_hwndReplyDisplay(nullptr), m_hwndSendButton(nullptr) {}
+    : m_hwnd(nullptr), m_hwndQuestionInput(nullptr),
+      m_hwndQuestionDisplay(nullptr), m_hwndReplyDisplay(nullptr),
+      m_hwndSendButton(nullptr) {}
 
 MagdaChatWindow::~MagdaChatWindow() {
   if (m_hwnd) {
@@ -57,14 +58,18 @@ void MagdaChatWindow::Show(bool toggle) {
       // Add window to REAPER's dock system AFTER showing
       // This makes it dockable while keeping it undockable
       if (g_rec) {
-        void (*DockWindowAddEx)(HWND hwnd, const char *name, const char *identstr, bool allowShow) =
-            (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc("DockWindowAddEx");
+        void (*DockWindowAddEx)(HWND hwnd, const char *name,
+                                const char *identstr, bool allowShow) =
+            (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc(
+                "DockWindowAddEx");
         if (DockWindowAddEx) {
-          // allowShow=false: Don't auto-show if docked, let user control visibility
+          // allowShow=false: Don't auto-show if docked, let user control
+          // visibility
           DockWindowAddEx(m_hwnd, "MAGDA Chat", "MAGDA_CHAT_WINDOW", false);
 
           // Refresh the dock system
-          void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
+          void (*DockWindowRefresh)() =
+              (void (*)())g_rec->GetFunc("DockWindowRefresh");
           if (DockWindowRefresh) {
             DockWindowRefresh();
           }
@@ -88,7 +93,8 @@ void MagdaChatWindow::Show(bool toggle) {
 
     if (isDocked) {
       // Window is docked - activate the dock tab
-      void (*DockWindowActivate)(HWND hwnd) = (void (*)(HWND))g_rec->GetFunc("DockWindowActivate");
+      void (*DockWindowActivate)(HWND hwnd) =
+          (void (*)(HWND))g_rec->GetFunc("DockWindowActivate");
       if (DockWindowActivate) {
         DockWindowActivate(m_hwnd);
       }
@@ -127,9 +133,11 @@ void MagdaChatWindow::Hide() {
 }
 
 // Static dialog proc - SWS pattern
-INT_PTR WINAPI MagdaChatWindow::sDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR WINAPI MagdaChatWindow::sDialogProc(HWND hwndDlg, UINT uMsg,
+                                            WPARAM wParam, LPARAM lParam) {
   // Get 'this' pointer from GWLP_USERDATA (SWS pattern)
-  MagdaChatWindow *pObj = (MagdaChatWindow *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+  MagdaChatWindow *pObj =
+      (MagdaChatWindow *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
   if (!pObj && uMsg == WM_INITDIALOG) {
     // Store 'this' pointer from lParam (passed from CreateDialogParam)
     SetWindowLongPtr(hwndDlg, GWLP_USERDATA, lParam);
@@ -221,20 +229,23 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
       POINT pt;
       GetCursorPos(&pt);
-      int cmd = TrackPopupMenu(hMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_LEFTALIGN, pt.x, pt.y, 0,
-                               m_hwnd, NULL);
+      int cmd =
+          TrackPopupMenu(hMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_LEFTALIGN,
+                         pt.x, pt.y, 0, m_hwnd, NULL);
       DestroyMenu(hMenu);
 
       if (cmd == 1000) {
         // Undock: Remove from dock system and show as floating
         if (g_rec) {
-          void (*DockWindowRemove)(HWND hwnd) = (void (*)(HWND))g_rec->GetFunc("DockWindowRemove");
+          void (*DockWindowRemove)(HWND hwnd) =
+              (void (*)(HWND))g_rec->GetFunc("DockWindowRemove");
           if (DockWindowRemove) {
             // Remove from dock first
             DockWindowRemove(m_hwnd);
 
             // Refresh dock system
-            void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
+            void (*DockWindowRefresh)() =
+                (void (*)())g_rec->GetFunc("DockWindowRefresh");
             if (DockWindowRefresh) {
               DockWindowRefresh();
             }
@@ -275,15 +286,17 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
       } else if (cmd == 1001) {
         // Dock: Add back to dock system
         if (g_rec) {
-          void (*DockWindowAddEx)(HWND hwnd, const char *name, const char *identstr,
-                                  bool allowShow) =
-              (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc("DockWindowAddEx");
+          void (*DockWindowAddEx)(HWND hwnd, const char *name,
+                                  const char *identstr, bool allowShow) =
+              (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc(
+                  "DockWindowAddEx");
           if (DockWindowAddEx) {
             // Add back to dock system
             DockWindowAddEx(m_hwnd, "MAGDA Chat", "MAGDA_CHAT_WINDOW", true);
 
             // Refresh dock system
-            void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
+            void (*DockWindowRefresh)() =
+                (void (*)())g_rec->GetFunc("DockWindowRefresh");
             if (DockWindowRefresh) {
               DockWindowRefresh();
             }
@@ -364,7 +377,8 @@ void MagdaChatWindow::OnSendMessage() {
         if (ShowConsoleMsg) {
           char log_msg[256];
           snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Retrieved JWT token (length: %d) from storage\n", (int)strlen(token));
+                   "MAGDA: Retrieved JWT token (length: %d) from storage\n",
+                   (int)strlen(token));
           ShowConsoleMsg(log_msg);
         }
       }
@@ -390,7 +404,8 @@ void MagdaChatWindow::OnSendMessage() {
 
     // Stream callback - executes each action as it arrives
     // Must be a plain function pointer (no lambda captures)
-    static auto stream_callback = [](const char *action_json, void *user_data) -> void {
+    static auto stream_callback = [](const char *action_json,
+                                     void *user_data) -> void {
       StreamContext *ctx = (StreamContext *)user_data;
       ctx->action_count++;
 
@@ -399,28 +414,32 @@ void MagdaChatWindow::OnSendMessage() {
       if (MagdaActions::ExecuteActions(action_json, result, action_error)) {
         if (ctx->window->m_hwndReplyDisplay) {
           char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA: Action #%d executed\n", ctx->action_count);
+          snprintf(msg, sizeof(msg), "MAGDA: Action #%d executed\n",
+                   ctx->action_count);
           ctx->window->AddReply(msg);
         }
       } else {
         if (ctx->window->m_hwndReplyDisplay) {
           char msg[512];
-          snprintf(msg, sizeof(msg), "MAGDA: Action #%d failed: %s\n", ctx->action_count,
-                   action_error.Get());
+          snprintf(msg, sizeof(msg), "MAGDA: Action #%d failed: %s\n",
+                   ctx->action_count, action_error.Get());
           ctx->window->AddReply(msg);
         }
       }
     };
 
-    if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx, error_msg)) {
+    if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx,
+                                      error_msg)) {
       if (m_hwndReplyDisplay) {
         char msg[256];
-        snprintf(msg, sizeof(msg), "MAGDA: Stream complete (%d actions)\n\n", s_ctx.action_count);
+        snprintf(msg, sizeof(msg), "MAGDA: Stream complete (%d actions)\n\n",
+                 s_ctx.action_count);
         AddReply(msg);
       }
     } else {
       // Check if error is 401 (unauthorized) - try to refresh token
-      if (strstr(error_msg.Get(), "401") || strstr(error_msg.Get(), "Unauthorized")) {
+      if (strstr(error_msg.Get(), "401") ||
+          strstr(error_msg.Get(), "Unauthorized")) {
         if (g_rec) {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
@@ -445,10 +464,12 @@ void MagdaChatWindow::OnSendMessage() {
 
             // Reset action count and retry
             s_ctx.action_count = 0;
-            if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx, error_msg)) {
+            if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx,
+                                              error_msg)) {
               if (m_hwndReplyDisplay) {
                 char msg[256];
-                snprintf(msg, sizeof(msg), "MAGDA: Stream complete (%d actions)\n\n",
+                snprintf(msg, sizeof(msg),
+                         "MAGDA: Stream complete (%d actions)\n\n",
                          s_ctx.action_count);
                 AddReply(msg);
               }
@@ -464,7 +485,8 @@ void MagdaChatWindow::OnSendMessage() {
             void (*ShowConsoleMsg)(const char *msg) =
                 (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
             if (ShowConsoleMsg) {
-              ShowConsoleMsg("MAGDA: Token refresh failed - user must re-login\n");
+              ShowConsoleMsg(
+                  "MAGDA: Token refresh failed - user must re-login\n");
             }
           }
           return;
@@ -474,7 +496,8 @@ void MagdaChatWindow::OnSendMessage() {
       // Other errors or refresh retry failed
       if (m_hwndReplyDisplay) {
         char response[2048];
-        snprintf(response, sizeof(response), "MAGDA: Error: %s\n\n", error_msg.Get());
+        snprintf(response, sizeof(response), "MAGDA: Error: %s\n\n",
+                 error_msg.Get());
         AddReply(response);
       }
     }
@@ -531,14 +554,14 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
 
   // Question display: left pane
   if (m_hwndQuestionDisplay) {
-    SetWindowPos(m_hwndQuestionDisplay, NULL, padding, padding, paneWidth, displayHeight,
-                 SWP_NOZORDER);
+    SetWindowPos(m_hwndQuestionDisplay, NULL, padding, padding, paneWidth,
+                 displayHeight, SWP_NOZORDER);
   }
 
   // Reply display: right pane
   if (m_hwndReplyDisplay) {
-    SetWindowPos(m_hwndReplyDisplay, NULL, padding + paneWidth + spacing, padding, paneWidth,
-                 displayHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndReplyDisplay, NULL, padding + paneWidth + spacing,
+                 padding, paneWidth, displayHeight, SWP_NOZORDER);
   }
 
   // Input field: bottom
@@ -547,13 +570,14 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
     int inputWidth = width - padding * 2 - buttonWidth - spacing;
     if (inputWidth < 50)
       inputWidth = 50;
-    SetWindowPos(m_hwndQuestionInput, NULL, padding, inputY, inputWidth, inputHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndQuestionInput, NULL, padding, inputY, inputWidth,
+                 inputHeight, SWP_NOZORDER);
   }
 
   // Send button: bottom right
   if (m_hwndSendButton) {
     int buttonY = height - padding - buttonHeight;
-    SetWindowPos(m_hwndSendButton, NULL, width - padding - buttonWidth, buttonY, buttonWidth,
-                 buttonHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndSendButton, NULL, width - padding - buttonWidth, buttonY,
+                 buttonWidth, buttonHeight, SWP_NOZORDER);
   }
 }

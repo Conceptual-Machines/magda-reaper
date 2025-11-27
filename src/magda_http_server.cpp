@@ -65,7 +65,8 @@ void MagdaHTTPServer::Stop() {
 
 int MagdaHTTPServer::GetPort() const { return m_port; }
 
-void MagdaHTTPServer::SendJSONResponse(JNL_HTTPServ *serv, const char *json, int status) {
+void MagdaHTTPServer::SendJSONResponse(JNL_HTTPServ *serv, const char *json,
+                                       int status) {
   if (status == 200) {
     serv->set_reply_string("HTTP/1.1 200 OK");
   } else {
@@ -80,7 +81,8 @@ void MagdaHTTPServer::SendJSONResponse(JNL_HTTPServ *serv, const char *json, int
   serv->send_reply();
 }
 
-void MagdaHTTPServer::SendErrorResponse(JNL_HTTPServ *serv, const char *message, int status) {
+void MagdaHTTPServer::SendErrorResponse(JNL_HTTPServ *serv, const char *message,
+                                        int status) {
   char json[512];
   snprintf(json, sizeof(json), "{\"error\":\"%s\"}", message);
   SendJSONResponse(serv, json, status);

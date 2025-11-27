@@ -46,6 +46,7 @@ set(SOURCES
     src/magda_env.cpp
     src/magda_executor.cpp
     src/magda_actions.cpp
+    src/magda_plugin_scanner.cpp
     # WDL networking implementation
     WDL/WDL/jnetlib/httpget.cpp
     WDL/WDL/jnetlib/connection.cpp

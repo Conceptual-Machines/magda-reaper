@@ -19,7 +19,8 @@ struct LoginCompleteData {
 };
 
 // Static callback wrapper - converts function pointer callback to PostMessage
-static void LoginCallbackWrapper(HWND hwnd, bool success, const char *token, const char *error) {
+static void LoginCallbackWrapper(HWND hwnd, bool success, const char *token,
+                                 const char *error) {
   if (hwnd) {
     LoginCompleteData *data = new LoginCompleteData();
     data->success = success;
@@ -35,14 +36,16 @@ static void LoginCallbackWrapper(HWND hwnd, bool success, const char *token, con
 }
 
 // Static callback function for LoginAsync - must be a plain C function pointer
-// This is called from the background thread, so it uses PostMessage to communicate
-// with the main thread safely
-static void LoginAsyncCallback(bool success, const char *token, const char *error) {
+// This is called from the background thread, so it uses PostMessage to
+// communicate with the main thread safely
+static void LoginAsyncCallback(bool success, const char *token,
+                               const char *error) {
   // Use static window handle set before starting login
   LoginCallbackWrapper(g_loginWindowHwnd, success, token, error);
 }
 
-// Static storage for JWT token (function-local static to avoid initialization order issues)
+// Static storage for JWT token (function-local static to avoid initialization
+// order issues)
 WDL_FastString &MagdaLoginWindow::GetTokenStorage() {
   static WDL_FastString s_jwt_token;
   return s_jwt_token;
@@ -50,7 +53,8 @@ WDL_FastString &MagdaLoginWindow::GetTokenStorage() {
 
 MagdaLoginWindow::MagdaLoginWindow()
     : m_hwnd(nullptr), m_hwndEmailInput(nullptr), m_hwndPasswordInput(nullptr),
-      m_hwndLoginButton(nullptr), m_hwndStatusLabel(nullptr), m_hwndStatusIcon(nullptr) {}
+      m_hwndLoginButton(nullptr), m_hwndStatusLabel(nullptr),
+      m_hwndStatusIcon(nullptr) {}
 
 MagdaLoginWindow::~MagdaLoginWindow() {
   if (m_hwnd) {
@@ -73,8 +77,10 @@ void MagdaLoginWindow::StoreToken(const char *token) {
 static void StoreCredentials(const char *email, const char *password) {
   if (!g_rec)
     return;
-  void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+  void (*SetExtState)(const char *section, const char *key, const char *value,
+                      bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
+          "SetExtState");
   if (SetExtState) {
     SetExtState("MAGDA", "email", email ? email : "", true);
     SetExtState("MAGDA", "password", password ? password : "", true);
@@ -85,7 +91,8 @@ static void LoadCredentials(WDL_FastString &email, WDL_FastString &password) {
   if (!g_rec)
     return;
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc(
+          "GetExtState");
   if (GetExtState) {
     const char *stored_email = GetExtState("MAGDA", "email");
     const char *stored_password = GetExtState("MAGDA", "password");
@@ -114,8 +121,8 @@ void MagdaLoginWindow::Show(bool toggle) {
 
   if (!m_hwnd) {
     // Create a modeless dialog - SWS pattern
-    m_hwnd = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAGDA_LOGIN), NULL, sDialogProc,
-                               (LPARAM)this);
+    m_hwnd = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAGDA_LOGIN), NULL,
+                               sDialogProc, (LPARAM)this);
   }
 
   if (m_hwnd) {
@@ -160,7 +167,8 @@ void MagdaLoginWindow::Show(bool toggle) {
         SetWindowText(m_hwndPasswordInput, stored_password.Get());
       }
 
-      // Check if already logged in (have valid token) and set UI state accordingly
+      // Check if already logged in (have valid token) and set UI state
+      // accordingly
       const char *token = GetStoredToken();
       if (token && strlen(token) > 0) {
         UpdateUIForLoggedInState();
@@ -177,11 +185,13 @@ void MagdaLoginWindow::Hide() {
   }
 }
 
-INT_PTR WINAPI MagdaLoginWindow::sDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR WINAPI MagdaLoginWindow::sDialogProc(HWND hwnd, UINT uMsg,
+                                             WPARAM wParam, LPARAM lParam) {
   if (uMsg == WM_INITDIALOG) {
     SetWindowLongPtr(hwnd, GWLP_USERDATA, lParam);
   }
-  MagdaLoginWindow *pThis = (MagdaLoginWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+  MagdaLoginWindow *pThis =
+      (MagdaLoginWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
   if (pThis) {
     pThis->m_hwnd = hwnd; // Store HWND in instance
     return pThis->DialogProc(uMsg, wParam, lParam);
@@ -200,8 +210,8 @@ INT_PTR MagdaLoginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     m_hwndStatusIcon = GetDlgItem(m_hwnd, IDC_STATUS_ICON);
 
     // Validate all controls were created
-    if (!m_hwndEmailInput || !m_hwndPasswordInput || !m_hwndLoginButton || !m_hwndStatusLabel ||
-        !m_hwndStatusIcon) {
+    if (!m_hwndEmailInput || !m_hwndPasswordInput || !m_hwndLoginButton ||
+        !m_hwndStatusLabel || !m_hwndStatusIcon) {
       return FALSE;
     }
 
@@ -220,8 +230,8 @@ INT_PTR MagdaLoginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
       SetWindowText(m_hwndPasswordInput, stored_password.Get());
     }
 
-    // Check if already logged in (have valid token) and set UI state accordingly
-    // Only disable fields if we're actually logged in
+    // Check if already logged in (have valid token) and set UI state
+    // accordingly Only disable fields if we're actually logged in
     const char *token = GetStoredToken();
     if (token && strlen(token) > 0) {
       UpdateUIForLoggedInState();
@@ -240,7 +250,8 @@ INT_PTR MagdaLoginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
   case WM_LOGIN_COMPLETE: {
     LoginCompleteData *data = (LoginCompleteData *)lParam;
     if (data) {
-      OnLoginComplete(data->success, data->jwt_token.Get(), data->error_msg.Get());
+      OnLoginComplete(data->success, data->jwt_token.Get(),
+                      data->error_msg.Get());
       delete data; // Free the allocated data
     }
     return 0;
@@ -271,8 +282,10 @@ void MagdaLoginWindow::OnLogin() {
     // Logout - clear token and credentials
     StoreToken(nullptr);
     if (g_rec) {
-      void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
-          (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+      void (*SetExtState)(const char *section, const char *key,
+                          const char *value, bool persist) =
+          (void (*)(const char *, const char *, const char *,
+                    bool))g_rec->GetFunc("SetExtState");
       if (SetExtState) {
         SetExtState("MAGDA", "email", "", true);
         SetExtState("MAGDA", "password", "", true);
@@ -300,14 +313,16 @@ void MagdaLoginWindow::OnLogin() {
   }
 
   if (!email || strlen(email) == 0 || !password || strlen(password) == 0) {
-    SetStatus("Please ensure AIDEAS_EMAIL and AIDEAS_PASSWORD are set in .env", true);
+    SetStatus("Please ensure AIDEAS_EMAIL and AIDEAS_PASSWORD are set in .env",
+              true);
     return;
   }
 
   OnLoginWithCredentials(email, password);
 }
 
-void MagdaLoginWindow::OnLoginWithCredentials(const char *email, const char *password) {
+void MagdaLoginWindow::OnLoginWithCredentials(const char *email,
+                                              const char *password) {
   if (!email || !password || strlen(email) == 0 || strlen(password) == 0) {
     SetStatus("Email and password required", true);
     return;
@@ -329,7 +344,8 @@ void MagdaLoginWindow::OnLoginWithCredentials(const char *email, const char *pas
   MagdaAuth::LoginAsync(email, password, LoginAsyncCallback);
 }
 
-void MagdaLoginWindow::OnLoginComplete(bool success, const char *token, const char *error) {
+void MagdaLoginWindow::OnLoginComplete(bool success, const char *token,
+                                       const char *error) {
   if (success) {
     StoreToken(token);
 
@@ -360,7 +376,8 @@ void MagdaLoginWindow::SetStatus(const char *status, bool isError) {
   // Set icon only if there's a status message
   if (m_hwndStatusIcon) {
     if (status && strlen(status) > 0) {
-      SetWindowText(m_hwndStatusIcon, isError ? "❌" : "✅"); // Unicode characters for status
+      SetWindowText(m_hwndStatusIcon,
+                    isError ? "❌" : "✅"); // Unicode characters for status
     } else {
       SetWindowText(m_hwndStatusIcon, ""); // Clear icon if no status
     }

@@ -1,6 +1,6 @@
 #include "magda_actions.h"
-// Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject -> ReaProject)
-// This is a typo in the REAPER SDK itself, not our code
+// Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
+// ReaProject) This is a typo in the REAPER SDK itself, not our code
 typedef ReaProject Reaproject;
 #include "../WDL/WDL/wdlcstring.h"
 #include "reaper_plugin_functions.h"
@@ -9,7 +9,8 @@ typedef ReaProject Reaproject;
 
 extern reaper_plugin_info_t *g_rec;
 
-bool MagdaActions::CreateTrack(int index, const char *name, const char *instrument,
+bool MagdaActions::CreateTrack(int index, const char *name,
+                               const char *instrument,
                                WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
@@ -19,11 +20,13 @@ bool MagdaActions::CreateTrack(int index, const char *name, const char *instrume
   void (*InsertTrackInProject)(ReaProject *, int, int) =
       (void (*)(ReaProject *, int, int))g_rec->GetFunc("InsertTrackInProject");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc(
+          "TrackFX_AddByName");
 
   if (!InsertTrackInProject || !GetSetMediaTrackInfo || !GetTrack) {
     error_msg.Set("Required REAPER API functions not available");
@@ -47,7 +50,8 @@ bool MagdaActions::CreateTrack(int index, const char *name, const char *instrume
 
   // Add instrument if provided
   if (instrument && instrument[0] && TrackFX_AddByName) {
-    // recFX = false (track FX, not input FX), instantiate = -1 (always create new instance)
+    // recFX = false (track FX, not input FX), instantiate = -1 (always create
+    // new instance)
     int fx_index = TrackFX_AddByName(track, instrument, false, -1);
     if (fx_index < 0) {
       // Log warning but don't fail - track was created successfully
@@ -56,9 +60,10 @@ bool MagdaActions::CreateTrack(int index, const char *name, const char *instrume
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char log_msg[512];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Warning - Failed to add instrument '%s' to track %d\n", instrument,
-                   index);
+          snprintf(
+              log_msg, sizeof(log_msg),
+              "MAGDA: Warning - Failed to add instrument '%s' to track %d\n",
+              instrument, index);
           ShowConsoleMsg(log_msg);
         }
       }
@@ -79,13 +84,14 @@ bool MagdaActions::CreateClip(int track_index, double position, double length,
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   MediaItem *(*AddMediaItemToTrack)(MediaTrack *) =
       (MediaItem * (*)(MediaTrack *)) g_rec->GetFunc("AddMediaItemToTrack");
-  bool (*SetMediaItemPosition)(MediaItem *, double, bool) =
-      (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
+  bool (*SetMediaItemPosition)(MediaItem *, double, bool) = (bool (*)(
+      MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
   bool (*SetMediaItemLength)(MediaItem *, double, bool) =
       (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemLength");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
-  if (!GetTrack || !AddMediaItemToTrack || !SetMediaItemPosition || !SetMediaItemLength) {
+  if (!GetTrack || !AddMediaItemToTrack || !SetMediaItemPosition ||
+      !SetMediaItemLength) {
     error_msg.Set("Required REAPER API functions not available");
     return false;
   }
@@ -135,7 +141,8 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc(
+          "TrackFX_AddByName");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
   if (!GetTrack || !TrackFX_AddByName) {
@@ -175,7 +182,8 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   if (TrackFX_GetCount) {
     int fx_count_after = TrackFX_GetCount(track, recFX);
     if (fx_count_after <= fx_count_before) {
-      error_msg.Set("FX add reported success but FX count did not increase. Name: ");
+      error_msg.Set(
+          "FX add reported success but FX count did not increase. Name: ");
       error_msg.Append(fxname);
       return false;
     }
@@ -189,7 +197,8 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   return true;
 }
 
-bool MagdaActions::SetTrackVolume(int track_index, double volume_db, WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackVolume(int track_index, double volume_db,
+                                  WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -198,7 +207,8 @@ bool MagdaActions::SetTrackVolume(int track_index, double volume_db, WDL_FastStr
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -220,7 +230,8 @@ bool MagdaActions::SetTrackVolume(int track_index, double volume_db, WDL_FastStr
   return true;
 }
 
-bool MagdaActions::SetTrackPan(int track_index, double pan, WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackPan(int track_index, double pan,
+                               WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -229,7 +240,8 @@ bool MagdaActions::SetTrackPan(int track_index, double pan, WDL_FastString &erro
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -254,7 +266,8 @@ bool MagdaActions::SetTrackPan(int track_index, double pan, WDL_FastString &erro
   return true;
 }
 
-bool MagdaActions::SetTrackMute(int track_index, bool mute, WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackMute(int track_index, bool mute,
+                                WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -263,7 +276,8 @@ bool MagdaActions::SetTrackMute(int track_index, bool mute, WDL_FastString &erro
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -282,7 +296,8 @@ bool MagdaActions::SetTrackMute(int track_index, bool mute, WDL_FastString &erro
   return true;
 }
 
-bool MagdaActions::SetTrackSolo(int track_index, bool solo, WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackSolo(int track_index, bool solo,
+                                WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -291,7 +306,8 @@ bool MagdaActions::SetTrackSolo(int track_index, bool solo, WDL_FastString &erro
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -310,7 +326,8 @@ bool MagdaActions::SetTrackSolo(int track_index, bool solo, WDL_FastString &erro
   return true;
 }
 
-bool MagdaActions::SetTrackName(int track_index, const char *name, WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackName(int track_index, const char *name,
+                                WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -319,7 +336,8 @@ bool MagdaActions::SetTrackName(int track_index, const char *name, WDL_FastStrin
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -343,7 +361,8 @@ bool MagdaActions::SetTrackName(int track_index, const char *name, WDL_FastStrin
   return true;
 }
 
-bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString &result,
+bool MagdaActions::ExecuteAction(const wdl_json_element *action,
+                                 WDL_FastString &result,
                                  WDL_FastString &error_msg) {
   if (!action || !action->is_object()) {
     error_msg.Set("Action must be an object");
@@ -398,14 +417,16 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
   } else if (strcmp(action_type, "create_clip_at_bar") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     const char *bar_str = action->get_string_by_name("bar", true);
-    const char *length_bars_str = action->get_string_by_name("length_bars", true);
+    const char *length_bars_str =
+        action->get_string_by_name("length_bars", true);
     if (!track_str || !bar_str) {
       error_msg.Set("Missing 'track' or 'bar' field");
       return false;
     }
     int track_index = atoi(track_str);
     int bar = atoi(bar_str);
-    int length_bars = length_bars_str ? atoi(length_bars_str) : 4; // Default to 4 bars
+    int length_bars =
+        length_bars_str ? atoi(length_bars_str) : 4; // Default to 4 bars
     if (CreateClipAtBar(track_index, bar, length_bars, error_msg)) {
       result.Append("{\"action\":\"create_clip_at_bar\",\"success\":true}");
       return true;
@@ -423,7 +444,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString 
       return false;
     }
     int track_index = atoi(track_str);
-    bool recFX = recFX_str && (strcmp(recFX_str, "true") == 0 || strcmp(recFX_str, "1") == 0);
+    bool recFX = recFX_str && (strcmp(recFX_str, "true") == 0 ||
+                               strcmp(recFX_str, "1") == 0);
 
     if (AddTrackFX(track_index, fxname, recFX, error_msg)) {
       result.Append("{\"action\":\"");
@@ -574,9 +596,10 @@ double MagdaActions::BarToTime(int bar) {
     return 0.0;
   }
 
-  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *, int *, double *) =
-      (double (*)(ReaProject *, int, double *, double *, int *, int *, double *))g_rec->GetFunc(
-          "TimeMap_GetMeasureInfo");
+  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *,
+                                   int *, double *) =
+      (double (*)(ReaProject *, int, double *, double *, int *, int *,
+                  double *))g_rec->GetFunc("TimeMap_GetMeasureInfo");
   double (*TimeMap2_QNToTime)(ReaProject *, double) =
       (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
 
@@ -592,8 +615,8 @@ double MagdaActions::BarToTime(int bar) {
   int timesig_denom = 4;
   double tempo = 120.0;
 
-  TimeMap_GetMeasureInfo(nullptr, measure, &qn_start, &qn_end, &timesig_num, &timesig_denom,
-                         &tempo);
+  TimeMap_GetMeasureInfo(nullptr, measure, &qn_start, &qn_end, &timesig_num,
+                         &timesig_denom, &tempo);
   return TimeMap2_QNToTime(nullptr, qn_start);
 }
 
@@ -603,9 +626,10 @@ double MagdaActions::BarsToTime(int bars) {
     return 0.0;
   }
 
-  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *, int *, double *) =
-      (double (*)(ReaProject *, int, double *, double *, int *, int *, double *))g_rec->GetFunc(
-          "TimeMap_GetMeasureInfo");
+  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *,
+                                   int *, double *) =
+      (double (*)(ReaProject *, int, double *, double *, int *, int *,
+                  double *))g_rec->GetFunc("TimeMap_GetMeasureInfo");
   double (*TimeMap2_QNToTime)(ReaProject *, double) =
       (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
 
@@ -622,9 +646,10 @@ double MagdaActions::BarsToTime(int bars) {
   int timesig_denom = 4;
   double tempo = 120.0;
 
-  TimeMap_GetMeasureInfo(nullptr, start_bar - 1, &qn_start, nullptr, &timesig_num, &timesig_denom,
-                         &tempo);
-  TimeMap_GetMeasureInfo(nullptr, end_bar, nullptr, &qn_end, nullptr, nullptr, nullptr);
+  TimeMap_GetMeasureInfo(nullptr, start_bar - 1, &qn_start, nullptr,
+                         &timesig_num, &timesig_denom, &tempo);
+  TimeMap_GetMeasureInfo(nullptr, end_bar, nullptr, &qn_end, nullptr, nullptr,
+                         nullptr);
 
   double time_start = TimeMap2_QNToTime(nullptr, qn_start);
   double time_end = TimeMap2_QNToTime(nullptr, qn_end);

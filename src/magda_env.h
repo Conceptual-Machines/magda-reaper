@@ -6,7 +6,8 @@
 class MagdaEnv {
 public:
   // Get environment variable value, with optional default
-  // First checks actual environment variables, then tries to read from .env file
+  // First checks actual environment variables, then tries to read from .env
+  // file
   static const char *Get(const char *key, const char *defaultValue = "");
 
 private:

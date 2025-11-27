@@ -1,53 +1,121 @@
-# MAGDA
+# MAGDA REAPER
 
-**Multi Agent Generative DAW Automation**
-
-MAGDA is an AI-powered system that enables natural language control of Digital Audio Workstations (DAWs) through a sophisticated multi-agent architecture.
+Native REAPER extension for MAGDA (Musical AI Digital Assistant) - AI-powered DAW control via natural language commands.
 
 ## Overview
 
-MAGDA translates natural language commands into precise DAW operations, making music production more intuitive and accessible. The system uses specialized AI agents to understand context and execute complex multi-step operations.
+MAGDA REAPER is a native C++ extension for REAPER that enables natural language control of your DAW. This is the REAPER implementation of the MAGDA system.
 
-## Current Status
+## Features
 
-This repository is being completely rewritten. The first implementation will be **MAGDA Reaper Edition** - a native C++ extension for Reaper.
+- Natural language commands to control REAPER
+- Track creation and management
+- Plugin management and scanning
+- Chat interface for commands
+- Context-aware state management
+- Plugin autocomplete (coming soon)
+- Sample browser (coming soon)
+
+## Building
+
+### Prerequisites
+
+- REAPER SDK (from GitHub: https://github.com/justinfrankel/reaper-sdk)
+- CMake 3.22+
+- C++20 compatible compiler
+
+### Setup Reaper SDK and WDL
+
+Both REAPER SDK and WDL are included as git submodules. After cloning this repository, initialize submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+Then create a symlink so the SDK can find WDL (required for building):
+
+```bash
+cd reaper-sdk
+ln -s ../WDL WDL
+cd ..
+```
+
+The SDK headers will be in `reaper-sdk/sdk/` and WDL will be in `WDL/`
+
+### Build Instructions
+
+**Using Make (Recommended):**
+
+```bash
+make build
+```
+
+This will automatically:
+- Initialize submodules (Reaper SDK and WDL)
+- Create the WDL symlink
+- Configure and build the extension
+
+**Using CMake directly:**
+
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
+**Other Make commands:**
+- `make setup` - Initialize submodules and create symlink
+- `make clean` - Remove build directory
+- `make rebuild` - Clean and rebuild
+- `make help` - Show all available commands
+
+The CMake configuration will automatically find the SDK if it's in `reaper-sdk/sdk/` relative to the project root, or you can set `REAPER_SDK_PATH` to point to the `sdk/` directory.
+
+## Installation
+
+On macOS, the extension is automatically copied to REAPER's UserPlugins directory after a successful build.
+
+For manual installation, copy the built extension to REAPER's `UserPlugins` directory:
+- macOS: `~/Library/Application Support/REAPER/UserPlugins/`
+- Windows: `%APPDATA%\REAPER\UserPlugins\`
+- Linux: `~/.config/REAPER/UserPlugins/`
 
 ## Project Structure
 
 ```
-magda/
-├── reaper/          # Reaper Edition (native C++ extension)
-│   ├── src/         # Source code
-│   ├── include/     # Headers
-│   └── CMakeLists.txt
-└── ...
+magda-reaper/
+├── src/                    # Source code
+├── include/                # Headers
+├── CMakeLists.txt         # Build configuration
+├── Makefile               # Build convenience script
+├── reaper-sdk/            # REAPER SDK (submodule)
+└── WDL/                   # WDL library (submodule)
 ```
 
-## Reaper Edition
+## Architecture
 
-The Reaper Edition is a native C++ extension that integrates directly into Reaper, providing:
+This extension integrates with the MAGDA multi-agent system:
 
-- Natural language command interpretation
-- Context-aware DAW control
-- Multi-agent operation execution
-- Real-time project state awareness
+- **DSL Parser**: Parses MAGDA DSL code (from `magda-dsl` repository)
+- **API Client**: Communicates with `magda-api` backend
+- **Action Executor**: Executes REAPER actions
+- **State Manager**: Tracks REAPER project state
+- **Plugin Scanner**: Scans installed plugins
 
-See [reaper/README.md](reaper/README.md) for build and installation instructions.
+## Dependencies
 
-## Architecture (Planned)
-
-MAGDA uses a multi-agent architecture where specialized agents handle different aspects of DAW control:
-
-- **Track Agent**: Track creation, naming, routing
-- **Volume Agent**: Level control, automation
-- **Effect Agent**: Plugin management, parameter control
-- **Clip Agent**: Audio/MIDI item manipulation
-- **MIDI Agent**: MIDI editing and sequencing
+- **magda-dsl**: DSL parser (C++ implementation)
+- **magda-api**: Backend API service
+- **REAPER SDK**: REAPER plugin API
+- **WDL**: REAPER's utility library
 
 ## License
 
-This project is private and proprietary.
+AGPL v3 - See [LICENSE](LICENSE) file for details.
 
-## Development
+## Related Repositories
 
-This project is in active development. The codebase is being restructured and rewritten.
+- [magda-dsl](https://github.com/Conceptual-Machines/magda-dsl) - DSL specification and parsers
+- [magda-agents](https://github.com/Conceptual-Machines/magda-agents) - Agent framework
+- [magda-api](https://github.com/Conceptual-Machines/magda-api) - Backend API (private)

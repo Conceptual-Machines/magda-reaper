@@ -1,6 +1,6 @@
 #include "magda_state.h"
-// Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject -> ReaProject)
-// This is a typo in the REAPER SDK itself, not our code
+// Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
+// ReaProject) This is a typo in the REAPER SDK itself, not our code
 typedef ReaProject Reaproject;
 #include "../WDL/WDL/wdlcstring.h"
 #include "reaper_plugin_functions.h"
@@ -92,7 +92,8 @@ void MagdaState::GetPlayState(WDL_FastString &json) {
 
     char buf[128];
     snprintf(buf, sizeof(buf), "\"playing\":%s,\"paused\":%s,\"recording\":%s",
-             playing ? "true" : "false", paused ? "true" : "false", recording ? "true" : "false");
+             playing ? "true" : "false", paused ? "true" : "false",
+             recording ? "true" : "false");
     json.Append(buf);
   } else {
     json.Append("\"playing\":false,\"paused\":false,\"recording\":false");
@@ -110,7 +111,8 @@ void MagdaState::GetPlayState(WDL_FastString &json) {
   }
 
   // Get cursor position
-  double (*GetCursorPosition)() = (double (*)())g_rec->GetFunc("GetCursorPosition");
+  double (*GetCursorPosition)() =
+      (double (*)())g_rec->GetFunc("GetCursorPosition");
   if (GetCursorPosition) {
     double pos = GetCursorPosition();
     char buf[64];
@@ -126,8 +128,10 @@ void MagdaState::GetPlayState(WDL_FastString &json) {
 void MagdaState::GetTimeSelection(WDL_FastString &json) {
   json.Append("\"time_selection\":{");
 
-  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *, bool) = (void (*)(
-      ReaProject *, bool, bool, double *, double *, bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
+  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *,
+                                bool) =
+      (void (*)(ReaProject *, bool, bool, double *, double *,
+                bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
   if (GetSet_LoopTimeRange2) {
     double start = 0, end = 0;
     GetSet_LoopTimeRange2(nullptr, false, false, &start, &end, false);
@@ -155,8 +159,8 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   const char *(*GetTrackInfo)(INT_PTR, int *) =
       (const char *(*)(INT_PTR, int *))g_rec->GetFunc("GetTrackInfo");
-  bool (*GetTrackUIVolPan)(MediaTrack *, double *, double *) =
-      (bool (*)(MediaTrack *, double *, double *))g_rec->GetFunc("GetTrackUIVolPan");
+  bool (*GetTrackUIVolPan)(MediaTrack *, double *, double *) = (bool (*)(
+      MediaTrack *, double *, double *))g_rec->GetFunc("GetTrackUIVolPan");
   bool (*GetTrackUIMute)(MediaTrack *, bool *) =
       (bool (*)(MediaTrack *, bool *))g_rec->GetFunc("GetTrackUIMute");
 
@@ -190,14 +194,14 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       bool isSoloed = (flags & 16) != 0;
       bool isRecArmed = (flags & 64) != 0;
 
-      // Build flags string - no trailing comma after rec_armed since volume_db/pan and ui_muted are
-      // optional
+      // Build flags string - no trailing comma after rec_armed since
+      // volume_db/pan and ui_muted are optional
       snprintf(buf, sizeof(buf),
                ",\"folder\":%s,\"selected\":%s,\"has_fx\":%s,\"muted\":%s,"
                "\"soloed\":%s,\"rec_armed\":%s",
-               isFolder ? "true" : "false", isSelected ? "true" : "false", hasFX ? "true" : "false",
-               isMuted ? "true" : "false", isSoloed ? "true" : "false",
-               isRecArmed ? "true" : "false");
+               isFolder ? "true" : "false", isSelected ? "true" : "false",
+               hasFX ? "true" : "false", isMuted ? "true" : "false",
+               isSoloed ? "true" : "false", isRecArmed ? "true" : "false");
       json.Append(buf);
     }
 
@@ -209,19 +213,22 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
         if (GetTrackUIVolPan(track, &vol, &pan)) {
           // Convert volume to dB
           double vol_db = 20.0 * log10(vol);
-          snprintf(buf, sizeof(buf), ",\"volume_db\":%.2f,\"pan\":%.2f", vol_db, pan);
+          snprintf(buf, sizeof(buf), ",\"volume_db\":%.2f,\"pan\":%.2f", vol_db,
+                   pan);
           json.Append(buf);
         }
       }
     }
 
-    // Mute state (from UI, more reliable) - comma already included in format string
+    // Mute state (from UI, more reliable) - comma already included in format
+    // string
     if (GetTrack && GetTrackUIMute) {
       MediaTrack *track = GetTrack(nullptr, i);
       if (track) {
         bool muted = false;
         if (GetTrackUIMute(track, &muted)) {
-          snprintf(buf, sizeof(buf), ",\"ui_muted\":%s", muted ? "true" : "false");
+          snprintf(buf, sizeof(buf), ",\"ui_muted\":%s",
+                   muted ? "true" : "false");
           json.Append(buf);
         }
       }

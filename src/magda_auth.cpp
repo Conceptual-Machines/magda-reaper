@@ -33,7 +33,8 @@ const char *MagdaAuth::GetStoredToken() {
   // First try to get from persistent storage
   if (g_rec) {
     const char *(*GetExtState)(const char *section, const char *key) =
-        (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+        (const char *(*)(const char *, const char *))g_rec->GetFunc(
+            "GetExtState");
     if (GetExtState) {
       const char *stored = GetExtState("MAGDA", "jwt_token");
       if (stored && strlen(stored) > 0) {
@@ -52,7 +53,8 @@ const char *MagdaAuth::GetStoredToken() {
 const char *MagdaAuth::GetStoredRefreshToken() {
   if (g_rec) {
     const char *(*GetExtState)(const char *section, const char *key) =
-        (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+        (const char *(*)(const char *, const char *))g_rec->GetFunc(
+            "GetExtState");
     if (GetExtState) {
       const char *stored = GetExtState("MAGDA", "refresh_token");
       if (stored && strlen(stored) > 0) {
@@ -67,8 +69,10 @@ const char *MagdaAuth::GetStoredRefreshToken() {
 
 void MagdaAuth::StoreRefreshToken(const char *token) {
   if (g_rec) {
-    void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
-        (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+    void (*SetExtState)(const char *section, const char *key, const char *value,
+                        bool persist) =
+        (void (*)(const char *, const char *, const char *,
+                  bool))g_rec->GetFunc("SetExtState");
     if (SetExtState) {
       SetExtState("MAGDA", "refresh_token", token ? token : "", true);
     }
@@ -115,7 +119,8 @@ bool MagdaAuth::RefreshToken(WDL_FastString &error_msg) {
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg), "MAGDA: Token refresh failed: %s\n", error_msg.Get());
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Token refresh failed: %s\n",
+                 error_msg.Get());
         ShowConsoleMsg(log_msg);
       }
     }
@@ -131,7 +136,8 @@ bool MagdaAuth::RefreshToken(WDL_FastString &error_msg) {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char log_msg[256];
-      snprintf(log_msg, sizeof(log_msg), "MAGDA: Token refresh successful (new token length: %d)\n",
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: Token refresh successful (new token length: %d)\n",
                (int)new_token.GetLength());
       ShowConsoleMsg(log_msg);
     }
@@ -150,8 +156,10 @@ void MagdaAuth::StoreToken(const char *token) {
 
   // Also persist to Reaper's configuration
   if (g_rec) {
-    void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
-        (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
+    void (*SetExtState)(const char *section, const char *key, const char *value,
+                        bool persist) =
+        (void (*)(const char *, const char *, const char *,
+                  bool))g_rec->GetFunc("SetExtState");
     if (SetExtState) {
       SetExtState("MAGDA", "jwt_token", token ? token : "", true);
     }
@@ -171,12 +179,14 @@ void *LoginThreadProc(void *param)
   static MagdaHTTPClient httpClient;
   WDL_FastString jwt_token, error_msg;
 
-  data->success = httpClient.SendLoginRequest(data->email, data->password, jwt_token, error_msg);
+  data->success = httpClient.SendLoginRequest(data->email, data->password,
+                                              jwt_token, error_msg);
 
   if (data->success) {
     data->jwt_token.Set(jwt_token.Get());
   } else {
-    data->error_msg.Set(error_msg.GetLength() > 0 ? error_msg.Get() : "Unknown error");
+    data->error_msg.Set(error_msg.GetLength() > 0 ? error_msg.Get()
+                                                  : "Unknown error");
   }
 
   data->completed = true;
@@ -216,7 +226,8 @@ void *LoginThreadProc(void *param)
 #endif
 }
 
-void MagdaAuth::LoginAsync(const char *email, const char *password, LoginCallback callback) {
+void MagdaAuth::LoginAsync(const char *email, const char *password,
+                           LoginCallback callback) {
   if (!email || !password || strlen(email) == 0 || strlen(password) == 0) {
     if (callback) {
       callback(false, nullptr, "Email and password required");

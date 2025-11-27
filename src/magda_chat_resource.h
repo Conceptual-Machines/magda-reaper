@@ -15,7 +15,8 @@
 #define IDC_SEND_BUTTON 1004
 
 // Define the dialog resource
-SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_CHAT, 0, "MAGDA Chat", 1000, 600, 1.0)
+SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_CHAT, 0, "MAGDA Chat", 1000, 600,
+                                   1.0)
 
 BEGIN
 // Question display (left pane) - multiline read-only edit
