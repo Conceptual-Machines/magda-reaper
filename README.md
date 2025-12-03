@@ -98,7 +98,7 @@ magda-reaper/
 This extension integrates with the MAGDA multi-agent system:
 
 - **DSL Parser**: Parses MAGDA DSL code (from `magda-dsl` repository)
-- **API Client**: Communicates with `magda-api` backend
+- **API Client**: Communicates with `aideas-api` backend
 - **Action Executor**: Executes REAPER actions
 - **State Manager**: Tracks REAPER project state
 - **Plugin Scanner**: Scans installed plugins
@@ -106,7 +106,7 @@ This extension integrates with the MAGDA multi-agent system:
 ## Dependencies
 
 - **magda-dsl**: DSL parser (C++ implementation)
-- **magda-api**: Backend API service
+- **aideas-api**: Backend API service (uses `magda-agents-go` internally)
 - **REAPER SDK**: REAPER plugin API
 - **WDL**: REAPER's utility library
 
@@ -117,5 +117,7 @@ AGPL v3 - See [LICENSE](LICENSE) file for details.
 ## Related Repositories
 
 - [magda-dsl](https://github.com/Conceptual-Machines/magda-dsl) - DSL specification and parsers
-- [magda-agents](https://github.com/Conceptual-Machines/magda-agents) - Agent framework
-- [magda-api](https://github.com/Conceptual-Machines/magda-api) - Backend API (private)
+- [magda-agents](https://github.com/Conceptual-Machines/magda-agents) - Agent framework (umbrella repo)
+  - [magda-agents-go](https://github.com/Conceptual-Machines/magda-agents-go) - Go implementation
+  - [magda-agents-python](https://github.com/Conceptual-Machines/magda-agents-python) - Python implementation
+- [aideas-api](https://github.com/Conceptual-Machines/aideas-api) - Backend API service (uses magda-agents-go)
