@@ -372,6 +372,7 @@ bool MagdaActions::SetTrackSelected(int track_index, bool selected,
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void (*SetTrackSelected)(MediaTrack *, bool) =
       (void (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
   if (!GetTrack || !SetTrackSelected) {
     error_msg.Set("Required REAPER API functions not available");
@@ -386,6 +387,11 @@ bool MagdaActions::SetTrackSelected(int track_index, bool selected,
 
   // Set track selection state
   SetTrackSelected(track, selected);
+
+  // Refresh the arrange view to show selection changes
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
 
   return true;
 }
@@ -452,6 +458,12 @@ bool MagdaActions::SetClipSelected(int track_index, int clip_index,
 
   // Set clip selection state
   SetMediaItemSelected(target_item, selected);
+
+  // Refresh the arrange view to show selection changes
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
 
   return true;
 }
