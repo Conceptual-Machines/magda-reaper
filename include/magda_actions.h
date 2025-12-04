@@ -38,6 +38,10 @@ private:
                            WDL_FastString &error_msg);
   static bool SetTrackName(int track_index, const char *name,
                            WDL_FastString &error_msg);
+  static bool SetTrackSelected(int track_index, bool selected,
+                               WDL_FastString &error_msg);
+  static bool SetClipSelected(int track_index, int clip_index, bool selected,
+                              WDL_FastString &error_msg);
 
   // Helper functions
   static double BarToTime(int bar);

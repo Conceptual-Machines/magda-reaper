@@ -361,6 +361,101 @@ bool MagdaActions::SetTrackName(int track_index, const char *name,
   return true;
 }
 
+bool MagdaActions::SetTrackSelected(int track_index, bool selected,
+                                    WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void (*SetTrackSelected)(MediaTrack *, bool) =
+      (void (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
+
+  if (!GetTrack || !SetTrackSelected) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Set track selection state
+  SetTrackSelected(track, selected);
+
+  return true;
+}
+
+bool MagdaActions::SetClipSelected(int track_index, int clip_index,
+                                   bool selected, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  MediaItem *(*GetMediaItem)(ReaProject *, int) =
+      (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
+  MediaTrack *(*GetMediaItemTrack)(MediaItem *) =
+      (MediaTrack * (*)(MediaItem *)) g_rec->GetFunc("GetMediaItemTrack");
+  int (*CountMediaItems)(ReaProject *) =
+      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  void (*SetMediaItemSelected)(MediaItem *, bool) =
+      (void (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+
+  if (!GetTrack || !GetMediaItem || !GetMediaItemTrack || !CountMediaItems ||
+      !SetMediaItemSelected) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Find the clip on this track
+  // REAPER stores all media items globally, so we need to iterate and check
+  int total_items = CountMediaItems(nullptr);
+  MediaItem *target_item = nullptr;
+  int clip_count = 0;
+
+  // Iterate through all media items to find the clip_index-th item on this
+  // track
+  for (int i = 0; i < total_items; i++) {
+    MediaItem *item = GetMediaItem(nullptr, i);
+    if (!item) {
+      continue;
+    }
+
+    MediaTrack *item_track = GetMediaItemTrack(item);
+    if (item_track == track) {
+      // Found an item on this track
+      if (clip_count == clip_index) {
+        target_item = item;
+        break;
+      }
+      clip_count++;
+    }
+  }
+
+  if (!target_item) {
+    error_msg.Set("Clip not found on track");
+    return false;
+  }
+
+  // Set clip selection state
+  SetMediaItemSelected(target_item, selected);
+
+  return true;
+}
+
 bool MagdaActions::ExecuteAction(const wdl_json_element *action,
                                  WDL_FastString &result,
                                  WDL_FastString &error_msg) {
@@ -520,6 +615,40 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     bool solo = (strcmp(solo_str, "true") == 0 || strcmp(solo_str, "1") == 0);
     if (SetTrackSolo(track_index, solo, error_msg)) {
       result.Append("{\"action\":\"set_track_solo\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_track_selected") == 0 ||
+             strcmp(action_type, "select_track") == 0) {
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *selected_str = action->get_string_by_name("selected", true);
+    if (!track_str || !selected_str) {
+      error_msg.Set("Missing 'track' or 'selected' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    bool selected =
+        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
+    if (SetTrackSelected(track_index, selected, error_msg)) {
+      result.Append("{\"action\":\"set_track_selected\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_clip_selected") == 0 ||
+             strcmp(action_type, "select_clip") == 0) {
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *clip_str = action->get_string_by_name("clip", true);
+    const char *selected_str = action->get_string_by_name("selected", true);
+    if (!track_str || !clip_str || !selected_str) {
+      error_msg.Set("Missing 'track', 'clip', or 'selected' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    int clip_index = atoi(clip_str);
+    bool selected =
+        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
+    if (SetClipSelected(track_index, clip_index, selected, error_msg)) {
+      result.Append("{\"action\":\"set_clip_selected\",\"success\":true}");
       return true;
     }
     return false;
