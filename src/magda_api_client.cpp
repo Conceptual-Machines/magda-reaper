@@ -222,11 +222,15 @@ char *MagdaHTTPClient::ExtractActionsJSON(const char *json_str, int json_len) {
             }
             if (depth > 0) {
               p++;
+            } else if (depth == 0) {
+              // Include the closing bracket/brace
+              p++;
+              break;
             }
           }
 
           if (depth == 0 && p > value_start) {
-            // Extract the actions JSON
+            // Extract the actions JSON (p now points after the closing bracket)
             int actions_len = (int)(p - value_start);
             char *result = (char *)malloc(actions_len + 1);
             if (result) {
@@ -506,9 +510,41 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
 
   CURLcode res = curl_easy_perform(curl);
 
+  // Log curl result for debugging
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      if (res == CURLE_OK) {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: curl_easy_perform succeeded\n");
+      } else {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: curl_easy_perform failed: %s\n",
+                 curl_easy_strerror(res));
+      }
+      ShowConsoleMsg(log_msg);
+    }
+  }
+
   long response_code = 0;
   if (res == CURLE_OK) {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+    // Log response code and size
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: HTTP response code: %ld, body size: %d bytes\n",
+                 response_code, (int)response.GetLength());
+        ShowConsoleMsg(log_msg);
+      }
+    }
+
     if (response_code != 200) {
       // Response body is already in 'response' from the write callback
       char error_buf[512];
@@ -652,11 +688,46 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
         ExtractActionsJSON(response_json.Get(), (int)response_json.GetLength());
 
     if (actions_json) {
+      // Log extracted actions for debugging
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Extracted actions JSON: %s\n", actions_json);
+          ShowConsoleMsg(log_msg);
+        }
+      }
+
       // Execute the extracted actions
       if (!MagdaActions::ExecuteActions(actions_json, execution_result,
                                         execution_error)) {
-        // Log error but don't fail the request
-        // Could append execution_error to error_msg if needed
+        // Log error
+        if (g_rec) {
+          void (*ShowConsoleMsg)(const char *msg) =
+              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+          if (ShowConsoleMsg) {
+            char log_msg[512];
+            snprintf(log_msg, sizeof(log_msg),
+                     "MAGDA: Action execution failed: %s\n",
+                     execution_error.Get());
+            ShowConsoleMsg(log_msg);
+          }
+        }
+      } else {
+        // Log success
+        if (g_rec) {
+          void (*ShowConsoleMsg)(const char *msg) =
+              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+          if (ShowConsoleMsg) {
+            char log_msg[512];
+            snprintf(log_msg, sizeof(log_msg),
+                     "MAGDA: Actions executed successfully: %s\n",
+                     execution_result.Get());
+            ShowConsoleMsg(log_msg);
+          }
+        }
       }
       free(actions_json);
     } else {
@@ -668,7 +739,31 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
       if (!parser.m_err && root && (root->is_array() || root->is_object())) {
         if (!MagdaActions::ExecuteActions(response_json.Get(), execution_result,
                                           execution_error)) {
-          // Log error but don't fail the request
+          // Log error
+          if (g_rec) {
+            void (*ShowConsoleMsg)(const char *msg) =
+                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+              char log_msg[512];
+              snprintf(log_msg, sizeof(log_msg),
+                       "MAGDA: Action execution failed (fallback): %s\n",
+                       execution_error.Get());
+              ShowConsoleMsg(log_msg);
+            }
+          }
+        } else {
+          // Log success
+          if (g_rec) {
+            void (*ShowConsoleMsg)(const char *msg) =
+                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+              char log_msg[512];
+              snprintf(log_msg, sizeof(log_msg),
+                       "MAGDA: Actions executed successfully (fallback): %s\n",
+                       execution_result.Get());
+              ShowConsoleMsg(log_msg);
+            }
+          }
         }
       }
     }
