@@ -7,6 +7,8 @@
 #include "../WDL/WDL/timing.h"
 #include "magda_actions.h"
 #include "magda_auth.h"
+#include "magda_env.h"
+#include "magda_settings_window.h"
 #include "magda_state.h"
 #include "reaper_plugin.h"
 #include <cstring>
@@ -26,7 +28,15 @@ extern reaper_plugin_info_t *g_rec;
 
 MagdaHTTPClient::MagdaHTTPClient() : m_http_get(nullptr), m_dns(nullptr) {
   m_dns = new JNL_AsyncDNS;
-  m_backend_url.Set("https://api.musicalaideas.com");
+
+  // Check for backend URL from settings first, then environment variable
+  const char *backend_url = MagdaSettingsWindow::GetBackendURL();
+  if (backend_url && strlen(backend_url) > 0) {
+    m_backend_url.Set(backend_url);
+  } else {
+    m_backend_url.Set("https://api.musicalaideas.com");
+  }
+
 #ifndef _WIN32
   // Initialize libcurl on first use (thread-safe)
   curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -1109,10 +1119,10 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
 
   int request_json_len = (int)strlen(request_json);
 
-  // Build URL - use streaming endpoint
+  // Build URL - use non-streaming endpoint (has CFG support for DSL generation)
   WDL_FastString url;
   url.Set(m_backend_url.Get());
-  url.Append("/api/v1/magda/dsl/stream"); // Use DSL streaming endpoint
+  url.Append("/api/v1/magda/chat"); // Use non-streaming endpoint with CFG
 
   // Use platform-specific HTTPS implementation for streaming
   const char *auth_token =

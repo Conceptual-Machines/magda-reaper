@@ -3,6 +3,7 @@
 #include "magda_api_client.h"
 #include "magda_auth.h"
 #include "magda_chat_resource.h"
+#include "magda_env.h"
 #include "magda_login_window.h"
 #include <cstring>
 
@@ -362,7 +363,7 @@ void MagdaChatWindow::OnSendMessage() {
       AddReply("MAGDA: Thinking...\n");
     }
 
-    // Call backend API with streaming
+    // Call backend API with non-streaming endpoint (uses DSL/CFG)
     static MagdaHTTPClient httpClient;
 
     // Set JWT token if available
@@ -393,48 +394,12 @@ void MagdaChatWindow::OnSendMessage() {
       }
     }
 
-    WDL_FastString error_msg;
-    struct StreamContext {
-      MagdaChatWindow *window;
-      int action_count;
-    };
-    static StreamContext s_ctx;
-    s_ctx.window = this;
-    s_ctx.action_count = 0;
+    WDL_FastString response_json, error_msg;
 
-    // Stream callback - executes each action as it arrives
-    // Must be a plain function pointer (no lambda captures)
-    static auto stream_callback = [](const char *action_json,
-                                     void *user_data) -> void {
-      StreamContext *ctx = (StreamContext *)user_data;
-      ctx->action_count++;
-
-      // Execute the action immediately
-      WDL_FastString result, action_error;
-      if (MagdaActions::ExecuteActions(action_json, result, action_error)) {
-        if (ctx->window->m_hwndReplyDisplay) {
-          char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA: Action #%d executed\n",
-                   ctx->action_count);
-          ctx->window->AddReply(msg);
-        }
-      } else {
-        if (ctx->window->m_hwndReplyDisplay) {
-          char msg[512];
-          snprintf(msg, sizeof(msg), "MAGDA: Action #%d failed: %s\n",
-                   ctx->action_count, action_error.Get());
-          ctx->window->AddReply(msg);
-        }
-      }
-    };
-
-    if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx,
-                                      error_msg)) {
+    if (httpClient.SendQuestion(buffer, response_json, error_msg)) {
+      // Actions are automatically executed by SendQuestion
       if (m_hwndReplyDisplay) {
-        char msg[256];
-        snprintf(msg, sizeof(msg), "MAGDA: Stream complete (%d actions)\n\n",
-                 s_ctx.action_count);
-        AddReply(msg);
+        AddReply("MAGDA: Request complete\n\n");
       }
     } else {
       // Check if error is 401 (unauthorized) - try to refresh token
@@ -462,16 +427,10 @@ void MagdaChatWindow::OnSendMessage() {
               }
             }
 
-            // Reset action count and retry
-            s_ctx.action_count = 0;
-            if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx,
-                                              error_msg)) {
+            // Retry the request
+            if (httpClient.SendQuestion(buffer, response_json, error_msg)) {
               if (m_hwndReplyDisplay) {
-                char msg[256];
-                snprintf(msg, sizeof(msg),
-                         "MAGDA: Stream complete (%d actions)\n\n",
-                         s_ctx.action_count);
-                AddReply(msg);
+                AddReply("MAGDA: Request complete\n\n");
               }
               return; // Success after refresh
             }

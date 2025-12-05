@@ -413,9 +413,11 @@ bool MagdaActions::SetClipSelected(int track_index, int clip_index,
       (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
   void (*SetMediaItemSelected)(MediaItem *, bool) =
       (void (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+  double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
+      MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
 
   if (!GetTrack || !GetMediaItem || !GetMediaItemTrack || !CountMediaItems ||
-      !SetMediaItemSelected) {
+      !SetMediaItemSelected || !GetMediaItemInfo_Value) {
     error_msg.Set("Required REAPER API functions not available");
     return false;
   }
@@ -466,6 +468,65 @@ bool MagdaActions::SetClipSelected(int track_index, int clip_index,
   }
 
   return true;
+}
+
+// Helper function to find clip by position (in seconds) or bar number
+static MediaItem *FindClipByPosition(MediaTrack *track, double position,
+                                     int bar, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    return nullptr;
+  }
+
+  MediaItem *(*GetMediaItem)(ReaProject *, int) =
+      (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
+  MediaTrack *(*GetMediaItemTrack)(MediaItem *) =
+      (MediaTrack * (*)(MediaItem *)) g_rec->GetFunc("GetMediaItemTrack");
+  int (*CountMediaItems)(ReaProject *) =
+      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
+      MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+
+  if (!GetMediaItem || !GetMediaItemTrack || !CountMediaItems ||
+      !GetMediaItemInfo_Value) {
+    return nullptr;
+  }
+
+  // Convert bar to position if needed
+  double target_position = position;
+  if (bar > 0 && position < 0) {
+    // Convert bar to time (assuming 4/4 time, 120 BPM = 2 seconds per bar)
+    // This is approximate - in production you'd get actual tempo/time sig
+    target_position = (bar - 1) * 2.0; // Bar 1 = 0.0, Bar 2 = 2.0, etc.
+  }
+
+  if (target_position < 0) {
+    return nullptr;
+  }
+
+  // Find clip at or near the target position (within 0.1 seconds tolerance)
+  int total_items = CountMediaItems(nullptr);
+  MediaItem *best_match = nullptr;
+  double best_distance = 1.0; // 1 second tolerance
+
+  for (int i = 0; i < total_items; i++) {
+    MediaItem *item = GetMediaItem(nullptr, i);
+    if (!item) {
+      continue;
+    }
+
+    MediaTrack *item_track = GetMediaItemTrack(item);
+    if (item_track == track) {
+      double item_position = GetMediaItemInfo_Value(item, "D_POSITION");
+      double distance = fabs(item_position - target_position);
+
+      if (distance < best_distance) {
+        best_match = item;
+        best_distance = distance;
+      }
+    }
+  }
+
+  return best_match;
 }
 
 bool MagdaActions::ExecuteAction(const wdl_json_element *action,
@@ -649,21 +710,74 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
   } else if (strcmp(action_type, "set_clip_selected") == 0 ||
              strcmp(action_type, "select_clip") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
-    const char *clip_str = action->get_string_by_name("clip", true);
     const char *selected_str = action->get_string_by_name("selected", true);
-    if (!track_str || !clip_str || !selected_str) {
-      error_msg.Set("Missing 'track', 'clip', or 'selected' field");
+    if (!track_str || !selected_str) {
+      error_msg.Set("Missing 'track' or 'selected' field");
       return false;
     }
     int track_index = atoi(track_str);
-    int clip_index = atoi(clip_str);
     bool selected =
         (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
-    if (SetClipSelected(track_index, clip_index, selected, error_msg)) {
-      result.Append("{\"action\":\"set_clip_selected\",\"success\":true}");
-      return true;
+
+    // Try to find clip by position/bar first (more reliable), then fall back to
+    // index
+    const char *position_str = action->get_string_by_name("position", true);
+    const char *bar_str = action->get_string_by_name("bar", true);
+    const char *clip_str = action->get_string_by_name("clip", true);
+
+    MediaTrack *(*GetTrack)(ReaProject *, int) =
+        (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+    void (*SetMediaItemSelected)(MediaItem *, bool) =
+        (void (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+    void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+    if (!GetTrack || !SetMediaItemSelected) {
+      error_msg.Set("Required REAPER API functions not available");
+      return false;
     }
-    return false;
+
+    MediaTrack *track = GetTrack(nullptr, track_index);
+    if (!track) {
+      error_msg.Set("Track not found");
+      return false;
+    }
+
+    MediaItem *target_item = nullptr;
+
+    // Try position-based selection first
+    if (position_str || bar_str) {
+      double position = position_str ? atof(position_str) : -1.0;
+      int bar = bar_str ? atoi(bar_str) : -1;
+      target_item = FindClipByPosition(track, position, bar, error_msg);
+    }
+
+    // Fall back to index-based selection
+    if (!target_item && clip_str) {
+      int clip_index = atoi(clip_str);
+      // Use existing SetClipSelected for index-based
+      if (SetClipSelected(track_index, clip_index, selected, error_msg)) {
+        result.Append("{\"action\":\"set_clip_selected\",\"success\":true}");
+        return true;
+      }
+      return false;
+    }
+
+    if (!target_item) {
+      error_msg.Set("Clip not found: specify 'clip' (index), 'position' "
+                    "(seconds), or 'bar' (bar number)");
+      return false;
+    }
+
+    // Set selection state
+    SetMediaItemSelected(target_item, selected);
+
+    // Refresh the arrange view
+    if (UpdateArrange) {
+      UpdateArrange();
+    }
+
+    result.Append("{\"action\":\"set_clip_selected\",\"success\":true}");
+    return true;
   } else {
     error_msg.Set("Unknown action type");
     return false;

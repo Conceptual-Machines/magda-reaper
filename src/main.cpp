@@ -1,6 +1,7 @@
 #include "magda_chat_window.h"
 #include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
+#include "magda_settings_window.h"
 #include "reaper_plugin.h"
 // SWELL is already included by reaper_plugin.h
 
@@ -12,6 +13,8 @@ reaper_plugin_info_t *g_rec = nullptr;
 static MagdaChatWindow *g_chatWindow = nullptr;
 // Global login window instance
 static MagdaLoginWindow *g_loginWindow = nullptr;
+// Global settings window instance
+static MagdaSettingsWindow *g_settingsWindow = nullptr;
 // Global plugin scanner instance
 static MagdaPluginScanner *g_pluginScanner = nullptr;
 
@@ -49,9 +52,12 @@ void magdaAction(int command_id, int flag) {
     break;
   case MAGDA_CMD_SETTINGS:
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Settings - TODO: Show settings dialog\n");
+      ShowConsoleMsg("MAGDA: Opening settings dialog\n");
     }
-    // TODO: Show settings dialog
+    if (!g_settingsWindow) {
+      g_settingsWindow = new MagdaSettingsWindow();
+    }
+    g_settingsWindow->Show();
     break;
   case MAGDA_CMD_ABOUT:
     if (ShowConsoleMsg) {
@@ -260,6 +266,10 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     if (g_loginWindow) {
       delete g_loginWindow;
       g_loginWindow = nullptr;
+    }
+    if (g_settingsWindow) {
+      delete g_settingsWindow;
+      g_settingsWindow = nullptr;
     }
     if (g_pluginScanner) {
       delete g_pluginScanner;

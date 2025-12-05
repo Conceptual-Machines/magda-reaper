@@ -22,7 +22,7 @@ Features that are useful but not blocking.
 
 ## Phase 1: Selection Actions (Critical for Functional Methods) 🔴
 
-**Status**: Not implemented
+**Status**: ✅ **COMPLETED** (Working consistently)
 **Blocking**: Functional methods (`filter`, `map`, `for_each`) cannot work without selection
 
 ### 1.1 Select/Deselect Tracks
@@ -34,11 +34,11 @@ Features that are useful but not blocking.
   - Functional operations: `filter(tracks, track.name == "FX")`
 
 **Implementation Tasks**:
-- [ ] Add `SetTrackSelected()` method to `MagdaActions`
-- [ ] Add action handler in `ExecuteAction()`
-- [ ] Update action schema in DSL parser
-- [ ] Add to prompt documentation
-- [ ] Test with functional methods
+- [x] Add `SetTrackSelected()` method to `MagdaActions`
+- [x] Add action handler in `ExecuteAction()`
+- [x] Update action schema in DSL parser
+- [x] Add to prompt documentation
+- [x] Test with functional methods
 
 **Files to Modify**:
 - `magda-reaper/include/magda_actions.h`
@@ -56,10 +56,10 @@ Features that are useful but not blocking.
   - "Select clips longer than 4 bars"
 
 **Implementation Tasks**:
-- [ ] Add `SetClipSelected()` method to `MagdaActions`
-- [ ] Add action handler (needs track + clip index or position)
-- [ ] Update action schema
-- [ ] Test selection workflows
+- [x] Add `SetClipSelected()` method to `MagdaActions`
+- [x] Add action handler (needs track + clip index or position)
+- [x] Update action schema
+- [x] Test selection workflows
 
 **Files to Modify**:
 - `magda-reaper/include/magda_actions.h`
@@ -194,11 +194,11 @@ Features that are useful but not blocking.
 
 ## Implementation Checklist
 
-### Phase 1: Selection (Critical)
-- [ ] **1.1** Implement `set_track_selected` action
-- [ ] **1.2** Implement `set_clip_selected` action
-- [ ] **1.3** Test with functional methods (`filter`, `map`)
-- [ ] **1.4** Update integration test for selection
+### Phase 1: Selection (Critical) ✅
+- [x] **1.1** Implement `set_track_selected` action
+- [x] **1.2** Implement `set_clip_selected` action
+- [x] **1.3** Test with functional methods (`filter`, `map`)
+- [x] **1.4** Update integration test for selection
 
 ### Phase 2: Deletion (High Priority)
 - [ ] **2.1** Implement `delete_track` action

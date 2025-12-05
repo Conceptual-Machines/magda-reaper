@@ -42,6 +42,7 @@ set(SOURCES
     src/magda_api_client.cpp
     src/magda_state.cpp
     src/magda_login_window.cpp
+    src/magda_settings_window.cpp
     src/magda_auth.cpp
     src/magda_env.cpp
     src/magda_executor.cpp
@@ -138,18 +139,19 @@ if(APPLE)
 endif()
 
 # Test program for login (standalone, no REAPER dependencies)
-add_executable(test_login test_login.cpp
-    WDL/WDL/jnetlib/httpget.cpp
-    WDL/WDL/jnetlib/connection.cpp
-    WDL/WDL/jnetlib/asyncdns.cpp
-    WDL/WDL/jnetlib/util.cpp
-)
-target_include_directories(test_login PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/WDL
-)
-if(MSVC)
-    target_compile_options(test_login PRIVATE /W4)
-else()
-    target_compile_options(test_login PRIVATE -Wall -Wextra)
-endif()
+# Disabled - test_login.cpp not present
+# add_executable(test_login test_login.cpp
+#     WDL/WDL/jnetlib/httpget.cpp
+#     WDL/WDL/jnetlib/connection.cpp
+#     WDL/WDL/jnetlib/asyncdns.cpp
+#     WDL/WDL/jnetlib/util.cpp
+# )
+# target_include_directories(test_login PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}
+#     ${CMAKE_CURRENT_SOURCE_DIR}/WDL
+# )
+# if(MSVC)
+#     target_compile_options(test_login PRIVATE /W4)
+# else()
+#     target_compile_options(test_login PRIVATE -Wall -Wextra)
+# endif()

@@ -12,21 +12,23 @@
 8. **add_track_fx** - Add FX plugin to track
 9. **create_clip** - Create clip at time position
 10. **create_clip_at_bar** - Create clip at bar number
+11. **set_track_selected** / **select_track** - Select/deselect tracks ✅
+12. **set_clip_selected** / **select_clip** - Select/deselect clips ✅
 
 ## High Priority Missing Actions 🔴
 
-### Selection (Critical for functional methods)
-- **set_track_selected** / **select_track**
+### Selection (Critical for functional methods) ✅
+- **set_track_selected** / **select_track** ✅
   - Select/deselect a track
   - Required for: "select all tracks named X", functional operations
   - REAPER API: `SetTrackSelected(MediaTrack *track, bool selected)`
-  - Status: State reads selection, but no action to set it
+  - Status: ✅ **IMPLEMENTED** - Working consistently
 
-- **set_clip_selected** / **select_clip**
+- **set_clip_selected** / **select_clip** ✅
   - Select/deselect a media item/clip
   - Required for: "select all clips", bulk operations
   - REAPER API: `SetMediaItemSelected(MediaItem *item, bool selected)`
-  - Status: Not implemented
+  - Status: ✅ **IMPLEMENTED** - Working consistently
 
 ### Deletion
 - **delete_track**

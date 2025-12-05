@@ -1,4 +1,5 @@
 #include "magda_state.h"
+#include "magda_settings_window.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
 // ReaProject) This is a typo in the REAPER SDK itself, not our code
 typedef ReaProject Reaproject;
@@ -145,7 +146,71 @@ void MagdaState::GetTimeSelection(WDL_FastString &json) {
   json.Append("}");
 }
 
-void MagdaState::GetTracksInfo(WDL_FastString &json) {
+StateFilterPreferences MagdaState::LoadStateFilterPreferences() {
+  StateFilterPreferences prefs;
+  MagdaSettingsWindow::LoadStateFilterPreferences(prefs);
+  return prefs;
+}
+
+bool MagdaState::ShouldIncludeTrack(int trackIndex, bool isSelected,
+                                    int clipCount,
+                                    const StateFilterPreferences *prefs) {
+  if (!prefs) {
+    return true; // No filtering
+  }
+
+  switch (prefs->mode) {
+  case StateFilterMode::All:
+    // Include all tracks (unless empty and includeEmptyTracks is false)
+    if (clipCount == 0 && !prefs->includeEmptyTracks) {
+      return false;
+    }
+    return true;
+
+  case StateFilterMode::SelectedTracksOnly:
+  case StateFilterMode::SelectedTrackClipsOnly:
+    // Only include selected tracks
+    return isSelected;
+
+  case StateFilterMode::SelectedClipsOnly:
+    // Include all tracks (for context), but we'll filter clips
+    if (clipCount == 0 && !prefs->includeEmptyTracks) {
+      return false;
+    }
+    return true;
+
+  default:
+    return true;
+  }
+}
+
+bool MagdaState::ShouldIncludeClip(bool trackSelected, bool clipSelected,
+                                   const StateFilterPreferences *prefs) {
+  if (!prefs) {
+    return true; // No filtering
+  }
+
+  switch (prefs->mode) {
+  case StateFilterMode::All:
+  case StateFilterMode::SelectedTracksOnly:
+    // Include all clips on included tracks
+    return true;
+
+  case StateFilterMode::SelectedTrackClipsOnly:
+    // Only include selected clips on selected tracks
+    return trackSelected && clipSelected;
+
+  case StateFilterMode::SelectedClipsOnly:
+    // Include only selected clips (regardless of track)
+    return clipSelected;
+
+  default:
+    return true;
+  }
+}
+
+void MagdaState::GetTracksInfo(WDL_FastString &json,
+                               const StateFilterPreferences *prefs) {
   json.Append("\"tracks\":[");
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
@@ -155,6 +220,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
   }
 
   int numTracks = GetNumTracks();
+  bool firstTrack = true;
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   const char *(*GetTrackInfo)(INT_PTR, int *) =
@@ -165,8 +231,36 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       (bool (*)(MediaTrack *, bool *))g_rec->GetFunc("GetTrackUIMute");
 
   for (int i = 0; i < numTracks; i++) {
-    if (i > 0)
+    // Check if we should include this track based on preferences
+    // We need to check selection state first
+    bool isSelected = false;
+    int clipCount = 0;
+
+    if (GetTrackInfo) {
+      int flags = 0;
+      GetTrackInfo(i, &flags);
+      isSelected = (flags & 2) != 0;
+    }
+
+    // Count clips to check if track is empty
+    MediaTrack *track = GetTrack ? GetTrack(nullptr, i) : nullptr;
+    if (track) {
+      int (*CountTrackMediaItems)(MediaTrack *) =
+          (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+      if (CountTrackMediaItems) {
+        clipCount = CountTrackMediaItems(track);
+      }
+    }
+
+    // Check if track should be included
+    if (!ShouldIncludeTrack(i, isSelected, clipCount, prefs)) {
+      continue;
+    }
+
+    if (!firstTrack) {
       json.Append(",");
+    }
+    firstTrack = false;
 
     json.Append("{");
 
@@ -234,6 +328,97 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       }
     }
 
+    // Get clips/items on this track
+    if (GetTrack) {
+      MediaTrack *track = GetTrack(nullptr, i);
+      if (track) {
+        int (*CountTrackMediaItems)(MediaTrack *) =
+            (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+        MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
+            (MediaItem * (*)(MediaTrack *, int))
+                g_rec->GetFunc("GetTrackMediaItem");
+        double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+            (double (*)(MediaItem *, const char *))g_rec->GetFunc(
+                "GetMediaItemInfo_Value");
+        const char *(*GetSetMediaItemInfo_String)(MediaItem *, const char *,
+                                                  const char *, bool *) =
+            (const char *(*)(MediaItem *, const char *, const char *, bool *))
+                g_rec->GetFunc("GetSetMediaItemInfo_String");
+
+        if (CountTrackMediaItems && GetTrackMediaItem &&
+            GetMediaItemInfo_Value) {
+          int numItems = CountTrackMediaItems(track);
+          json.Append(",\"clips\":[");
+
+          bool firstClip = true;
+          int clipsAdded = 0;
+
+          for (int clipIdx = 0; clipIdx < numItems; clipIdx++) {
+            // Check max clips per track limit
+            if (prefs && prefs->maxClipsPerTrack > 0 &&
+                clipsAdded >= prefs->maxClipsPerTrack) {
+              break;
+            }
+
+            MediaItem *item = GetTrackMediaItem(track, clipIdx);
+            if (!item) {
+              continue;
+            }
+
+            // Check if clip is selected
+            double selected = GetMediaItemInfo_Value(item, "B_UISEL");
+            bool clipSelected = selected > 0.5;
+
+            // Check if we should include this clip based on preferences
+            if (!ShouldIncludeClip(isSelected, clipSelected, prefs)) {
+              continue;
+            }
+
+            if (!firstClip) {
+              json.Append(",");
+            }
+            firstClip = false;
+            clipsAdded++;
+
+            json.Append("{");
+
+            // Clip index (0-based on track)
+            snprintf(buf, sizeof(buf), "\"index\":%d", clipIdx);
+            json.Append(buf);
+
+            // Position (in seconds)
+            double position = GetMediaItemInfo_Value(item, "D_POSITION");
+            snprintf(buf, sizeof(buf), ",\"position\":%.6f", position);
+            json.Append(buf);
+
+            // Length (in seconds)
+            double length = GetMediaItemInfo_Value(item, "D_LENGTH");
+            snprintf(buf, sizeof(buf), ",\"length\":%.6f", length);
+            json.Append(buf);
+
+            // Selected state
+            snprintf(buf, sizeof(buf), ",\"selected\":%s",
+                     clipSelected ? "true" : "false");
+            json.Append(buf);
+
+            // Clip name (if available)
+            if (GetSetMediaItemInfo_String) {
+              const char *name =
+                  GetSetMediaItemInfo_String(item, "P_NAME", nullptr, nullptr);
+              if (name && name[0]) {
+                json.Append(",\"name\":");
+                EscapeJSONString(name, json);
+              }
+            }
+
+            json.Append("}");
+          }
+
+          json.Append("]");
+        }
+      }
+    }
+
     json.Append("}");
   }
 
@@ -253,7 +438,9 @@ char *MagdaState::GetStateSnapshot() {
   GetTimeSelection(json);
   json.Append(",");
 
-  GetTracksInfo(json);
+  // Load preferences and apply filtering
+  StateFilterPreferences prefs = LoadStateFilterPreferences();
+  GetTracksInfo(json, &prefs);
 
   json.Append("}");
 

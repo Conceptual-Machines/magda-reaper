@@ -14,6 +14,7 @@
 
 static WDL_FastString s_email;
 static WDL_FastString s_password;
+static WDL_FastString s_backend_url;
 bool MagdaEnv::s_envLoaded = false;
 
 void MagdaEnv::LoadEnvFile() {
@@ -146,6 +147,8 @@ void MagdaEnv::LoadEnvFile() {
       s_email.Set(value);
     } else if (strcmp(key, "AIDEAS_PASSWORD") == 0) {
       s_password.Set(value);
+    } else if (strcmp(key, "MAGDA_BACKEND_URL") == 0) {
+      s_backend_url.Set(value);
     }
   }
 
@@ -171,6 +174,8 @@ const char *MagdaEnv::Get(const char *key, const char *defaultValue) {
     return s_email.GetLength() > 0 ? s_email.Get() : defaultValue;
   } else if (strcmp(key, "AIDEAS_PASSWORD") == 0) {
     return s_password.GetLength() > 0 ? s_password.Get() : defaultValue;
+  } else if (strcmp(key, "MAGDA_BACKEND_URL") == 0) {
+    return s_backend_url.GetLength() > 0 ? s_backend_url.Get() : defaultValue;
   }
 
   return defaultValue;
