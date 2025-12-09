@@ -1109,19 +1109,23 @@ double MagdaActions::BarsToTime(int bars) {
   }
 
   // Get QN for start of first bar and end of last bar
-  // For N bars, we need: start of bar 1 to start of bar (N+1)
-  // Example: 4 bars = bar 1 start to bar 5 start (which is end of bar 4)
+  // For N bars, we need: start of bar 1 to end of bar N
+  // Example: 4 bars = bar 1 start to bar 4 end
   int start_bar = 1;
-  int end_bar = bars + 1; // Get start of next bar (end of last bar)
+  int last_bar = bars; // Last bar in the range
   double qn_start = 0.0;
   double qn_end = 0.0;
   int timesig_num = 4;
   int timesig_denom = 4;
   double tempo = 120.0;
 
+  // Get start of first bar (measure 0 = bar 1)
   TimeMap_GetMeasureInfo(nullptr, start_bar - 1, &qn_start, nullptr,
                          &timesig_num, &timesig_denom, &tempo);
-  TimeMap_GetMeasureInfo(nullptr, end_bar - 1, nullptr, &qn_end, nullptr,
+
+  // Get end of last bar by getting qn_end from the last bar's measure
+  // Measure index is 0-based, so last_bar - 1
+  TimeMap_GetMeasureInfo(nullptr, last_bar - 1, nullptr, &qn_end, nullptr,
                          nullptr, nullptr);
 
   double time_start = TimeMap2_QNToTime(nullptr, qn_start);
