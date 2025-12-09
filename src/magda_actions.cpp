@@ -529,6 +529,97 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
   return best_match;
 }
 
+bool MagdaActions::DeleteTrack(int track_index, WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void (*DeleteTrack)(MediaTrack *) =
+      (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+  if (!GetTrack || !DeleteTrack) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Delete the track
+  DeleteTrack(track);
+
+  // Refresh the arrange view
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  return true;
+}
+
+bool MagdaActions::DeleteClip(int track_index, int clip_index,
+                              WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  int (*CountTrackMediaItems)(MediaTrack *) =
+      (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+  MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
+      (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
+  bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) = (bool (*)(
+      MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+  if (!GetTrack || !CountTrackMediaItems || !GetTrackMediaItem ||
+      !DeleteTrackMediaItem) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Check if clip index is valid
+  int num_items = CountTrackMediaItems(track);
+  if (clip_index < 0 || clip_index >= num_items) {
+    error_msg.Set("Clip index out of range");
+    return false;
+  }
+
+  // Get the media item
+  MediaItem *item = GetTrackMediaItem(track, clip_index);
+  if (!item) {
+    error_msg.Set("Clip not found");
+    return false;
+  }
+
+  // Delete the media item
+  if (!DeleteTrackMediaItem(track, item)) {
+    error_msg.Set("Failed to delete clip");
+    return false;
+  }
+
+  // Refresh the arrange view
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  return true;
+}
+
 bool MagdaActions::ExecuteAction(const wdl_json_element *action,
                                  WDL_FastString &result,
                                  WDL_FastString &error_msg) {
@@ -778,6 +869,89 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
 
     result.Append("{\"action\":\"set_clip_selected\",\"success\":true}");
     return true;
+  } else if (strcmp(action_type, "delete_track") == 0 ||
+             strcmp(action_type, "remove_track") == 0) {
+    const char *track_str = action->get_string_by_name("track", true);
+    if (!track_str) {
+      error_msg.Set("Missing 'track' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    if (DeleteTrack(track_index, error_msg)) {
+      result.Append("{\"action\":\"delete_track\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "delete_clip") == 0 ||
+             strcmp(action_type, "remove_clip") == 0) {
+    const char *track_str = action->get_string_by_name("track", true);
+    if (!track_str) {
+      error_msg.Set("Missing 'track' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+
+    MediaTrack *(*GetTrack)(ReaProject *, int) =
+        (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+    bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) = (bool (*)(
+        MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
+    void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+    if (!GetTrack || !DeleteTrackMediaItem) {
+      error_msg.Set("Required REAPER API functions not available");
+      return false;
+    }
+
+    MediaTrack *track = GetTrack(nullptr, track_index);
+    if (!track) {
+      error_msg.Set("Track not found");
+      return false;
+    }
+
+    MediaItem *target_item = nullptr;
+
+    // Try to find clip by position/bar first (more reliable), then fall back to
+    // index
+    const char *position_str = action->get_string_by_name("position", true);
+    const char *bar_str = action->get_string_by_name("bar", true);
+    const char *clip_str = action->get_string_by_name("clip", true);
+
+    if (position_str || bar_str) {
+      double position = position_str ? atof(position_str) : -1.0;
+      int bar = bar_str ? atoi(bar_str) : -1;
+      target_item = FindClipByPosition(track, position, bar, error_msg);
+    }
+
+    // Fall back to index-based deletion
+    if (!target_item && clip_str) {
+      int clip_index = atoi(clip_str);
+      // Use existing DeleteClip for index-based
+      if (DeleteClip(track_index, clip_index, error_msg)) {
+        result.Append("{\"action\":\"delete_clip\",\"success\":true}");
+        return true;
+      }
+      return false;
+    }
+
+    if (!target_item) {
+      error_msg.Set("Clip not found: specify 'clip' (index), 'position' "
+                    "(seconds), or 'bar' (bar number)");
+      return false;
+    }
+
+    // Delete the clip
+    if (!DeleteTrackMediaItem(track, target_item)) {
+      error_msg.Set("Failed to delete clip");
+      return false;
+    }
+
+    // Refresh the arrange view
+    if (UpdateArrange) {
+      UpdateArrange();
+    }
+
+    result.Append("{\"action\":\"delete_clip\",\"success\":true}");
+    return true;
   } else {
     error_msg.Set("Unknown action type");
     return false;
@@ -791,20 +965,50 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
     return false;
   }
 
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  // Begin undo block - all MAGDA actions will be grouped as a single undo
+  // operation
+  void (*Undo_BeginBlock2)(ReaProject *) =
+      (void (*)(ReaProject *))g_rec->GetFunc("Undo_BeginBlock2");
+  if (Undo_BeginBlock2) {
+    Undo_BeginBlock2(nullptr); // nullptr = current project
+  }
+
   wdl_json_parser parser;
   wdl_json_element *root = parser.parse(json, (int)strlen(json));
   if (parser.m_err) {
     error_msg.Set(parser.m_err);
+    // End undo block on error
+    if (Undo_BeginBlock2) {
+      void (*Undo_EndBlock2)(ReaProject *, const char *, int) = (void (*)(
+          ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
+      if (Undo_EndBlock2) {
+        Undo_EndBlock2(nullptr, "MAGDA actions (failed)", 0);
+      }
+    }
     return false;
   }
 
   if (!root) {
     error_msg.Set("Failed to parse JSON");
+    // End undo block on error
+    if (Undo_BeginBlock2) {
+      void (*Undo_EndBlock2)(ReaProject *, const char *, int) = (void (*)(
+          ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
+      if (Undo_EndBlock2) {
+        Undo_EndBlock2(nullptr, "MAGDA actions (failed)", 0);
+      }
+    }
     return false;
   }
 
   result.Append("{\"results\":[");
 
+  bool success = true;
   // Check if it's an array of actions or a single action
   if (root->is_array()) {
     int num_actions = 0;
@@ -821,6 +1025,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
         result.Append("\"");
         result.Append(action_error.Get());
         result.Append("\"}");
+        success = false;
       }
       num_actions++;
       item = root->enum_item(num_actions);
@@ -835,14 +1040,25 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
       result.Append("\"");
       result.Append(action_error.Get());
       result.Append("\"}");
+      success = false;
     }
   } else {
     error_msg.Set("JSON must be an object or array");
-    return false;
+    success = false;
   }
 
   result.Append("]}");
-  return true;
+
+  // End undo block with description
+  void (*Undo_EndBlock2)(ReaProject *, const char *, int) = (void (*)(
+      ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
+  if (Undo_EndBlock2) {
+    const char *desc =
+        success ? "MAGDA actions" : "MAGDA actions (partial failure)";
+    Undo_EndBlock2(nullptr, desc, 0);
+  }
+
+  return success;
 }
 
 // Helper function: Convert bar number (1-based) to time position
