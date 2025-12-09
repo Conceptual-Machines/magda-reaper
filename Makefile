@@ -67,6 +67,16 @@ format-check:
 		exit 1; \
 	fi
 
+# Run integration tests
+test:
+	@echo "Running integration tests..."
+	@if [ -f tests/run_tests.sh ]; then \
+		./tests/run_tests.sh; \
+	else \
+		echo "Error: tests/run_tests.sh not found"; \
+		exit 1; \
+	fi
+
 # Show help
 help:
 	@echo "MAGDA Reaper Extension - Build Commands"
@@ -75,6 +85,7 @@ help:
 	@echo "  make build       - Build the extension (runs setup if needed)"
 	@echo "  make clean       - Remove build directory"
 	@echo "  make rebuild     - Clean and rebuild"
+	@echo "  make test        - Run integration tests"
 	@echo "  make format      - Format code with clang-format"
 	@echo "  make format-check - Check code formatting (dry run)"
 	@echo "  make help        - Show this help message"

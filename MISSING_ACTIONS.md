@@ -14,6 +14,8 @@
 10. **create_clip_at_bar** - Create clip at bar number
 11. **set_track_selected** / **select_track** - Select/deselect tracks ✅
 12. **set_clip_selected** / **select_clip** - Select/deselect clips ✅
+13. **delete_track** / **remove_track** - Delete track and contents ✅
+14. **delete_clip** / **remove_clip** - Delete media item/clip ✅
 
 ## High Priority Missing Actions 🔴
 
@@ -30,16 +32,19 @@
   - REAPER API: `SetMediaItemSelected(MediaItem *item, bool selected)`
   - Status: ✅ **IMPLEMENTED** - Working consistently
 
-### Deletion
-- **delete_track**
+### Deletion ✅
+- **delete_track** / **remove_track** ✅
   - Delete a track and all its contents
   - Required for: "delete track named X", cleanup operations
-  - REAPER API: `DeleteTrack(MediaTrack *track)` or `RemoveTrack(MediaTrack *track)`
+  - REAPER API: `DeleteTrack(MediaTrack *track)`
+  - Status: ✅ **IMPLEMENTED**
 
-- **delete_clip** / **remove_clip**
+- **delete_clip** / **remove_clip** ✅
   - Delete a media item/clip
   - Required for: "remove all clips from track", cleanup
-  - REAPER API: `DeleteTrackMediaItem(MediaTrack *track, MediaItem *item)` or similar
+  - REAPER API: `DeleteTrackMediaItem(MediaTrack *track, MediaItem *item)`
+  - Supports: clip index, position (seconds), or bar number
+  - Status: ✅ **IMPLEMENTED**
 
 ### Clip Editing
 - **set_clip_name**

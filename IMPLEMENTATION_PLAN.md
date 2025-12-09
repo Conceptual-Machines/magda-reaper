@@ -69,34 +69,37 @@ Features that are useful but not blocking.
 
 ## Phase 2: Deletion Actions (High Priority) 🟡
 
-**Status**: Not implemented
+**Status**: ✅ **COMPLETED**
 **Blocking**: Cleanup workflows, project management
 
-### 2.1 Delete Track
-- **Action**: `delete_track`
-- **REAPER API**: `DeleteTrack(MediaTrack *track)` or `RemoveTrack()`
+### 2.1 Delete Track ✅
+- **Action**: `delete_track` / `remove_track`
+- **REAPER API**: `DeleteTrack(MediaTrack *track)`
 - **Use Cases**:
   - "Delete track named X"
   - "Delete all empty tracks"
   - Cleanup workflows
 
 **Implementation Tasks**:
-- [ ] Add `DeleteTrack()` method
-- [ ] Add action handler
-- [ ] Handle cleanup (confirmation optional for now)
-- [ ] Update documentation
+- [x] Add `DeleteTrack()` method
+- [x] Add action handler
+- [x] Handle cleanup (confirmation optional for now)
+- [x] Update documentation
 
-### 2.2 Delete Clip
+### 2.2 Delete Clip ✅
 - **Action**: `delete_clip` / `remove_clip`
-- **REAPER API**: `DeleteTrackMediaItem()` or similar
+- **REAPER API**: `DeleteTrackMediaItem(MediaTrack *track, MediaItem *item)`
 - **Use Cases**:
   - "Remove all clips from track 1"
   - "Delete empty clips"
+- **Features**:
+  - Supports clip index, position (seconds), or bar number
+  - Similar to `set_clip_selected` for flexible clip identification
 
 **Implementation Tasks**:
-- [ ] Add `DeleteClip()` method
-- [ ] Add action handler
-- [ ] Test deletion
+- [x] Add `DeleteClip()` method
+- [x] Add action handler with position/bar support
+- [x] Test deletion
 
 ---
 
@@ -200,10 +203,10 @@ Features that are useful but not blocking.
 - [x] **1.3** Test with functional methods (`filter`, `map`)
 - [x] **1.4** Update integration test for selection
 
-### Phase 2: Deletion (High Priority)
-- [ ] **2.1** Implement `delete_track` action
-- [ ] **2.2** Implement `delete_clip` action
-- [ ] **2.3** Add safety checks (optional confirmation)
+### Phase 2: Deletion (High Priority) ✅
+- [x] **2.1** Implement `delete_track` action
+- [x] **2.2** Implement `delete_clip` action
+- [x] **2.3** Add safety checks (optional confirmation)
 - [ ] **2.4** Test deletion workflows
 
 ### Phase 3: Clip Editing (High Priority)

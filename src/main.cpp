@@ -1,3 +1,4 @@
+#include "magda_actions.h"
 #include "magda_chat_window.h"
 #include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
@@ -25,6 +26,8 @@ static MagdaPluginScanner *g_pluginScanner = nullptr;
 #define MAGDA_CMD_SETTINGS 1003
 #define MAGDA_CMD_ABOUT 1004
 #define MAGDA_CMD_SCAN_PLUGINS 1005
+// Test/headless command IDs
+#define MAGDA_CMD_TEST_EXECUTE_ACTION 2000
 
 // Action callbacks for MAGDA menu items
 void magdaAction(int command_id, int flag) {
@@ -91,6 +94,58 @@ void magdaAction(int command_id, int flag) {
       }
     }
     break;
+  case MAGDA_CMD_TEST_EXECUTE_ACTION:
+    // Headless/test mode: Execute MAGDA action from JSON stored in project
+    // state This allows Lua scripts to execute MAGDA commands by setting
+    // project state
+    {
+      // Get JSON action from project state (stored via SetProjExtState)
+      void *(*GetProjExtState)(ReaProject *, const char *, const char *, char *,
+                               int) =
+          (void *(*)(ReaProject *, const char *, const char *, char *,
+                     int))g_rec->GetFunc("GetProjExtState");
+
+      if (GetProjExtState) {
+        char action_json[4096] = {0};
+        GetProjExtState(nullptr, "MAGDA_TEST", "ACTION_JSON", action_json,
+                        sizeof(action_json));
+
+        if (action_json[0]) {
+          WDL_FastString result, error;
+          if (MagdaActions::ExecuteActions(action_json, result, error)) {
+            // Store result in project state for Lua to read
+            void (*SetProjExtState)(ReaProject *, const char *, const char *,
+                                    const char *) =
+                (void (*)(ReaProject *, const char *, const char *,
+                          const char *))g_rec->GetFunc("SetProjExtState");
+            if (SetProjExtState) {
+              SetProjExtState(nullptr, "MAGDA_TEST", "RESULT", result.Get());
+              SetProjExtState(nullptr, "MAGDA_TEST", "ERROR", "");
+            }
+            if (ShowConsoleMsg) {
+              ShowConsoleMsg("MAGDA: Test action executed successfully\n");
+            }
+          } else {
+            // Store error
+            void (*SetProjExtState)(ReaProject *, const char *, const char *,
+                                    const char *) =
+                (void (*)(ReaProject *, const char *, const char *,
+                          const char *))g_rec->GetFunc("SetProjExtState");
+            if (SetProjExtState) {
+              SetProjExtState(nullptr, "MAGDA_TEST", "RESULT", "");
+              SetProjExtState(nullptr, "MAGDA_TEST", "ERROR", error.Get());
+            }
+            if (ShowConsoleMsg) {
+              char msg[512];
+              snprintf(msg, sizeof(msg), "MAGDA: Test action failed: %s\n",
+                       error.Get());
+              ShowConsoleMsg(msg);
+            }
+          }
+        }
+      }
+    }
+    break;
   default:
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Unknown command\n");
@@ -109,7 +164,8 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   (void)hwnd; // Suppress unused warnings
   if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN ||
       command == MAGDA_CMD_LOGIN || command == MAGDA_CMD_SETTINGS ||
-      command == MAGDA_CMD_ABOUT || command == MAGDA_CMD_SCAN_PLUGINS) {
+      command == MAGDA_CMD_ABOUT || command == MAGDA_CMD_SCAN_PLUGINS ||
+      command == MAGDA_CMD_TEST_EXECUTE_ACTION) {
     magdaAction(command, 0);
     return true; // handled
   }
@@ -306,6 +362,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   gaccel_register_t gaccel_about = {{0, 0, MAGDA_CMD_ABOUT}, "MAGDA: About"};
   gaccel_register_t gaccel_scan_plugins = {{0, 0, MAGDA_CMD_SCAN_PLUGINS},
                                            "MAGDA: Scan Plugins"};
+  gaccel_register_t gaccel_test_execute = {
+      {0, 0, MAGDA_CMD_TEST_EXECUTE_ACTION}, "MAGDA: Test Execute Action"};
 
   if (rec->Register("gaccel", &gaccel_open)) {
     if (ShowConsoleMsg) {
@@ -330,6 +388,12 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   if (rec->Register("gaccel", &gaccel_scan_plugins)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Scan Plugins' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_test_execute)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg(
+          "MAGDA: Registered 'Test Execute Action' (for headless testing)\n");
     }
   }
 
