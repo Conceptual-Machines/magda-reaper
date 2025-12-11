@@ -529,6 +529,217 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
   return best_match;
 }
 
+// Unified track properties setter (Phase 1: Refactoring)
+// Sets multiple track properties in a single operation
+bool MagdaActions::SetTrackProperties(int track_index, const char *name,
+                                      const char *volume_db_str,
+                                      const char *pan_str, const char *mute_str,
+                                      const char *solo_str,
+                                      const char *selected_str,
+                                      WDL_FastString &error_msg) {
+  // Set name if provided
+  if (name && name[0]) {
+    if (!SetTrackName(track_index, name, error_msg)) {
+      return false;
+    }
+  }
+
+  // Set volume if provided
+  if (volume_db_str && volume_db_str[0]) {
+    double volume_db = atof(volume_db_str);
+    if (!SetTrackVolume(track_index, volume_db, error_msg)) {
+      return false;
+    }
+  }
+
+  // Set pan if provided
+  if (pan_str && pan_str[0]) {
+    double pan = atof(pan_str);
+    if (!SetTrackPan(track_index, pan, error_msg)) {
+      return false;
+    }
+  }
+
+  // Set mute if provided
+  if (mute_str && mute_str[0]) {
+    bool mute = (strcmp(mute_str, "true") == 0 || strcmp(mute_str, "1") == 0);
+    if (!SetTrackMute(track_index, mute, error_msg)) {
+      return false;
+    }
+  }
+
+  // Set solo if provided
+  if (solo_str && solo_str[0]) {
+    bool solo = (strcmp(solo_str, "true") == 0 || strcmp(solo_str, "1") == 0);
+    if (!SetTrackSolo(track_index, solo, error_msg)) {
+      return false;
+    }
+  }
+
+  // Set selected if provided
+  if (selected_str && selected_str[0]) {
+    bool selected =
+        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
+    if (!SetTrackSelected(track_index, selected, error_msg)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Unified clip properties setter (Phase 1: Refactoring)
+// Sets multiple clip properties in a single operation
+// Note: Some clip properties (name, color, position) may need to be
+// implemented first
+bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
+                                     const char *position_str,
+                                     const char *bar_str, const char *name,
+                                     const char *color, const char *length_str,
+                                     const char *selected_str,
+                                     WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  if (!GetTrack) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Find the clip
+  MediaItem *target_item = nullptr;
+  double new_position = -1.0; // For moving clip
+
+  // If clip index is provided, use it for identification
+  // In this case, position_str can be used as the NEW position (for moving)
+  if (clip_str) {
+    int clip_index = atoi(clip_str);
+    // Use existing SetClipSelected helper logic to find by index
+    MediaItem *(*GetMediaItem)(ReaProject *, int) =
+        (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
+    MediaTrack *(*GetMediaItemTrack)(MediaItem *) =
+        (MediaTrack * (*)(MediaItem *)) g_rec->GetFunc("GetMediaItemTrack");
+    int (*CountMediaItems)(ReaProject *) =
+        (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+
+    if (GetMediaItem && GetMediaItemTrack && CountMediaItems) {
+      int total_items = CountMediaItems(nullptr);
+      int clip_count = 0;
+
+      for (int i = 0; i < total_items; i++) {
+        MediaItem *item = GetMediaItem(nullptr, i);
+        if (!item) {
+          continue;
+        }
+
+        MediaTrack *item_track = GetMediaItemTrack(item);
+        if (item_track == track) {
+          if (clip_count == clip_index) {
+            target_item = item;
+            break;
+          }
+          clip_count++;
+        }
+      }
+    }
+    // If position_str is provided and we found the clip by index,
+    // use position_str as the NEW position (for moving)
+    if (target_item && position_str && position_str[0]) {
+      new_position = atof(position_str);
+    }
+  } else {
+    // Try position-based or bar-based identification
+    if (position_str || bar_str) {
+      double position = position_str ? atof(position_str) : -1.0;
+      int bar = bar_str ? atoi(bar_str) : -1;
+      target_item = FindClipByPosition(track, position, bar, error_msg);
+    }
+  }
+
+  if (!target_item) {
+    error_msg.Set("Clip not found: specify 'clip' (index), 'position' "
+                  "(seconds), or 'bar' (bar number)");
+    return false;
+  }
+
+  // Set properties using REAPER API
+  void *(*GetSetMediaItemInfo)(MediaItem *, const char *, void *, bool *) =
+      (void *(*)(MediaItem *, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaItemInfo_Value");
+  bool (*GetSetMediaItemInfo_String)(MediaItem *, const char *, char *, int) =
+      (bool (*)(MediaItem *, const char *, char *, int))g_rec->GetFunc(
+          "GetSetMediaItemInfo_String");
+  void (*SetMediaItemPosition)(MediaItem *, double, bool) = (void (*)(
+      MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
+  void (*SetMediaItemLength)(MediaItem *, double, bool) =
+      (void (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemLength");
+  void (*SetMediaItemSelected)(MediaItem *, bool) =
+      (void (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+  // Set name if provided
+  if (name && name[0] && GetSetMediaItemInfo_String) {
+    GetSetMediaItemInfo_String(target_item, "P_NAME", (char *)name, true);
+  }
+
+  // Set color if provided (REAPER uses integer color values)
+  if (color && color[0] && GetSetMediaItemInfo) {
+    // Parse hex color like "#ff0000" to integer
+    // REAPER uses BGR format: 0xBBGGRR
+    if (color[0] == '#') {
+      unsigned int hex_color = 0;
+      if (strlen(color) >= 7) {
+        sscanf(color + 1, "%x", &hex_color);
+        // Convert RGB to BGR
+        unsigned int r = (hex_color >> 16) & 0xFF;
+        unsigned int g = (hex_color >> 8) & 0xFF;
+        unsigned int b = hex_color & 0xFF;
+        unsigned int bgr = (b << 16) | (g << 8) | r;
+        int color_val = (int)bgr;
+        GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &color_val, nullptr);
+      }
+    }
+  }
+
+  // Set position if provided (for moving clip)
+  // new_position is set above if clip was identified by index
+  // Otherwise, if we're moving a clip identified by position, we'd need
+  // a separate "new_position" field, but for now we'll skip this case
+  if (new_position >= 0 && SetMediaItemPosition) {
+    SetMediaItemPosition(target_item, new_position, false);
+  }
+
+  // Set length if provided
+  if (length_str && length_str[0] && SetMediaItemLength) {
+    double new_length = atof(length_str);
+    SetMediaItemLength(target_item, new_length, false);
+  }
+
+  // Set selected if provided
+  if (selected_str && selected_str[0] && SetMediaItemSelected) {
+    bool selected =
+        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
+    SetMediaItemSelected(target_item, selected);
+  }
+
+  // Refresh the arrange view
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  return true;
+}
+
 bool MagdaActions::DeleteTrack(int track_index, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
@@ -713,162 +924,60 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return true;
     }
     return false;
-  } else if (strcmp(action_type, "set_track_name") == 0) {
+  } else if (strcmp(action_type, "set_track") == 0) {
+    // Unified track properties action (Phase 1: Refactoring)
     const char *track_str = action->get_string_by_name("track", true);
-    const char *name = action->get_string_by_name("name");
-    if (!track_str || !name) {
-      error_msg.Set("Missing 'track' or 'name' field");
+    if (!track_str) {
+      error_msg.Set("Missing 'track' field");
       return false;
     }
     int track_index = atoi(track_str);
-    if (SetTrackName(track_index, name, error_msg)) {
-      result.Append("{\"action\":\"set_track_name\",\"success\":true}");
-      return true;
-    }
-    return false;
-  } else if (strcmp(action_type, "set_track_volume") == 0) {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *volume_str = action->get_string_by_name("volume_db", true);
-    if (!track_str || !volume_str) {
-      error_msg.Set("Missing 'track' or 'volume_db' field");
-      return false;
-    }
-    int track_index = atoi(track_str);
-    double volume_db = atof(volume_str);
-    if (SetTrackVolume(track_index, volume_db, error_msg)) {
-      result.Append("{\"action\":\"set_track_volume\",\"success\":true}");
-      return true;
-    }
-    return false;
-  } else if (strcmp(action_type, "set_track_pan") == 0) {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *pan_str = action->get_string_by_name("pan", true);
-    if (!track_str || !pan_str) {
-      error_msg.Set("Missing 'track' or 'pan' field");
-      return false;
-    }
-    int track_index = atoi(track_str);
-    double pan = atof(pan_str);
-    if (SetTrackPan(track_index, pan, error_msg)) {
-      result.Append("{\"action\":\"set_track_pan\",\"success\":true}");
-      return true;
-    }
-    return false;
-  } else if (strcmp(action_type, "set_track_mute") == 0) {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *mute_str = action->get_string_by_name("mute", true);
-    if (!track_str || !mute_str) {
-      error_msg.Set("Missing 'track' or 'mute' field");
-      return false;
-    }
-    int track_index = atoi(track_str);
-    bool mute = (strcmp(mute_str, "true") == 0 || strcmp(mute_str, "1") == 0);
-    if (SetTrackMute(track_index, mute, error_msg)) {
-      result.Append("{\"action\":\"set_track_mute\",\"success\":true}");
-      return true;
-    }
-    return false;
-  } else if (strcmp(action_type, "set_track_solo") == 0) {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *solo_str = action->get_string_by_name("solo", true);
-    if (!track_str || !solo_str) {
-      error_msg.Set("Missing 'track' or 'solo' field");
-      return false;
-    }
-    int track_index = atoi(track_str);
-    bool solo = (strcmp(solo_str, "true") == 0 || strcmp(solo_str, "1") == 0);
-    if (SetTrackSolo(track_index, solo, error_msg)) {
-      result.Append("{\"action\":\"set_track_solo\",\"success\":true}");
-      return true;
-    }
-    return false;
-  } else if (strcmp(action_type, "set_track_selected") == 0 ||
-             strcmp(action_type, "select_track") == 0) {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *selected_str = action->get_string_by_name("selected", true);
-    if (!track_str || !selected_str) {
-      error_msg.Set("Missing 'track' or 'selected' field");
-      return false;
-    }
-    int track_index = atoi(track_str);
-    bool selected =
-        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
-    if (SetTrackSelected(track_index, selected, error_msg)) {
-      result.Append("{\"action\":\"set_track_selected\",\"success\":true}");
-      return true;
-    }
-    return false;
-  } else if (strcmp(action_type, "set_clip_selected") == 0 ||
-             strcmp(action_type, "select_clip") == 0) {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *selected_str = action->get_string_by_name("selected", true);
-    if (!track_str || !selected_str) {
-      error_msg.Set("Missing 'track' or 'selected' field");
-      return false;
-    }
-    int track_index = atoi(track_str);
-    bool selected =
-        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
 
-    // Try to find clip by position/bar first (more reliable), then fall back to
-    // index
+    // Get all optional parameters
+    const char *name = action->get_string_by_name("name");
+    const char *volume_db_str = action->get_string_by_name("volume_db", true);
+    const char *pan_str = action->get_string_by_name("pan", true);
+    const char *mute_str = action->get_string_by_name("mute", true);
+    const char *solo_str = action->get_string_by_name("solo", true);
+    const char *selected_str = action->get_string_by_name("selected", true);
+
+    if (SetTrackProperties(track_index, name, volume_db_str, pan_str, mute_str,
+                           solo_str, selected_str, error_msg)) {
+      result.Append("{\"action\":\"set_track\",\"success\":true}");
+      return true;
+    }
+    return false;
+  } else if (strcmp(action_type, "set_clip") == 0) {
+    // Unified clip properties action (Phase 1: Refactoring)
+    const char *track_str = action->get_string_by_name("track", true);
+    if (!track_str) {
+      error_msg.Set("Missing 'track' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+
+    // Get all optional parameters
+    const char *clip_str = action->get_string_by_name("clip", true);
     const char *position_str = action->get_string_by_name("position", true);
     const char *bar_str = action->get_string_by_name("bar", true);
-    const char *clip_str = action->get_string_by_name("clip", true);
+    const char *name = action->get_string_by_name("name");
+    const char *color = action->get_string_by_name("color");
+    const char *length_str = action->get_string_by_name("length", true);
+    const char *selected_str = action->get_string_by_name("selected", true);
 
-    MediaTrack *(*GetTrack)(ReaProject *, int) =
-        (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-    void (*SetMediaItemSelected)(MediaItem *, bool) =
-        (void (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
-    void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
-
-    if (!GetTrack || !SetMediaItemSelected) {
-      error_msg.Set("Required REAPER API functions not available");
+    // At least one identifier must be provided
+    if (!clip_str && !position_str && !bar_str) {
+      error_msg.Set("Missing clip identifier: specify 'clip' (index), "
+                    "'position' (seconds), or 'bar' (bar number)");
       return false;
     }
 
-    MediaTrack *track = GetTrack(nullptr, track_index);
-    if (!track) {
-      error_msg.Set("Track not found");
-      return false;
+    if (SetClipProperties(track_index, clip_str, position_str, bar_str, name,
+                          color, length_str, selected_str, error_msg)) {
+      result.Append("{\"action\":\"set_clip\",\"success\":true}");
+      return true;
     }
-
-    MediaItem *target_item = nullptr;
-
-    // Try position-based selection first
-    if (position_str || bar_str) {
-      double position = position_str ? atof(position_str) : -1.0;
-      int bar = bar_str ? atoi(bar_str) : -1;
-      target_item = FindClipByPosition(track, position, bar, error_msg);
-    }
-
-    // Fall back to index-based selection
-    if (!target_item && clip_str) {
-      int clip_index = atoi(clip_str);
-      // Use existing SetClipSelected for index-based
-      if (SetClipSelected(track_index, clip_index, selected, error_msg)) {
-        result.Append("{\"action\":\"set_clip_selected\",\"success\":true}");
-        return true;
-      }
-      return false;
-    }
-
-    if (!target_item) {
-      error_msg.Set("Clip not found: specify 'clip' (index), 'position' "
-                    "(seconds), or 'bar' (bar number)");
-      return false;
-    }
-
-    // Set selection state
-    SetMediaItemSelected(target_item, selected);
-
-    // Refresh the arrange view
-    if (UpdateArrange) {
-      UpdateArrange();
-    }
-
-    result.Append("{\"action\":\"set_clip_selected\",\"success\":true}");
-    return true;
+    return false;
   } else if (strcmp(action_type, "delete_track") == 0 ||
              strcmp(action_type, "remove_track") == 0) {
     const char *track_str = action->get_string_by_name("track", true);

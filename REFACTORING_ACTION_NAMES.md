@@ -144,7 +144,8 @@ Keep separate actions but remove the `set_` prefix:
    - Add `SetTrackProperties()` method that accepts all optional parameters
    - Add `SetClipProperties()` method that accepts all optional parameters
    - Add handlers for `set_track` and `set_clip` actions
-   - Keep old action handlers for backward compatibility
+   - **Replace old action handlers** - old actions (e.g., `set_track_name`) now route to unified actions internally
+   - Old action names still work for backward compatibility, but all go through unified handlers
 
 2. **Go DSL Parser** (`magda-agents-go/agents/daw/dsl_parser_functional.go`):
    - Update action generation to use unified `set_track` and `set_clip` actions
@@ -200,10 +201,11 @@ Keep separate actions but remove the `set_` prefix:
 - Gradual migration possible
 
 **Recommended Approach:**
-- Implement new actions alongside old ones
-- Update internal code to use new actions
-- Keep old actions for backward compatibility
-- Document both formats
+- Implement unified actions (`set_track`, `set_clip`)
+- Replace old action handlers to route to unified actions internally
+- Old action names still work (backward compatible) but all go through unified handlers
+- Update internal code to use new unified format
+- Document unified format as primary, old names as deprecated
 
 ## Code Changes Required
 

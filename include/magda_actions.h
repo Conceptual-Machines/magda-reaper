@@ -46,6 +46,19 @@ private:
   static bool DeleteClip(int track_index, int clip_index,
                          WDL_FastString &error_msg);
 
+  // Unified property setters (Phase 1: Refactoring)
+  static bool SetTrackProperties(int track_index, const char *name,
+                                 const char *volume_db_str, const char *pan_str,
+                                 const char *mute_str, const char *solo_str,
+                                 const char *selected_str,
+                                 WDL_FastString &error_msg);
+  static bool SetClipProperties(int track_index, const char *clip_str,
+                                const char *position_str, const char *bar_str,
+                                const char *name, const char *color,
+                                const char *length_str,
+                                const char *selected_str,
+                                WDL_FastString &error_msg);
+
   // Helper functions
   static double BarToTime(int bar);
   static double BarsToTime(int bars);

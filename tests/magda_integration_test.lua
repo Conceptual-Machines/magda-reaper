@@ -87,26 +87,26 @@ function test_magda_create_track()
 end
 
 function test_magda_set_track_volume()
-  log("Testing MAGDA set_track_volume action...")
+  log("Testing MAGDA set_track action (volume only)...")
 
   -- Create a test track
   local track_idx = reaper.GetNumTracks()
   reaper.InsertTrackAtIndex(track_idx, false)
   local track = reaper.GetTrack(0, track_idx)
 
-  -- Execute MAGDA action to set volume to -6dB
-  local action_json = string.format('{"action":"set_track_volume","track":%d,"volume_db":-6.0}', track_idx)
+  -- Execute MAGDA unified action to set volume to -6dB
+  local action_json = string.format('{"action":"set_track","track":%d,"volume_db":-6.0}', track_idx)
   local success, result = execute_magda_action(action_json)
 
   if not success then
-    assert(false, "MAGDA set_track_volume failed: " .. (result or "unknown error"))
+    assert(false, "MAGDA set_track (volume) failed: " .. (result or "unknown error"))
     reaper.DeleteTrack(track)
     return
   end
 
   -- Verify volume was set (-6dB = 0.5 linear)
   local volume = reaper.GetMediaTrackInfo_Value(track, "D_VOL")
-  assert(math.abs(volume - 0.5) < 0.01, "Track volume was set to -6dB via MAGDA")
+  assert(math.abs(volume - 0.5) < 0.01, "Track volume was set to -6dB via MAGDA unified action")
 
   -- Cleanup
   reaper.DeleteTrack(track)
@@ -139,26 +139,60 @@ function test_magda_create_clip()
 end
 
 function test_magda_set_track_selected()
-  log("Testing MAGDA set_track_selected action...")
+  log("Testing MAGDA set_track action (selected only)...")
 
   -- Create a test track
   local track_idx = reaper.GetNumTracks()
   reaper.InsertTrackAtIndex(track_idx, false)
   local track = reaper.GetTrack(0, track_idx)
 
-  -- Execute MAGDA action to select track
-  local action_json = string.format('{"action":"set_track_selected","track":%d,"selected":true}', track_idx)
+  -- Execute MAGDA unified action to select track
+  local action_json = string.format('{"action":"set_track","track":%d,"selected":true}', track_idx)
   local success, result = execute_magda_action(action_json)
 
   if not success then
-    assert(false, "MAGDA set_track_selected failed: " .. (result or "unknown error"))
+    assert(false, "MAGDA set_track (selected) failed: " .. (result or "unknown error"))
     reaper.DeleteTrack(track)
     return
   end
 
   -- Verify selection
   local selected = reaper.IsTrackSelected(track)
-  assert(selected == true, "Track was selected via MAGDA action")
+  assert(selected == true, "Track was selected via MAGDA unified action")
+
+  -- Cleanup
+  reaper.DeleteTrack(track)
+end
+
+function test_magda_set_track_multiple_properties()
+  log("Testing MAGDA set_track action (multiple properties)...")
+
+  -- Create a test track
+  local track_idx = reaper.GetNumTracks()
+  reaper.InsertTrackAtIndex(track_idx, false)
+  local track = reaper.GetTrack(0, track_idx)
+
+  -- Execute MAGDA unified action to set name, volume, and mute
+  local action_json = string.format('{"action":"set_track","track":%d,"name":"Test Track","volume_db":-3.0,"mute":false}', track_idx)
+  local success, result = execute_magda_action(action_json)
+
+  if not success then
+    assert(false, "MAGDA set_track (multiple properties) failed: " .. (result or "unknown error"))
+    reaper.DeleteTrack(track)
+    return
+  end
+
+  -- Verify name was set
+  local track_name = reaper.GetSetMediaTrackInfo_String(track, "P_NAME", "", false)
+  assert(track_name == "Test Track", "Track name was set via unified action")
+
+  -- Verify volume was set (-3dB ≈ 0.707 linear)
+  local volume = reaper.GetMediaTrackInfo_Value(track, "D_VOL")
+  assert(math.abs(volume - 0.707) < 0.01, "Track volume was set via unified action")
+
+  -- Verify mute was set
+  local mute = reaper.GetMediaTrackInfo_Value(track, "B_MUTE")
+  assert(mute == 0, "Track mute was set to false via unified action")
 
   -- Cleanup
   reaper.DeleteTrack(track)
@@ -188,6 +222,7 @@ test_magda_create_track()
 test_magda_set_track_volume()
 test_magda_create_clip()
 test_magda_set_track_selected()
+test_magda_set_track_multiple_properties()
 
 -- Print summary
 log("=" .. string.rep("=", 60))
