@@ -51,6 +51,7 @@ private:
                                  const char *volume_db_str, const char *pan_str,
                                  const char *mute_str, const char *solo_str,
                                  const char *selected_str,
+                                 const char *color_str,
                                  WDL_FastString &error_msg);
   static bool SetClipProperties(int track_index, const char *clip_str,
                                 const char *position_str, const char *bar_str,

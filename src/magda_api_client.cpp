@@ -292,6 +292,10 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
     return false;
   }
 
+  // Set timeout (in milliseconds)
+  DWORD timeout_ms = (DWORD)(timeout_seconds * 1000);
+  WinHttpSetTimeouts(hSession, 30000, 30000, timeout_ms, timeout_ms);
+
   // Connect to server
   int port = urlComp.nScheme == INTERNET_SCHEME_HTTPS
                  ? INTERNET_DEFAULT_HTTPS_PORT
@@ -331,6 +335,10 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
     WinHttpCloseHandle(hSession);
     return false;
   }
+
+  // Set timeout (in milliseconds)
+  DWORD timeout_ms = (DWORD)(timeout_seconds * 1000);
+  WinHttpSetTimeouts(hSession, 30000, 30000, timeout_ms, timeout_ms);
 
   // Set headers
   wchar_t headers[1024];
@@ -464,7 +472,8 @@ static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb,
 static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
                                   int post_data_len, WDL_FastString &response,
                                   WDL_FastString &error_msg,
-                                  const char *auth_token = nullptr) {
+                                  const char *auth_token = nullptr,
+                                  int timeout_seconds = 30) {
   CURL *curl = curl_easy_init();
   if (!curl) {
     error_msg.Set("Failed to initialize curl");
@@ -481,7 +490,7 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &writeData);
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout_seconds);
   curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
 
   struct curl_slist *headers = nullptr;
@@ -507,6 +516,20 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
     }
   }
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+  // Log request details before sending
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: Sending POST request to %s (timeout: %d seconds, body "
+               "size: %d bytes)\n",
+               url, timeout_seconds, post_data_len);
+      ShowConsoleMsg(log_msg);
+    }
+  }
 
   CURLcode res = curl_easy_perform(curl);
 
@@ -574,6 +597,102 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
 }
 #endif
 
+bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint,
+                                      const char *json_data,
+                                      WDL_FastString &response,
+                                      WDL_FastString &error_msg,
+                                      int timeout_seconds) {
+  if (!endpoint || !json_data) {
+    error_msg.Set("Invalid parameters");
+    return false;
+  }
+
+  // Build full URL
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append(endpoint);
+
+  // Get auth token (try to get from storage if not set)
+  const char *auth_token =
+      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+  if (!auth_token) {
+    auth_token = MagdaAuth::GetStoredToken();
+    if (auth_token && strlen(auth_token) > 0) {
+      m_jwt_token.Set(auth_token);
+    }
+  }
+
+  // Use default timeout if not specified
+  if (timeout_seconds == 0) {
+    timeout_seconds = 30;
+  }
+
+  // Use platform-specific HTTPS implementation
+  bool success;
+#ifdef _WIN32
+  success = SendHTTPSRequest_WinHTTP(url.Get(), json_data,
+                                     (int)strlen(json_data), response,
+                                     error_msg, auth_token, timeout_seconds);
+#else
+  success =
+      SendHTTPSRequest_Curl(url.Get(), json_data, (int)strlen(json_data),
+                            response, error_msg, auth_token, timeout_seconds);
+#endif
+
+  // If we got 401, try refreshing token and retry once
+  if (!success && error_msg.GetLength() > 0 && strstr(error_msg.Get(), "401")) {
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Token expired, attempting refresh...\n");
+      }
+    }
+
+    WDL_FastString refresh_error;
+    if (MagdaAuth::RefreshToken(refresh_error)) {
+      // Update token and retry
+      const char *new_token = MagdaAuth::GetStoredToken();
+      if (new_token && strlen(new_token) > 0) {
+        m_jwt_token.Set(new_token);
+        response.Set("");
+        error_msg.Set("");
+
+        // Retry the request
+#ifdef _WIN32
+        success = SendHTTPSRequest_WinHTTP(
+            url.Get(), json_data, (int)strlen(json_data), response, error_msg,
+            new_token, timeout_seconds);
+#else
+        success = SendHTTPSRequest_Curl(url.Get(), json_data,
+                                        (int)strlen(json_data), response,
+                                        error_msg, new_token, timeout_seconds);
+#endif
+        if (success && g_rec) {
+          void (*ShowConsoleMsg)(const char *msg) =
+              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: Token refreshed, request succeeded\n");
+          }
+        }
+      }
+    } else {
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA: Token refresh failed: %s\n",
+                   refresh_error.Get());
+          ShowConsoleMsg(msg);
+        }
+      }
+    }
+  }
+
+  return success;
+}
+
 bool MagdaHTTPClient::SendQuestion(const char *question,
                                    WDL_FastString &response_json,
                                    WDL_FastString &error_msg) {
@@ -598,8 +717,15 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
 
   // Use platform-specific HTTPS implementation
   WDL_FastString response;
+  // Get auth token (try to get from storage if not set)
   const char *auth_token =
       m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+  if (!auth_token) {
+    auth_token = MagdaAuth::GetStoredToken();
+    if (auth_token && strlen(auth_token) > 0) {
+      m_jwt_token.Set(auth_token);
+    }
+  }
 
   // Log the request for debugging
   if (g_rec) {
@@ -630,21 +756,71 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
     }
   }
 
+  bool success;
 #ifdef _WIN32
-  if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len,
-                                response, error_msg, auth_token)) {
-    free(request_json);
-    return false;
-  }
+  success = SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len,
+                                     response, error_msg, auth_token);
 #else
-  if (!SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len,
-                             response, error_msg, auth_token)) {
-    free(request_json);
-    return false;
-  }
+  success = SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len,
+                                  response, error_msg, auth_token);
 #endif
 
+  // If we got 401, try refreshing token and retry once
+  if (!success && error_msg.GetLength() > 0 && strstr(error_msg.Get(), "401")) {
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Token expired, attempting refresh...\n");
+      }
+    }
+
+    WDL_FastString refresh_error;
+    if (MagdaAuth::RefreshToken(refresh_error)) {
+      // Update token and retry
+      const char *new_token = MagdaAuth::GetStoredToken();
+      if (new_token && strlen(new_token) > 0) {
+        m_jwt_token.Set(new_token);
+        response.Set("");
+        error_msg.Set("");
+
+        // Retry the request
+#ifdef _WIN32
+        success =
+            SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len,
+                                     response, error_msg, new_token);
+#else
+        success =
+            SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len,
+                                  response, error_msg, new_token);
+#endif
+        if (success && g_rec) {
+          void (*ShowConsoleMsg)(const char *msg) =
+              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: Token refreshed, request succeeded\n");
+          }
+        }
+      }
+    } else {
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA: Token refresh failed: %s\n",
+                   refresh_error.Get());
+          ShowConsoleMsg(msg);
+        }
+      }
+    }
+  }
+
   free(request_json);
+
+  if (!success) {
+    return false;
+  }
 
   // Log response for debugging
   if (g_rec) {

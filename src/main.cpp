@@ -2,6 +2,7 @@
 #include "magda_chat_window.h"
 #include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
+#include "magda_plugin_window.h"
 #include "magda_settings_window.h"
 #include "reaper_plugin.h"
 // SWELL is already included by reaper_plugin.h
@@ -17,7 +18,9 @@ static MagdaLoginWindow *g_loginWindow = nullptr;
 // Global settings window instance
 static MagdaSettingsWindow *g_settingsWindow = nullptr;
 // Global plugin scanner instance
-static MagdaPluginScanner *g_pluginScanner = nullptr;
+MagdaPluginScanner *g_pluginScanner = nullptr;
+// Global plugin window instance
+MagdaPluginWindow *g_pluginWindow = nullptr;
 
 // Command IDs for MAGDA menu items
 #define MAGDA_MENU_CMD_ID 1000
@@ -70,29 +73,12 @@ void magdaAction(int command_id, int flag) {
     break;
   case MAGDA_CMD_SCAN_PLUGINS:
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Scanning plugins...\n");
+      ShowConsoleMsg("MAGDA: Opening plugin alias window\n");
     }
-    if (!g_pluginScanner) {
-      g_pluginScanner = new MagdaPluginScanner();
+    if (!g_pluginWindow) {
+      g_pluginWindow = new MagdaPluginWindow();
     }
-    {
-      int count = g_pluginScanner->ScanPlugins();
-      if (ShowConsoleMsg) {
-        char msg[256];
-        snprintf(msg, sizeof(msg), "MAGDA: Scanned %d plugins\n", count);
-        ShowConsoleMsg(msg);
-      }
-      // Save to cache
-      if (g_pluginScanner->SaveToCache()) {
-        if (ShowConsoleMsg) {
-          ShowConsoleMsg("MAGDA: Plugin cache saved successfully\n");
-        }
-      } else {
-        if (ShowConsoleMsg) {
-          ShowConsoleMsg("MAGDA: WARNING - Failed to save plugin cache\n");
-        }
-      }
-    }
+    g_pluginWindow->Show();
     break;
   case MAGDA_CMD_TEST_EXECUTE_ACTION:
     // Headless/test mode: Execute MAGDA action from JSON stored in project
@@ -284,11 +270,11 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.fType = MFT_SEPARATOR;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "Scan Plugins" item
+    // "Plugins" item (opens plugin alias window)
     subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
-    subMi.dwTypeData = (char *)"Scan Plugins";
+    subMi.dwTypeData = (char *)"Plugins...";
     subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
@@ -361,7 +347,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                                        "MAGDA: Settings"};
   gaccel_register_t gaccel_about = {{0, 0, MAGDA_CMD_ABOUT}, "MAGDA: About"};
   gaccel_register_t gaccel_scan_plugins = {{0, 0, MAGDA_CMD_SCAN_PLUGINS},
-                                           "MAGDA: Scan Plugins"};
+                                           "MAGDA: Plugins"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, MAGDA_CMD_TEST_EXECUTE_ACTION}, "MAGDA: Test Execute Action"};
 
@@ -387,7 +373,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   }
   if (rec->Register("gaccel", &gaccel_scan_plugins)) {
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Registered 'Scan Plugins' action\n");
+      ShowConsoleMsg("MAGDA: Registered 'Plugins' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_test_execute)) {

@@ -1,4 +1,5 @@
 #include "magda_actions.h"
+#include "magda_plugin_scanner.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
 // ReaProject) This is a typo in the REAPER SDK itself, not our code
 typedef ReaProject Reaproject;
@@ -6,6 +7,7 @@ typedef ReaProject Reaproject;
 #include "reaper_plugin_functions.h"
 #include <cmath>
 #include <cstring>
+#include <string>
 
 extern reaper_plugin_info_t *g_rec;
 
@@ -50,9 +52,20 @@ bool MagdaActions::CreateTrack(int index, const char *name,
 
   // Add instrument if provided
   if (instrument && instrument[0] && TrackFX_AddByName) {
+    // Resolve plugin alias to full name
+    extern MagdaPluginScanner *g_pluginScanner;
+    std::string resolved_instrument_str = instrument;
+    if (g_pluginScanner) {
+      std::string resolved = g_pluginScanner->ResolveAlias(instrument);
+      if (!resolved.empty()) {
+        resolved_instrument_str = resolved;
+      }
+    }
+
     // recFX = false (track FX, not input FX), instantiate = -1 (always create
     // new instance)
-    int fx_index = TrackFX_AddByName(track, instrument, false, -1);
+    int fx_index =
+        TrackFX_AddByName(track, resolved_instrument_str.c_str(), false, -1);
     if (fx_index < 0) {
       // Log warning but don't fail - track was created successfully
       if (g_rec) {
@@ -161,6 +174,16 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
     return false;
   }
 
+  // Resolve plugin alias to full name
+  extern MagdaPluginScanner *g_pluginScanner;
+  std::string resolved_fxname_str = fxname;
+  if (g_pluginScanner) {
+    std::string resolved = g_pluginScanner->ResolveAlias(fxname);
+    if (!resolved.empty()) {
+      resolved_fxname_str = resolved;
+    }
+  }
+
   // Get FX count before adding (for verification)
   int (*TrackFX_GetCount)(MediaTrack *, bool) =
       (int (*)(MediaTrack *, bool))g_rec->GetFunc("TrackFX_GetCount");
@@ -170,7 +193,8 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   }
 
   // Add FX - instantiate = -1 means always create new instance
-  int fx_index = TrackFX_AddByName(track, fxname, recFX, -1);
+  int fx_index =
+      TrackFX_AddByName(track, resolved_fxname_str.c_str(), recFX, -1);
   if (fx_index < 0) {
     error_msg.Set("Failed to add FX: ");
     error_msg.Append(fxname);
@@ -536,6 +560,7 @@ bool MagdaActions::SetTrackProperties(int track_index, const char *name,
                                       const char *pan_str, const char *mute_str,
                                       const char *solo_str,
                                       const char *selected_str,
+                                      const char *color_str,
                                       WDL_FastString &error_msg) {
   // Set name if provided
   if (name && name[0]) {
@@ -582,6 +607,68 @@ bool MagdaActions::SetTrackProperties(int track_index, const char *name,
         (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
     if (!SetTrackSelected(track_index, selected, error_msg)) {
       return false;
+    }
+  }
+
+  // Set color if provided (similar to clip color handling)
+  if (color_str && color_str[0]) {
+    MediaTrack *(*GetTrack)(ReaProject *, int) =
+        (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+    void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+        (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+            "GetSetMediaTrackInfo");
+    void (*SetTrackColor)(MediaTrack *, int) =
+        (void (*)(MediaTrack *, int))g_rec->GetFunc("SetTrackColor");
+
+    if (!GetTrack || !GetSetMediaTrackInfo) {
+      error_msg.Set("Required REAPER API functions not available for color");
+      return false;
+    }
+
+    MediaTrack *track = GetTrack(nullptr, track_index);
+    if (!track) {
+      error_msg.Set("Track not found");
+      return false;
+    }
+
+    // Parse color (hex like "#ff0000" - parser should convert color names to
+    // hex)
+    int color_val = 0;
+    if (color_str[0] == '#') {
+      // Hex color - convert to BGR format (REAPER uses BGR)
+      unsigned int hex_color = 0;
+      if (strlen(color_str) >= 7) {
+        sscanf(color_str + 1, "%x", &hex_color);
+        // Convert RGB to BGR
+        unsigned int r = (hex_color >> 16) & 0xFF;
+        unsigned int g = (hex_color >> 8) & 0xFF;
+        unsigned int b = hex_color & 0xFF;
+        unsigned int bgr = (b << 16) | (g << 8) | r;
+        color_val = (int)bgr;
+      }
+    } else {
+      // Parser should convert color names to hex, but handle as hex anyway
+      // Try to parse as hex without #
+      unsigned int hex_color = 0;
+      if (sscanf(color_str, "%x", &hex_color) == 1) {
+        unsigned int r = (hex_color >> 16) & 0xFF;
+        unsigned int g = (hex_color >> 8) & 0xFF;
+        unsigned int b = hex_color & 0xFF;
+        unsigned int bgr = (b << 16) | (g << 8) | r;
+        color_val = (int)bgr;
+      } else {
+        error_msg.Set("Invalid color format - expected hex (e.g., #ff0000)");
+        return false;
+      }
+    }
+
+    // Use SetTrackColor if available, otherwise use GetSetMediaTrackInfo
+    if (SetTrackColor) {
+      SetTrackColor(track, color_val | 0x1000000); // Set flag bit
+    } else {
+      int color_with_flag = color_val | 0x1000000;
+      GetSetMediaTrackInfo((INT_PTR)track, "I_CUSTOMCOLOR", &color_with_flag,
+                           nullptr);
     }
   }
 
@@ -940,9 +1027,10 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     const char *mute_str = action->get_string_by_name("mute", true);
     const char *solo_str = action->get_string_by_name("solo", true);
     const char *selected_str = action->get_string_by_name("selected", true);
+    const char *color_str = action->get_string_by_name("color");
 
     if (SetTrackProperties(track_index, name, volume_db_str, pan_str, mute_str,
-                           solo_str, selected_str, error_msg)) {
+                           solo_str, selected_str, color_str, error_msg)) {
       result.Append("{\"action\":\"set_track\",\"success\":true}");
       return true;
     }

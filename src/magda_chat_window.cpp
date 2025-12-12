@@ -402,55 +402,9 @@ void MagdaChatWindow::OnSendMessage() {
         AddReply("MAGDA: Request complete\n\n");
       }
     } else {
-      // Check if error is 401 (unauthorized) - try to refresh token
-      if (strstr(error_msg.Get(), "401") ||
-          strstr(error_msg.Get(), "Unauthorized")) {
-        if (g_rec) {
-          void (*ShowConsoleMsg)(const char *msg) =
-              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-          if (ShowConsoleMsg) {
-            ShowConsoleMsg("MAGDA: Token expired, attempting refresh...\n");
-          }
-        }
-
-        WDL_FastString refresh_error;
-        if (MagdaAuth::RefreshToken(refresh_error)) {
-          // Refresh succeeded - retry the request with new token
-          const char *new_token = MagdaLoginWindow::GetStoredToken();
-          if (new_token && new_token[0]) {
-            httpClient.SetJWTToken(new_token);
-            if (g_rec) {
-              void (*ShowConsoleMsg)(const char *msg) =
-                  (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-              if (ShowConsoleMsg) {
-                ShowConsoleMsg("MAGDA: Token refreshed, retrying request...\n");
-              }
-            }
-
-            // Retry the request
-            if (httpClient.SendQuestion(buffer, response_json, error_msg)) {
-              if (m_hwndReplyDisplay) {
-                AddReply("MAGDA: Request complete\n\n");
-              }
-              return; // Success after refresh
-            }
-          }
-        } else {
-          // Refresh failed - user needs to re-login
-          if (m_hwndReplyDisplay) {
-            AddReply("MAGDA: Session expired. Please log in again.\n\n");
-          }
-          if (g_rec) {
-            void (*ShowConsoleMsg)(const char *msg) =
-                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-            if (ShowConsoleMsg) {
-              ShowConsoleMsg(
-                  "MAGDA: Token refresh failed - user must re-login\n");
-            }
-          }
-          return;
-        }
-      }
+      // Token refresh is now handled automatically by HTTP client
+      // If we still have an error, it means refresh failed or it's a different
+      // error
 
       // Other errors or refresh retry failed
       if (m_hwndReplyDisplay) {

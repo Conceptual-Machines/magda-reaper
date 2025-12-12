@@ -58,6 +58,15 @@ public:
                           WDL_FastString &jwt_token_out,
                           WDL_FastString &error_msg);
 
+  // Get backend URL
+  const char *GetBackendURL() const { return m_backend_url.Get(); }
+
+  // Generic POST request (for plugin processing, etc.)
+  // timeout_seconds: Optional timeout in seconds (0 = use default 30s)
+  bool SendPOSTRequest(const char *endpoint, const char *json_data,
+                       WDL_FastString &response, WDL_FastString &error_msg,
+                       int timeout_seconds = 0);
+
 private:
   WDL_FastString m_backend_url;
   WDL_FastString m_jwt_token;
