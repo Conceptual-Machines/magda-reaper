@@ -218,15 +218,149 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     ListView_SetGridColor(m_hwndAliasList, RGB(200, 200, 200));
 #endif
 
-    // Force ListView to be visible and properly positioned
-    // The resource defines it at (20, 25) but SWELL might not be applying it
-    // correctly
+    // Force ListView to be visible
     ShowWindow(m_hwndAliasList, SW_SHOW);
 
-    // Explicitly position using SetWindowPos with client coordinates
-    // Resource says: 20, 25, 860, 445
-    SetWindowPos(m_hwndAliasList, NULL, 20, 25, 860, 445,
-                 SWP_NOZORDER | SWP_SHOWWINDOW);
+    // Layout: compute positions using client coordinates only (no offset hacks)
+    RECT clientRect;
+    GetClientRect(m_hwnd, &clientRect);
+    int dialogHeight = clientRect.bottom - clientRect.top;
+    int dialogWidth = clientRect.right - clientRect.left;
+
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "MAGDA: Dialog client: width=%d, height=%d\n", dialogWidth,
+                 dialogHeight);
+        ShowConsoleMsg(msg);
+      }
+    }
+
+    // Constants matching resource, interpreted in client coords
+    const int padding = 5;
+    const int statusLabelTop = 5;
+    const int statusLabelHeight = 20;
+    const int listLeft = 20;
+    const int listRightPadding = 20; // 900 width - 20 left = 860 list width
+    const int buttonHeightResource = 30;
+
+    // Compute rects in client coordinates
+    const int statusBottom = statusLabelTop + statusLabelHeight; // 25
+    const int listTop = statusBottom; // right after label
+    const int listWidth =
+        dialogWidth - listLeft - listRightPadding; // 860 at 900 width
+    const int buttonsTop =
+        dialogHeight - buttonHeightResource - padding;   // stick to bottom
+    int listViewHeight = buttonsTop - listTop - padding; // fill remaining space
+
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "MAGDA: Layout calc - dialogHeight=%d, listTop=%d, "
+                 "buttonsTop=%d, listViewHeight=%d\n",
+                 dialogHeight, listTop, buttonsTop, listViewHeight);
+        ShowConsoleMsg(msg);
+      }
+    }
+
+    // Place ListView at computed client coords
+    const int listViewX = listLeft;
+    const int listViewWidth = listWidth;
+
+    // Get button positions from resource
+    HWND scanButton = GetDlgItem(m_hwnd, IDC_SCAN_BUTTON);
+    HWND refreshButton = GetDlgItem(m_hwnd, IDC_REFRESH_BUTTON);
+    int scanButtonX = 20;        // From resource
+    int scanButtonWidth = 120;   // From resource
+    int refreshButtonX = 150;    // From resource
+    int refreshButtonWidth = 80; // From resource
+
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "MAGDA: ListView CALC - dialogHeight=%d, height=%d, x=%d, "
+                 "width=%d\n",
+                 dialogHeight, listViewHeight, listViewX, listViewWidth);
+        ShowConsoleMsg(msg);
+      }
+    }
+
+    if (listViewHeight < 50) {
+      listViewHeight = 50; // Safety minimum
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(
+              msg, sizeof(msg),
+              "MAGDA: WARNING - ListView height too small, using minimum 50\n");
+          ShowConsoleMsg(msg);
+        }
+      }
+    }
+
+    // Apply ListView position (client coords)
+    SetWindowPos(m_hwndAliasList, NULL, listViewX, listTop, listViewWidth,
+                 listViewHeight, SWP_NOZORDER | SWP_SHOWWINDOW);
+
+    // Verify final position
+    RECT listRect2;
+    GetWindowRect(m_hwndAliasList, &listRect2);
+    POINT finalTop = {listRect2.left, listRect2.top};
+    ScreenToClient(m_hwnd, &finalTop);
+
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "MAGDA: ListView FINAL - targetTop=%d, clientY=%d, width=%d, "
+                 "height=%d\n",
+                 listTop, finalTop.y, listViewWidth, listViewHeight);
+        ShowConsoleMsg(msg);
+      }
+    }
+    // Position buttons at the very bottom using client coords
+    const int buttonY = buttonsTop;
+    if (scanButton) {
+      SetWindowPos(scanButton, NULL, scanButtonX, buttonY, scanButtonWidth,
+                   buttonHeightResource, SWP_NOZORDER | SWP_SHOWWINDOW);
+
+      // Verify button position
+      RECT buttonRect2;
+      GetWindowRect(scanButton, &buttonRect2);
+      POINT buttonFinalTop = {buttonRect2.left, buttonRect2.top};
+      ScreenToClient(m_hwnd, &buttonFinalTop);
+
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(
+              msg, sizeof(msg),
+              "MAGDA: Scan button FINAL - targetTop=%d, actualClientY=%d\n",
+              buttonY, buttonFinalTop.y);
+          ShowConsoleMsg(msg);
+        }
+      }
+    }
+    if (refreshButton) {
+      SetWindowPos(refreshButton, NULL, refreshButtonX, buttonY,
+                   refreshButtonWidth, buttonHeightResource,
+                   SWP_NOZORDER | SWP_SHOWWINDOW);
+    }
 
     // Verify the position was set correctly
     if (g_rec) {
