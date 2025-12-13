@@ -138,8 +138,26 @@ bool MagdaPluginScanner::ParsePluginName(const char *full_name,
     }
 
     // Look for manufacturer in parentheses: "Serum (Xfer Records)"
+    // But skip bitness markers like "(x64)", "(x86)"
     const char *open_paren = strchr(name_start, '(');
     if (open_paren) {
+      const char *close_paren = strchr(open_paren, ')');
+      std::string paren_content;
+      if (close_paren) {
+        paren_content.assign(open_paren + 1, close_paren - open_paren - 1);
+      } else {
+        paren_content = open_paren + 1;
+      }
+
+      // Check if this is a bitness marker (not a manufacturer)
+      std::string paren_lower;
+      for (char c : paren_content) {
+        paren_lower += (char)std::tolower(c);
+      }
+      bool is_bitness = (paren_lower == "x64" || paren_lower == "x86" ||
+                         paren_lower == "64bit" || paren_lower == "32bit" ||
+                         paren_lower == "64-bit" || paren_lower == "32-bit");
+
       // Extract name (everything before opening paren, trimmed)
       int name_len = open_paren - name_start;
       while (name_len > 0 && name_start[name_len - 1] == ' ') {
@@ -147,14 +165,9 @@ bool MagdaPluginScanner::ParsePluginName(const char *full_name,
       }
       info.name.assign(name_start, name_len);
 
-      // Extract manufacturer (everything between parentheses)
-      const char *close_paren = strchr(open_paren, ')');
-      if (close_paren) {
-        int mfr_len = close_paren - open_paren - 1;
-        info.manufacturer.assign(open_paren + 1, mfr_len);
-      } else {
-        // No closing paren, use rest of string
-        info.manufacturer = open_paren + 1;
+      // Only set manufacturer if it's not a bitness marker
+      if (!is_bitness && !paren_content.empty()) {
+        info.manufacturer = paren_content;
       }
     } else {
       // No manufacturer, name is everything after colon
@@ -803,59 +816,45 @@ std::vector<std::string> MagdaPluginScanner::GenerateAbbreviationAliases(
 }
 
 // Generate all aliases for a single plugin
+// Simple approach: lowercase name with underscores instead of spaces
 std::vector<std::string>
 MagdaPluginScanner::GenerateAliasesForPlugin(const PluginInfo &plugin) const {
-  std::set<std::string> alias_set; // Use set to avoid duplicates
+  std::vector<std::string> aliases;
 
-  // Extract base name
-  std::string base_name = ExtractBaseName(plugin.full_name);
+  // Use plugin.name if available (cleaner), otherwise extract from full_name
+  std::string base_name =
+      plugin.name.empty() ? ExtractBaseName(plugin.full_name) : plugin.name;
   if (base_name.empty()) {
-    return std::vector<std::string>();
+    return aliases;
   }
 
-  // 1. Simple lowercase alias
-  std::string simple = ToLower(base_name);
-  alias_set.insert(simple);
-
-  // 2. Remove spaces
-  std::string no_spaces = simple;
-  size_t pos = 0;
-  while ((pos = no_spaces.find(' ', pos)) != std::string::npos) {
-    no_spaces.erase(pos, 1);
-  }
-  if (no_spaces != simple) {
-    alias_set.insert(no_spaces);
-  }
-
-  // 3. Version aliases
-  auto version_aliases = GenerateVersionAliases(base_name);
-  for (const auto &v : version_aliases) {
-    alias_set.insert(ToLower(v));
-  }
-
-  // 4. CamelCase splitting
-  auto camel_aliases = SplitCamelCase(base_name);
-  for (const auto &ca : camel_aliases) {
-    alias_set.insert(ToLower(ca));
-  }
-
-  // 5. Manufacturer aliases
-  if (!plugin.manufacturer.empty()) {
-    auto manufacturer_aliases =
-        GenerateManufacturerAliases(base_name, plugin.manufacturer);
-    for (const auto &ma : manufacturer_aliases) {
-      alias_set.insert(ToLower(ma));
+  // Convert to lowercase and replace spaces with underscores
+  std::string alias;
+  for (char c : base_name) {
+    if (c == ' ') {
+      alias += '_';
+    } else {
+      alias += (char)std::tolower(c);
     }
   }
 
-  // 6. Abbreviation aliases
-  auto abbrev_aliases = GenerateAbbreviationAliases(base_name);
-  for (const auto &aa : abbrev_aliases) {
-    alias_set.insert(ToLower(aa));
+  // Remove any double underscores and trim
+  while (alias.find("__") != std::string::npos) {
+    size_t pos = alias.find("__");
+    alias.erase(pos, 1);
+  }
+  while (!alias.empty() && alias.front() == '_') {
+    alias.erase(0, 1);
+  }
+  while (!alias.empty() && alias.back() == '_') {
+    alias.pop_back();
   }
 
-  // Convert set to vector
-  return std::vector<std::string>(alias_set.begin(), alias_set.end());
+  if (!alias.empty()) {
+    aliases.push_back(alias);
+  }
+
+  return aliases;
 }
 
 // Generate aliases programmatically (no API call)
@@ -884,8 +883,13 @@ bool MagdaPluginScanner::GenerateAliases() {
   m_aliasesByPlugin.clear();
 
   // Generate aliases for each plugin
+  // Use ident as key (unique), fall back to full_name if ident is empty
   int skipped_count = 0;
   for (const auto &plugin : deduplicated) {
+    // Use ident as the unique key, fall back to full_name
+    const std::string &plugin_key =
+        plugin.ident.empty() ? plugin.full_name : plugin.ident;
+
     auto plugin_aliases = GenerateAliasesForPlugin(plugin);
 
     // If no aliases generated, log it for debugging
@@ -905,8 +909,8 @@ bool MagdaPluginScanner::GenerateAliases() {
       std::string base_name = ExtractBaseName(plugin.full_name);
       if (!base_name.empty()) {
         std::string fallback = ToLower(base_name);
-        m_aliases[fallback] = plugin.full_name;
-        m_aliasesByPlugin[plugin.full_name].push_back(fallback);
+        m_aliases[fallback] = plugin_key;
+        m_aliasesByPlugin[plugin_key].push_back(fallback);
       }
       continue;
     }
@@ -915,14 +919,33 @@ bool MagdaPluginScanner::GenerateAliases() {
     for (const auto &alias : plugin_aliases) {
       std::string normalized = ToLower(Trim(alias));
       if (!normalized.empty()) {
-        // Handle conflicts: keep first mapping
+        // Handle conflicts: if alias exists, try adding manufacturer prefix
         auto it = m_aliases.find(normalized);
-        if (it != m_aliases.end() && it->second != plugin.full_name) {
-          // Conflict - keep first (already logged in Go version, but we'll skip
-          // logging here)
+        if (it != m_aliases.end() && it->second != plugin_key) {
+          // Conflict - try manufacturer-prefixed version
+          if (!plugin.manufacturer.empty()) {
+            std::string mfr_lower;
+            for (char c : plugin.manufacturer) {
+              if (c == ' ') {
+                mfr_lower += '_';
+              } else {
+                mfr_lower += (char)std::tolower(c);
+              }
+            }
+            std::string unique_alias = mfr_lower + "_" + normalized;
+            if (m_aliases.find(unique_alias) == m_aliases.end()) {
+              m_aliases[unique_alias] = plugin_key;
+              m_aliasesByPlugin[plugin_key].push_back(unique_alias);
+            }
+          }
+          // If no manufacturer or still conflicts, just store for display
+          // (won't be in forward mapping but will show in list)
+          if (m_aliasesByPlugin[plugin_key].empty()) {
+            m_aliasesByPlugin[plugin_key].push_back(normalized);
+          }
         } else {
-          m_aliases[normalized] = plugin.full_name;
-          m_aliasesByPlugin[plugin.full_name].push_back(normalized);
+          m_aliases[normalized] = plugin_key;
+          m_aliasesByPlugin[plugin_key].push_back(normalized);
         }
       }
     }

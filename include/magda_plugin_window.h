@@ -31,4 +31,5 @@ private:
   void OnCommand(int command, int notifyCode);
   void OnScanPlugins();
   void RefreshAliasList();
+  void SaveAliases();
 };

@@ -490,7 +490,7 @@ void MagdaPluginWindow::OnCommand(int command, int notifyCode) {
     OnScanPlugins();
     break;
   case IDC_REFRESH_BUTTON:
-    RefreshAliasList();
+    SaveAliases();
     break;
   }
 }
@@ -615,7 +615,7 @@ void MagdaPluginWindow::RefreshAliasList() {
     lvi.mask = LVIF_TEXT;
     lvi.iItem = 0;
     lvi.iSubItem = 0;
-    lvi.pszText = (char *)"No plugins found. Click 'Scan Plugins' to scan "
+    lvi.pszText = (char *)"No plugins found. Click 'Generate' to create "
                           "installed plugins.";
     int itemIndex = ListView_InsertItem(m_hwndAliasList, &lvi);
     ListView_SetItemText(m_hwndAliasList, itemIndex, 1, (char *)"");
@@ -633,27 +633,43 @@ void MagdaPluginWindow::RefreshAliasList() {
     return;
   }
 
-  // Get aliases (reverse mapping: full_name -> [aliases])
+  // Get aliases (reverse mapping: ident -> [aliases])
   const auto &aliasesByPlugin = g_pluginScanner->GetAliasesByPlugin();
 
-  // Display all plugins with their aliases in two columns
+  // Use deduplicated plugins to match how aliases are stored
+  std::vector<PluginInfo> deduplicated = g_pluginScanner->DeduplicatePlugins();
+
+  // Display deduplicated plugins with their aliases in two columns
   int row = 0;
-  for (const auto &plugin : plugins) {
-    // Insert row with plugin name in column 0 (not full_name, just the name)
+  for (const auto &plugin : deduplicated) {
+    // Insert row with plugin name in column 0
+    // Format: "Name (Manufacturer)" when manufacturer is available
     LVITEM lvi = {0};
     lvi.mask = LVIF_TEXT;
     lvi.iItem = row;
     lvi.iSubItem = 0;
-    // Use plugin.name instead of plugin.full_name for cleaner display
-    const char *displayName =
-        plugin.name.empty() ? plugin.full_name.c_str() : plugin.name.c_str();
-    lvi.pszText = (char *)displayName;
+
+    // Build display name with manufacturer if available
+    std::string displayNameStr;
+    if (!plugin.name.empty()) {
+      displayNameStr = plugin.name;
+    } else {
+      displayNameStr = plugin.full_name;
+    }
+    if (!plugin.manufacturer.empty()) {
+      displayNameStr += " (" + plugin.manufacturer + ")";
+    }
+
+    lvi.pszText = (char *)displayNameStr.c_str();
     int itemIndex = ListView_InsertItem(m_hwndAliasList, &lvi);
 
     // Set single alias in column 1 (use shortest alias for autocomplete, filter
     // out x64)
+    // Use ident as key (matches how aliases are stored), fall back to full_name
+    const std::string &plugin_key =
+        plugin.ident.empty() ? plugin.full_name : plugin.ident;
     std::string aliasStr;
-    auto it = aliasesByPlugin.find(plugin.full_name);
+    auto it = aliasesByPlugin.find(plugin_key);
     if (it != aliasesByPlugin.end() && !it->second.empty()) {
       // Find the shortest alias that doesn't contain "(x64)" or similar
       const std::string *shortest = nullptr;
@@ -740,6 +756,30 @@ void MagdaPluginWindow::RefreshAliasList() {
                "MAGDA: Added %d rows to listview, ListView_GetItemCount=%d\n",
                row, ListView_GetItemCount(m_hwndAliasList));
       ShowConsoleMsg(msg);
+    }
+  }
+}
+
+void MagdaPluginWindow::SaveAliases() {
+  if (!g_pluginScanner || !m_hwndAliasList) {
+    return;
+  }
+
+  // TODO: Read edited aliases from ListView and save them
+  // For now, just save the current aliases to cache
+  g_pluginScanner->SaveToCache();
+
+  // Update status
+  HWND statusLabel = GetDlgItem(m_hwnd, IDC_STATUS_LABEL);
+  if (statusLabel) {
+    SetWindowText(statusLabel, "Aliases saved to cache");
+  }
+
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Aliases saved to cache\n");
     }
   }
 }
