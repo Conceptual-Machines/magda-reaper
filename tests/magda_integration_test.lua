@@ -198,6 +198,62 @@ function test_magda_set_track_multiple_properties()
   reaper.DeleteTrack(track)
 end
 
+function test_magda_add_midi()
+  log("Testing MAGDA add_midi action...")
+
+  -- Create a test track
+  local track_idx = reaper.GetNumTracks()
+  reaper.InsertTrackAtIndex(track_idx, false)
+  local track = reaper.GetTrack(0, track_idx)
+
+  -- Create a clip first (add_midi needs a clip to add notes to)
+  local action_json = string.format('{"action":"create_clip_at_bar","track":%d,"bar":1,"length_bars":4}', track_idx)
+  local success, result = execute_magda_action(action_json)
+
+  if not success then
+    assert(false, "MAGDA create_clip_at_bar failed (prerequisite for add_midi): " .. (result or "unknown error"))
+    reaper.DeleteTrack(track)
+    return
+  end
+
+  -- Verify clip was created
+  local item_count = reaper.CountTrackMediaItems(track)
+  assert(item_count == 1, "Clip was created for add_midi test")
+
+  -- Execute MAGDA action to add MIDI notes
+  -- Notes: E4 (pitch 52), G4 (pitch 55), B4 (pitch 59) - E minor chord
+  local add_midi_json = string.format('{"action":"add_midi","track":%d,"notes":[{"pitch":52,"velocity":100,"start":0,"length":1},{"pitch":55,"velocity":100,"start":0,"length":1},{"pitch":59,"velocity":100,"start":0,"length":1}]}', track_idx)
+  success, result = execute_magda_action(add_midi_json)
+
+  if not success then
+    assert(false, "MAGDA add_midi failed: " .. (result or "unknown error"))
+    reaper.DeleteTrack(track)
+    return
+  end
+
+  -- Verify MIDI notes were added
+  local item = reaper.GetTrackMediaItem(track, 0)
+  if item then
+    local take = reaper.GetActiveTake(item)
+    if take then
+      -- Count MIDI notes in the take
+      local note_count = 0
+      local retval, notecnt, ccevtcnt, textsyxevtcnt = reaper.MIDI_CountEvts(take, false, false)
+      if retval then
+        note_count = notecnt
+      end
+      assert(note_count == 3, "MIDI notes were added via MAGDA action (expected 3, got " .. note_count .. ")")
+    else
+      assert(false, "Take not found after add_midi")
+    end
+  else
+    assert(false, "Media item not found after add_midi")
+  end
+
+  -- Cleanup
+  reaper.DeleteTrack(track)
+end
+
 -- Run all tests
 log("=" .. string.rep("=", 60))
 log("Starting MAGDA REAPER Integration Tests")
@@ -223,6 +279,7 @@ test_magda_set_track_volume()
 test_magda_create_clip()
 test_magda_set_track_selected()
 test_magda_set_track_multiple_properties()
+test_magda_add_midi()
 
 -- Print summary
 log("=" .. string.rep("=", 60))

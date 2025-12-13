@@ -45,6 +45,8 @@ private:
   static bool DeleteTrack(int track_index, WDL_FastString &error_msg);
   static bool DeleteClip(int track_index, int clip_index,
                          WDL_FastString &error_msg);
+  static bool AddMIDI(int track_index, wdl_json_element *notes_array,
+                      WDL_FastString &error_msg);
 
   // Unified property setters (Phase 1: Refactoring)
   static bool SetTrackProperties(int track_index, const char *name,

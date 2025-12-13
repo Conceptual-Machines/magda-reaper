@@ -1149,6 +1149,19 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
 
     result.Append("{\"action\":\"delete_clip\",\"success\":true}");
     return true;
+  } else if (strcmp(action_type, "add_midi") == 0) {
+    const char *track_str = action->get_string_by_name("track", true);
+    wdl_json_element *notes_array = action->get_item_by_name("notes");
+    if (!track_str || !notes_array) {
+      error_msg.Set("Missing 'track' or 'notes' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+    if (AddMIDI(track_index, notes_array, error_msg)) {
+      result.Append("{\"action\":\"add_midi\",\"success\":true}");
+      return true;
+    }
+    return false;
   } else {
     error_msg.Set("Unknown action type");
     return false;
@@ -1256,6 +1269,519 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
   }
 
   return success;
+}
+
+bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
+                           WDL_FastString &error_msg) {
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI called: track_index=%d\n", track_index);
+    ShowConsoleMsg(log_msg);
+  }
+
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI ERROR: REAPER API not available\n");
+    return false;
+  }
+
+  if (!notes_array || !notes_array->is_array()) {
+    error_msg.Set("'notes' must be an array");
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI ERROR: notes must be an array\n");
+    return false;
+  }
+
+  // Get REAPER API functions
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  int (*CountTrackMediaItems)(MediaTrack *) =
+      (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+  MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
+      (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
+  MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+      (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+  MediaItem_Take *(*GetMediaItemTake)(MediaItem *, int) =
+      (MediaItem_Take * (*)(MediaItem *, int))
+          g_rec->GetFunc("GetMediaItemTake");
+  int (*GetMediaItemNumTakes)(MediaItem *) =
+      (int (*)(MediaItem *))g_rec->GetFunc("GetMediaItemNumTakes");
+  PCM_source *(*GetMediaItemTake_Source)(MediaItem_Take *) =
+      (PCM_source * (*)(MediaItem_Take *))
+          g_rec->GetFunc("GetMediaItemTake_Source");
+  MediaItem *(*CreateNewMIDIItemInProj)(MediaTrack *, double, double,
+                                        const bool *) =
+      (MediaItem * (*)(MediaTrack *, double, double, const bool *))
+          g_rec->GetFunc("CreateNewMIDIItemInProj");
+  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) = (bool (*)(
+      MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
+  bool (*MIDI_InsertNote)(MediaItem_Take *, bool, bool, double, double, int,
+                          int, int, const bool *) =
+      (bool (*)(MediaItem_Take *, bool, bool, double, double, int, int, int,
+                const bool *))g_rec->GetFunc("MIDI_InsertNote");
+  void (*MIDI_Sort)(MediaItem_Take *) =
+      (void (*)(MediaItem_Take *))g_rec->GetFunc("MIDI_Sort");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+  double (*GetMediaItemPosition)(MediaItem *) =
+      (double (*)(MediaItem *))g_rec->GetFunc("GetMediaItemPosition");
+
+  // Check each function individually and log which ones are missing
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: AddMIDI: Checking REAPER API functions...\n");
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetTrack: %s\n",
+             GetTrack ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: CountTrackMediaItems: %s\n",
+             CountTrackMediaItems ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: GetTrackMediaItem: %s\n",
+             GetTrackMediaItem ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetActiveTake: %s\n",
+             GetActiveTake ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetMediaItemTake: %s\n",
+             GetMediaItemTake ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: GetMediaItemNumTakes: %s\n",
+             GetMediaItemNumTakes ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: GetMediaItemTake_Source: %s\n",
+             GetMediaItemTake_Source ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: CreateNewMIDIItemInProj: %s\n",
+             CreateNewMIDIItemInProj ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: SetMediaItemTake_Source: %s\n",
+             SetMediaItemTake_Source ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: MIDI_InsertNote: %s\n",
+             MIDI_InsertNote ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: MIDI_Sort: %s\n",
+             MIDI_Sort ? "OK" : "MISSING");
+    ShowConsoleMsg(log_msg);
+  }
+
+  if (!GetTrack || !CountTrackMediaItems || !GetTrackMediaItem ||
+      !GetActiveTake || !GetMediaItemTake || !GetMediaItemNumTakes ||
+      !GetMediaItemTake_Source || !CreateNewMIDIItemInProj ||
+      !SetMediaItemTake_Source || !MIDI_InsertNote || !MIDI_Sort) {
+    error_msg.Set("Required REAPER API functions not available");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: AddMIDI ERROR: Required REAPER API functions not "
+                     "available\n");
+      ShowConsoleMsg("MAGDA: AddMIDI ERROR: Missing functions listed above\n");
+    }
+    return false;
+  }
+
+  // Get the track
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: AddMIDI ERROR: Track not found at index %d\n",
+               track_index);
+      ShowConsoleMsg(log_msg);
+    }
+    return false;
+  }
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: Found track at index %d\n", track_index);
+    ShowConsoleMsg(log_msg);
+  }
+
+  // Find the most recent clip on the track (or create one if none exists)
+  MediaItem *item = nullptr;
+  int num_items = CountTrackMediaItems(track);
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: Track has %d media items\n", num_items);
+    ShowConsoleMsg(log_msg);
+  }
+
+  if (num_items > 0) {
+    // Get the last clip
+    item = GetTrackMediaItem(track, num_items - 1);
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: Using existing media item\n");
+  } else {
+    // No clips exist, create one at bar 1, 4 bars long
+    if (ShowConsoleMsg)
+      ShowConsoleMsg(
+          "MAGDA: AddMIDI: No clips exist, creating new clip at bar 1\n");
+    if (!CreateClipAtBar(track_index, 1, 4, error_msg)) {
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI ERROR: Failed to create clip: %s\n",
+                 error_msg.Get());
+        ShowConsoleMsg(log_msg);
+      }
+      return false;
+    }
+    num_items = CountTrackMediaItems(track);
+    if (num_items > 0) {
+      item = GetTrackMediaItem(track, num_items - 1);
+      if (ShowConsoleMsg)
+        ShowConsoleMsg("MAGDA: AddMIDI: Successfully created new clip\n");
+    }
+  }
+
+  if (!item) {
+    error_msg.Set("Failed to get or create clip");
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI ERROR: Failed to get or create clip\n");
+    return false;
+  }
+
+  // Get or create a MIDI take
+  MediaItem_Take *take = GetActiveTake(item);
+  bool needs_midi_take = false;
+
+  if (!take) {
+    // No take exists, create one
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: No take exists, will create MIDI take\n");
+    needs_midi_take = true;
+  } else {
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: Found existing take, checking if MIDI\n");
+    // Check if the take is MIDI
+    PCM_source *source = GetMediaItemTake_Source(take);
+    if (!source) {
+      if (ShowConsoleMsg)
+        ShowConsoleMsg(
+            "MAGDA: AddMIDI: Take has no source, will create MIDI take\n");
+      needs_midi_take = true;
+    } else {
+      // Check if it's a MIDI source (we'll assume it's not if we can't verify)
+      // For now, create a new MIDI take
+      if (ShowConsoleMsg)
+        ShowConsoleMsg("MAGDA: AddMIDI: Take has source but not MIDI, will "
+                       "create MIDI take\n");
+      needs_midi_take = true;
+    }
+  }
+
+  if (needs_midi_take) {
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: Creating MIDI item using "
+                     "CreateNewMIDIItemInProj...\n");
+
+    // Get item position and length to recreate it as MIDI
+    double item_pos = GetMediaItemPosition ? GetMediaItemPosition(item) : 0.0;
+    double item_len = 4.0; // Default to 4 seconds
+    double (*GetMediaItemLength)(MediaItem *) =
+        (double (*)(MediaItem *))g_rec->GetFunc("GetMediaItemLength");
+    if (GetMediaItemLength) {
+      double old_len = GetMediaItemLength(item);
+      if (ShowConsoleMsg) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Original clip length: %.2f seconds\n",
+                 old_len);
+        ShowConsoleMsg(log_msg);
+      }
+      item_len = old_len;
+    }
+
+    // Calculate required length from notes (find max end time in beats/quarter
+    // notes)
+    double max_end_beats = 0.0;
+    int note_count = notes_array->m_array ? notes_array->m_array->GetSize() : 0;
+    for (int i = 0; i < note_count; i++) {
+      const wdl_json_element *note = notes_array->m_array->Get(i);
+      if (note) {
+        const wdl_json_element *start_el = note->get_item_by_name("start");
+        const wdl_json_element *len_el = note->get_item_by_name("length");
+        double note_start =
+            (start_el && start_el->m_value) ? atof(start_el->m_value) : 0.0;
+        double note_len =
+            (len_el && len_el->m_value) ? atof(len_el->m_value) : 1.0;
+        double note_end = note_start + note_len;
+        if (note_end > max_end_beats)
+          max_end_beats = note_end;
+      }
+    }
+
+    if (ShowConsoleMsg) {
+      char log_msg[256];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: AddMIDI: Required length from notes: %.2f beats "
+               "(quarter notes)\n",
+               max_end_beats);
+      ShowConsoleMsg(log_msg);
+    }
+
+    // Delete the old item
+    bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) = (bool (*)(
+        MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
+    if (DeleteTrackMediaItem) {
+      DeleteTrackMediaItem(track, item);
+      if (ShowConsoleMsg)
+        ShowConsoleMsg("MAGDA: AddMIDI: Deleted old item\n");
+    }
+
+    // Get item position in quarter notes
+    // Use TimeMap2_timeToQN to convert the original position from seconds to QN
+    double (*TimeMap2_timeToQN)(ReaProject *, double) =
+        (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_timeToQN");
+    double item_pos_qn = 0.0;
+    if (TimeMap2_timeToQN) {
+      item_pos_qn = TimeMap2_timeToQN(nullptr, item_pos);
+    }
+
+    if (ShowConsoleMsg) {
+      char log_msg[256];
+      snprintf(
+          log_msg, sizeof(log_msg),
+          "MAGDA: AddMIDI: Creating MIDI item at %.2f QN, length %.2f QN\n",
+          item_pos_qn, max_end_beats);
+      ShowConsoleMsg(log_msg);
+    }
+
+    // Create new MIDI item using quarter notes (beats) - tempo independent!
+    // qnInOptional = true means times are in quarter notes
+    bool use_qn = true;
+    item = CreateNewMIDIItemInProj(track, item_pos_qn,
+                                   item_pos_qn + max_end_beats, &use_qn);
+    if (!item) {
+      error_msg.Set("Failed to create MIDI item");
+      if (ShowConsoleMsg)
+        ShowConsoleMsg("MAGDA: AddMIDI ERROR: Failed to create MIDI item\n");
+      return false;
+    }
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: MIDI item created successfully\n");
+
+    // Verify and explicitly set the item length
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
+        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+    bool (*SetMediaItemInfo_Value)(MediaItem *, const char *, double) =
+        (bool (*)(MediaItem *, const char *, double))g_rec->GetFunc(
+            "SetMediaItemInfo_Value");
+    double (*TimeMap2_QNToTime)(ReaProject *, double) =
+        (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
+
+    if (GetMediaItemInfo_Value && SetMediaItemInfo_Value && TimeMap2_QNToTime) {
+      double actual_pos = GetMediaItemInfo_Value(item, "D_POSITION");
+      double actual_len = GetMediaItemInfo_Value(item, "D_LENGTH");
+      if (ShowConsoleMsg) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Item created - pos=%.4f sec, len=%.4f sec\n",
+                 actual_pos, actual_len);
+        ShowConsoleMsg(log_msg);
+      }
+
+      // Convert desired QN length to seconds using project tempo
+      double desired_end_time =
+          TimeMap2_QNToTime(nullptr, item_pos_qn + max_end_beats);
+      double desired_start_time = TimeMap2_QNToTime(nullptr, item_pos_qn);
+      double desired_len_seconds = desired_end_time - desired_start_time;
+
+      if (ShowConsoleMsg) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Desired length: %.4f sec (%.2f QN at current "
+                 "tempo)\n",
+                 desired_len_seconds, max_end_beats);
+        ShowConsoleMsg(log_msg);
+      }
+
+      // If the item is shorter than desired, extend it
+      if (actual_len < desired_len_seconds - 0.001) {
+        SetMediaItemInfo_Value(item, "D_LENGTH", desired_len_seconds);
+        if (ShowConsoleMsg) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: AddMIDI: Extended item to %.4f sec\n",
+                   desired_len_seconds);
+          ShowConsoleMsg(log_msg);
+        }
+      }
+    }
+
+    // Get the active take from the new MIDI item
+    take = GetActiveTake(item);
+    if (!take) {
+      error_msg.Set("Failed to get MIDI take from new item");
+      if (ShowConsoleMsg)
+        ShowConsoleMsg(
+            "MAGDA: AddMIDI ERROR: Failed to get MIDI take from new item\n");
+      return false;
+    }
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: Got active MIDI take\n");
+  }
+
+  if (!take) {
+    error_msg.Set("Failed to get MIDI take");
+    return false;
+  }
+
+  // Get REAPER's function to convert project QN to PPQ for this take
+  double (*MIDI_GetPPQPosFromProjQN)(MediaItem_Take *, double) = (double (*)(
+      MediaItem_Take *, double))g_rec->GetFunc("MIDI_GetPPQPosFromProjQN");
+
+  if (!MIDI_GetPPQPosFromProjQN) {
+    error_msg.Set("MIDI_GetPPQPosFromProjQN not available");
+    if (ShowConsoleMsg)
+      ShowConsoleMsg(
+          "MAGDA: AddMIDI ERROR: MIDI_GetPPQPosFromProjQN not available\n");
+    return false;
+  }
+
+  // Insert each note
+  int notes_inserted = 0;
+  bool noSort = true; // Don't sort until all notes are inserted
+
+  // Count total notes first
+  int total_notes = 0;
+  int j = 0;
+  wdl_json_element *temp_note = notes_array->enum_item(j);
+  while (temp_note) {
+    if (temp_note->is_object())
+      total_notes++;
+    j++;
+    temp_note = notes_array->enum_item(j);
+  }
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Processing %d notes\n",
+             total_notes);
+    ShowConsoleMsg(log_msg);
+  }
+
+  int i = 0;
+  wdl_json_element *note_obj = notes_array->enum_item(i);
+  while (note_obj) {
+    if (!note_obj->is_object()) {
+      i++;
+      note_obj = notes_array->enum_item(i);
+      continue;
+    }
+
+    // Parse note properties
+    const char *pitch_str = note_obj->get_string_by_name("pitch", true);
+    const char *velocity_str = note_obj->get_string_by_name("velocity", true);
+    const char *start_str = note_obj->get_string_by_name("start", true);
+    const char *length_str = note_obj->get_string_by_name("length", true);
+
+    if (!pitch_str || !start_str || !length_str) {
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Skipping invalid note at index %d (missing "
+                 "fields)\n",
+                 i);
+        ShowConsoleMsg(log_msg);
+      }
+      i++;
+      note_obj = notes_array->enum_item(i);
+      continue; // Skip invalid notes
+    }
+
+    int pitch = atoi(pitch_str);
+    int velocity = velocity_str ? atoi(velocity_str) : 100; // Default velocity
+    double start_beats = atof(start_str);
+    double length_beats = atof(length_str);
+
+    // Convert beats (QN) to PPQ using REAPER's function - this handles tempo
+    // correctly
+    double start_ppq = MIDI_GetPPQPosFromProjQN(take, start_beats);
+    double end_ppq = MIDI_GetPPQPosFromProjQN(take, start_beats + length_beats);
+
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: AddMIDI: Inserting note %d: pitch=%d, velocity=%d, "
+               "start=%.2f QN (%.0f PPQ), end=%.2f QN (%.0f PPQ)\n",
+               notes_inserted + 1, pitch, velocity, start_beats, start_ppq,
+               start_beats + length_beats, end_ppq);
+      ShowConsoleMsg(log_msg);
+    }
+
+    // Insert the note (channel 0, selected=false, muted=false)
+    if (MIDI_InsertNote(take, false, false, start_ppq, end_ppq, 0, pitch,
+                        velocity, &noSort)) {
+      notes_inserted++;
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Successfully inserted note %d\n",
+                 notes_inserted);
+        ShowConsoleMsg(log_msg);
+      }
+    } else {
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: WARNING: MIDI_InsertNote returned false for "
+                 "note %d (pitch=%d)\n",
+                 notes_inserted + 1, pitch);
+        ShowConsoleMsg(log_msg);
+      }
+    }
+
+    i++;
+    note_obj = notes_array->enum_item(i);
+  }
+
+  // Sort MIDI events after all insertions
+  if (notes_inserted > 0) {
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: Sorting MIDI events...\n");
+    MIDI_Sort(take);
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: MIDI events sorted\n");
+  }
+
+  // Update UI
+  if (UpdateArrange) {
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI: Updating arrange view...\n");
+    UpdateArrange();
+  }
+
+  if (notes_inserted == 0) {
+    error_msg.Set("No valid notes were inserted");
+    if (ShowConsoleMsg)
+      ShowConsoleMsg("MAGDA: AddMIDI ERROR: No valid notes were inserted\n");
+    return false;
+  }
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddMIDI: SUCCESS - Inserted %d notes out of %d total\n",
+             notes_inserted, total_notes);
+    ShowConsoleMsg(log_msg);
+  }
+
+  return true;
 }
 
 // Helper function: Convert bar number (1-based) to time position
