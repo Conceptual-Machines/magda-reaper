@@ -26,6 +26,7 @@ private:
   HWND m_hwndSendButton;
   HWND m_hwndRequestHeader;  // "REQUEST" header label
   HWND m_hwndResponseHeader; // "RESPONSE" header label
+  HWND m_hwndControlsHeader; // "CONTROLS" header label
   HWND m_hwndStatusFooter;   // Status footer with API health
 
   int m_requestLineCount;  // Track request line count for alignment

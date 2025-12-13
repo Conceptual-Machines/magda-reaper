@@ -22,13 +22,19 @@ extern HINSTANCE g_hInst;
 #define IDC_REQUEST_HEADER 1005
 #define IDC_RESPONSE_HEADER 1006
 #define IDC_STATUS_FOOTER 1007
+#define IDC_CONTROLS_HEADER 1008
+#define IDC_BTN_MIX_ANALYSIS 1010
+#define IDC_BTN_MASTER_ANALYSIS 1011
+#define IDC_BTN_GAIN_STAGING 1012
+#define IDC_BTN_HOUSEKEEPING 1013
 
 MagdaChatWindow::MagdaChatWindow()
     : m_hwnd(nullptr), m_hwndQuestionInput(nullptr),
       m_hwndQuestionDisplay(nullptr), m_hwndReplyDisplay(nullptr),
       m_hwndSendButton(nullptr), m_hwndRequestHeader(nullptr),
-      m_hwndResponseHeader(nullptr), m_hwndStatusFooter(nullptr),
-      m_requestLineCount(0), m_responseLineCount(0) {}
+      m_hwndResponseHeader(nullptr), m_hwndControlsHeader(nullptr),
+      m_hwndStatusFooter(nullptr), m_requestLineCount(0),
+      m_responseLineCount(0) {}
 
 MagdaChatWindow::~MagdaChatWindow() {
   if (m_hwnd) {
@@ -164,6 +170,7 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     m_hwndSendButton = GetDlgItem(m_hwnd, IDC_SEND_BUTTON);
     m_hwndRequestHeader = GetDlgItem(m_hwnd, IDC_REQUEST_HEADER);
     m_hwndResponseHeader = GetDlgItem(m_hwnd, IDC_RESPONSE_HEADER);
+    m_hwndControlsHeader = GetDlgItem(m_hwnd, IDC_CONTROLS_HEADER);
     m_hwndStatusFooter = GetDlgItem(m_hwnd, IDC_STATUS_FOOTER);
 
     // Validate required controls were created
@@ -213,7 +220,8 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
   case WM_CTLCOLORSTATIC: {
     // Set darker color for header labels
     HWND hCtrl = (HWND)lParam;
-    if (hCtrl == m_hwndRequestHeader || hCtrl == m_hwndResponseHeader) {
+    if (hCtrl == m_hwndRequestHeader || hCtrl == m_hwndResponseHeader ||
+        hCtrl == m_hwndControlsHeader) {
       HDC hdc = (HDC)wParam;
       SetTextColor(hdc, RGB(80, 80, 80)); // Dark gray
       SetBkMode(hdc, TRANSPARENT);
@@ -568,10 +576,12 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
   int footerHeight = 25;
   int spacing = 10;
 
-  // Calculate width for each display pane
-  int paneWidth = (width - padding * 2 - spacing) / 2;
-  if (paneWidth < 100)
-    paneWidth = 100;
+  // Calculate width for each display pane (3 columns)
+  int controlsPanelWidth = 180; // Fixed width for controls panel
+  int chatAreaWidth = width - padding * 2 - controlsPanelWidth - spacing * 2;
+  int paneWidth = (chatAreaWidth - spacing) / 2;
+  if (paneWidth < 80)
+    paneWidth = 80;
 
   // Layout from top to bottom (in normal coords):
   // - Input row at top
@@ -600,8 +610,8 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
   int displayTop = height - displayTop_normal - displayHeight;
   int footerY = height - footerY_normal - footerHeight;
 
-  // Input field: at top
-  int inputWidth = width - padding * 2 - buttonWidth - spacing;
+  // Input field: at top (spans chat columns only, not controls)
+  int inputWidth = chatAreaWidth - buttonWidth - spacing;
   if (inputWidth < 50)
     inputWidth = 50;
   if (m_hwndQuestionInput) {
@@ -609,9 +619,9 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
                  inputHeight, SWP_NOZORDER);
   }
 
-  // Send button: right of input
+  // Send button: right of input (aligned with chat area)
   if (m_hwndSendButton) {
-    SetWindowPos(m_hwndSendButton, NULL, width - padding - buttonWidth, inputY,
+    SetWindowPos(m_hwndSendButton, NULL, padding + inputWidth + spacing, inputY,
                  buttonWidth, buttonHeight, SWP_NOZORDER);
   }
 
@@ -621,10 +631,17 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
                  headerHeight, SWP_NOZORDER);
   }
 
-  // Response header: right
+  // Response header: middle
   if (m_hwndResponseHeader) {
     SetWindowPos(m_hwndResponseHeader, NULL, padding + paneWidth + spacing,
                  headerY, paneWidth, headerHeight, SWP_NOZORDER);
+  }
+
+  // Controls header: right
+  int controlsX = padding + paneWidth + spacing + paneWidth + spacing;
+  if (m_hwndControlsHeader) {
+    SetWindowPos(m_hwndControlsHeader, NULL, controlsX, headerY,
+                 controlsPanelWidth, headerHeight, SWP_NOZORDER);
   }
 
   // Request display: left pane
@@ -633,10 +650,31 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
                  displayHeight, SWP_NOZORDER);
   }
 
-  // Response display: right pane
+  // Response display: middle pane
   if (m_hwndReplyDisplay) {
     SetWindowPos(m_hwndReplyDisplay, NULL, padding + paneWidth + spacing,
                  displayTop, paneWidth, displayHeight, SWP_NOZORDER);
+  }
+
+  // Control buttons: right column (need Y-flip like other controls)
+  int btnWidth = controlsPanelWidth - 10;
+  int btnHeight = 28;
+  int btnSpacing = 8;
+  int btnStartY_normal = headerY_normal + headerHeight + 10;
+
+  // Button IDs - reduced set
+  int buttonIDs[] = {IDC_BTN_MIX_ANALYSIS, IDC_BTN_MASTER_ANALYSIS,
+                     IDC_BTN_GAIN_STAGING, IDC_BTN_HOUSEKEEPING};
+  int numButtons = sizeof(buttonIDs) / sizeof(buttonIDs[0]);
+
+  for (int i = 0; i < numButtons; i++) {
+    HWND hBtn = GetDlgItem(m_hwnd, buttonIDs[i]);
+    if (hBtn) {
+      int btnY_normal = btnStartY_normal + i * (btnHeight + btnSpacing);
+      int btnY = height - btnY_normal - btnHeight;
+      SetWindowPos(hBtn, NULL, controlsX + 5, btnY, btnWidth, btnHeight,
+                   SWP_NOZORDER);
+    }
   }
 
   // Status footer: at bottom
