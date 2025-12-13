@@ -444,9 +444,21 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     OnCommand(command, notifyCode);
     return TRUE;
   }
-  // TODO: Add editing support for aliases column
-  // SWELL doesn't support LVN_ENDLABELEDIT, so we'll need to implement
-  // editing via double-click or a separate dialog
+  case WM_NOTIFY: {
+    NMHDR *nmhdr = (NMHDR *)lParam;
+    if (nmhdr && nmhdr->hwndFrom == m_hwndAliasList) {
+      if (nmhdr->code == NM_DBLCLK) {
+        // Double-click on ListView - edit alias for selected item
+        int selectedRow =
+            ListView_GetNextItem(m_hwndAliasList, -1, LVNI_SELECTED);
+        if (selectedRow >= 0) {
+          EditAliasAtRow(selectedRow);
+        }
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
   case WM_CLOSE: {
     Hide();
     return TRUE;
@@ -639,6 +651,9 @@ void MagdaPluginWindow::RefreshAliasList() {
   // Use deduplicated plugins to match how aliases are stored
   std::vector<PluginInfo> deduplicated = g_pluginScanner->DeduplicatePlugins();
 
+  // Clear and rebuild the row-to-plugin-key mapping
+  m_rowPluginKeys.clear();
+
   // Display deduplicated plugins with their aliases in two columns
   int row = 0;
   for (const auto &plugin : deduplicated) {
@@ -668,6 +683,10 @@ void MagdaPluginWindow::RefreshAliasList() {
     // Use ident as key (matches how aliases are stored), fall back to full_name
     const std::string &plugin_key =
         plugin.ident.empty() ? plugin.full_name : plugin.ident;
+
+    // Store the plugin key for this row (used when editing)
+    m_rowPluginKeys.push_back(plugin_key);
+
     std::string aliasStr;
     auto it = aliasesByPlugin.find(plugin_key);
     if (it != aliasesByPlugin.end() && !it->second.empty()) {
@@ -780,6 +799,58 @@ void MagdaPluginWindow::SaveAliases() {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Aliases saved to cache\n");
+    }
+  }
+}
+
+void MagdaPluginWindow::EditAliasAtRow(int row) {
+  if (!m_hwndAliasList || !g_pluginScanner || !g_rec) {
+    return;
+  }
+
+  // Check row is valid
+  if (row < 0 || row >= (int)m_rowPluginKeys.size()) {
+    return;
+  }
+
+  // Get current alias text from column 1
+  char currentAlias[512] = {0};
+  ListView_GetItemText(m_hwndAliasList, row, 1, currentAlias,
+                       sizeof(currentAlias));
+
+  // Get plugin name from column 0 for the dialog title
+  char pluginName[512] = {0};
+  ListView_GetItemText(m_hwndAliasList, row, 0, pluginName, sizeof(pluginName));
+
+  // Use REAPER's GetUserInputs for a simple edit dialog
+  bool (*GetUserInputs)(const char *, int, const char *, char *, int) =
+      (bool (*)(const char *, int, const char *, char *, int))g_rec->GetFunc(
+          "GetUserInputs");
+
+  if (GetUserInputs) {
+    char inputBuffer[512];
+    strncpy(inputBuffer, currentAlias, sizeof(inputBuffer) - 1);
+    inputBuffer[sizeof(inputBuffer) - 1] = '\0';
+
+    char title[256];
+    snprintf(title, sizeof(title), "Edit Alias: %s", pluginName);
+
+    if (GetUserInputs(title, 1, "Alias:", inputBuffer, sizeof(inputBuffer))) {
+      // User clicked OK - update the alias in display
+      ListView_SetItemText(m_hwndAliasList, row, 1, inputBuffer);
+
+      // Update the alias in the scanner's data structure
+      const std::string &plugin_key = m_rowPluginKeys[row];
+      g_pluginScanner->SetAliasForPlugin(plugin_key, inputBuffer);
+
+      // Save to cache immediately
+      g_pluginScanner->SaveToCache();
+
+      // Update status
+      HWND statusLabel = GetDlgItem(m_hwnd, IDC_STATUS_LABEL);
+      if (statusLabel) {
+        SetWindowText(statusLabel, "Alias saved");
+      }
     }
   }
 }

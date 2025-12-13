@@ -103,6 +103,10 @@ public:
   // Remove alias for a plugin
   void RemovePluginAlias(const char *full_name, const char *alias);
 
+  // Set single alias for a plugin by key (ident), replaces all existing aliases
+  void SetAliasForPlugin(const std::string &plugin_key,
+                         const std::string &alias);
+
 private:
   std::vector<PluginInfo> m_plugins;
   std::map<std::string, std::vector<std::string>>

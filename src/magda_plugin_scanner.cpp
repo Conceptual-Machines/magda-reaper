@@ -1488,3 +1488,28 @@ void MagdaPluginScanner::RemovePluginAlias(const char *full_name,
   }
   SaveAliasesToCache();
 }
+
+void MagdaPluginScanner::SetAliasForPlugin(const std::string &plugin_key,
+                                           const std::string &alias) {
+  if (plugin_key.empty()) {
+    return;
+  }
+
+  // Remove old aliases for this plugin from the forward mapping
+  auto it = m_aliasesByPlugin.find(plugin_key);
+  if (it != m_aliasesByPlugin.end()) {
+    for (const auto &old_alias : it->second) {
+      m_aliases.erase(old_alias);
+    }
+  }
+
+  // Set new alias (single alias, replaces all existing)
+  m_aliasesByPlugin[plugin_key].clear();
+  if (!alias.empty()) {
+    m_aliasesByPlugin[plugin_key].push_back(alias);
+    m_aliases[alias] = plugin_key;
+  }
+
+  // Save immediately
+  SaveAliasesToCache();
+}

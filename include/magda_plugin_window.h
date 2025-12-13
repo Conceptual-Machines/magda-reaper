@@ -2,6 +2,8 @@
 
 #include "../WDL/WDL/wdlstring.h"
 #include "reaper_plugin.h"
+#include <string>
+#include <vector>
 
 // Plugin alias management window
 class MagdaPluginWindow {
@@ -19,6 +21,8 @@ public:
   HWND m_hwndAliasList;     // List view or list box showing aliases
   HWND m_hwndScanButton;    // Button to scan plugins
   HWND m_hwndRefreshButton; // Button to refresh alias list
+  std::vector<std::string>
+      m_rowPluginKeys; // Maps row index to plugin ident/key
 
 private:
   // SWS pattern: static proc that gets 'this' from GWLP_USERDATA
@@ -32,4 +36,5 @@ private:
   void OnScanPlugins();
   void RefreshAliasList();
   void SaveAliases();
+  void EditAliasAtRow(int row);
 };
