@@ -309,9 +309,13 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
       }
     }
 
-    // Apply ListView position (client coords)
-    SetWindowPos(m_hwndAliasList, NULL, listViewX, listTop, listViewWidth,
-                 listViewHeight, SWP_NOZORDER | SWP_SHOWWINDOW);
+    // Apply ListView position - flip Y for macOS SWELL coordinate inversion
+    // SWELL inverts Y axis: low Y appears at bottom, high Y at top
+    // To flip: newY = dialogHeight - oldY - controlHeight
+    // Add 2px adjustment to push ListView down slightly
+    int flippedListTop = dialogHeight - listTop - listViewHeight + 2;
+    SetWindowPos(m_hwndAliasList, NULL, listViewX, flippedListTop,
+                 listViewWidth, listViewHeight, SWP_NOZORDER | SWP_SHOWWINDOW);
 
     // Verify final position
     RECT listRect2;
@@ -331,11 +335,12 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         ShowConsoleMsg(msg);
       }
     }
-    // Position buttons at the very bottom using client coords
-    const int buttonY = buttonsTop;
+    // Position buttons - flip Y for macOS SWELL coordinate inversion
+    int flippedButtonY = dialogHeight - buttonsTop - buttonHeightResource;
     if (scanButton) {
-      SetWindowPos(scanButton, NULL, scanButtonX, buttonY, scanButtonWidth,
-                   buttonHeightResource, SWP_NOZORDER | SWP_SHOWWINDOW);
+      SetWindowPos(scanButton, NULL, scanButtonX, flippedButtonY,
+                   scanButtonWidth, buttonHeightResource,
+                   SWP_NOZORDER | SWP_SHOWWINDOW);
 
       // Verify button position
       RECT buttonRect2;
@@ -351,13 +356,13 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
           snprintf(
               msg, sizeof(msg),
               "MAGDA: Scan button FINAL - targetTop=%d, actualClientY=%d\n",
-              buttonY, buttonFinalTop.y);
+              flippedButtonY, buttonFinalTop.y);
           ShowConsoleMsg(msg);
         }
       }
     }
     if (refreshButton) {
-      SetWindowPos(refreshButton, NULL, refreshButtonX, buttonY,
+      SetWindowPos(refreshButton, NULL, refreshButtonX, flippedButtonY,
                    refreshButtonWidth, buttonHeightResource,
                    SWP_NOZORDER | SWP_SHOWWINDOW);
     }
