@@ -67,6 +67,9 @@ public:
                        WDL_FastString &response, WDL_FastString &error_msg,
                        int timeout_seconds = 0);
 
+  // Health check - returns true if API is reachable
+  bool CheckHealth(WDL_FastString &error_msg, int timeout_seconds = 5);
+
 private:
   WDL_FastString m_backend_url;
   WDL_FastString m_jwt_token;

@@ -1791,3 +1791,59 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   return stream_data.success;
 #endif
 }
+
+bool MagdaHTTPClient::CheckHealth(WDL_FastString &error_msg,
+                                  int timeout_seconds) {
+#ifndef _WIN32
+  // Use curl for macOS/Linux
+  CURL *curl = curl_easy_init();
+  if (!curl) {
+    error_msg.Set("Failed to initialize curl");
+    return false;
+  }
+
+  // Build health check URL
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append("/health");
+
+  curl_easy_setopt(curl, CURLOPT_URL, url.Get());
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT,
+                   timeout_seconds > 0 ? timeout_seconds : 5);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3);
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+
+  // We don't care about the response body, just if we can connect
+  curl_easy_setopt(curl, CURLOPT_NOBODY, 0L);
+  curl_easy_setopt(
+      curl, CURLOPT_WRITEFUNCTION,
+      +[](char *, size_t size, size_t nmemb, void *) -> size_t {
+        return size * nmemb; // Discard body
+      });
+
+  CURLcode res = curl_easy_perform(curl);
+
+  if (res == CURLE_OK) {
+    long response_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    curl_easy_cleanup(curl);
+
+    if (response_code >= 200 && response_code < 300) {
+      return true;
+    } else {
+      char err[64];
+      snprintf(err, sizeof(err), "HTTP %ld", response_code);
+      error_msg.Set(err);
+      return false;
+    }
+  } else {
+    error_msg.Set(curl_easy_strerror(res));
+    curl_easy_cleanup(curl);
+    return false;
+  }
+#else
+  // Windows implementation placeholder
+  error_msg.Set("Health check not implemented on Windows");
+  return false;
+#endif
+}
