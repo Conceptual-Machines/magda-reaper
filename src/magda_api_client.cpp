@@ -713,7 +713,7 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
   // Build URL
   WDL_FastString url;
   url.Set(m_backend_url.Get());
-  url.Append("/api/v1/magda/chat"); // Backend endpoint
+  url.Append("/api/v1/chat"); // Backend endpoint
 
   // Use platform-specific HTTPS implementation
   WDL_FastString response;
@@ -1393,7 +1393,7 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   // Build URL - use non-streaming endpoint (has CFG support for DSL generation)
   WDL_FastString url;
   url.Set(m_backend_url.Get());
-  url.Append("/api/v1/magda/chat"); // Use non-streaming endpoint with CFG
+  url.Append("/api/v1/chat"); // Use non-streaming endpoint with CFG
 
   // Use platform-specific HTTPS implementation for streaming
   const char *auth_token =

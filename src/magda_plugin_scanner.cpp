@@ -1103,7 +1103,7 @@ bool MagdaPluginScanner::GenerateAliasesFromAPI() {
   WDL_FastString error_msg;
 
   bool success = g_apiClient->SendPOSTRequest(
-      "/api/v1/magda/plugins/process", json.Get(), response, error_msg, 120);
+      "/api/v1/plugins/process", json.Get(), response, error_msg, 120);
 
   if (!success) {
     if (g_rec) {
