@@ -1421,7 +1421,20 @@ std::string MagdaPluginScanner::ResolveAlias(const char *alias) const {
     return "";
   }
 
-  std::string alias_lower = alias;
+  std::string alias_str = alias;
+
+  // Strip @ prefix if present (aliases are stored without @)
+  if (!alias_str.empty() && alias_str[0] == '@') {
+    alias_str = alias_str.substr(1);
+  }
+
+  // Also strip trailing whitespace
+  while (!alias_str.empty() &&
+         (alias_str.back() == ' ' || alias_str.back() == '\t')) {
+    alias_str.pop_back();
+  }
+
+  std::string alias_lower = alias_str;
   std::transform(alias_lower.begin(), alias_lower.end(), alias_lower.begin(),
                  ::tolower);
 
@@ -1434,7 +1447,7 @@ std::string MagdaPluginScanner::ResolveAlias(const char *alias) const {
     }
   }
 
-  return alias; // Return as-is if not found
+  return alias; // Return original if not found
 }
 
 void MagdaPluginScanner::SetPluginAliases(

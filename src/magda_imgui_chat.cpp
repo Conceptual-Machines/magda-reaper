@@ -232,7 +232,7 @@ bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
 void MagdaImGuiChat::Show() {
   m_visible = true;
   // Don't check API health on show - it's slow and logs too much
-  SetAPIStatus("Ready", 0xFF88FF88);
+  SetAPIStatus("Ready", 0x88FF88FF); // Green in 0xRRGGBBAA format
 }
 
 void MagdaImGuiChat::Hide() { m_visible = false; }
@@ -240,16 +240,16 @@ void MagdaImGuiChat::Hide() { m_visible = false; }
 void MagdaImGuiChat::Toggle() {
   m_visible = !m_visible;
   if (m_visible) {
-    SetAPIStatus("Ready", 0xFF88FF88);
+    SetAPIStatus("Ready", 0x88FF88FF); // Green in 0xRRGGBBAA format
   }
 }
 
 void MagdaImGuiChat::CheckAPIHealth() {
   WDL_FastString error_msg;
   if (s_httpClient.CheckHealth(error_msg, 3)) {
-    SetAPIStatus("Connected", 0xFF88FF88); // Green
+    SetAPIStatus("Connected", 0x88FF88FF); // Green
   } else {
-    SetAPIStatus("Disconnected", 0xFF8888FF); // Red
+    SetAPIStatus("Disconnected", 0xFF6666FF); // Red
   }
 }
 
@@ -399,10 +399,47 @@ void MagdaImGuiChat::Render() {
                         "MAGDA - AI Music Production Assistant");
     m_ImGui_Separator(m_ctx);
 
-    // Input area - don't use EnterReturnsTrue, it doesn't work correctly in
-    // ReaImGui
+    // Input area
     m_ImGui_InputText(m_ctx, "##input", m_inputBuffer, sizeof(m_inputBuffer),
                       nullptr, nullptr);
+
+    // Detect @ trigger for autocomplete
+    DetectAtTrigger();
+
+    // Handle keyboard for autocomplete navigation
+    if (m_showAutocomplete && !m_suggestions.empty()) {
+      bool repeatTrue = true;
+      bool repeatFalse = false;
+
+      // Up arrow - navigate up
+      if (m_ImGui_IsKeyPressed &&
+          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
+        m_autocompleteIndex =
+            (m_autocompleteIndex - 1 + (int)m_suggestions.size()) %
+            (int)m_suggestions.size();
+      }
+      // Down arrow - navigate down
+      if (m_ImGui_IsKeyPressed &&
+          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
+        m_autocompleteIndex =
+            (m_autocompleteIndex + 1) % (int)m_suggestions.size();
+      }
+      // Tab or Enter - accept completion
+      if (m_ImGui_IsKeyPressed &&
+          (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
+           m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse))) {
+        InsertCompletion(m_suggestions[m_autocompleteIndex].alias);
+        m_showAutocomplete = false;
+      }
+      // Escape - close autocomplete
+      if (m_ImGui_IsKeyPressed &&
+          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Escape, &repeatFalse)) {
+        m_showAutocomplete = false;
+      }
+
+      // Render autocomplete dropdown
+      RenderAutocompletePopup();
+    }
 
     double btnSpacing = 5;
     double zero = 0;
@@ -417,7 +454,7 @@ void MagdaImGuiChat::Render() {
 
         // Set busy state
         m_busy = true;
-        SetAPIStatus("Sending...", 0xFFFFFF88); // Yellow
+        SetAPIStatus("Sending...", 0xFFFF66FF); // Yellow
 
         // Set backend URL from settings
         const char *backendUrl = MagdaSettingsWindow::GetBackendURL();
@@ -436,13 +473,13 @@ void MagdaImGuiChat::Render() {
         if (s_httpClient.SendQuestion(msg.c_str(), response_json, error_msg)) {
           // Actions are automatically executed by SendQuestion
           AddAssistantMessage("Done");
-          SetAPIStatus("Connected", 0xFF88FF88); // Green
+          SetAPIStatus("Connected", 0x88FF88FF); // Green
         } else {
           // Error
           std::string errorStr = "Error: ";
           errorStr += error_msg.Get();
           AddAssistantMessage(errorStr);
-          SetAPIStatus("Error", 0xFF8888FF); // Red
+          SetAPIStatus("Error", 0xFF6666FF); // Red
         }
 
         m_busy = false;
@@ -479,7 +516,7 @@ void MagdaImGuiChat::Render() {
       for (const auto &msg : m_history) {
         if (!msg.is_user)
           continue;
-        m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
+        RenderMessageWithHighlighting(msg.content);
         m_ImGui_Separator(m_ctx);
       }
     }
@@ -495,7 +532,7 @@ void MagdaImGuiChat::Render() {
       for (const auto &msg : m_history) {
         if (msg.is_user)
           continue;
-        m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
+        RenderMessageWithHighlighting(msg.content);
         m_ImGui_Separator(m_ctx);
       }
       if (!m_streamingBuffer.empty()) {
@@ -535,9 +572,12 @@ void MagdaImGuiChat::Render() {
     }
     m_ImGui_EndChild(m_ctx);
 
-    // Footer
+    // Footer with colored circle indicator
     m_ImGui_Separator(m_ctx);
-    m_ImGui_TextColored(m_ctx, g_theme.dimText, "Status: ");
+    m_ImGui_TextColored(m_ctx, m_apiStatusColor,
+                        "\xe2\x97\x8f"); // ● (filled circle UTF-8)
+    m_ImGui_SameLine(m_ctx, &zero, &zero);
+    m_ImGui_TextColored(m_ctx, g_theme.dimText, " Status: ");
     m_ImGui_SameLine(m_ctx, &zero, &zero);
     m_ImGui_TextColored(m_ctx, m_apiStatusColor, m_apiStatus.c_str());
   }
@@ -801,32 +841,100 @@ void MagdaImGuiChat::RenderInputArea() {
 }
 
 void MagdaImGuiChat::RenderAutocompletePopup() {
-  m_ImGui_OpenPopup(m_ctx, "##autocomplete", nullptr);
+  // Draw as a child window - doesn't steal focus like popup
+  double acWidth = 400;
+  double acHeight = 200;
+  int childFlags = 1; // Border
+  int windowFlags = 0;
 
-  if (m_ImGui_BeginPopup(m_ctx, "##autocomplete", nullptr)) {
+  // Push darker background for autocomplete dropdown
+  m_ImGui_PushStyleColor(m_ctx, 7, g_theme.childBg); // Col_ChildBg
+
+  // Take a copy of suggestions to avoid issues during iteration
+  std::vector<AutocompleteSuggestion> localSuggestions = m_suggestions;
+  std::string selectedAlias;
+  bool wasSelected = false;
+
+  if (m_ImGui_BeginChild(m_ctx, "##autocomplete_list", &acWidth, &acHeight,
+                         &childFlags, &windowFlags)) {
     int idx = 0;
-    for (const auto &suggestion : m_suggestions) {
-      bool selected = (idx == m_autocompleteIndex);
+    int maxItems = 15; // Show more items
+    for (const auto &suggestion : localSuggestions) {
+      bool isSelected = (idx == m_autocompleteIndex);
+
+      // Highlight selected item
+      if (isSelected) {
+        m_ImGui_PushStyleColor(m_ctx, 24, g_theme.buttonBg); // Col_Header
+      }
+
       std::string label =
           "@" + suggestion.alias + " (" + suggestion.plugin_name + ")";
 
-      if (m_ImGui_Selectable(m_ctx, label.c_str(), &selected, nullptr, nullptr,
-                             nullptr)) {
-        InsertCompletion(suggestion.alias);
-        m_showAutocomplete = false;
-        m_ImGui_CloseCurrentPopup(m_ctx);
+      if (m_ImGui_Selectable(m_ctx, label.c_str(), &isSelected, nullptr,
+                             nullptr, nullptr)) {
+        selectedAlias = suggestion.alias;
+        wasSelected = true;
       }
-      idx++;
 
-      if (idx >= 10)
+      if (idx == m_autocompleteIndex) {
+        m_ImGui_PopStyleColor(m_ctx, nullptr);
+      }
+
+      idx++;
+      if (idx >= maxItems)
         break;
     }
-    m_ImGui_EndPopup(m_ctx);
+  }
+  m_ImGui_EndChild(m_ctx);
+  m_ImGui_PopStyleColor(m_ctx, nullptr);
+
+  // Handle selection after loop to avoid modifying state during iteration
+  if (wasSelected) {
+    InsertCompletion(selectedAlias);
+    m_showAutocomplete = false;
   }
 }
 
 void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
-  m_ImGui_TextWrapped(m_ctx, content.c_str());
+  // Parse and render with @mention highlighting
+  size_t pos = 0;
+  size_t len = content.length();
+  int mentionColor = THEME_RGBA(0x66, 0xCC, 0xFF); // Cyan for @mentions
+
+  while (pos < len) {
+    size_t atPos = content.find('@', pos);
+
+    if (atPos == std::string::npos) {
+      // No more @, render rest as normal
+      if (pos < len) {
+        m_ImGui_Text(m_ctx, content.substr(pos).c_str());
+      }
+      break;
+    }
+
+    // Render text before @
+    if (atPos > pos) {
+      std::string before = content.substr(pos, atPos - pos);
+      m_ImGui_Text(m_ctx, before.c_str());
+      m_ImGui_SameLine(m_ctx, nullptr, nullptr);
+    }
+
+    // Find end of @mention (next space or end)
+    size_t endPos = content.find(' ', atPos);
+    if (endPos == std::string::npos) {
+      endPos = len;
+    }
+
+    // Render @mention in cyan
+    std::string mention = content.substr(atPos, endPos - atPos);
+    m_ImGui_TextColored(m_ctx, mentionColor, mention.c_str());
+
+    if (endPos < len) {
+      m_ImGui_SameLine(m_ctx, nullptr, nullptr);
+    }
+
+    pos = endPos;
+  }
 }
 
 void MagdaImGuiChat::DetectAtTrigger() {
@@ -908,7 +1016,12 @@ void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
   std::string input = m_inputBuffer;
   std::string before = input.substr(0, m_atPosition);
   std::string completion = "@" + alias + " ";
-  std::string newInput = before + completion;
+
+  // Find end of current @mention (next space or end of string)
+  size_t afterAt = m_atPosition + 1 + m_autocompletePrefix.length();
+  std::string after = (afterAt < input.length()) ? input.substr(afterAt) : "";
+
+  std::string newInput = before + completion + after;
 
   strncpy(m_inputBuffer, newInput.c_str(), sizeof(m_inputBuffer) - 1);
   m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
