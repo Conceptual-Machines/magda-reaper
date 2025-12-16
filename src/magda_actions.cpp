@@ -1,4 +1,5 @@
 #include "magda_actions.h"
+#include "magda_dsp_analyzer.h"
 #include "magda_plugin_scanner.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
 // ReaProject) This is a typo in the REAPER SDK itself, not our code
@@ -1162,6 +1163,47 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return true;
     }
     return false;
+  } else if (strcmp(action_type, "analyze_track") == 0) {
+    // DSP Analysis action - analyze a track's audio content
+    const char *track_str = action->get_string_by_name("track", true);
+    if (!track_str) {
+      error_msg.Set("Missing 'track' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+
+    // Optional config parameters
+    DSPAnalysisConfig config;
+    const char *fft_size_str = action->get_string_by_name("fft_size", true);
+    if (fft_size_str) {
+      config.fftSize = atoi(fft_size_str);
+    }
+    const char *max_length_str = action->get_string_by_name("max_length", true);
+    if (max_length_str) {
+      config.analysisLength = (float)atof(max_length_str);
+      config.analyzeFullItem = false;
+    }
+
+    // Perform analysis
+    DSPAnalysisResult analysisResult =
+        MagdaDSPAnalyzer::AnalyzeTrack(track_index, config);
+
+    if (analysisResult.success) {
+      result.Append(
+          "{\"action\":\"analyze_track\",\"success\":true,\"analysis\":");
+      WDL_FastString analysisJson;
+      MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
+      result.Append(analysisJson.Get());
+
+      // Also include FX info
+      result.Append(",");
+      MagdaDSPAnalyzer::GetTrackFXInfo(track_index, result);
+      result.Append("}");
+      return true;
+    } else {
+      error_msg.Set(analysisResult.errorMessage.Get());
+      return false;
+    }
   } else {
     error_msg.Set("Unknown action type");
     return false;

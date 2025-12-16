@@ -1,7 +1,12 @@
 #include "magda_imgui_chat.h"
+#include "magda_api_client.h"
+#include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
 #include <algorithm>
 #include <cstring>
+
+// Static HTTP client instance
+static MagdaHTTPClient s_httpClient;
 
 // g_rec is needed for debug logging
 extern reaper_plugin_info_t *g_rec;
@@ -183,19 +188,27 @@ bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
   return true;
 }
 
-void MagdaImGuiChat::Show() { m_visible = true; }
+void MagdaImGuiChat::Show() {
+  m_visible = true;
+  // Don't check API health on show - it's slow and logs too much
+  SetAPIStatus("Ready", 0xFF88FF88);
+}
 
 void MagdaImGuiChat::Hide() { m_visible = false; }
 
 void MagdaImGuiChat::Toggle() {
   m_visible = !m_visible;
-  if (g_rec) {
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg(m_visible ? "MAGDA ImGui: Showing chat\n"
-                               : "MAGDA ImGui: Hiding chat\n");
-    }
+  if (m_visible) {
+    SetAPIStatus("Ready", 0xFF88FF88);
+  }
+}
+
+void MagdaImGuiChat::CheckAPIHealth() {
+  WDL_FastString error_msg;
+  if (s_httpClient.CheckHealth(error_msg, 3)) {
+    SetAPIStatus("Connected", 0xFF88FF88); // Green
+  } else {
+    SetAPIStatus("Disconnected", 0xFF8888FF); // Red
   }
 }
 
@@ -204,30 +217,13 @@ void MagdaImGuiChat::Render() {
     return;
   }
 
-  // Log helper
-  void (*ShowConsoleMsg)(const char *msg) = nullptr;
-  if (g_rec) {
-    ShowConsoleMsg = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-  }
-
   // Create context on first use - ReaImGui contexts stay valid as long as used
   // each frame
   if (!m_ctx) {
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA ImGui: Creating context...\n");
-    }
     int configFlags = m_ImGui_ConfigFlags_DockingEnable();
     m_ctx = m_ImGui_CreateContext("MAGDA", &configFlags);
     if (!m_ctx) {
-      if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA ImGui: Failed to create context!\n");
-      }
       return;
-    }
-    if (ShowConsoleMsg) {
-      char buf[128];
-      snprintf(buf, sizeof(buf), "MAGDA ImGui: Context created: %p\n", m_ctx);
-      ShowConsoleMsg(buf);
     }
   }
 
@@ -244,16 +240,6 @@ void MagdaImGuiChat::Render() {
   bool open = true;
   int flags = ImGuiWindowFlags::NoCollapse;
   bool visible = m_ImGui_Begin(m_ctx, "MAGDA Chat", &open, &flags);
-
-  // Log Begin result
-  static int beginLogCount = 0;
-  if (beginLogCount < 10 && ShowConsoleMsg) {
-    char buf[128];
-    snprintf(buf, sizeof(buf), "MAGDA ImGui: Begin() visible=%d, open=%d\n",
-             visible, open);
-    ShowConsoleMsg(buf);
-    beginLogCount++;
-  }
 
   // Right-click context menu for dock/undock
   if (m_ImGui_BeginPopupContextWindow(m_ctx, "##window_context", nullptr)) {
@@ -298,27 +284,28 @@ void MagdaImGuiChat::Render() {
                         "MAGDA - AI Music Production Assistant");
     m_ImGui_Separator(m_ctx);
 
-    // Input area
-    int inputFlags = ImGuiInputTextFlags::EnterReturnsTrue;
-    bool submitted =
-        m_ImGui_InputText(m_ctx, "##input", m_inputBuffer,
-                          sizeof(m_inputBuffer), &inputFlags, nullptr);
+    // Input area - don't use EnterReturnsTrue, it doesn't work correctly in
+    // ReaImGui
+    m_ImGui_InputText(m_ctx, "##input", m_inputBuffer, sizeof(m_inputBuffer),
+                      nullptr, nullptr);
 
-    double spacing = 5;
+    double btnSpacing = 5;
     double zero = 0;
-    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+    m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr) ||
-        submitted) {
+    // Only send on button click (Enter key handling would need separate logic)
+    if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
       if (!m_busy && strlen(m_inputBuffer) > 0) {
         std::string msg = m_inputBuffer;
         AddUserMessage(msg);
-        // Echo for testing (remove when API is connected)
+        m_inputBuffer[0] = '\0';
+
+        // For now just echo - API integration later
         AddAssistantMessage("[Echo] " + msg);
+
         if (m_onSend) {
           m_onSend(msg);
         }
-        m_inputBuffer[0] = '\0';
       }
     }
 
@@ -327,10 +314,18 @@ void MagdaImGuiChat::Render() {
     // 3-column layout: Request | Response | Controls
     int borderFlags = 1; // ChildFlags_Borders
     int scrollFlags = ImGuiWindowFlags::AlwaysVerticalScrollbar;
-    double col1W = 250; // Request
-    double col2W = 250; // Response
-    double col3W = 150; // Controls
-    double paneH = -30; // Leave room for footer
+
+    // Get available width and divide evenly
+    double availW, availH;
+    m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
+    double colSpacing = 8.0;              // spacing between columns
+    double totalSpacing = colSpacing * 2; // 2 gaps for 3 columns
+    double colW = (availW - totalSpacing) / 3.0;
+
+    double col1W = colW; // Request
+    double col2W = colW; // Response
+    double col3W = colW; // Controls
+    double paneH = -30;  // Leave room for footer
 
     // Column 1: REQUEST (user messages)
     if (m_ImGui_BeginChild(m_ctx, "##request", &col1W, &paneH, &borderFlags,
@@ -346,7 +341,7 @@ void MagdaImGuiChat::Render() {
     }
     m_ImGui_EndChild(m_ctx);
 
-    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+    m_ImGui_SameLine(m_ctx, &zero, &colSpacing);
 
     // Column 2: RESPONSE (assistant messages)
     if (m_ImGui_BeginChild(m_ctx, "##response", &col2W, &paneH, &borderFlags,
@@ -370,7 +365,7 @@ void MagdaImGuiChat::Render() {
     }
     m_ImGui_EndChild(m_ctx);
 
-    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+    m_ImGui_SameLine(m_ctx, &zero, &colSpacing);
 
     // Column 3: CONTROLS (on right)
     if (m_ImGui_BeginChild(m_ctx, "##controls", &col3W, &paneH, &borderFlags,
@@ -400,7 +395,7 @@ void MagdaImGuiChat::Render() {
     m_ImGui_Separator(m_ctx);
     m_ImGui_TextColored(m_ctx, Colors::GrayText, "Status: ");
     m_ImGui_SameLine(m_ctx, &zero, &zero);
-    m_ImGui_TextColored(m_ctx, Colors::StatusGreen, m_apiStatus.c_str());
+    m_ImGui_TextColored(m_ctx, m_apiStatusColor, m_apiStatus.c_str());
   }
 
   m_ImGui_End(m_ctx);
@@ -600,16 +595,7 @@ void MagdaImGuiChat::RenderFooter() {
   double offset = 0;
   double spacing = 0;
   m_ImGui_SameLine(m_ctx, &offset, &spacing);
-
-  int statusColor = Colors::StatusGreen;
-  if (m_apiStatus.find("Error") != std::string::npos ||
-      m_apiStatus.find("Disconnected") != std::string::npos) {
-    statusColor = Colors::StatusRed;
-  } else if (m_apiStatus.find("Checking") != std::string::npos) {
-    statusColor = Colors::StatusYellow;
-  }
-
-  m_ImGui_TextColored(m_ctx, statusColor, m_apiStatus.c_str());
+  m_ImGui_TextColored(m_ctx, m_apiStatusColor, m_apiStatus.c_str());
 }
 
 void MagdaImGuiChat::RenderInputArea() {

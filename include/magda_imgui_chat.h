@@ -62,7 +62,10 @@ public:
   bool IsBusy() const { return m_busy; }
 
   // Set API status for footer
-  void SetApiStatus(const std::string &status) { m_apiStatus = status; }
+  void SetAPIStatus(const std::string &status, int color) {
+    m_apiStatus = status;
+    m_apiStatusColor = color;
+  }
 
 private:
   // ReaImGui function pointers
@@ -168,8 +171,10 @@ private:
 
   // API status
   std::string m_apiStatus = "Checking...";
+  int m_apiStatusColor = 0xFFFFFFFF; // White default
 
   // Internal methods
+  void CheckAPIHealth();
   void RenderHeader();
   void RenderInputArea();
   void RenderMainContent();
