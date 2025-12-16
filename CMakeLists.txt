@@ -39,6 +39,7 @@ endif()
 set(SOURCES
     src/main.cpp
     src/magda_chat_window.cpp
+    src/magda_imgui_chat.cpp
     src/magda_api_client.cpp
     src/magda_state.cpp
     src/magda_login_window.cpp
@@ -49,6 +50,7 @@ set(SOURCES
     src/magda_executor.cpp
     src/magda_actions.cpp
     src/magda_plugin_scanner.cpp
+    src/magda_dsp_analyzer.cpp
     # WDL networking implementation
     WDL/WDL/jnetlib/httpget.cpp
     WDL/WDL/jnetlib/connection.cpp
