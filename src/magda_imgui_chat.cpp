@@ -587,9 +587,10 @@ void MagdaImGuiChat::Render() {
   // Pop style colors
   m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
 
-  // Handle window close
+  // Handle window close - reset context so it can be recreated next time
   if (!open) {
     m_visible = false;
+    m_ctx = nullptr; // Context will be recreated on next Show()
   }
 }
 

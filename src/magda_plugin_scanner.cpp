@@ -108,10 +108,19 @@ bool MagdaPluginScanner::IsInstrument(const char *full_name) const {
   if (!full_name) {
     return false;
   }
-  // Check for instrument indicators: VSTi, AUi, or "instrument" in name
+  // Check for instrument indicators in plugin format prefix
+  // Reaper uses: VSTi, VST3i, AUi, CLAPi for instruments
+  // The 'i' suffix indicates instrument
   return (strstr(full_name, "VSTi:") != nullptr) ||
+         (strstr(full_name, "VSTi ") != nullptr) || // Some formats use space
+         (strstr(full_name, "VST3i:") != nullptr) ||
+         (strstr(full_name, "VST3i ") != nullptr) ||
          (strstr(full_name, "AUi:") != nullptr) ||
-         (strstr(full_name, "instrument") != nullptr);
+         (strstr(full_name, "AUi ") != nullptr) ||
+         (strstr(full_name, "CLAPi:") != nullptr) ||
+         (strstr(full_name, "CLAPi ") != nullptr) ||
+         (strstr(full_name, "DXi:") != nullptr) ||
+         (strstr(full_name, "DXi ") != nullptr);
 }
 
 bool MagdaPluginScanner::ParsePluginName(const char *full_name,

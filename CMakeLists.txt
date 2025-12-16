@@ -40,6 +40,9 @@ set(SOURCES
     src/main.cpp
     src/magda_chat_window.cpp
     src/magda_imgui_chat.cpp
+    src/magda_imgui_plugin_window.cpp
+    src/magda_param_mapping.cpp
+    src/magda_param_mapping_window.cpp
     src/magda_api_client.cpp
     src/magda_state.cpp
     src/magda_login_window.cpp
@@ -51,6 +54,8 @@ set(SOURCES
     src/magda_actions.cpp
     src/magda_plugin_scanner.cpp
     src/magda_dsp_analyzer.cpp
+    src/magda_drum_mapping.cpp
+    src/magda_drum_mapping_window.cpp
     # WDL networking implementation
     WDL/WDL/jnetlib/httpget.cpp
     WDL/WDL/jnetlib/connection.cpp

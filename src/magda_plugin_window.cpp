@@ -1,6 +1,8 @@
 #include "magda_plugin_window.h"
 #include "../WDL/WDL/swell/swell-functions.h"
 #include "../WDL/WDL/swell/swell-types.h"
+#include "magda_drum_mapping.h"
+#include "magda_drum_mapping_window.h"
 #include "magda_plugin_resource.h"
 #include "magda_plugin_scanner.h"
 #include <cstdio>
@@ -194,15 +196,21 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
     // Column 0: Plugin Name (wider for longer names)
     lvc.pszText = (char *)"Plugin Name";
-    lvc.cx = 500;
+    lvc.cx = 450;
     lvc.iSubItem = 0;
     ListView_InsertColumn(m_hwndAliasList, 0, &lvc);
 
     // Column 1: Alias (single alias only)
     lvc.pszText = (char *)"Alias";
-    lvc.cx = 340;
+    lvc.cx = 280;
     lvc.iSubItem = 1;
     ListView_InsertColumn(m_hwndAliasList, 1, &lvc);
+
+    // Column 2: Type indicator (drum plugin marker)
+    lvc.pszText = (char *)"Type";
+    lvc.cx = 80;
+    lvc.iSubItem = 2;
+    ListView_InsertColumn(m_hwndAliasList, 2, &lvc);
 
     // Set extended ListView style with grid lines (following SWS pattern)
     ListView_SetExtendedListViewStyleEx(
@@ -448,11 +456,28 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     NMHDR *nmhdr = (NMHDR *)lParam;
     if (nmhdr && nmhdr->hwndFrom == m_hwndAliasList) {
       if (nmhdr->code == NM_DBLCLK) {
-        // Double-click on ListView - edit alias for selected item
+        // Double-click on ListView
         int selectedRow =
             ListView_GetNextItem(m_hwndAliasList, -1, LVNI_SELECTED);
-        if (selectedRow >= 0) {
-          EditAliasAtRow(selectedRow);
+        if (selectedRow >= 0 && selectedRow < (int)m_rowPluginKeys.size()) {
+          // Check if it's a drum plugin
+          char pluginName[512] = {0};
+          ListView_GetItemText(m_hwndAliasList, selectedRow, 0, pluginName,
+                               sizeof(pluginName));
+
+          if (IsDrumPlugin(pluginName)) {
+            // Open drum mapping window
+            if (g_drumMappingWindow && g_drumMappingWindow->IsAvailable()) {
+              g_drumMappingWindow->Show(m_rowPluginKeys[selectedRow],
+                                        pluginName);
+            } else {
+              // Fallback: edit alias
+              EditAliasAtRow(selectedRow);
+            }
+          } else {
+            // Non-drum plugin: edit alias
+            EditAliasAtRow(selectedRow);
+          }
         }
         return TRUE;
       }
@@ -755,6 +780,13 @@ void MagdaPluginWindow::RefreshAliasList() {
     // Use ListView_SetItemText for subitem (single alias)
     ListView_SetItemText(m_hwndAliasList, itemIndex, 1,
                          (char *)aliasStr.c_str());
+
+    // Column 2: Type indicator for drum plugins
+    if (IsDrumPlugin(displayNameStr)) {
+      ListView_SetItemText(m_hwndAliasList, itemIndex, 2, (char *)"Drums");
+    } else {
+      ListView_SetItemText(m_hwndAliasList, itemIndex, 2, (char *)"");
+    }
 
     row++;
   }

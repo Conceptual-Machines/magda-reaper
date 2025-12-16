@@ -1,8 +1,13 @@
 #include "magda_actions.h"
 #include "magda_chat_window.h"
+#include "magda_drum_mapping.h"
+#include "magda_drum_mapping_window.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_chat.h"
+#include "magda_imgui_plugin_window.h"
 #include "magda_login_window.h"
+#include "magda_param_mapping.h"
+#include "magda_param_mapping_window.h"
 #include "magda_plugin_scanner.h"
 #include "magda_plugin_window.h"
 #include "magda_settings_window.h"
@@ -25,13 +30,32 @@ static MagdaLoginWindow *g_loginWindow = nullptr;
 static MagdaSettingsWindow *g_settingsWindow = nullptr;
 // Global plugin scanner instance
 MagdaPluginScanner *g_pluginScanner = nullptr;
-// Global plugin window instance
+// Global plugin window instance (SWELL fallback)
 MagdaPluginWindow *g_pluginWindow = nullptr;
+// Global ImGui plugin window instance
+MagdaImGuiPluginWindow *g_imguiPluginWindow = nullptr;
+// Global param mapping manager instance
+MagdaParamMappingWindow *g_paramMappingWindow = nullptr;
+// Global drum mapping manager instance (defined in magda_drum_mapping.cpp)
+// Global drum mapping window instance (defined in
+// magda_drum_mapping_window.cpp)
 
 // Timer callback for ImGui rendering
 static void imguiTimerCallback() {
   if (g_imguiChat && g_imguiChat->IsVisible()) {
     g_imguiChat->Render();
+  }
+  // Also render ImGui plugin window if visible
+  if (g_imguiPluginWindow && g_imguiPluginWindow->IsVisible()) {
+    g_imguiPluginWindow->Render();
+  }
+  // Also render param mapping window if visible
+  if (g_paramMappingWindow && g_paramMappingWindow->IsVisible()) {
+    g_paramMappingWindow->Render();
+  }
+  // Also render drum mapping window if visible
+  if (g_drumMappingWindow && g_drumMappingWindow->IsVisible()) {
+    g_drumMappingWindow->Render();
   }
 }
 
@@ -175,10 +199,16 @@ void magdaAction(int command_id, int flag) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening plugin alias window\n");
     }
-    if (!g_pluginWindow) {
-      g_pluginWindow = new MagdaPluginWindow();
+    // Use ImGui plugin window if available
+    if (g_imguiPluginWindow && g_imguiPluginWindow->IsAvailable()) {
+      g_imguiPluginWindow->Toggle();
+    } else {
+      // Fallback to SWELL window
+      if (!g_pluginWindow) {
+        g_pluginWindow = new MagdaPluginWindow();
+      }
+      g_pluginWindow->Show();
     }
-    g_pluginWindow->Show();
     break;
   case MAGDA_CMD_ANALYZE_TRACK:
     // Analyze the first selected track's audio (with FX applied)
@@ -552,6 +582,26 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                          reaper_plugin_info_t *rec) {
   if (!rec) {
     // Extension is being unloaded
+    if (g_imguiPluginWindow) {
+      delete g_imguiPluginWindow;
+      g_imguiPluginWindow = nullptr;
+    }
+    if (g_paramMappingWindow) {
+      delete g_paramMappingWindow;
+      g_paramMappingWindow = nullptr;
+    }
+    if (g_paramMappingManager) {
+      delete g_paramMappingManager;
+      g_paramMappingManager = nullptr;
+    }
+    if (g_drumMappingWindow) {
+      delete g_drumMappingWindow;
+      g_drumMappingWindow = nullptr;
+    }
+    if (g_drumMappingManager) {
+      delete g_drumMappingManager;
+      g_drumMappingManager = nullptr;
+    }
     if (g_imguiChat) {
       delete g_imguiChat;
       g_imguiChat = nullptr;
@@ -676,6 +726,33 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     rec->Register("timer", (void *)imguiTimerCallback);
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: ImGui chat initialized (ReaImGui available)\n");
+    }
+
+    // Initialize drum mapping window (also uses ReaImGui)
+    g_drumMappingManager = new DrumMappingManager();
+    g_drumMappingWindow = new MagdaDrumMappingWindow();
+    if (g_drumMappingWindow->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Drum mapping window initialized\n");
+      }
+    }
+
+    // Initialize ImGui plugin window
+    g_imguiPluginWindow = new MagdaImGuiPluginWindow();
+    if (g_imguiPluginWindow->Initialize(rec)) {
+      g_imguiPluginWindow->SetPluginScanner(g_pluginScanner);
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui plugin window initialized\n");
+      }
+    }
+
+    // Initialize param mapping
+    g_paramMappingManager = new ParamMappingManager();
+    g_paramMappingWindow = new MagdaParamMappingWindow();
+    if (g_paramMappingWindow->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Param mapping window initialized\n");
+      }
     }
   } else {
     // ReaImGui not available, fall back to SWELL chat
