@@ -235,7 +235,7 @@ void MagdaImGuiChat::Render() {
   int cond = ImGuiCond::FirstUseEver;
   m_ImGui_SetNextWindowSize(m_ctx, 800, 600, &cond);
 
-  // Apply pending dock ID
+  // Apply pending dock ID (negative = REAPER docker, 0 = floating)
   if (m_hasPendingDock) {
     m_ImGui_SetNextWindowDockID(m_ctx, m_pendingDockID, nullptr);
     m_hasPendingDock = false;
@@ -244,16 +244,6 @@ void MagdaImGuiChat::Render() {
   bool open = true;
   int flags = ImGuiWindowFlags::NoCollapse;
   bool visible = m_ImGui_Begin(m_ctx, "MAGDA Chat", &open, &flags);
-
-  // Log Begin result (only first few times)
-  static int beginLogCount = 0;
-  if (beginLogCount < 5 && ShowConsoleMsg) {
-    char buf[128];
-    snprintf(buf, sizeof(buf), "MAGDA ImGui: Begin() visible=%d, open=%d\n",
-             visible, open);
-    ShowConsoleMsg(buf);
-    beginLogCount++;
-  }
 
   // Right-click context menu for dock/undock
   if (m_ImGui_BeginPopupContextWindow(m_ctx, "##window_context", nullptr)) {
@@ -266,16 +256,18 @@ void MagdaImGuiChat::Render() {
       }
     } else {
       m_ImGui_Text(m_ctx, "Dock to:");
-      if (m_ImGui_MenuItem(m_ctx, "Bottom Docker", nullptr, nullptr, nullptr)) {
-        m_pendingDockID = 1;
+      // ReaImGui uses negative dock IDs for REAPER's native dockers
+      if (m_ImGui_MenuItem(m_ctx, "Docker 1 (Bottom)", nullptr, nullptr,
+                           nullptr)) {
+        m_pendingDockID = -1;
         m_hasPendingDock = true;
       }
-      if (m_ImGui_MenuItem(m_ctx, "Left Docker", nullptr, nullptr, nullptr)) {
-        m_pendingDockID = 2;
+      if (m_ImGui_MenuItem(m_ctx, "Docker 2", nullptr, nullptr, nullptr)) {
+        m_pendingDockID = -2;
         m_hasPendingDock = true;
       }
-      if (m_ImGui_MenuItem(m_ctx, "Right Docker", nullptr, nullptr, nullptr)) {
-        m_pendingDockID = 3;
+      if (m_ImGui_MenuItem(m_ctx, "Docker 3", nullptr, nullptr, nullptr)) {
+        m_pendingDockID = -3;
         m_hasPendingDock = true;
       }
     }
