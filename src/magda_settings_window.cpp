@@ -1,4 +1,5 @@
 #include "magda_settings_window.h"
+#include "magda_env.h"
 #include "magda_settings_resource.h"
 #include "magda_state.h"
 #include <cstdio>
@@ -264,19 +265,14 @@ const char *MagdaSettingsWindow::GetBackendURL() {
   static WDL_FastString s_backend_url;
   LoadBackendURL(s_backend_url);
 
-  // Return stored URL if set, otherwise return default
+  // Return stored URL if set (from REAPER ExtState)
   if (s_backend_url.GetLength() > 0) {
     return s_backend_url.Get();
   }
 
-  // Check environment variable as fallback
-  const char *env_url = getenv("MAGDA_BACKEND_URL");
-  if (env_url && strlen(env_url) > 0) {
-    return env_url;
-  }
-
-  // Return default
-  return "https://api.musicalaideas.com";
+  // Check .env file and environment variable via MagdaEnv
+  // This reads from .env in UserPlugins directory or HOME
+  return MagdaEnv::Get("MAGDA_BACKEND_URL", "https://api.musicalaideas.com");
 }
 
 void MagdaSettingsWindow::PopulateFilterModeCombo() {

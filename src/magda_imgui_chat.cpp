@@ -2,6 +2,7 @@
 #include "magda_api_client.h"
 #include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
+#include "magda_settings_window.h"
 #include <algorithm>
 #include <cstring>
 
@@ -300,8 +301,37 @@ void MagdaImGuiChat::Render() {
         AddUserMessage(msg);
         m_inputBuffer[0] = '\0';
 
-        // For now just echo - API integration later
-        AddAssistantMessage("[Echo] " + msg);
+        // Set busy state
+        m_busy = true;
+        SetAPIStatus("Sending...", 0xFFFFFF88); // Yellow
+
+        // Set backend URL from settings
+        const char *backendUrl = MagdaSettingsWindow::GetBackendURL();
+        if (backendUrl && backendUrl[0]) {
+          s_httpClient.SetBackendURL(backendUrl);
+        }
+
+        // Set JWT token if available
+        const char *token = MagdaLoginWindow::GetStoredToken();
+        if (token && token[0]) {
+          s_httpClient.SetJWTToken(token);
+        }
+
+        // Send to API
+        WDL_FastString response_json, error_msg;
+        if (s_httpClient.SendQuestion(msg.c_str(), response_json, error_msg)) {
+          // Actions are automatically executed by SendQuestion
+          AddAssistantMessage("Done");
+          SetAPIStatus("Connected", 0xFF88FF88); // Green
+        } else {
+          // Error
+          std::string errorStr = "Error: ";
+          errorStr += error_msg.Get();
+          AddAssistantMessage(errorStr);
+          SetAPIStatus("Error", 0xFF8888FF); // Red
+        }
+
+        m_busy = false;
 
         if (m_onSend) {
           m_onSend(msg);
