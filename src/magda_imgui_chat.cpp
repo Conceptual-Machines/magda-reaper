@@ -245,6 +245,16 @@ void MagdaImGuiChat::Render() {
   int flags = ImGuiWindowFlags::NoCollapse;
   bool visible = m_ImGui_Begin(m_ctx, "MAGDA Chat", &open, &flags);
 
+  // Log Begin result
+  static int beginLogCount = 0;
+  if (beginLogCount < 10 && ShowConsoleMsg) {
+    char buf[128];
+    snprintf(buf, sizeof(buf), "MAGDA ImGui: Begin() visible=%d, open=%d\n",
+             visible, open);
+    ShowConsoleMsg(buf);
+    beginLogCount++;
+  }
+
   // Right-click context menu for dock/undock
   if (m_ImGui_BeginPopupContextWindow(m_ctx, "##window_context", nullptr)) {
     bool isDocked = m_ImGui_IsWindowDocked(m_ctx);
@@ -300,43 +310,88 @@ void MagdaImGuiChat::Render() {
 
     if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr) ||
         submitted) {
-      if (!m_busy && strlen(m_inputBuffer) > 0 && m_onSend) {
+      if (!m_busy && strlen(m_inputBuffer) > 0) {
         std::string msg = m_inputBuffer;
         AddUserMessage(msg);
-        m_onSend(msg);
+        // Echo for testing (remove when API is connected)
+        AddAssistantMessage("[Echo] " + msg);
+        if (m_onSend) {
+          m_onSend(msg);
+        }
         m_inputBuffer[0] = '\0';
       }
     }
 
     m_ImGui_Separator(m_ctx);
 
-    // Simple message display (no columns for now)
-    double childW = 0;
-    double childH = -30; // Leave room for footer
-    int childFlags = 0;
-    int windowFlags = ImGuiWindowFlags::AlwaysVerticalScrollbar;
+    // 3-column layout: Request | Response | Controls
+    int borderFlags = 1; // ChildFlags_Borders
+    int scrollFlags = ImGuiWindowFlags::AlwaysVerticalScrollbar;
+    double col1W = 250; // Request
+    double col2W = 250; // Response
+    double col3W = 150; // Controls
+    double paneH = -30; // Leave room for footer
 
-    if (m_ImGui_BeginChild(m_ctx, "##messages", &childW, &childH, &childFlags,
-                           &windowFlags)) {
+    // Column 1: REQUEST (user messages)
+    if (m_ImGui_BeginChild(m_ctx, "##request", &col1W, &paneH, &borderFlags,
+                           &scrollFlags)) {
+      m_ImGui_TextColored(m_ctx, 0xFFFFCC88, "REQUEST");
+      m_ImGui_Separator(m_ctx);
       for (const auto &msg : m_history) {
-        int bgColor = msg.is_user ? Colors::UserBg : Colors::AssistantBg;
-        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, bgColor);
-
-        const char *label = msg.is_user ? "You: " : "MAGDA: ";
-        m_ImGui_TextColored(m_ctx, 0xFF88AACC, label);
-        double labelOffset = 0;
-        double labelSpacing = 0;
-        m_ImGui_SameLine(m_ctx, &labelOffset, &labelSpacing);
+        if (!msg.is_user)
+          continue;
         m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
-
-        int popCount = 1;
-        m_ImGui_PopStyleColor(m_ctx, &popCount);
+        m_ImGui_Separator(m_ctx);
       }
+    }
+    m_ImGui_EndChild(m_ctx);
 
+    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+
+    // Column 2: RESPONSE (assistant messages)
+    if (m_ImGui_BeginChild(m_ctx, "##response", &col2W, &paneH, &borderFlags,
+                           &scrollFlags)) {
+      m_ImGui_TextColored(m_ctx, 0xFFFFCC88, "RESPONSE");
+      m_ImGui_Separator(m_ctx);
+      for (const auto &msg : m_history) {
+        if (msg.is_user)
+          continue;
+        m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
+        m_ImGui_Separator(m_ctx);
+      }
+      if (!m_streamingBuffer.empty()) {
+        m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
+      }
       if (m_scrollToBottom) {
         double ratio = 1.0;
         m_ImGui_SetScrollHereY(m_ctx, &ratio);
         m_scrollToBottom = false;
+      }
+    }
+    m_ImGui_EndChild(m_ctx);
+
+    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+
+    // Column 3: CONTROLS (on right)
+    if (m_ImGui_BeginChild(m_ctx, "##controls", &col3W, &paneH, &borderFlags,
+                           nullptr)) {
+      m_ImGui_TextColored(m_ctx, 0xFFFFCC88, "ACTIONS");
+      m_ImGui_Separator(m_ctx);
+      if (m_ImGui_Button(m_ctx, "Mix Analysis", nullptr, nullptr)) {
+        if (m_onSend)
+          m_onSend("Analyze my mix and suggest improvements");
+      }
+      if (m_ImGui_Button(m_ctx, "Master Analysis", nullptr, nullptr)) {
+        if (m_onSend)
+          m_onSend("Analyze the master bus and suggest mastering adjustments");
+      }
+      if (m_ImGui_Button(m_ctx, "Gain Staging", nullptr, nullptr)) {
+        if (m_onSend)
+          m_onSend("Check gain staging across all tracks");
+      }
+      if (m_ImGui_Button(m_ctx, "Housekeeping", nullptr, nullptr)) {
+        if (m_onSend)
+          m_onSend("Clean up and organize this project");
       }
     }
     m_ImGui_EndChild(m_ctx);
