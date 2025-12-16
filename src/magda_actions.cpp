@@ -1,4 +1,5 @@
 #include "magda_actions.h"
+#include "magda_drum_mapping.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_plugin_scanner.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
@@ -1205,6 +1206,32 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return false;
     }
   } else {
+    // Check for drum_pattern actions (uses 'type' field instead of 'action')
+    const char *type_field = action->get_string_by_name("type");
+    if (type_field && strcmp(type_field, "drum_pattern") == 0) {
+      const char *drum_name = action->get_string_by_name("drum");
+      const char *grid = action->get_string_by_name("grid");
+      const char *velocity_str = action->get_string_by_name("velocity", true);
+      int velocity = velocity_str ? atoi(velocity_str) : 100;
+
+      if (!drum_name || !grid) {
+        error_msg.Set("drum_pattern: missing 'drum' or 'grid' field");
+        return false;
+      }
+
+      // Use track 0 (most recently created drum track) or -1 for last created
+      // In practice, this is called after create_track so track 0 is correct
+      // TODO: Track context management for multi-track patterns
+      if (AddDrumPattern(0, drum_name, grid, velocity, nullptr, error_msg)) {
+        result.Append(
+            "{\"type\":\"drum_pattern\",\"success\":true,\"drum\":\"");
+        result.Append(drum_name);
+        result.Append("\"}");
+        return true;
+      }
+      return false;
+    }
+
     error_msg.Set("Unknown action type");
     return false;
   }
@@ -1896,4 +1923,178 @@ double MagdaActions::BarsToTime(int bars) {
   double time_start = TimeMap2_QNToTime(nullptr, qn_start);
   double time_end = TimeMap2_QNToTime(nullptr, qn_end);
   return time_end - time_start;
+}
+
+// Normalize drum name from agent format to canonical format
+// Agent uses: hat, hat_open -> Canonical uses: hi_hat, hi_hat_open
+static std::string NormalizeDrumName(const char *drum_name) {
+  if (!drum_name)
+    return "";
+
+  std::string name = drum_name;
+
+  // Map agent drum names to canonical names
+  if (name == "hat")
+    return CanonicalDrums::HI_HAT;
+  if (name == "hat_open")
+    return CanonicalDrums::HI_HAT_OPEN;
+  if (name == "hat_pedal")
+    return CanonicalDrums::HI_HAT_PEDAL;
+
+  // Already canonical or unknown - return as-is
+  return name;
+}
+
+// Resolve drum name to MIDI note using drum mapping
+// Falls back to General MIDI if no plugin mapping exists
+int MagdaActions::ResolveDrumNote(const char *drum_name,
+                                  const char *plugin_key) {
+  std::string canonical_name = NormalizeDrumName(drum_name);
+
+  // Default General MIDI drum notes
+  static const std::map<std::string, int> gm_drums = {
+      {CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
+      {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
+      {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
+      {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 50},
+      {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 45},
+      {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
+      {CanonicalDrums::RIDE_BELL, 53},
+  };
+
+  // Try to use plugin-specific mapping first
+  if (plugin_key && plugin_key[0] && g_drumMappingManager) {
+    const DrumMapping *mapping =
+        g_drumMappingManager->GetMappingForPlugin(plugin_key);
+    if (mapping) {
+      int note = mapping->GetNote(canonical_name);
+      if (note >= 0) {
+        return note;
+      }
+    }
+  }
+
+  // Fall back to General MIDI
+  auto it = gm_drums.find(canonical_name);
+  if (it != gm_drums.end()) {
+    return it->second;
+  }
+
+  // Unknown drum - return -1
+  return -1;
+}
+
+// Add drum pattern to track - converts grid notation to MIDI notes
+bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
+                                  const char *grid, int velocity,
+                                  const char *plugin_key,
+                                  WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  if (!drum_name || !grid) {
+    error_msg.Set("drum_pattern: missing drum name or grid");
+    return false;
+  }
+
+  // Resolve drum name to MIDI note
+  int midi_note = ResolveDrumNote(drum_name, plugin_key);
+  if (midi_note < 0) {
+    error_msg.Set("drum_pattern: unknown drum name '");
+    error_msg.Append(drum_name);
+    error_msg.Append("'");
+    return false;
+  }
+
+  // Convert velocity from 0-127 range, clamping if needed
+  if (velocity < 0)
+    velocity = 0;
+  if (velocity > 127)
+    velocity = 127;
+
+  // Parse grid and calculate note positions
+  // Grid: 16 chars = 1 bar (each char is 1/16 note)
+  // "x" = hit, "X" = accent, "o" = ghost, "-" = rest
+  size_t grid_len = strlen(grid);
+  if (grid_len == 0) {
+    error_msg.Set("drum_pattern: empty grid");
+    return false;
+  }
+
+  // Build notes array for AddMIDI
+  // Each note: {"pitch":N, "velocity":V, "start":beats, "length":beats}
+  WDL_FastString notes_json;
+  notes_json.Append("[");
+
+  int note_count = 0;
+  double sixteenth_note = 0.25; // 1/16 note = 0.25 beats (quarter notes)
+
+  for (size_t i = 0; i < grid_len; i++) {
+    char c = grid[i];
+    int note_velocity = 0;
+
+    switch (c) {
+    case 'x': // Normal hit
+      note_velocity = velocity;
+      break;
+    case 'X': // Accent
+      note_velocity = 127;
+      break;
+    case 'o': // Ghost note
+      note_velocity = 60;
+      break;
+    case '-': // Rest
+    default:
+      continue;
+    }
+
+    // Calculate position in beats (quarter notes)
+    double start_beats = i * sixteenth_note;
+    double length_beats = sixteenth_note; // 1/16 note duration
+
+    if (note_count > 0) {
+      notes_json.Append(",");
+    }
+
+    char note_json[256];
+    snprintf(note_json, sizeof(note_json),
+             "{\"pitch\":%d,\"velocity\":%d,\"start\":%.4f,\"length\":%.4f}",
+             midi_note, note_velocity, start_beats, length_beats);
+    notes_json.Append(note_json);
+    note_count++;
+  }
+
+  notes_json.Append("]");
+
+  if (note_count == 0) {
+    // No notes to add - grid was all rests, which is fine
+    return true;
+  }
+
+  // Log the drum pattern
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: drum_pattern: drum=%s, note=%d, grid=%s, %d hits\n",
+               drum_name, midi_note, grid, note_count);
+      ShowConsoleMsg(log_msg);
+    }
+  }
+
+  // Parse the notes JSON and call AddMIDI
+  wdl_json_parser parser;
+  wdl_json_element *notes_array =
+      parser.parse(notes_json.Get(), (int)notes_json.GetLength());
+
+  if (parser.m_err || !notes_array) {
+    error_msg.Set("drum_pattern: internal error parsing notes");
+    return false;
+  }
+
+  return AddMIDI(track_index, notes_array, error_msg);
 }

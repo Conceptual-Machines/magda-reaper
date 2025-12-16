@@ -48,6 +48,14 @@ private:
   static bool AddMIDI(int track_index, wdl_json_element *notes_array,
                       WDL_FastString &error_msg);
 
+  // Drum pattern handler - converts grid notation to MIDI notes
+  static bool AddDrumPattern(int track_index, const char *drum_name,
+                             const char *grid, int velocity,
+                             const char *plugin_key, WDL_FastString &error_msg);
+
+  // Resolve drum name to MIDI note using drum mapping
+  static int ResolveDrumNote(const char *drum_name, const char *plugin_key);
+
   // Unified property setters (Phase 1: Refactoring)
   static bool SetTrackProperties(int track_index, const char *name,
                                  const char *volume_db_str, const char *pan_str,
