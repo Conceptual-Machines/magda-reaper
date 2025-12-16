@@ -27,8 +27,24 @@ constexpr int EnterReturnsTrue = 1 << 5;
 } // namespace ImGuiInputTextFlags
 
 namespace ImGuiCol {
+constexpr int Text = 0;
+constexpr int WindowBg = 2;
 constexpr int ChildBg = 3;
+constexpr int Border = 5;
+constexpr int FrameBg = 7; // Input field background
+constexpr int FrameBgHovered = 8;
+constexpr int FrameBgActive = 9;
+constexpr int TitleBg = 10;
+constexpr int TitleBgActive = 11;
 constexpr int Button = 21;
+constexpr int ButtonHovered = 22;
+constexpr int ButtonActive = 23;
+constexpr int Header = 24; // Column headers
+constexpr int HeaderHovered = 25;
+constexpr int HeaderActive = 26;
+constexpr int Separator = 27;
+constexpr int ScrollbarBg = 14;
+constexpr int ScrollbarGrab = 15;
 } // namespace ImGuiCol
 
 namespace ImGuiKey {
@@ -48,14 +64,38 @@ namespace ImGuiTableColumnFlags {
 constexpr int WidthStretch = 1 << 1;
 } // namespace ImGuiTableColumnFlags
 
-// Colors (ABGR format for ReaImGui)
+// Theme colors - format is 0xRRGGBBAA
+// Helper macro: RGBA(r,g,b) creates 0xRRGGBBFF
+#define THEME_RGBA(r, g, b) (((r) << 24) | ((g) << 16) | ((b) << 8) | 0xFF)
+
+struct ThemeColors {
+  int windowBg = THEME_RGBA(0x3C, 0x3C, 0x3C);     // Dark grey
+  int childBg = THEME_RGBA(0x2D, 0x2D, 0x2D);      // Slightly darker panels
+  int textAreaBg = THEME_RGBA(0x1A, 0x1A, 0x1A);   // Near-black for text areas
+  int headerText = THEME_RGBA(0xE0, 0xE0, 0xE0);   // White headers
+  int normalText = THEME_RGBA(0xD0, 0xD0, 0xD0);   // Light grey text
+  int dimText = THEME_RGBA(0x90, 0x90, 0x90);      // Dimmed grey
+  int accent = THEME_RGBA(0x52, 0x94, 0xE2);       // Blue accent
+  int userBg = THEME_RGBA(0x2D, 0x2D, 0x2D);       // Dark grey
+  int assistantBg = THEME_RGBA(0x35, 0x35, 0x35);  // Slightly lighter
+  int statusGreen = THEME_RGBA(0x88, 0xFF, 0x88);  // Green
+  int statusRed = THEME_RGBA(0xFF, 0x66, 0x66);    // Red
+  int statusYellow = THEME_RGBA(0xFF, 0xFF, 0x66); // Yellow
+  int border = THEME_RGBA(0x50, 0x50, 0x50);       // Grey border
+  int buttonBg = THEME_RGBA(0x48, 0x48, 0x48);     // Grey button
+  int buttonHover = THEME_RGBA(0x58, 0x58, 0x58);  // Lighter on hover
+  int inputBg = THEME_RGBA(0x1E, 0x1E, 0x1E);      // Dark input
+};
+
+static ThemeColors g_theme;
+
+// Legacy color namespace for compatibility
 namespace Colors {
-constexpr int UserBg = 0xFF3D5A80;      // Blue-ish
-constexpr int AssistantBg = 0xFF2D3142; // Dark gray
-constexpr int HeaderText = 0xFFFFCC88;  // Gold
 constexpr int StatusGreen = 0xFF88FF88;
 constexpr int StatusRed = 0xFF8888FF;
 constexpr int StatusYellow = 0xFF88FFFF;
+// These will be replaced by g_theme values
+constexpr int HeaderText = 0xFFE0E0E0;
 constexpr int GrayText = 0xFF888888;
 } // namespace Colors
 
@@ -238,6 +278,80 @@ void MagdaImGuiChat::Render() {
     m_hasPendingDock = false;
   }
 
+  // Load color index functions from ReaImGui
+  int (*Col_WindowBg)() = (int (*)())g_rec->GetFunc("ImGui_Col_WindowBg");
+  int (*Col_ChildBg)() = (int (*)())g_rec->GetFunc("ImGui_Col_ChildBg");
+  int (*Col_Text)() = (int (*)())g_rec->GetFunc("ImGui_Col_Text");
+  int (*Col_FrameBg)() = (int (*)())g_rec->GetFunc("ImGui_Col_FrameBg");
+  int (*Col_FrameBgHovered)() =
+      (int (*)())g_rec->GetFunc("ImGui_Col_FrameBgHovered");
+  int (*Col_FrameBgActive)() =
+      (int (*)())g_rec->GetFunc("ImGui_Col_FrameBgActive");
+  int (*Col_Button)() = (int (*)())g_rec->GetFunc("ImGui_Col_Button");
+  int (*Col_ButtonHovered)() =
+      (int (*)())g_rec->GetFunc("ImGui_Col_ButtonHovered");
+  int (*Col_ButtonActive)() =
+      (int (*)())g_rec->GetFunc("ImGui_Col_ButtonActive");
+  int (*Col_Border)() = (int (*)())g_rec->GetFunc("ImGui_Col_Border");
+  int (*Col_Separator)() = (int (*)())g_rec->GetFunc("ImGui_Col_Separator");
+  int (*Col_ScrollbarBg)() = (int (*)())g_rec->GetFunc("ImGui_Col_ScrollbarBg");
+  int (*Col_ScrollbarGrab)() =
+      (int (*)())g_rec->GetFunc("ImGui_Col_ScrollbarGrab");
+
+  int styleColorCount = 0;
+  if (Col_WindowBg) {
+    m_ImGui_PushStyleColor(m_ctx, Col_WindowBg(), g_theme.windowBg);
+    styleColorCount++;
+  }
+  if (Col_ChildBg) {
+    m_ImGui_PushStyleColor(m_ctx, Col_ChildBg(), g_theme.childBg);
+    styleColorCount++;
+  }
+  if (Col_Text) {
+    m_ImGui_PushStyleColor(m_ctx, Col_Text(), g_theme.normalText);
+    styleColorCount++;
+  }
+  if (Col_FrameBg) {
+    m_ImGui_PushStyleColor(m_ctx, Col_FrameBg(), g_theme.inputBg);
+    styleColorCount++;
+  }
+  if (Col_FrameBgHovered) {
+    m_ImGui_PushStyleColor(m_ctx, Col_FrameBgHovered(), g_theme.buttonHover);
+    styleColorCount++;
+  }
+  if (Col_FrameBgActive) {
+    m_ImGui_PushStyleColor(m_ctx, Col_FrameBgActive(), g_theme.buttonBg);
+    styleColorCount++;
+  }
+  if (Col_Button) {
+    m_ImGui_PushStyleColor(m_ctx, Col_Button(), g_theme.buttonBg);
+    styleColorCount++;
+  }
+  if (Col_ButtonHovered) {
+    m_ImGui_PushStyleColor(m_ctx, Col_ButtonHovered(), g_theme.buttonHover);
+    styleColorCount++;
+  }
+  if (Col_ButtonActive) {
+    m_ImGui_PushStyleColor(m_ctx, Col_ButtonActive(), g_theme.childBg);
+    styleColorCount++;
+  }
+  if (Col_Border) {
+    m_ImGui_PushStyleColor(m_ctx, Col_Border(), g_theme.border);
+    styleColorCount++;
+  }
+  if (Col_Separator) {
+    m_ImGui_PushStyleColor(m_ctx, Col_Separator(), g_theme.border);
+    styleColorCount++;
+  }
+  if (Col_ScrollbarBg) {
+    m_ImGui_PushStyleColor(m_ctx, Col_ScrollbarBg(), g_theme.childBg);
+    styleColorCount++;
+  }
+  if (Col_ScrollbarGrab) {
+    m_ImGui_PushStyleColor(m_ctx, Col_ScrollbarGrab(), g_theme.buttonBg);
+    styleColorCount++;
+  }
+
   bool open = true;
   int flags = ImGuiWindowFlags::NoCollapse;
   bool visible = m_ImGui_Begin(m_ctx, "MAGDA Chat", &open, &flags);
@@ -281,7 +395,7 @@ void MagdaImGuiChat::Render() {
   // Only render content if window is visible (not collapsed)
   if (visible) {
     // Header
-    m_ImGui_TextColored(m_ctx, Colors::HeaderText,
+    m_ImGui_TextColored(m_ctx, g_theme.headerText,
                         "MAGDA - AI Music Production Assistant");
     m_ImGui_Separator(m_ctx);
 
@@ -360,7 +474,7 @@ void MagdaImGuiChat::Render() {
     // Column 1: REQUEST (user messages)
     if (m_ImGui_BeginChild(m_ctx, "##request", &col1W, &paneH, &borderFlags,
                            &scrollFlags)) {
-      m_ImGui_TextColored(m_ctx, 0xFFFFCC88, "REQUEST");
+      m_ImGui_TextColored(m_ctx, g_theme.headerText, "REQUEST");
       m_ImGui_Separator(m_ctx);
       for (const auto &msg : m_history) {
         if (!msg.is_user)
@@ -376,7 +490,7 @@ void MagdaImGuiChat::Render() {
     // Column 2: RESPONSE (assistant messages)
     if (m_ImGui_BeginChild(m_ctx, "##response", &col2W, &paneH, &borderFlags,
                            &scrollFlags)) {
-      m_ImGui_TextColored(m_ctx, 0xFFFFCC88, "RESPONSE");
+      m_ImGui_TextColored(m_ctx, g_theme.headerText, "RESPONSE");
       m_ImGui_Separator(m_ctx);
       for (const auto &msg : m_history) {
         if (msg.is_user)
@@ -400,7 +514,7 @@ void MagdaImGuiChat::Render() {
     // Column 3: CONTROLS (on right)
     if (m_ImGui_BeginChild(m_ctx, "##controls", &col3W, &paneH, &borderFlags,
                            nullptr)) {
-      m_ImGui_TextColored(m_ctx, 0xFFFFCC88, "ACTIONS");
+      m_ImGui_TextColored(m_ctx, g_theme.headerText, "ACTIONS");
       m_ImGui_Separator(m_ctx);
       if (m_ImGui_Button(m_ctx, "Mix Analysis", nullptr, nullptr)) {
         if (m_onSend)
@@ -423,12 +537,15 @@ void MagdaImGuiChat::Render() {
 
     // Footer
     m_ImGui_Separator(m_ctx);
-    m_ImGui_TextColored(m_ctx, Colors::GrayText, "Status: ");
+    m_ImGui_TextColored(m_ctx, g_theme.dimText, "Status: ");
     m_ImGui_SameLine(m_ctx, &zero, &zero);
     m_ImGui_TextColored(m_ctx, m_apiStatusColor, m_apiStatus.c_str());
   }
 
   m_ImGui_End(m_ctx);
+
+  // Pop style colors
+  m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
 
   // Handle window close
   if (!open) {
@@ -494,7 +611,7 @@ void MagdaImGuiChat::RenderRequestColumn() {
       if (!msg.is_user)
         continue;
 
-      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, Colors::UserBg);
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.userBg);
       std::string msgId = "##req_" + std::to_string(&msg - m_history.data());
       int msgChildFlags = 1;
       int msgWindowFlags = 0;
@@ -529,7 +646,7 @@ void MagdaImGuiChat::RenderResponseColumn() {
       if (msg.is_user)
         continue;
 
-      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, Colors::AssistantBg);
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.assistantBg);
       std::string msgId = "##resp_" + std::to_string(&msg - m_history.data());
       int msgChildFlags = 1;
       int msgWindowFlags = 0;
@@ -545,7 +662,7 @@ void MagdaImGuiChat::RenderResponseColumn() {
     }
 
     if (!m_streamingBuffer.empty()) {
-      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, Colors::AssistantBg);
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.assistantBg);
       int streamChildFlags = 1;
       int streamWindowFlags = 0;
       if (m_ImGui_BeginChild(m_ctx, "##streaming", &zero, &zero,
@@ -621,7 +738,7 @@ void MagdaImGuiChat::RenderControlsColumn() {
 }
 
 void MagdaImGuiChat::RenderFooter() {
-  m_ImGui_TextColored(m_ctx, Colors::GrayText, "Status: ");
+  m_ImGui_TextColored(m_ctx, g_theme.dimText, "Status: ");
   double offset = 0;
   double spacing = 0;
   m_ImGui_SameLine(m_ctx, &offset, &spacing);
