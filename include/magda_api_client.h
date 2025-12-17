@@ -70,6 +70,10 @@ public:
   // Health check - returns true if API is reachable
   bool CheckHealth(WDL_FastString &error_msg, int timeout_seconds = 5);
 
+  // Helper to extract actions JSON from response
+  // Finds the "actions" field and extracts its value as a JSON string
+  static char *ExtractActionsJSON(const char *json_str, int json_len);
+
 private:
   WDL_FastString m_backend_url;
   WDL_FastString m_jwt_token;
@@ -79,8 +83,4 @@ private:
   // Helper to build request JSON with question
   // Note: State is fetched by backend via the extension's HTTP server
   char *BuildRequestJSON(const char *question);
-
-  // Helper to extract actions JSON from response
-  // Finds the "actions" field and extracts its value as a JSON string
-  static char *ExtractActionsJSON(const char *json_str, int json_len);
 };

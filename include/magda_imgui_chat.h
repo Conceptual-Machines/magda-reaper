@@ -2,7 +2,9 @@
 
 #include "reaper_plugin.h"
 #include <functional>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 // Forward declare the plugin scanner for autocomplete
@@ -173,7 +175,22 @@ private:
   std::string m_apiStatus = "Checking...";
   int m_apiStatusColor = 0xFFFFFFFF; // White default
 
+  // Loading animation state
+  double m_spinnerStartTime = 0.0;
+
+  // Async request state
+  std::mutex m_asyncMutex;
+  std::thread m_asyncThread;
+  bool m_asyncPending = false;
+  bool m_asyncResultReady = false;
+  bool m_asyncSuccess = false;
+  std::string m_asyncResponseJson;
+  std::string m_asyncErrorMsg;
+  std::string m_pendingQuestion; // Question being processed
+
   // Internal methods
+  void ProcessAsyncResult();
+  void StartAsyncRequest(const std::string &question);
   void CheckAPIHealth();
   void RenderHeader();
   void RenderInputArea();

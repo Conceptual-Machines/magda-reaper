@@ -1,10 +1,14 @@
 #include "magda_imgui_chat.h"
+#include "../WDL/WDL/jsonparse.h"
+#include "magda_actions.h"
 #include "magda_api_client.h"
 #include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
 #include "magda_settings_window.h"
+#include "magda_state.h"
 #include <algorithm>
 #include <cstring>
+#include <ctime>
 
 // Static HTTP client instance
 static MagdaHTTPClient s_httpClient;
@@ -89,6 +93,92 @@ struct ThemeColors {
 
 static ThemeColors g_theme;
 
+// Helper function to extract action summary from response JSON
+static std::string ExtractActionSummary(const char *response_json) {
+  if (!response_json || !response_json[0]) {
+    return "Done";
+  }
+
+  wdl_json_parser parser;
+  wdl_json_element *root =
+      parser.parse(response_json, (int)strlen(response_json));
+  if (parser.m_err || !root) {
+    return "Done";
+  }
+
+  // Look for "actions" array in response
+  wdl_json_element *actions = root->get_item_by_name("actions");
+  if (!actions || !actions->is_array()) {
+    return "Done";
+  }
+
+  // Count actions and collect action types
+  int action_count = 0;
+  std::string action_types;
+  std::vector<std::string> unique_types;
+
+  // Iterate through array using enum_item
+  int idx = 0;
+  wdl_json_element *action = actions->enum_item(idx);
+  while (action) {
+    action_count++;
+    wdl_json_element *action_type = action->get_item_by_name("action");
+    if (action_type && action_type->m_value_string) {
+      std::string type = action_type->m_value;
+      // Simplify action names for display
+      if (type.find("create_") == 0) {
+        type = type.substr(7); // Remove "create_" prefix
+      } else if (type.find("set_") == 0) {
+        type = type.substr(4); // Remove "set_" prefix
+      } else if (type.find("add_") == 0) {
+        type = type.substr(4); // Remove "add_" prefix
+      }
+      // Only add unique types
+      bool found = false;
+      for (const auto &t : unique_types) {
+        if (t == type) {
+          found = true;
+          break;
+        }
+      }
+      if (!found && unique_types.size() < 3) {
+        unique_types.push_back(type);
+      }
+    }
+    idx++;
+    action = actions->enum_item(idx);
+  }
+
+  if (action_count == 0) {
+    return "Done (no actions)";
+  }
+
+  // Build summary string
+  std::string summary;
+  if (action_count == 1) {
+    summary = "Completed 1 action";
+  } else {
+    summary = "Completed " + std::to_string(action_count) + " actions";
+  }
+
+  // Add action types if available
+  if (!unique_types.empty()) {
+    summary += " (";
+    for (size_t i = 0; i < unique_types.size(); i++) {
+      if (i > 0)
+        summary += ", ";
+      summary += unique_types[i];
+    }
+    if (unique_types.size() < (size_t)action_count &&
+        (size_t)action_count > unique_types.size()) {
+      summary += "...";
+    }
+    summary += ")";
+  }
+
+  return summary;
+}
+
 // Legacy color namespace for compatibility
 namespace Colors {
 constexpr int StatusGreen = 0xFF88FF88;
@@ -143,7 +233,13 @@ MagdaImGuiChat::MagdaImGuiChat() {
   m_ImGui_Dummy = nullptr;
 }
 
-MagdaImGuiChat::~MagdaImGuiChat() { m_ctx = nullptr; }
+MagdaImGuiChat::~MagdaImGuiChat() {
+  // Wait for any pending async request to complete
+  if (m_asyncThread.joinable()) {
+    m_asyncThread.join();
+  }
+  m_ctx = nullptr;
+}
 
 bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
   if (!rec) {
@@ -452,43 +548,17 @@ void MagdaImGuiChat::Render() {
         AddUserMessage(msg);
         m_inputBuffer[0] = '\0';
 
-        // Set busy state
-        m_busy = true;
-        SetAPIStatus("Sending...", 0xFFFF66FF); // Yellow
-
-        // Set backend URL from settings
-        const char *backendUrl = MagdaSettingsWindow::GetBackendURL();
-        if (backendUrl && backendUrl[0]) {
-          s_httpClient.SetBackendURL(backendUrl);
-        }
-
-        // Set JWT token if available
-        const char *token = MagdaLoginWindow::GetStoredToken();
-        if (token && token[0]) {
-          s_httpClient.SetJWTToken(token);
-        }
-
-        // Send to API
-        WDL_FastString response_json, error_msg;
-        if (s_httpClient.SendQuestion(msg.c_str(), response_json, error_msg)) {
-          // Actions are automatically executed by SendQuestion
-          AddAssistantMessage("Done");
-          SetAPIStatus("Connected", 0x88FF88FF); // Green
-        } else {
-          // Error
-          std::string errorStr = "Error: ";
-          errorStr += error_msg.Get();
-          AddAssistantMessage(errorStr);
-          SetAPIStatus("Error", 0xFF6666FF); // Red
-        }
-
-        m_busy = false;
+        // Start async request - this won't block the UI
+        StartAsyncRequest(msg);
 
         if (m_onSend) {
           m_onSend(msg);
         }
       }
     }
+
+    // Check for completed async request and process result
+    ProcessAsyncResult();
 
     m_ImGui_Separator(m_ctx);
 
@@ -537,6 +607,34 @@ void MagdaImGuiChat::Render() {
       }
       if (!m_streamingBuffer.empty()) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
+      }
+      // Show loading spinner while busy
+      if (m_busy) {
+        // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
+        const char *spinnerFrames[] = {
+            "\xe2\xa0\x8b", // ⠋
+            "\xe2\xa0\x99", // ⠙
+            "\xe2\xa0\xb9", // ⠹
+            "\xe2\xa0\xb8", // ⠸
+            "\xe2\xa0\xbc", // ⠼
+            "\xe2\xa0\xb4", // ⠴
+            "\xe2\xa0\xa6", // ⠦
+            "\xe2\xa0\xa7", // ⠧
+            "\xe2\xa0\x87", // ⠇
+            "\xe2\xa0\x8f"  // ⠏
+        };
+        const int numFrames = 10;
+        double elapsed =
+            ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
+        int frameIndex =
+            ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
+
+        // Build loading message with spinner
+        char loadingMsg[128];
+        snprintf(loadingMsg, sizeof(loadingMsg), "%s Processing request...",
+                 spinnerFrames[frameIndex]);
+        m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
+        m_scrollToBottom = true; // Keep scrolling to show spinner
       }
       if (m_scrollToBottom) {
         double ratio = 1.0;
@@ -713,6 +811,33 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_EndChild(m_ctx);
       int popCount = 1;
       m_ImGui_PopStyleColor(m_ctx, &popCount);
+    }
+
+    // Show loading spinner while busy
+    if (m_busy) {
+      // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
+      const char *spinnerFrames[] = {
+          "\xe2\xa0\x8b", // ⠋
+          "\xe2\xa0\x99", // ⠙
+          "\xe2\xa0\xb9", // ⠹
+          "\xe2\xa0\xb8", // ⠸
+          "\xe2\xa0\xbc", // ⠼
+          "\xe2\xa0\xb4", // ⠴
+          "\xe2\xa0\xa6", // ⠦
+          "\xe2\xa0\xa7", // ⠧
+          "\xe2\xa0\x87", // ⠇
+          "\xe2\xa0\x8f"  // ⠏
+      };
+      const int numFrames = 10;
+      double elapsed = ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
+      int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
+
+      // Build loading message with spinner
+      char loadingMsg[128];
+      snprintf(loadingMsg, sizeof(loadingMsg), "%s Processing request...",
+               spinnerFrames[frameIndex]);
+      m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
+      m_scrollToBottom = true; // Keep scrolling to show spinner
     }
 
     if (m_scrollToBottom) {
@@ -1056,4 +1181,181 @@ void MagdaImGuiChat::ClearStreamingBuffer() {
     AddAssistantMessage(m_streamingBuffer);
     m_streamingBuffer.clear();
   }
+}
+
+void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
+  // Don't start a new request if one is already pending
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    if (m_asyncPending) {
+      return;
+    }
+  }
+
+  // Set busy state and start spinner animation
+  m_busy = true;
+  m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+  SetAPIStatus("Sending...", 0xFFFF66FF); // Yellow
+
+  // Set backend URL from settings
+  const char *backendUrl = MagdaSettingsWindow::GetBackendURL();
+  if (backendUrl && backendUrl[0]) {
+    s_httpClient.SetBackendURL(backendUrl);
+  }
+
+  // Set JWT token if available
+  const char *token = MagdaLoginWindow::GetStoredToken();
+  if (token && token[0]) {
+    s_httpClient.SetJWTToken(token);
+  }
+
+  // Build request JSON on main thread (accesses REAPER state)
+  WDL_FastString request_json;
+  request_json.Append("{\"question\":\"");
+  // Escape question string
+  for (const char *p = question.c_str(); *p; p++) {
+    switch (*p) {
+    case '"':
+      request_json.Append("\\\"");
+      break;
+    case '\\':
+      request_json.Append("\\\\");
+      break;
+    case '\n':
+      request_json.Append("\\n");
+      break;
+    case '\r':
+      request_json.Append("\\r");
+      break;
+    case '\t':
+      request_json.Append("\\t");
+      break;
+    default:
+      request_json.Append(p, 1);
+      break;
+    }
+  }
+  request_json.Append("\",\"state\":");
+
+  // Get REAPER state on main thread (before spawning async)
+  char *state_json = MagdaState::GetStateSnapshot();
+  if (state_json) {
+    request_json.Append(state_json);
+    free(state_json);
+  } else {
+    request_json.Append("{}");
+  }
+  request_json.Append("}");
+
+  // Store the request JSON and mark as pending
+  std::string requestJsonStr = request_json.Get();
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    m_pendingQuestion = question;
+    m_asyncPending = true;
+    m_asyncResultReady = false;
+    m_asyncSuccess = false;
+    m_asyncResponseJson.clear();
+    m_asyncErrorMsg.clear();
+  }
+
+  // Wait for any previous thread to finish
+  if (m_asyncThread.joinable()) {
+    m_asyncThread.join();
+  }
+
+  // Start the async request thread - ONLY do HTTP, no REAPER API calls
+  m_asyncThread = std::thread([this, requestJsonStr]() {
+    // Make the HTTP request (this is the slow part)
+    // Use SendPOSTRequest directly - do NOT call SendQuestion which executes
+    // actions
+    WDL_FastString response, error_msg;
+    bool success = s_httpClient.SendPOSTRequest(
+        "/api/v1/chat", requestJsonStr.c_str(), response, error_msg, 60);
+
+    // Store the result
+    {
+      std::lock_guard<std::mutex> lock(m_asyncMutex);
+      m_asyncSuccess = success;
+      if (success) {
+        m_asyncResponseJson = response.Get();
+      } else {
+        m_asyncErrorMsg = error_msg.Get();
+      }
+      m_asyncResultReady = true;
+      m_asyncPending = false;
+    }
+  });
+}
+
+void MagdaImGuiChat::ProcessAsyncResult() {
+  bool resultReady = false;
+  bool success = false;
+  std::string responseJson;
+  std::string errorMsg;
+
+  // Check if result is ready (thread-safe)
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    if (!m_asyncResultReady) {
+      return;
+    }
+    resultReady = true;
+    success = m_asyncSuccess;
+    responseJson = m_asyncResponseJson;
+    errorMsg = m_asyncErrorMsg;
+    m_asyncResultReady = false; // Mark as processed
+  }
+
+  if (!resultReady) {
+    return;
+  }
+
+  // Join the thread if it's done
+  if (m_asyncThread.joinable()) {
+    m_asyncThread.join();
+  }
+
+  // Process the result on the MAIN thread (safe to call REAPER APIs here)
+  if (success) {
+    // Execute actions from the response - MUST be on main thread
+    if (!responseJson.empty()) {
+      // Extract actions JSON from response
+      char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
+          responseJson.c_str(), (int)responseJson.length());
+
+      if (actions_json) {
+        WDL_FastString execution_result, execution_error;
+        if (!MagdaActions::ExecuteActions(actions_json, execution_result,
+                                          execution_error)) {
+          // Log error
+          if (g_rec) {
+            void (*ShowConsoleMsg)(const char *msg) =
+                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+              char log_msg[512];
+              snprintf(log_msg, sizeof(log_msg),
+                       "MAGDA: Action execution failed: %s\n",
+                       execution_error.Get());
+              ShowConsoleMsg(log_msg);
+            }
+          }
+        }
+        free(actions_json);
+      }
+    }
+
+    // Extract summary of what was done
+    std::string summary = ExtractActionSummary(responseJson.c_str());
+    AddAssistantMessage(summary);
+    SetAPIStatus("Connected", 0x88FF88FF); // Green
+  } else {
+    // Error - show more context
+    std::string errorStr = "Error: ";
+    errorStr += errorMsg;
+    AddAssistantMessage(errorStr);
+    SetAPIStatus("Error", 0xFF6666FF); // Red
+  }
+
+  m_busy = false;
 }
