@@ -1275,17 +1275,39 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     if (end_str)
       end_time = atof(end_str);
     if (start_bar_str) {
-      start_time = BarToTime(atoi(start_bar_str));
+      int bar_num = atoi(start_bar_str);
+      start_time = BarToTime(bar_num);
       times_in_seconds = true;
+      // Debug: log bar conversion
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log[128];
+        snprintf(log, sizeof(log),
+                 "MAGDA: start_bar=%d -> start_time=%.2f sec\n", bar_num,
+                 start_time);
+        ShowConsoleMsg(log);
+      }
     }
     if (end_bar_str) {
-      end_time = BarToTime(atoi(end_bar_str));
+      int bar_num = atoi(end_bar_str);
+      end_time = BarToTime(bar_num);
       times_in_seconds = true;
+      // Debug: log bar conversion
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log[128];
+        snprintf(log, sizeof(log), "MAGDA: end_bar=%d -> end_time=%.2f sec\n",
+                 bar_num, end_time);
+        ShowConsoleMsg(log);
+      }
     }
 
     // Parse optional parameters
-    double from_val = -60.0; // Default for volume fade_in
-    double to_val = 0.0;
+    // Use NAN as sentinel to indicate "not provided"
+    double from_val = NAN;
+    double to_val = NAN;
     double freq = 1.0;
     double amplitude = 1.0;
     double phase = 0.0;
@@ -2336,6 +2358,10 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
       (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  int (*GetEnvelopeScalingMode)(TrackEnvelope *) =
+      (int (*)(TrackEnvelope *))g_rec->GetFunc("GetEnvelopeScalingMode");
+  double (*ScaleToEnvelopeMode)(int, double) =
+      (double (*)(int, double))g_rec->GetFunc("ScaleToEnvelopeMode");
 
   if (!GetTrack || !InsertEnvelopePoint) {
     error_msg.Set("Required REAPER API functions not available");
@@ -2392,16 +2418,6 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
     return false;
   }
 
-  if (ShowConsoleMsg) {
-    char log_msg[512];
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddAutomation: track=%d, param=%s, curve=%s, start=%.2f, "
-             "end=%.2f\n",
-             track_index, param, curve ? curve : "points", start_time,
-             end_time);
-    ShowConsoleMsg(log_msg);
-  }
-
   // Convert beat times to project time if needed
   double start_sec = start_time;
   double end_sec = end_time;
@@ -2412,6 +2428,18 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   }
   // If times_in_seconds is true, values are already in seconds (from bar
   // conversion)
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddAutomation: track=%d, param=%s, curve=%s\n"
+             "  times_in_seconds=%d, start_time=%.2f, end_time=%.2f\n"
+             "  start_sec=%.2f, end_sec=%.2f, duration=%.2f sec\n",
+             track_index, param, curve ? curve : "points",
+             times_in_seconds ? 1 : 0, start_time, end_time, start_sec, end_sec,
+             end_sec - start_sec);
+    ShowConsoleMsg(log_msg);
+  }
 
   // Generate points based on curve type or use provided points
   bool noSort = true;
@@ -2426,27 +2454,79 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
     }
 
     // Set default from/to values based on curve type
+    // NAN indicates "not provided" - set sensible defaults
+    bool from_provided = !std::isnan(from_val);
+    bool to_provided = !std::isnan(to_val);
+
     if (strcmp(curve, "fade_in") == 0) {
-      from_val = is_volume ? 0.0 : 0.0; // 0.0 = -inf dB for volume envelope
-      to_val = is_volume ? 1.0 : 0.0;   // 1.0 = 0 dB
+      if (!from_provided)
+        from_val = 0.0; // Silence
+      if (!to_provided)
+        to_val = 1.0; // Unity
     } else if (strcmp(curve, "fade_out") == 0) {
-      from_val = is_volume ? 1.0 : 0.0;
-      to_val = is_volume ? 0.0 : 0.0;
+      if (!from_provided)
+        from_val = 1.0; // Unity
+      if (!to_provided)
+        to_val = 0.0; // Silence
+    } else if (strcmp(curve, "ramp") == 0) {
+      if (!from_provided)
+        from_val = 0.0;
+      if (!to_provided)
+        to_val = 1.0;
+    } else if (strcmp(curve, "exp_in") == 0 || strcmp(curve, "exp_out") == 0) {
+      if (!from_provided)
+        from_val = 0.0;
+      if (!to_provided)
+        to_val = 1.0;
+    } else if (strcmp(curve, "sine") == 0 || strcmp(curve, "saw") == 0 ||
+               strcmp(curve, "square") == 0) {
+      // Oscillating curves: default to full range
+      if (is_volume) {
+        if (!from_provided)
+          from_val = 0.0; // Silence (min)
+        if (!to_provided)
+          to_val = 1.0; // Unity (max)
+      } else if (is_pan) {
+        if (!from_provided)
+          from_val = -1.0; // Full left
+        if (!to_provided)
+          to_val = 1.0; // Full right
+      } else {
+        if (!from_provided)
+          from_val = 0.0;
+        if (!to_provided)
+          to_val = 1.0;
+      }
+    } else {
+      // Unknown curve - use sensible defaults
+      if (!from_provided)
+        from_val = 0.0;
+      if (!to_provided)
+        to_val = 1.0;
     }
 
-    // For volume envelope, convert from/to values if they look like dB
+    // Debug logging
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: AddAutomation: curve='%s', from_val=%.4f, to_val=%.4f, "
+               "duration=%.2f sec\n",
+               curve, from_val, to_val, duration);
+      ShowConsoleMsg(log_msg);
+    }
+
+    // For volume envelope with explicitly provided dB values, convert to linear
+    // Only convert if the user explicitly provided from/to values AND they look
+    // like dB (negative values outside the 0-2 linear range)
     if (is_volume) {
-      // If from/to are in reasonable dB range, convert to linear
-      // REAPER volume envelope: 0.0 = -inf, 1.0 = 0 dB, 2.0 = +6 dB
-      if (from_val < 0 || from_val > 2.0) {
-        // Convert dB to linear: linear = 10^(dB/20)
-        // But cap at some reasonable range
+      if (from_provided && (from_val < -1.0 || from_val > 4.0)) {
+        // Looks like dB, convert to linear
         if (from_val <= -60)
           from_val = 0.0;
         else
           from_val = pow(10.0, from_val / 20.0);
       }
-      if (to_val < 0 || to_val > 2.0) {
+      if (to_provided && (to_val < -1.0 || to_val > 4.0)) {
         if (to_val <= -60)
           to_val = 0.0;
         else
@@ -2454,66 +2534,129 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
       }
     }
 
-    // Generate points for the curve
-    int num_points = 32; // Resolution for curve generation
+    // Check if this is a simple linear curve (only needs 2 points)
+    bool is_linear =
+        (strcmp(curve, "fade_in") == 0 || strcmp(curve, "fade_out") == 0 ||
+         strcmp(curve, "ramp") == 0);
 
-    for (int i = 0; i <= num_points; i++) {
-      double t = (double)i / num_points; // 0.0 to 1.0
-      double time_pos = start_sec + t * duration;
-      double value = 0.0;
-
-      if (strcmp(curve, "fade_in") == 0 || strcmp(curve, "ramp") == 0) {
-        // Linear interpolation
-        value = from_val + t * (to_val - from_val);
-      } else if (strcmp(curve, "fade_out") == 0) {
-        // Linear interpolation
-        value = from_val + t * (to_val - from_val);
-      } else if (strcmp(curve, "exp_in") == 0) {
-        // Exponential ease-in: slow start, fast end
-        double exp_t = t * t;
-        value = from_val + exp_t * (to_val - from_val);
-      } else if (strcmp(curve, "exp_out") == 0) {
-        // Exponential ease-out: fast start, slow end
-        double exp_t = 1.0 - (1.0 - t) * (1.0 - t);
-        value = from_val + exp_t * (to_val - from_val);
-      } else if (strcmp(curve, "sine") == 0) {
-        // Sinusoidal oscillation
-        double center = is_pan ? 0.0 : 0.5;
-        double osc = sin(2.0 * M_PI * (freq * t + phase));
-        value = center + amplitude * osc * (is_pan ? 1.0 : 0.5);
-      } else if (strcmp(curve, "saw") == 0) {
-        // Sawtooth wave
-        double center = is_pan ? 0.0 : 0.5;
-        double saw_phase = fmod(freq * t + phase, 1.0);
-        double osc = 2.0 * saw_phase - 1.0; // -1 to 1
-        value = center + amplitude * osc * (is_pan ? 1.0 : 0.5);
-      } else if (strcmp(curve, "square") == 0) {
-        // Square wave
-        double center = is_pan ? 0.0 : 0.5;
-        double sq_phase = fmod(freq * t + phase, 1.0);
-        double osc = sq_phase < 0.5 ? 1.0 : -1.0;
-        value = center + amplitude * osc * (is_pan ? 1.0 : 0.5);
-      } else {
-        // Unknown curve - use linear ramp as fallback
-        value = from_val + t * (to_val - from_val);
-      }
-
+    // Helper lambda to insert a point
+    auto insertPoint = [&](double time_pos, double value) -> bool {
       // Clamp value to valid range
       if (is_volume) {
-        if (value < 0.0)
-          value = 0.0;
-        if (value > 4.0)
-          value = 4.0; // ~12 dB max
+        value = fmax(0.0, fmin(4.0, value));
       } else if (is_pan) {
-        if (value < -1.0)
-          value = -1.0;
-        if (value > 1.0)
-          value = 1.0;
+        value = fmax(-1.0, fmin(1.0, value));
       }
 
-      if (InsertEnvelopePoint(envelope, time_pos, value, shape, 0.0, false,
-                              &noSort)) {
+      // Convert from display value to raw envelope value if needed
+      double raw_value = value;
+      if (ScaleToEnvelopeMode && GetEnvelopeScalingMode) {
+        int scaling_mode = GetEnvelopeScalingMode(envelope);
+        if (scaling_mode != 0) {
+          raw_value = ScaleToEnvelopeMode(scaling_mode, value);
+        }
+      }
+
+      bool result = InsertEnvelopePoint(envelope, time_pos, raw_value, shape,
+                                        0.0, false, &noSort);
+      if (result)
         points_inserted++;
+      return result;
+    };
+
+    if (is_linear) {
+      // Linear curves: just 2 points, REAPER interpolates between them
+      insertPoint(start_sec, from_val);
+      insertPoint(end_sec, to_val);
+    } else {
+      // Non-linear curves need multiple points
+      // Use more points for oscillating curves to get smooth waves
+      bool is_oscillating =
+          (strcmp(curve, "sine") == 0 || strcmp(curve, "saw") == 0 ||
+           strcmp(curve, "square") == 0);
+      // For oscillating: ~32 points per cycle for smooth curve
+      int num_points = is_oscillating ? (int)(32 * fmax(1.0, freq)) : 32;
+      num_points = fmin(num_points, 256); // Cap at reasonable max
+
+      if (ShowConsoleMsg && is_oscillating) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: Oscillating curve: from=%.2f, to=%.2f, freq=%.2f, "
+                 "amp=%.2f, phase=%.2f, points=%d\n",
+                 from_val, to_val, freq, amplitude, phase, num_points);
+        ShowConsoleMsg(log_msg);
+      }
+
+      for (int i = 0; i <= num_points; i++) {
+        double t = (double)i / num_points; // 0.0 to 1.0
+        double time_pos = start_sec + t * duration;
+        double value = 0.0;
+
+        if (strcmp(curve, "exp_in") == 0) {
+          // Exponential ease-in: slow start, fast end
+          double exp_t = t * t;
+          value = from_val + exp_t * (to_val - from_val);
+        } else if (strcmp(curve, "exp_out") == 0) {
+          // Exponential ease-out: fast start, slow end
+          double exp_t = 1.0 - (1.0 - t) * (1.0 - t);
+          value = from_val + exp_t * (to_val - from_val);
+        } else if (strcmp(curve, "sine") == 0) {
+          // Sinusoidal oscillation that looks symmetric on REAPER's dB display
+          // Calculate in dB space for visual symmetry
+          // freq = number of complete cycles over the duration
+          // phase = starting phase (0-1, where 0=center rising, 0.25=peak)
+          // amplitude = fraction of range to use (1 = full swing)
+
+          double angle = 2.0 * M_PI * (freq * t + phase);
+          double osc = sin(angle); // -1 to 1
+
+          // Convert from_val/to_val to dB for symmetric oscillation
+          // Default: from_val=0 (silence/-inf), to_val=1 (unity/0dB)
+          double from_db =
+              (from_val <= 0.0001) ? -60.0 : 20.0 * log10(from_val);
+          double to_db = (to_val <= 0.0001) ? -60.0 : 20.0 * log10(to_val);
+
+          // Calculate center and range in dB space
+          double center_db = (from_db + to_db) / 2.0;
+          double half_range_db = (to_db - from_db) / 2.0 * amplitude;
+          double db_value = center_db + half_range_db * osc;
+
+          // Convert dB to linear: linear = 10^(dB/20)
+          // Clamp to avoid -inf
+          if (db_value <= -60.0) {
+            value = 0.0;
+          } else {
+            value = pow(10.0, db_value / 20.0);
+          }
+
+          // Debug: log every 8th point
+          if (ShowConsoleMsg && i % 8 == 0) {
+            char dbg[128];
+            snprintf(dbg, sizeof(dbg),
+                     "MAGDA: sine i=%d t=%.3f angle=%.1f° dB=%.1f val=%.3f\n",
+                     i, t, angle * 180.0 / M_PI, db_value, value);
+            ShowConsoleMsg(dbg);
+          }
+        } else if (strcmp(curve, "saw") == 0) {
+          // Sawtooth wave: ramps up from from_val to to_val, then resets
+          double center = (from_val + to_val) / 2.0;
+          double half_range = (to_val - from_val) / 2.0 * amplitude;
+          double saw_t = fmod(freq * t + phase, 1.0);
+          double osc = 2.0 * saw_t - 1.0; // -1 to 1
+          value = center + half_range * osc;
+        } else if (strcmp(curve, "square") == 0) {
+          // Square wave: alternates between from_val and to_val
+          double center = (from_val + to_val) / 2.0;
+          double half_range = (to_val - from_val) / 2.0 * amplitude;
+          double sq_t = fmod(freq * t + phase, 1.0);
+          double osc = sq_t < 0.5 ? 1.0 : -1.0;
+          value = center + half_range * osc;
+        } else {
+          // Unknown curve - use linear ramp as fallback
+          value = from_val + t * (to_val - from_val);
+        }
+
+        insertPoint(time_pos, value);
       }
     }
   } else if (points_array && points_array->is_array()) {
@@ -2564,6 +2707,46 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   // Sort envelope points
   if (points_inserted > 0 && Envelope_SortPoints) {
     Envelope_SortPoints(envelope);
+  }
+
+  // Make envelope visible in the arrange view
+  bool (*GetEnvelopeStateChunk)(TrackEnvelope *, char *, int, bool) =
+      (bool (*)(TrackEnvelope *, char *, int, bool))g_rec->GetFunc(
+          "GetEnvelopeStateChunk");
+  bool (*SetEnvelopeStateChunk)(TrackEnvelope *, const char *, bool) =
+      (bool (*)(TrackEnvelope *, const char *, bool))g_rec->GetFunc(
+          "SetEnvelopeStateChunk");
+
+  if (GetEnvelopeStateChunk && SetEnvelopeStateChunk && points_inserted > 0) {
+    char chunk[32768];
+    if (GetEnvelopeStateChunk(envelope, chunk, sizeof(chunk), false)) {
+      // Debug: show first part of chunk to see point values
+      if (ShowConsoleMsg) {
+        char log_msg[1024];
+        // Show first 800 chars of chunk
+        char preview[801];
+        strncpy(preview, chunk, 800);
+        preview[800] = '\0';
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Envelope chunk:\n%s\n...\n",
+                 preview);
+        ShowConsoleMsg(log_msg);
+      }
+      // Find and modify VIS parameter
+      // Chunk format: <VOLENV\nVIS 0 ...\n  or  VIS 1 ...
+      std::string chunkStr(chunk);
+      size_t visPos = chunkStr.find("\nVIS ");
+      if (visPos != std::string::npos) {
+        // Replace VIS 0 with VIS 1
+        size_t valuePos = visPos + 5; // Skip "\nVIS "
+        if (valuePos < chunkStr.length() && chunkStr[valuePos] == '0') {
+          chunkStr[valuePos] = '1';
+          SetEnvelopeStateChunk(envelope, chunkStr.c_str(), false);
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: Made envelope visible\n");
+          }
+        }
+      }
+    }
   }
 
   // Update UI
