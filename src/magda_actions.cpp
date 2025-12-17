@@ -1305,12 +1305,24 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
     drum_notes_json.Append("[");
     int drum_note_count = 0;
     int drum_track_index = -1;
+    double drum_bar_offset = 0.0; // Track bar position for drum patterns
 
     int num_actions = 0;
     int result_count = 0;
     wdl_json_element *item = root->enum_item(0);
     while (item) {
       const char *action_type = item->get_string_by_name("action");
+
+      // Capture bar position from create_clip_at_bar for drum patterns
+      if (action_type && strcmp(action_type, "create_clip_at_bar") == 0) {
+        const char *bar_str = item->get_string_by_name("bar", true);
+        if (bar_str) {
+          int bar = atoi(bar_str);
+          // Convert bar number to beat offset (bar 1 = beat 0, bar 2 = beat 4,
+          // etc.)
+          drum_bar_offset = (bar - 1) * 4.0;
+        }
+      }
 
       // Check if this is a drum_pattern action
       if (action_type && strcmp(action_type, "drum_pattern") == 0) {
@@ -1355,11 +1367,13 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
               if (drum_note_count > 0)
                 drum_notes_json.Append(",");
               char note_json[256];
+              // Offset note start by bar position
+              double note_start = drum_bar_offset + (i * sixteenth);
               snprintf(
                   note_json, sizeof(note_json),
                   "{\"pitch\":%d,\"velocity\":%d,\"start\":%.4f,\"length\":"
                   "%.4f}",
-                  midi_note, note_vel, i * sixteenth, sixteenth);
+                  midi_note, note_vel, note_start, sixteenth);
               drum_notes_json.Append(note_json);
               drum_note_count++;
             }
