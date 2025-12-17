@@ -143,9 +143,9 @@ void MagdaEnv::LoadEnvFile() {
     }
 
     // Store specific keys we care about
-    if (strcmp(key, "AIDEAS_EMAIL") == 0) {
+    if (strcmp(key, "MAGDA_EMAIL") == 0) {
       s_email.Set(value);
-    } else if (strcmp(key, "AIDEAS_PASSWORD") == 0) {
+    } else if (strcmp(key, "MAGDA_PASSWORD") == 0) {
       s_password.Set(value);
     } else if (strcmp(key, "MAGDA_BACKEND_URL") == 0) {
       s_backend_url.Set(value);
@@ -170,9 +170,9 @@ const char *MagdaEnv::Get(const char *key, const char *defaultValue) {
   LoadEnvFile();
 
   // Check .env file for specific keys
-  if (strcmp(key, "AIDEAS_EMAIL") == 0) {
+  if (strcmp(key, "MAGDA_EMAIL") == 0) {
     return s_email.GetLength() > 0 ? s_email.Get() : defaultValue;
-  } else if (strcmp(key, "AIDEAS_PASSWORD") == 0) {
+  } else if (strcmp(key, "MAGDA_PASSWORD") == 0) {
     return s_password.GetLength() > 0 ? s_password.Get() : defaultValue;
   } else if (strcmp(key, "MAGDA_BACKEND_URL") == 0) {
     return s_backend_url.GetLength() > 0 ? s_backend_url.Get() : defaultValue;
