@@ -72,10 +72,13 @@ private:
 
   // Automation envelope handler - supports curve-based and point-based syntax
   // curve types: fade_in, fade_out, ramp, sine, saw, square, exp_in, exp_out
+  // times_in_seconds: if true, start/end are already in seconds (from bar
+  // conversion)
   static bool AddAutomation(int track_index, const char *param,
                             const char *curve, double start, double end,
-                            double from_val, double to_val, double freq,
-                            double amplitude, double phase, int shape,
+                            bool times_in_seconds, double from_val,
+                            double to_val, double freq, double amplitude,
+                            double phase, int shape,
                             wdl_json_element *points_array,
                             WDL_FastString &error_msg);
 

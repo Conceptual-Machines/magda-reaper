@@ -1266,16 +1266,22 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     wdl_json_element *points_array = action->get_item_by_name("points");
 
     // Calculate start/end times
+    // start/end are in beats, start_bar/end_bar are in bar numbers
     double start_time = 0.0;
     double end_time = 4.0; // Default 4 beats
+    bool times_in_seconds = false;
     if (start_str)
       start_time = atof(start_str);
     if (end_str)
       end_time = atof(end_str);
-    if (start_bar_str)
+    if (start_bar_str) {
       start_time = BarToTime(atoi(start_bar_str));
-    if (end_bar_str)
+      times_in_seconds = true;
+    }
+    if (end_bar_str) {
       end_time = BarToTime(atoi(end_bar_str));
+      times_in_seconds = true;
+    }
 
     // Parse optional parameters
     double from_val = -60.0; // Default for volume fade_in
@@ -1298,9 +1304,9 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     if (shape_str)
       shape = atoi(shape_str);
 
-    if (AddAutomation(track_index, param, curve, start_time, end_time, from_val,
-                      to_val, freq, amplitude, phase, shape, points_array,
-                      error_msg)) {
+    if (AddAutomation(track_index, param, curve, start_time, end_time,
+                      times_in_seconds, from_val, to_val, freq, amplitude,
+                      phase, shape, points_array, error_msg)) {
       result.Append(
           "{\"action\":\"add_automation\",\"success\":true,\"param\":\"");
       result.Append(param);
@@ -2300,9 +2306,9 @@ bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
 // Curve types: fade_in, fade_out, ramp, sine, saw, square, exp_in, exp_out
 bool MagdaActions::AddAutomation(int track_index, const char *param,
                                  const char *curve, double start_time,
-                                 double end_time, double from_val,
-                                 double to_val, double freq, double amplitude,
-                                 double phase, int shape,
+                                 double end_time, bool times_in_seconds,
+                                 double from_val, double to_val, double freq,
+                                 double amplitude, double phase, int shape,
                                  wdl_json_element *points_array,
                                  WDL_FastString &error_msg) {
   if (!g_rec) {
@@ -2399,11 +2405,13 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   // Convert beat times to project time if needed
   double start_sec = start_time;
   double end_sec = end_time;
-  if (TimeMap2_QNToTime) {
-    // Assume start/end are in beats (quarter notes)
+  if (!times_in_seconds && TimeMap2_QNToTime) {
+    // Convert from beats (quarter notes) to seconds
     start_sec = TimeMap2_QNToTime(nullptr, start_time);
     end_sec = TimeMap2_QNToTime(nullptr, end_time);
   }
+  // If times_in_seconds is true, values are already in seconds (from bar
+  // conversion)
 
   // Generate points based on curve type or use provided points
   bool noSort = true;
