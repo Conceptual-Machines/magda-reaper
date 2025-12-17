@@ -158,6 +158,11 @@ private:
   std::string m_streamingBuffer;
   bool m_scrollToBottom = false;
 
+  // Input command history (for up/down arrow navigation)
+  std::vector<std::string> m_inputHistory;
+  int m_inputHistoryIndex = -1;
+  std::string m_savedInput; // Saves current input when navigating history
+
   // Autocomplete state
   bool m_showAutocomplete = false;
   int m_autocompleteIndex = 0;

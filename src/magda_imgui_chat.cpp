@@ -901,6 +901,41 @@ void MagdaImGuiChat::RenderControlsColumn() {
   if (m_ImGui_Button(m_ctx, "Drum Mappings...", &btnWidth, &btnHeight)) {
     // TODO: Open drum mappings window
   }
+
+  m_ImGui_Separator(m_ctx);
+  m_ImGui_Dummy(m_ctx, 0, 10);
+
+  m_ImGui_Text(m_ctx, "Chat:");
+  m_ImGui_Dummy(m_ctx, 0, 5);
+
+  if (m_ImGui_Button(m_ctx, "Clear Chat", &btnWidth, &btnHeight)) {
+    m_history.clear();
+    m_streamingBuffer.clear();
+  }
+
+  m_ImGui_Dummy(m_ctx, 0, 3);
+
+  if (m_ImGui_Button(m_ctx, "Export Chat...", &btnWidth, &btnHeight)) {
+    // Export chat to file
+    if (g_rec) {
+      char filename[1024] = {0};
+      bool (*GetUserFileNameForRead)(char *, int, const char *, const char *) =
+          (bool (*)(char *, int, const char *, const char *))g_rec->GetFunc(
+              "GetUserFileNameForWrite");
+      if (GetUserFileNameForRead &&
+          GetUserFileNameForRead(filename, sizeof(filename), "",
+                                 "Text Files (*.txt)\0*.txt\0")) {
+        FILE *f = fopen(filename, "w");
+        if (f) {
+          for (const auto &msg : m_history) {
+            fprintf(f, "%s: %s\n\n", msg.is_user ? "USER" : "ASSISTANT",
+                    msg.content.c_str());
+          }
+          fclose(f);
+        }
+      }
+    }
+  }
 }
 
 void MagdaImGuiChat::RenderFooter() {
@@ -919,9 +954,11 @@ void MagdaImGuiChat::RenderInputArea() {
 
   DetectAtTrigger();
 
+  bool repeatTrue = true;
+  bool repeatFalse = false;
+
   if (m_showAutocomplete && !m_suggestions.empty()) {
-    bool repeatTrue = true;
-    bool repeatFalse = false;
+    // Autocomplete navigation
     if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
       m_autocompleteIndex = (m_autocompleteIndex - 1 + m_suggestions.size()) %
                             m_suggestions.size();
@@ -938,6 +975,39 @@ void MagdaImGuiChat::RenderInputArea() {
     if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Escape, &repeatFalse)) {
       m_showAutocomplete = false;
     }
+  } else if (!m_inputHistory.empty()) {
+    // Command history navigation (when autocomplete is not active)
+    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatFalse)) {
+      if (m_inputHistoryIndex == -1) {
+        // Save current input before navigating
+        m_savedInput = m_inputBuffer;
+        m_inputHistoryIndex = (int)m_inputHistory.size() - 1;
+      } else if (m_inputHistoryIndex > 0) {
+        m_inputHistoryIndex--;
+      }
+      if (m_inputHistoryIndex >= 0 &&
+          m_inputHistoryIndex < (int)m_inputHistory.size()) {
+        strncpy(m_inputBuffer, m_inputHistory[m_inputHistoryIndex].c_str(),
+                sizeof(m_inputBuffer) - 1);
+        m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
+      }
+    }
+    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatFalse)) {
+      if (m_inputHistoryIndex >= 0) {
+        m_inputHistoryIndex++;
+        if (m_inputHistoryIndex >= (int)m_inputHistory.size()) {
+          // Restore saved input
+          m_inputHistoryIndex = -1;
+          strncpy(m_inputBuffer, m_savedInput.c_str(),
+                  sizeof(m_inputBuffer) - 1);
+          m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
+        } else {
+          strncpy(m_inputBuffer, m_inputHistory[m_inputHistoryIndex].c_str(),
+                  sizeof(m_inputBuffer) - 1);
+          m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
+        }
+      }
+    }
   }
 
   double offset = 0;
@@ -953,6 +1023,11 @@ void MagdaImGuiChat::RenderInputArea() {
       submitted) {
     if (canSend && m_onSend) {
       std::string msg = m_inputBuffer;
+      // Add to command history
+      m_inputHistory.push_back(msg);
+      m_inputHistoryIndex = -1;
+      m_savedInput.clear();
+
       AddUserMessage(msg);
       m_onSend(msg);
       m_inputBuffer[0] = '\0';
