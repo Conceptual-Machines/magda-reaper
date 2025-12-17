@@ -1,0 +1,5900 @@
+{
+  "plugins": [
+    {
+      "name": "Container",
+      "full_name": "Container",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Container"
+    },
+    {
+      "name": "AMPER",
+      "full_name": "AU: AMPER (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: AMPER"
+    },
+    {
+      "name": "BlackShow",
+      "full_name": "AU: BlackShow (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: BlackShow"
+    },
+    {
+      "name": "BritChannel",
+      "full_name": "AU: BritChannel (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: BritChannel"
+    },
+    {
+      "name": "BritPre",
+      "full_name": "AU: BritPre (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: BritPre"
+    },
+    {
+      "name": "Britpressor",
+      "full_name": "AU: Britpressor (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: Britpressor"
+    },
+    {
+      "name": "BUSTERse",
+      "full_name": "AU: BUSTERse (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: BUSTERse"
+    },
+    {
+      "name": "BXQ",
+      "full_name": "AU: BXQ (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: BXQ"
+    },
+    {
+      "name": "CHANNEV",
+      "full_name": "AU: CHANNEV (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: CHANNEV"
+    },
+    {
+      "name": "dBComp",
+      "full_name": "AU: dBComp (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: dBComp"
+    },
+    {
+      "name": "Distox",
+      "full_name": "AU: Distox (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: Distox"
+    },
+    {
+      "name": "FETISH",
+      "full_name": "AU: FETISH (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: FETISH"
+    },
+    {
+      "name": "FIVER",
+      "full_name": "AU: FIVER (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: FIVER"
+    },
+    {
+      "name": "G395a",
+      "full_name": "AU: G395a (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: G395a"
+    },
+    {
+      "name": "Harqules",
+      "full_name": "AU: Harqules (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: Harqules"
+    },
+    {
+      "name": "HLQSE",
+      "full_name": "AU: HLQSE (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: HLQSE"
+    },
+    {
+      "name": "JAMP",
+      "full_name": "AU: JAMP (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: JAMP"
+    },
+    {
+      "name": "Kolin",
+      "full_name": "AU: Kolin (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: Kolin"
+    },
+    {
+      "name": "KONSOL",
+      "full_name": "AU: KONSOL (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: KONSOL"
+    },
+    {
+      "name": "LALA",
+      "full_name": "AU: LALA (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: LALA"
+    },
+    {
+      "name": "LOADES",
+      "full_name": "AU: LOADES (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: LOADES"
+    },
+    {
+      "name": "LOVEND",
+      "full_name": "AU: LOVEND (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: LOVEND"
+    },
+    {
+      "name": "MPReq",
+      "full_name": "AU: MPReq (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: MPReq"
+    },
+    {
+      "name": "N492ME",
+      "full_name": "AU: N492ME (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: N492ME"
+    },
+    {
+      "name": "OSS",
+      "full_name": "AU: OSS (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: OSS"
+    },
+    {
+      "name": "PEDALz",
+      "full_name": "AU: PEDALz (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: PEDALz"
+    },
+    {
+      "name": "Rare",
+      "full_name": "AU: Rare (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: Rare"
+    },
+    {
+      "name": "ReLife",
+      "full_name": "AU: ReLife (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: ReLife"
+    },
+    {
+      "name": "Room041",
+      "full_name": "AU: Room041 (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: Room041"
+    },
+    {
+      "name": "SPECOMP",
+      "full_name": "AU: SPECOMP (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: SPECOMP"
+    },
+    {
+      "name": "SSQ",
+      "full_name": "AU: SSQ (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: SSQ"
+    },
+    {
+      "name": "STEQ",
+      "full_name": "AU: STEQ (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: STEQ"
+    },
+    {
+      "name": "SweetDrums",
+      "full_name": "AU: SweetDrums (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: SweetDrums"
+    },
+    {
+      "name": "SweetVox",
+      "full_name": "AU: SweetVox (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: SweetVox"
+    },
+    {
+      "name": "TILTA",
+      "full_name": "AU: TILTA (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: TILTA"
+    },
+    {
+      "name": "TREQ",
+      "full_name": "AU: TREQ (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: TREQ"
+    },
+    {
+      "name": "TUBA",
+      "full_name": "AU: TUBA (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: TUBA"
+    },
+    {
+      "name": "TuPRE",
+      "full_name": "AU: TuPRE (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: TuPRE"
+    },
+    {
+      "name": "VariMoon",
+      "full_name": "AU: VariMoon (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: VariMoon"
+    },
+    {
+      "name": "YALA",
+      "full_name": "AU: YALA (x64) (AnalogObsession)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "AnalogObsession: YALA"
+    },
+    {
+      "name": "AUAudioFilePlayer",
+      "full_name": "AU: AUAudioFilePlayer (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUAudioFilePlayer"
+    },
+    {
+      "name": "AUBandpass",
+      "full_name": "AU: AUBandpass (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUBandpass"
+    },
+    {
+      "name": "AUDelay",
+      "full_name": "AU: AUDelay (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUDelay"
+    },
+    {
+      "name": "AUDistortion",
+      "full_name": "AU: AUDistortion (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUDistortion"
+    },
+    {
+      "name": "AUDynamicsProcessor",
+      "full_name": "AU: AUDynamicsProcessor (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUDynamicsProcessor"
+    },
+    {
+      "name": "AUFilter",
+      "full_name": "AU: AUFilter (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUFilter"
+    },
+    {
+      "name": "AUGraphicEQ",
+      "full_name": "AU: AUGraphicEQ (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUGraphicEQ"
+    },
+    {
+      "name": "AUHighShelfFilter",
+      "full_name": "AU: AUHighShelfFilter (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUHighShelfFilter"
+    },
+    {
+      "name": "AUHipass",
+      "full_name": "AU: AUHipass (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUHipass"
+    },
+    {
+      "name": "AULowpass",
+      "full_name": "AU: AULowpass (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AULowpass"
+    },
+    {
+      "name": "AULowShelfFilter",
+      "full_name": "AU: AULowShelfFilter (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AULowShelfFilter"
+    },
+    {
+      "name": "AUMatrixReverb",
+      "full_name": "AU: AUMatrixReverb (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUMatrixReverb"
+    },
+    {
+      "name": "AUMultibandCompressor",
+      "full_name": "AU: AUMultibandCompressor (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUMultibandCompressor"
+    },
+    {
+      "name": "AUNBandEQ",
+      "full_name": "AU: AUNBandEQ (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUNBandEQ"
+    },
+    {
+      "name": "AUNetReceive",
+      "full_name": "AU: AUNetReceive (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUNetReceive"
+    },
+    {
+      "name": "AUNetSend",
+      "full_name": "AU: AUNetSend (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUNetSend"
+    },
+    {
+      "name": "AUNewPitch",
+      "full_name": "AU: AUNewPitch (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUNewPitch"
+    },
+    {
+      "name": "AUParametricEQ",
+      "full_name": "AU: AUParametricEQ (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUParametricEQ"
+    },
+    {
+      "name": "AUPeakLimiter",
+      "full_name": "AU: AUPeakLimiter (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUPeakLimiter"
+    },
+    {
+      "name": "AUPitch",
+      "full_name": "AU: AUPitch (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUPitch"
+    },
+    {
+      "name": "AUReverb2",
+      "full_name": "AU: AUReverb2 (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUReverb2"
+    },
+    {
+      "name": "AURogerBeep",
+      "full_name": "AU: AURogerBeep (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AURogerBeep"
+    },
+    {
+      "name": "AURoundTripAAC",
+      "full_name": "AU: AURoundTripAAC (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AURoundTripAAC"
+    },
+    {
+      "name": "AUSampleDelay",
+      "full_name": "AU: AUSampleDelay (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUSampleDelay"
+    },
+    {
+      "name": "AUScheduledSoundPlayer",
+      "full_name": "AU: AUScheduledSoundPlayer (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUScheduledSoundPlayer"
+    },
+    {
+      "name": "AUSoundIsolation",
+      "full_name": "AU: AUSoundIsolation (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUSoundIsolation"
+    },
+    {
+      "name": "AUSpeechSynthesis",
+      "full_name": "AU: AUSpeechSynthesis (Apple)",
+      "format": "AU",
+      "manufacturer": "Apple",
+      "is_instrument": false,
+      "ident": "Apple: AUSpeechSynthesis"
+    },
+    {
+      "name": "ShaperBox 2",
+      "full_name": "AU: ShaperBox 2 (x64) (Cableguys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Cableguys: ShaperBox 2"
+    },
+    {
+      "name": "ShaperBox 3",
+      "full_name": "AU: ShaperBox 3 (Cableguys)",
+      "format": "AU",
+      "manufacturer": "Cableguys",
+      "is_instrument": false,
+      "ident": "Cableguys: ShaperBox 3"
+    },
+    {
+      "name": "Pitch Black FX",
+      "full_name": "AU: Pitch Black FX (Conceptual Machines)",
+      "format": "AU",
+      "manufacturer": "Conceptual Machines",
+      "is_instrument": false,
+      "ident": "Conceptual Machines: Pitch Black FX"
+    },
+    {
+      "name": "Decimort 2",
+      "full_name": "AU: Decimort 2 (x64) (D16 Group Audio Software)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "D16 Group Audio Software: Decimort 2"
+    },
+    {
+      "name": "Devastor 2",
+      "full_name": "AU: Devastor 2 (x64) (D16 Group Audio Software)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "D16 Group Audio Software: Devastor 2"
+    },
+    {
+      "name": "Repeater",
+      "full_name": "AU: Repeater (x64) (D16 Group Audio Software)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "D16 Group Audio Software: Repeater"
+    },
+    {
+      "name": "Infiltrator",
+      "full_name": "AU: Infiltrator (x64) (Devious Machines)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Devious Machines: Infiltrator"
+    },
+    {
+      "name": "Texture",
+      "full_name": "AU: Texture (x64) (Devious Machines)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Devious Machines: Texture"
+    },
+    {
+      "name": "Eiosis AirEQ Premium",
+      "full_name": "AU: Eiosis AirEQ Premium (x64) (Eiosis)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Eiosis: Eiosis AirEQ Premium"
+    },
+    {
+      "name": "Eiosis AirEQ Premium 5.1",
+      "full_name": "AU: Eiosis AirEQ Premium 5.1 (x64) (Eiosis)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Eiosis: Eiosis AirEQ Premium 5.1"
+    },
+    {
+      "name": "Eiosis E2Deesser",
+      "full_name": "AU: Eiosis E2Deesser (x64) (Eiosis)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Eiosis: Eiosis E2Deesser"
+    },
+    {
+      "name": "Micro",
+      "full_name": "AU: Micro (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Micro"
+    },
+    {
+      "name": "Pro-C 2",
+      "full_name": "AU: Pro-C 2 (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Pro-C 2"
+    },
+    {
+      "name": "Pro-DS",
+      "full_name": "AU: Pro-DS (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Pro-DS"
+    },
+    {
+      "name": "Pro-G",
+      "full_name": "AU: Pro-G (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Pro-G"
+    },
+    {
+      "name": "Pro-L 2",
+      "full_name": "AU: Pro-L 2 (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Pro-L 2"
+    },
+    {
+      "name": "Pro-MB",
+      "full_name": "AU: Pro-MB (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Pro-MB"
+    },
+    {
+      "name": "Pro-Q 3",
+      "full_name": "AU: Pro-Q 3 (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Pro-Q 3"
+    },
+    {
+      "name": "Pro-R",
+      "full_name": "AU: Pro-R (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Pro-R"
+    },
+    {
+      "name": "Saturn 2",
+      "full_name": "AU: Saturn 2 (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Saturn 2"
+    },
+    {
+      "name": "Simplon",
+      "full_name": "AU: Simplon (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Simplon"
+    },
+    {
+      "name": "Timeless 3",
+      "full_name": "AU: Timeless 3 (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Timeless 3"
+    },
+    {
+      "name": "Volcano 3",
+      "full_name": "AU: Volcano 3 (x64) (FabFilter)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "FabFilter: Volcano 3"
+    },
+    {
+      "name": "Cryogen",
+      "full_name": "AU: Cryogen (x64) (Glitchmachines)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Glitchmachines: Cryogen"
+    },
+    {
+      "name": "Subvert",
+      "full_name": "AU: Subvert (x64) (Glitchmachines)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Glitchmachines: Subvert"
+    },
+    {
+      "name": "iZotope Stutter Edit",
+      "full_name": "AU: iZotope Stutter Edit (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: iZotope Stutter Edit"
+    },
+    {
+      "name": "iZotope Trash 2",
+      "full_name": "AU: iZotope Trash 2 (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: iZotope Trash 2"
+    },
+    {
+      "name": "Nectar 3",
+      "full_name": "AU: Nectar 3 (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Nectar 3"
+    },
+    {
+      "name": "Nectar 3 Elements",
+      "full_name": "AU: Nectar 3 Elements (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Nectar 3 Elements"
+    },
+    {
+      "name": "Neutron 3",
+      "full_name": "AU: Neutron 3 (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3"
+    },
+    {
+      "name": "Neutron 3 Compressor",
+      "full_name": "AU: Neutron 3 Compressor (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3 Compressor"
+    },
+    {
+      "name": "Neutron 3 Equalizer",
+      "full_name": "AU: Neutron 3 Equalizer (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3 Equalizer"
+    },
+    {
+      "name": "Neutron 3 Exciter",
+      "full_name": "AU: Neutron 3 Exciter (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3 Exciter"
+    },
+    {
+      "name": "Neutron 3 Gate",
+      "full_name": "AU: Neutron 3 Gate (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3 Gate"
+    },
+    {
+      "name": "Neutron 3 Sculptor",
+      "full_name": "AU: Neutron 3 Sculptor (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3 Sculptor"
+    },
+    {
+      "name": "Neutron 3 Transient Shaper",
+      "full_name": "AU: Neutron 3 Transient Shaper (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3 Transient Shaper"
+    },
+    {
+      "name": "Neutron 3 Visual Mixer",
+      "full_name": "AU: Neutron 3 Visual Mixer (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Neutron 3 Visual Mixer"
+    },
+    {
+      "name": "Ozone 9",
+      "full_name": "AU: Ozone 9 (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9"
+    },
+    {
+      "name": "Ozone 9 Dynamic EQ",
+      "full_name": "AU: Ozone 9 Dynamic EQ (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Dynamic EQ"
+    },
+    {
+      "name": "Ozone 9 Dynamics",
+      "full_name": "AU: Ozone 9 Dynamics (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Dynamics"
+    },
+    {
+      "name": "Ozone 9 Equalizer",
+      "full_name": "AU: Ozone 9 Equalizer (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Equalizer"
+    },
+    {
+      "name": "Ozone 9 Exciter",
+      "full_name": "AU: Ozone 9 Exciter (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Exciter"
+    },
+    {
+      "name": "Ozone 9 Imager",
+      "full_name": "AU: Ozone 9 Imager (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Imager"
+    },
+    {
+      "name": "Ozone 9 Low End Focus",
+      "full_name": "AU: Ozone 9 Low End Focus (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Low End Focus"
+    },
+    {
+      "name": "Ozone 9 Master Rebalance",
+      "full_name": "AU: Ozone 9 Master Rebalance (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Master Rebalance"
+    },
+    {
+      "name": "Ozone 9 Match EQ",
+      "full_name": "AU: Ozone 9 Match EQ (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Match EQ"
+    },
+    {
+      "name": "Ozone 9 Maximizer",
+      "full_name": "AU: Ozone 9 Maximizer (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Maximizer"
+    },
+    {
+      "name": "Ozone 9 Spectral Shaper",
+      "full_name": "AU: Ozone 9 Spectral Shaper (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Spectral Shaper"
+    },
+    {
+      "name": "Ozone 9 Vintage Compressor",
+      "full_name": "AU: Ozone 9 Vintage Compressor (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Vintage Compressor"
+    },
+    {
+      "name": "Ozone 9 Vintage EQ",
+      "full_name": "AU: Ozone 9 Vintage EQ (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Vintage EQ"
+    },
+    {
+      "name": "Ozone 9 Vintage Limiter",
+      "full_name": "AU: Ozone 9 Vintage Limiter (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Vintage Limiter"
+    },
+    {
+      "name": "Ozone 9 Vintage Tape",
+      "full_name": "AU: Ozone 9 Vintage Tape (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone 9 Vintage Tape"
+    },
+    {
+      "name": "Ozone Imager 2",
+      "full_name": "AU: Ozone Imager 2 (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Ozone Imager 2"
+    },
+    {
+      "name": "Relay",
+      "full_name": "AU: Relay (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Relay"
+    },
+    {
+      "name": "RX 7 Breath Control",
+      "full_name": "AU: RX 7 Breath Control (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: RX 7 Breath Control"
+    },
+    {
+      "name": "RX 7 De-click",
+      "full_name": "AU: RX 7 De-click (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: RX 7 De-click"
+    },
+    {
+      "name": "RX 7 De-clip",
+      "full_name": "AU: RX 7 De-clip (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: RX 7 De-clip"
+    },
+    {
+      "name": "RX 7 De-hum",
+      "full_name": "AU: RX 7 De-hum (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: RX 7 De-hum"
+    },
+    {
+      "name": "RX 7 Voice De-noise",
+      "full_name": "AU: RX 7 Voice De-noise (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: RX 7 Voice De-noise"
+    },
+    {
+      "name": "Stutter Edit",
+      "full_name": "AU: Stutter Edit (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Stutter Edit"
+    },
+    {
+      "name": "Tonal Balance Control 2",
+      "full_name": "AU: Tonal Balance Control 2 (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Tonal Balance Control 2"
+    },
+    {
+      "name": "Vinyl",
+      "full_name": "AU: Vinyl (x64) (iZotope)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "iZotope: Vinyl"
+    },
+    {
+      "name": "Lustrous Plates",
+      "full_name": "AU: Lustrous Plates (x64) (LiquidSonics)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "LiquidSonics: Lustrous Plates"
+    },
+    {
+      "name": "Rift",
+      "full_name": "AU: Rift (x64) (Minimal)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Minimal: Rift"
+    },
+    {
+      "name": "Animoog Z Effect",
+      "full_name": "AU: Animoog Z Effect (Moog)",
+      "format": "AU",
+      "manufacturer": "Moog",
+      "is_instrument": false,
+      "ident": "Moog: Animoog Z Effect"
+    },
+    {
+      "name": "Absynth 5 MFX",
+      "full_name": "AU: Absynth 5 MFX (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Absynth 5 MFX"
+    },
+    {
+      "name": "Bite",
+      "full_name": "AU: Bite (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Bite"
+    },
+    {
+      "name": "Choral",
+      "full_name": "AU: Choral (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Choral"
+    },
+    {
+      "name": "Dirt",
+      "full_name": "AU: Dirt (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Dirt"
+    },
+    {
+      "name": "Driver",
+      "full_name": "AU: Driver (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Driver"
+    },
+    {
+      "name": "Enhanced EQ",
+      "full_name": "AU: Enhanced EQ (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Enhanced EQ"
+    },
+    {
+      "name": "Flair",
+      "full_name": "AU: Flair (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Flair"
+    },
+    {
+      "name": "FM8 MFX",
+      "full_name": "AU: FM8 MFX (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: FM8 MFX"
+    },
+    {
+      "name": "Freak",
+      "full_name": "AU: Freak (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Freak"
+    },
+    {
+      "name": "Guitar Rig 6 FX",
+      "full_name": "AU: Guitar Rig 6 FX (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Guitar Rig 6 FX"
+    },
+    {
+      "name": "Guitar Rig 6 MFX",
+      "full_name": "AU: Guitar Rig 6 MFX (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Guitar Rig 6 MFX"
+    },
+    {
+      "name": "Passive EQ",
+      "full_name": "AU: Passive EQ (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Passive EQ"
+    },
+    {
+      "name": "Phasis",
+      "full_name": "AU: Phasis (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Phasis"
+    },
+    {
+      "name": "Raum",
+      "full_name": "AU: Raum (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Raum"
+    },
+    {
+      "name": "RC 24",
+      "full_name": "AU: RC 24 (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: RC 24"
+    },
+    {
+      "name": "RC 48",
+      "full_name": "AU: RC 48 (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: RC 48"
+    },
+    {
+      "name": "Reaktor 6 MFX",
+      "full_name": "AU: Reaktor 6 MFX (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Reaktor 6 MFX"
+    },
+    {
+      "name": "Replika",
+      "full_name": "AU: Replika (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Replika"
+    },
+    {
+      "name": "Replika XT",
+      "full_name": "AU: Replika XT (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Replika XT"
+    },
+    {
+      "name": "Solid Bus Comp",
+      "full_name": "AU: Solid Bus Comp (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Solid Bus Comp"
+    },
+    {
+      "name": "Solid Dynamics",
+      "full_name": "AU: Solid Dynamics (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Solid Dynamics"
+    },
+    {
+      "name": "Solid EQ",
+      "full_name": "AU: Solid EQ (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Solid EQ"
+    },
+    {
+      "name": "Supercharger",
+      "full_name": "AU: Supercharger (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Supercharger"
+    },
+    {
+      "name": "Supercharger GT",
+      "full_name": "AU: Supercharger GT (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Supercharger GT"
+    },
+    {
+      "name": "Transient Master",
+      "full_name": "AU: Transient Master (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Transient Master"
+    },
+    {
+      "name": "Vari Comp",
+      "full_name": "AU: Vari Comp (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: Vari Comp"
+    },
+    {
+      "name": "VC 2A",
+      "full_name": "AU: VC 2A (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: VC 2A"
+    },
+    {
+      "name": "VC 76",
+      "full_name": "AU: VC 76 (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: VC 76"
+    },
+    {
+      "name": "VC 160",
+      "full_name": "AU: VC 160 (x64) (Native Instruments)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Native Instruments: VC 160"
+    },
+    {
+      "name": "TH-U Slate",
+      "full_name": "AU: TH-U Slate (x64) (Overloud)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Overloud: TH-U Slate"
+    },
+    {
+      "name": "ScalerAudio 2",
+      "full_name": "AU: ScalerAudio 2 (x64) (Plugin Boutique)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Plugin Boutique: ScalerAudio 2"
+    },
+    {
+      "name": "Fresh Air",
+      "full_name": "AU: Fresh Air (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: Fresh Air"
+    },
+    {
+      "name": "Inf EQ",
+      "full_name": "AU: Inf EQ (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: Inf EQ"
+    },
+    {
+      "name": "MetaTune",
+      "full_name": "AU: MetaTune (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: MetaTune"
+    },
+    {
+      "name": "MO-TT",
+      "full_name": "AU: MO-TT (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: MO-TT"
+    },
+    {
+      "name": "Murda Melodies",
+      "full_name": "AU: Murda Melodies (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: Murda Melodies"
+    },
+    {
+      "name": "Slate Digital FG-X",
+      "full_name": "AU: Slate Digital FG-X (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: Slate Digital FG-X"
+    },
+    {
+      "name": "VBC FG-Grey",
+      "full_name": "AU: VBC FG-Grey (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: VBC FG-Grey"
+    },
+    {
+      "name": "VBC FG-MU",
+      "full_name": "AU: VBC FG-MU (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: VBC FG-MU"
+    },
+    {
+      "name": "VBC FG-Red",
+      "full_name": "AU: VBC FG-Red (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: VBC FG-Red"
+    },
+    {
+      "name": "VBC Rack",
+      "full_name": "AU: VBC Rack (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: VBC Rack"
+    },
+    {
+      "name": "VerbSuite Classics",
+      "full_name": "AU: VerbSuite Classics (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: VerbSuite Classics"
+    },
+    {
+      "name": "Virtual Mix Rack",
+      "full_name": "AU: Virtual Mix Rack (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: Virtual Mix Rack"
+    },
+    {
+      "name": "Virtual Tape Machines",
+      "full_name": "AU: Virtual Tape Machines (x64) (Slate Digital)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Slate Digital: Virtual Tape Machines"
+    },
+    {
+      "name": "Empirical Labs Mike-E Comp",
+      "full_name": "AU: Empirical Labs Mike-E Comp (x64) (Softube)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Softube: Empirical Labs Mike-E Comp"
+    },
+    {
+      "name": "Gullfoss",
+      "full_name": "AU: Gullfoss (x64) (Soundtheory)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtheory: Gullfoss"
+    },
+    {
+      "name": "Gullfoss Live",
+      "full_name": "AU: Gullfoss Live (x64) (Soundtheory)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtheory: Gullfoss Live"
+    },
+    {
+      "name": "Gullfoss Master",
+      "full_name": "AU: Gullfoss Master (x64) (Soundtheory)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtheory: Gullfoss Master"
+    },
+    {
+      "name": "Crystallizer",
+      "full_name": "AU: Crystallizer (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Crystallizer"
+    },
+    {
+      "name": "Decapitator",
+      "full_name": "AU: Decapitator (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Decapitator"
+    },
+    {
+      "name": "Devil-Loc",
+      "full_name": "AU: Devil-Loc (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Devil-Loc"
+    },
+    {
+      "name": "Devil-Loc Deluxe",
+      "full_name": "AU: Devil-Loc Deluxe (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Devil-Loc Deluxe"
+    },
+    {
+      "name": "EchoBoy",
+      "full_name": "AU: EchoBoy (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: EchoBoy"
+    },
+    {
+      "name": "EchoBoy Jr",
+      "full_name": "AU: EchoBoy Jr (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: EchoBoy Jr"
+    },
+    {
+      "name": "EffectRack",
+      "full_name": "AU: EffectRack (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: EffectRack"
+    },
+    {
+      "name": "FilterFreak1",
+      "full_name": "AU: FilterFreak1 (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: FilterFreak1"
+    },
+    {
+      "name": "FilterFreak2",
+      "full_name": "AU: FilterFreak2 (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: FilterFreak2"
+    },
+    {
+      "name": "Little AlterBoy",
+      "full_name": "AU: Little AlterBoy (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Little AlterBoy"
+    },
+    {
+      "name": "Little MicroShift",
+      "full_name": "AU: Little MicroShift (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Little MicroShift"
+    },
+    {
+      "name": "Little Plate",
+      "full_name": "AU: Little Plate (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Little Plate"
+    },
+    {
+      "name": "Little PrimalTap",
+      "full_name": "AU: Little PrimalTap (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Little PrimalTap"
+    },
+    {
+      "name": "Little Radiator",
+      "full_name": "AU: Little Radiator (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Little Radiator"
+    },
+    {
+      "name": "MicroShift",
+      "full_name": "AU: MicroShift (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: MicroShift"
+    },
+    {
+      "name": "PanMan",
+      "full_name": "AU: PanMan (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: PanMan"
+    },
+    {
+      "name": "PhaseMistress",
+      "full_name": "AU: PhaseMistress (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: PhaseMistress"
+    },
+    {
+      "name": "PrimalTap",
+      "full_name": "AU: PrimalTap (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: PrimalTap"
+    },
+    {
+      "name": "Radiator",
+      "full_name": "AU: Radiator (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Radiator"
+    },
+    {
+      "name": "Sie-Q",
+      "full_name": "AU: Sie-Q (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Sie-Q"
+    },
+    {
+      "name": "Tremolator",
+      "full_name": "AU: Tremolator (x64) (Soundtoys)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Soundtoys: Tremolator"
+    },
+    {
+      "name": "UADx 1176 Rev A Compressor",
+      "full_name": "AU: UADx 1176 Rev A Compressor (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx 1176 Rev A Compressor"
+    },
+    {
+      "name": "UADx 1176AE Compressor",
+      "full_name": "AU: UADx 1176AE Compressor (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx 1176AE Compressor"
+    },
+    {
+      "name": "UADx 1176LN Rev E Compressor",
+      "full_name": "AU: UADx 1176LN Rev E Compressor (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx 1176LN Rev E Compressor"
+    },
+    {
+      "name": "UADx API 2500 Bus Compressor",
+      "full_name": "AU: UADx API 2500 Bus Compressor (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx API 2500 Bus Compressor"
+    },
+    {
+      "name": "UADx API Vision Channel Strip",
+      "full_name": "AU: UADx API Vision Channel Strip (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx API Vision Channel Strip"
+    },
+    {
+      "name": "UADx Galaxy Tape Echo",
+      "full_name": "AU: UADx Galaxy Tape Echo (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx Galaxy Tape Echo"
+    },
+    {
+      "name": "UADx LA-2 Compressor",
+      "full_name": "AU: UADx LA-2 Compressor (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx LA-2 Compressor"
+    },
+    {
+      "name": "UADx LA-2A Gray Compressor",
+      "full_name": "AU: UADx LA-2A Gray Compressor (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx LA-2A Gray Compressor"
+    },
+    {
+      "name": "UADx LA-2A Silver Compressor",
+      "full_name": "AU: UADx LA-2A Silver Compressor (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx LA-2A Silver Compressor"
+    },
+    {
+      "name": "UADx Lexicon 224 Digital Reverb",
+      "full_name": "AU: UADx Lexicon 224 Digital Reverb (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx Lexicon 224 Digital Reverb"
+    },
+    {
+      "name": "UADx Neve 1073 Preamp and EQ",
+      "full_name": "AU: UADx Neve 1073 Preamp and EQ (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx Neve 1073 Preamp and EQ"
+    },
+    {
+      "name": "UADx Pure Plate Reverb",
+      "full_name": "AU: UADx Pure Plate Reverb (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx Pure Plate Reverb"
+    },
+    {
+      "name": "UADx Studer A800 Tape Recorder",
+      "full_name": "AU: UADx Studer A800 Tape Recorder (x64) (Universal Audio (UADx))",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Universal Audio (UADx): UADx Studer A800 Tape Recorder"
+    },
+    {
+      "name": "Shade",
+      "full_name": "AU: Shade (x64) (UVI)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "UVI: Shade"
+    },
+    {
+      "name": "Thorus",
+      "full_name": "AU: Thorus (x64) (UVI)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "UVI: Thorus"
+    },
+    {
+      "name": "ValhallaFreqEcho",
+      "full_name": "AU: ValhallaFreqEcho (x64) (Valhalla DSP, LLC)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Valhalla DSP, LLC: ValhallaFreqEcho"
+    },
+    {
+      "name": "ValhallaRoom",
+      "full_name": "AU: ValhallaRoom (x64) (Valhalla DSP, LLC)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Valhalla DSP, LLC: ValhallaRoom"
+    },
+    {
+      "name": "ValhallaShimmer",
+      "full_name": "AU: ValhallaShimmer (x64) (Valhalla DSP, LLC)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Valhalla DSP, LLC: ValhallaShimmer"
+    },
+    {
+      "name": "ValhallaSpaceModulator",
+      "full_name": "AU: ValhallaSpaceModulator (x64) (Valhalla DSP, LLC)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Valhalla DSP, LLC: ValhallaSpaceModulator"
+    },
+    {
+      "name": "ValhallaSupermassive",
+      "full_name": "AU: ValhallaSupermassive (x64) (Valhalla DSP, LLC)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Valhalla DSP, LLC: ValhallaSupermassive"
+    },
+    {
+      "name": "LFOTool",
+      "full_name": "AU: LFOTool (x64) (Xfer Records)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Xfer Records: LFOTool"
+    },
+    {
+      "name": "OTT",
+      "full_name": "AU: OTT (x64) (Xfer Records)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Xfer Records: OTT"
+    },
+    {
+      "name": "SerumFX",
+      "full_name": "AU: SerumFX (x64) (Xfer Records)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Xfer Records: SerumFX"
+    },
+    {
+      "name": "Youlean Loudness Meter 2",
+      "full_name": "AU: Youlean Loudness Meter 2 (x64) (Youlean)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Youlean: Youlean Loudness Meter 2"
+    },
+    {
+      "name": "MORPH",
+      "full_name": "AU: MORPH (x64) (Zynaptiq)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Zynaptiq: MORPH"
+    },
+    {
+      "name": "MORPH SC",
+      "full_name": "AU: MORPH SC (x64) (Zynaptiq)",
+      "format": "AU",
+      "manufacturer": "x64",
+      "is_instrument": false,
+      "ident": "Zynaptiq: MORPH SC"
+    },
+    {
+      "name": "AUMIDISynth",
+      "full_name": "AUi: AUMIDISynth (Apple)",
+      "format": "AUi",
+      "manufacturer": "Apple",
+      "is_instrument": true,
+      "ident": "Apple: AUMIDISynth"
+    },
+    {
+      "name": "AUSampler",
+      "full_name": "AUi: AUSampler (Apple)",
+      "format": "AUi",
+      "manufacturer": "Apple",
+      "is_instrument": true,
+      "ident": "Apple: AUSampler"
+    },
+    {
+      "name": "DLSMusicDevice",
+      "full_name": "AUi: DLSMusicDevice (Apple)",
+      "format": "AUi",
+      "manufacturer": "Apple",
+      "is_instrument": true,
+      "ident": "Apple: DLSMusicDevice"
+    },
+    {
+      "name": "Pigments",
+      "full_name": "AUi: Pigments (x64) (Arturia)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Arturia: Pigments"
+    },
+    {
+      "name": "MusicalAideas",
+      "full_name": "AUi: MusicalAideas (ConceptualMachines)",
+      "format": "AUi",
+      "manufacturer": "ConceptualMachines",
+      "is_instrument": true,
+      "ident": "ConceptualMachines: MusicalAideas"
+    },
+    {
+      "name": "Drumazon",
+      "full_name": "AUi: Drumazon (x64) (D16 Group Audio Software)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "D16 Group Audio Software: Drumazon"
+    },
+    {
+      "name": "One",
+      "full_name": "AUi: One (x64) (FabFilter)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "FabFilter: One"
+    },
+    {
+      "name": "Twin 2",
+      "full_name": "AUi: Twin 2 (x64) (FabFilter)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "FabFilter: Twin 2"
+    },
+    {
+      "name": "iZotope Iris 2",
+      "full_name": "AUi: iZotope Iris 2 (x64) (iZotope)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "iZotope: iZotope Iris 2"
+    },
+    {
+      "name": "Pianoteq 7 STAGE",
+      "full_name": "AUi: Pianoteq 7 STAGE (x64) (Modartt)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Modartt: Pianoteq 7 STAGE"
+    },
+    {
+      "name": "Animoog Z",
+      "full_name": "AUi: Animoog Z (Moog)",
+      "format": "AUi",
+      "manufacturer": "Moog",
+      "is_instrument": true,
+      "ident": "Moog: Animoog Z"
+    },
+    {
+      "name": "Absynth 5",
+      "full_name": "AUi: Absynth 5 (x64) (Native Instruments)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Native Instruments: Absynth 5"
+    },
+    {
+      "name": "FM8",
+      "full_name": "AUi: FM8 (x64) (Native Instruments)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Native Instruments: FM8"
+    },
+    {
+      "name": "Kontakt",
+      "full_name": "AUi: Kontakt (x64) (Native Instruments)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Native Instruments: Kontakt"
+    },
+    {
+      "name": "Massive",
+      "full_name": "AUi: Massive (x64) (Native Instruments)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Native Instruments: Massive"
+    },
+    {
+      "name": "Massive X",
+      "full_name": "AUi: Massive X (x64) (Native Instruments)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Native Instruments: Massive X"
+    },
+    {
+      "name": "Reaktor 6",
+      "full_name": "AUi: Reaktor 6 (x64) (Native Instruments)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Native Instruments: Reaktor 6"
+    },
+    {
+      "name": "Super 8",
+      "full_name": "AUi: Super 8 (x64) (Native Instruments)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Native Instruments: Super 8"
+    },
+    {
+      "name": "Scaler 2",
+      "full_name": "AUi: Scaler 2 (x64) (Plugin Boutique)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Plugin Boutique: Scaler 2"
+    },
+    {
+      "name": "ANA 2",
+      "full_name": "AUi: ANA 2 (x64) (Sonic Academy)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Sonic Academy: ANA 2"
+    },
+    {
+      "name": "Kick 2",
+      "full_name": "AUi: Kick 2 (x64) (Sonic Academy)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Sonic Academy: Kick 2"
+    },
+    {
+      "name": "Kick 3",
+      "full_name": "AUi: Kick 3 (Sonic Academy)",
+      "format": "AUi",
+      "manufacturer": "Sonic Academy",
+      "is_instrument": true,
+      "ident": "Sonic Academy: Kick 3"
+    },
+    {
+      "name": "Omnisphere",
+      "full_name": "AUi: Omnisphere (x64) (Spectrasonics)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Spectrasonics: Omnisphere"
+    },
+    {
+      "name": "Trilian",
+      "full_name": "AUi: Trilian (x64) (Spectrasonics)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Spectrasonics: Trilian"
+    },
+    {
+      "name": "Originals - Cinematic Percussion",
+      "full_name": "AUi: Originals - Cinematic Percussion (x64) (Spitfire Audio)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Spitfire Audio: Originals - Cinematic Percussion"
+    },
+    {
+      "name": "Originals - Cinematic Soft Piano",
+      "full_name": "AUi: Originals - Cinematic Soft Piano (x64) (Spitfire Audio)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Spitfire Audio: Originals - Cinematic Soft Piano"
+    },
+    {
+      "name": "Originals - Epic Brass and Woodwinds",
+      "full_name": "AUi: Originals - Epic Brass and Woodwinds (x64) (Spitfire Audio)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Spitfire Audio: Originals - Epic Brass and Woodwinds"
+    },
+    {
+      "name": "UADx Moog Minimoog Synth",
+      "full_name": "AUi: UADx Moog Minimoog Synth (x64) (Universal Audio (UADx))",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Universal Audio (UADx): UADx Moog Minimoog Synth"
+    },
+    {
+      "name": "UADx Opal Morphing Synth",
+      "full_name": "AUi: UADx Opal Morphing Synth (x64) (Universal Audio (UADx))",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Universal Audio (UADx): UADx Opal Morphing Synth"
+    },
+    {
+      "name": "UVIWorkstation",
+      "full_name": "AUi: UVIWorkstation (x64) (UVI)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "UVI: UVIWorkstation"
+    },
+    {
+      "name": "Cthulhu",
+      "full_name": "AUi: Cthulhu (x64) (Xfer Records)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Xfer Records: Cthulhu"
+    },
+    {
+      "name": "Serum",
+      "full_name": "AUi: Serum (x64) (Xfer Records)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "Xfer Records: Serum"
+    },
+    {
+      "name": "Addictive Drums 2",
+      "full_name": "AUi: Addictive Drums 2 (x64) (XLN Audio)",
+      "format": "AUi",
+      "manufacturer": "x64",
+      "is_instrument": true,
+      "ident": "XLN Audio: Addictive Drums 2"
+    },
+    {
+      "name": "Addictive Drums 2",
+      "full_name": "VST3i: Addictive Drums 2 (XLN Audio) (18 out)",
+      "format": "VST3i",
+      "manufacturer": "XLN Audio",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Addictive Drums 2.vst3"
+    },
+    {
+      "name": "Carve EQ",
+      "full_name": "VST3: Carve EQ (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/Carve EQ.vst3"
+    },
+    {
+      "name": "CS-80 V4",
+      "full_name": "VST3i: CS-80 V4 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/CS-80 V4.vst3"
+    },
+    {
+      "name": "Cyberdrive",
+      "full_name": "VST3: Cyberdrive (JMGSound)",
+      "format": "VST3",
+      "manufacturer": "JMGSound",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Cyberdrive.vst3"
+    },
+    {
+      "name": "CyberdriveCore",
+      "full_name": "VST3: CyberdriveCore (JMGSound)",
+      "format": "VST3",
+      "manufacturer": "JMGSound",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/CyberdriveCore.vst3"
+    },
+    {
+      "name": "CZ V",
+      "full_name": "VST3i: CZ V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/CZ V.vst3"
+    },
+    {
+      "name": "Disperser",
+      "full_name": "VST3: Disperser (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/Disperser.vst3"
+    },
+    {
+      "name": "DX7 V",
+      "full_name": "VST3i: DX7 V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/DX7 V.vst3"
+    },
+    {
+      "name": "Emulator II V",
+      "full_name": "VST3i: Emulator II V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Emulator II V.vst3"
+    },
+    {
+      "name": "Faturator",
+      "full_name": "VST3: Faturator (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/Faturator.vst3"
+    },
+    {
+      "name": "Jun-6 V",
+      "full_name": "VST3i: Jun-6 V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Jun-6 V.vst3"
+    },
+    {
+      "name": "Jup-8 V4",
+      "full_name": "VST3i: Jup-8 V4 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Jup-8 V4.vst3"
+    },
+    {
+      "name": "kHs 3-Band EQ",
+      "full_name": "VST3: kHs 3-Band EQ (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs 3-Band EQ.vst3"
+    },
+    {
+      "name": "kHs Bitcrush",
+      "full_name": "VST3: kHs Bitcrush (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Bitcrush.vst3"
+    },
+    {
+      "name": "kHs Channel Mixer",
+      "full_name": "VST3: kHs Channel Mixer (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Channel Mixer.vst3"
+    },
+    {
+      "name": "kHs Chorus",
+      "full_name": "VST3: kHs Chorus (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Chorus.vst3"
+    },
+    {
+      "name": "kHs Comb Filter",
+      "full_name": "VST3: kHs Comb Filter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Comb Filter.vst3"
+    },
+    {
+      "name": "kHs Compressor",
+      "full_name": "VST3: kHs Compressor (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Compressor.vst3"
+    },
+    {
+      "name": "kHs Convolver",
+      "full_name": "VST3: kHs Convolver (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Convolver.vst3"
+    },
+    {
+      "name": "kHs Delay",
+      "full_name": "VST3: kHs Delay (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Delay.vst3"
+    },
+    {
+      "name": "kHs Distortion",
+      "full_name": "VST3: kHs Distortion (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Distortion.vst3"
+    },
+    {
+      "name": "kHs Dual Delay",
+      "full_name": "VST3: kHs Dual Delay (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Dual Delay.vst3"
+    },
+    {
+      "name": "kHs Dynamics",
+      "full_name": "VST3: kHs Dynamics (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Dynamics.vst3"
+    },
+    {
+      "name": "kHs Ensemble",
+      "full_name": "VST3: kHs Ensemble (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Ensemble.vst3"
+    },
+    {
+      "name": "kHs Filter",
+      "full_name": "VST3: kHs Filter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Filter.vst3"
+    },
+    {
+      "name": "kHs Filter Table",
+      "full_name": "VST3: kHs Filter Table (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Filter Table.vst3"
+    },
+    {
+      "name": "kHs Flanger",
+      "full_name": "VST3: kHs Flanger (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Flanger.vst3"
+    },
+    {
+      "name": "kHs Formant Filter",
+      "full_name": "VST3: kHs Formant Filter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Formant Filter.vst3"
+    },
+    {
+      "name": "kHs Frequency Shifter",
+      "full_name": "VST3: kHs Frequency Shifter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Frequency Shifter.vst3"
+    },
+    {
+      "name": "kHs Gain",
+      "full_name": "VST3: kHs Gain (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Gain.vst3"
+    },
+    {
+      "name": "kHs Gate",
+      "full_name": "VST3: kHs Gate (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Gate.vst3"
+    },
+    {
+      "name": "kHs Haas",
+      "full_name": "VST3: kHs Haas (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Haas.vst3"
+    },
+    {
+      "name": "kHs Ladder Filter",
+      "full_name": "VST3: kHs Ladder Filter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Ladder Filter.vst3"
+    },
+    {
+      "name": "kHs Limiter",
+      "full_name": "VST3: kHs Limiter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Limiter.vst3"
+    },
+    {
+      "name": "kHs Nonlinear Filter",
+      "full_name": "VST3: kHs Nonlinear Filter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Nonlinear Filter.vst3"
+    },
+    {
+      "name": "kHs Phase Distortion",
+      "full_name": "VST3: kHs Phase Distortion (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Phase Distortion.vst3"
+    },
+    {
+      "name": "kHs Phaser",
+      "full_name": "VST3: kHs Phaser (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Phaser.vst3"
+    },
+    {
+      "name": "kHs Pitch Shifter",
+      "full_name": "VST3: kHs Pitch Shifter (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Pitch Shifter.vst3"
+    },
+    {
+      "name": "kHs Resonator",
+      "full_name": "VST3: kHs Resonator (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Resonator.vst3"
+    },
+    {
+      "name": "kHs Reverb",
+      "full_name": "VST3: kHs Reverb (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Reverb.vst3"
+    },
+    {
+      "name": "kHs Reverser",
+      "full_name": "VST3: kHs Reverser (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Reverser.vst3"
+    },
+    {
+      "name": "kHs Ring Mod",
+      "full_name": "VST3: kHs Ring Mod (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Ring Mod.vst3"
+    },
+    {
+      "name": "kHs Shaper",
+      "full_name": "VST3: kHs Shaper (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Shaper.vst3"
+    },
+    {
+      "name": "kHs Shaper Table",
+      "full_name": "VST3: kHs Shaper Table (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Shaper Table.vst3"
+    },
+    {
+      "name": "kHs Stereo",
+      "full_name": "VST3: kHs Stereo (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Stereo.vst3"
+    },
+    {
+      "name": "kHs Tape Stop",
+      "full_name": "VST3: kHs Tape Stop (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Tape Stop.vst3"
+    },
+    {
+      "name": "kHs Trance Gate",
+      "full_name": "VST3: kHs Trance Gate (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Trance Gate.vst3"
+    },
+    {
+      "name": "kHs Transient Shaper",
+      "full_name": "VST3: kHs Transient Shaper (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/kHs Transient Shaper.vst3"
+    },
+    {
+      "name": "Kick 3",
+      "full_name": "VST3i: Kick 3 (Sonic Academy)",
+      "format": "VST3i",
+      "manufacturer": "Sonic Academy",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kick 3.vst3"
+    },
+    {
+      "name": "Matrix-12 V2",
+      "full_name": "VST3i: Matrix-12 V2 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Matrix-12 V2.vst3"
+    },
+    {
+      "name": "Mellotron V",
+      "full_name": "VST3i: Mellotron V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Mellotron V.vst3"
+    },
+    {
+      "name": "Modular V3",
+      "full_name": "VST3i: Modular V3 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Modular V3.vst3"
+    },
+    {
+      "name": "MORPH",
+      "full_name": "VST3: MORPH (Zynaptiq)",
+      "format": "VST3",
+      "manufacturer": "Zynaptiq",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/MORPH VST3.vst3"
+    },
+    {
+      "name": "MORPH SC",
+      "full_name": "VST3: MORPH SC (Zynaptiq)",
+      "format": "VST3",
+      "manufacturer": "Zynaptiq",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/MORPH SC VST3.vst3"
+    },
+    {
+      "name": "Multipass",
+      "full_name": "VST3: Multipass (Kilohearts) (4->12ch)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/Multipass.vst3"
+    },
+    {
+      "name": "MusicalAideas",
+      "full_name": "VST3i: MusicalAideas (ConceptualMachines)",
+      "format": "VST3i",
+      "manufacturer": "ConceptualMachines",
+      "is_instrument": false,
+      "ident": "/Users/lucaromagnoli/Library/Audio/Plug-Ins/VST3/MusicalAideas.vst3"
+    },
+    {
+      "name": "OP-Xa V",
+      "full_name": "VST3i: OP-Xa V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/OP-Xa V.vst3"
+    },
+    {
+      "name": "Oxford Inflator",
+      "full_name": "VST3: Oxford Inflator (Sonnox)",
+      "format": "VST3",
+      "manufacturer": "Sonnox",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Sonnox/Oxford Inflator.vst3"
+    },
+    {
+      "name": "Phase Plant",
+      "full_name": "VST3i: Phase Plant (Kilohearts)",
+      "format": "VST3i",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/Phase Plant.vst3"
+    },
+    {
+      "name": "Piano V3",
+      "full_name": "VST3i: Piano V3 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Piano V3.vst3"
+    },
+    {
+      "name": "Pitch Black FX",
+      "full_name": "VST3: Pitch Black FX (Conceptual Machines)",
+      "format": "VST3",
+      "manufacturer": "Conceptual Machines",
+      "is_instrument": false,
+      "ident": "/Users/lucaromagnoli/Library/Audio/Plug-Ins/VST3/Pitch Black FX.vst3"
+    },
+    {
+      "name": "Prophet-5 V",
+      "full_name": "VST3i: Prophet-5 V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Prophet-5 V.vst3"
+    },
+    {
+      "name": "Prophet-VS V",
+      "full_name": "VST3i: Prophet-VS V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Prophet-VS V.vst3"
+    },
+    {
+      "name": "ReaCast",
+      "full_name": "VST: ReaCast (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reacast.vst.dylib"
+    },
+    {
+      "name": "ReaComp",
+      "full_name": "VST: ReaComp (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reacomp.vst.dylib"
+    },
+    {
+      "name": "ReaControlMIDI",
+      "full_name": "VST: ReaControlMIDI (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reacontrolMIDI.vst.dylib"
+    },
+    {
+      "name": "ReaDelay",
+      "full_name": "VST: ReaDelay (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/readelay.vst.dylib"
+    },
+    {
+      "name": "ReaEQ",
+      "full_name": "VST: ReaEQ (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reaeq.vst.dylib"
+    },
+    {
+      "name": "ReaFir",
+      "full_name": "VST: ReaFir (FFT EQ+Dynamics Processor) (Cockos)",
+      "format": "VST",
+      "manufacturer": "FFT EQ+Dynamics Processor",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reafir.vst.dylib"
+    },
+    {
+      "name": "ReaGate",
+      "full_name": "VST: ReaGate (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reagate.vst.dylib"
+    },
+    {
+      "name": "ReaInsert",
+      "full_name": "VST: ReaInsert (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reainsert.vst.dylib"
+    },
+    {
+      "name": "ReaLimit",
+      "full_name": "VST: ReaLimit (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/realimit.vst.dylib"
+    },
+    {
+      "name": "ReaNINJAM",
+      "full_name": "VST: ReaNINJAM (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reaninjam.vst.dylib"
+    },
+    {
+      "name": "ReaPitch",
+      "full_name": "VST: ReaPitch (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reapitch.vst.dylib"
+    },
+    {
+      "name": "ReaSamplOmatic5000",
+      "full_name": "VSTi: ReaSamplOmatic5000 (Cockos)",
+      "format": "VSTi",
+      "manufacturer": "Cockos",
+      "is_instrument": true,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reasamplomatic.vst.dylib"
+    },
+    {
+      "name": "ReaStream",
+      "full_name": "VST: ReaStream (Cockos) (8ch)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reastream.vst.dylib"
+    },
+    {
+      "name": "ReaSurround",
+      "full_name": "VST: ReaSurround (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reasurround.vst.dylib"
+    },
+    {
+      "name": "ReaSurroundPan",
+      "full_name": "VST: ReaSurroundPan (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reasurround2.vst.dylib"
+    },
+    {
+      "name": "ReaSynDr",
+      "full_name": "VSTi: ReaSynDr (Cockos) (4 out)",
+      "format": "VSTi",
+      "manufacturer": "Cockos",
+      "is_instrument": true,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reasyndr.vst.dylib"
+    },
+    {
+      "name": "ReaSynth",
+      "full_name": "VSTi: ReaSynth (Cockos)",
+      "format": "VSTi",
+      "manufacturer": "Cockos",
+      "is_instrument": true,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reasynth.vst.dylib"
+    },
+    {
+      "name": "ReaTune",
+      "full_name": "VST: ReaTune (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reatune.vst.dylib"
+    },
+    {
+      "name": "ReaVerb",
+      "full_name": "VST: ReaVerb (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reaverb.vst.dylib"
+    },
+    {
+      "name": "ReaVerbate",
+      "full_name": "VST: ReaVerbate (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reaverbate.vst.dylib"
+    },
+    {
+      "name": "ReaVocode",
+      "full_name": "VST: ReaVocode (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reavocode.vst.dylib"
+    },
+    {
+      "name": "ReaVoice",
+      "full_name": "VST: ReaVoice (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reavoice.vst.dylib"
+    },
+    {
+      "name": "ReaXcomp",
+      "full_name": "VST: ReaXcomp (Cockos)",
+      "format": "VST",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "/Applications/REAPER.app/Contents/Plugins/FX/reaxcomp.vst.dylib"
+    },
+    {
+      "name": "RipplerX",
+      "full_name": "VST3i: RipplerX (Tilr)",
+      "format": "VST3i",
+      "manufacturer": "Tilr",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/RipplerX.vst3"
+    },
+    {
+      "name": "SEM V2",
+      "full_name": "VST3i: SEM V2 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/SEM V2.vst3"
+    },
+    {
+      "name": "Serum 2",
+      "full_name": "VST3i: Serum 2 (Xfer Records)",
+      "format": "VST3i",
+      "manufacturer": "Xfer Records",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Serum2.vst3<691258006"
+    },
+    {
+      "name": "Serum 2 FX",
+      "full_name": "VST3: Serum 2 FX (Xfer Records)",
+      "format": "VST3",
+      "manufacturer": "Xfer Records",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Serum2.vst3<1769899111"
+    },
+    {
+      "name": "ShaperBox 3",
+      "full_name": "VST: ShaperBox 3 (Cableguys)",
+      "format": "VST",
+      "manufacturer": "Cableguys",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST/ShaperBox 3.vst"
+    },
+    {
+      "name": "ShaperBox 3",
+      "full_name": "VST3: ShaperBox 3 (Cableguys)",
+      "format": "VST3",
+      "manufacturer": "Cableguys",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/ShaperBox 3.vst3"
+    },
+    {
+      "name": "Slice EQ",
+      "full_name": "VST3: Slice EQ (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/Slice EQ.vst3"
+    },
+    {
+      "name": "Snap Heap",
+      "full_name": "VST3: Snap Heap (Kilohearts)",
+      "format": "VST3",
+      "manufacturer": "Kilohearts",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Kilohearts/Snap Heap.vst3"
+    },
+    {
+      "name": "Solina V2",
+      "full_name": "VST3i: Solina V2 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Solina V2.vst3"
+    },
+    {
+      "name": "SQ80 V",
+      "full_name": "VST3i: SQ80 V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/SQ80 V.vst3"
+    },
+    {
+      "name": "Stage-73 V2",
+      "full_name": "VST3i: Stage-73 V2 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Stage-73 V2.vst3"
+    },
+    {
+      "name": "Synthi V",
+      "full_name": "VST3i: Synthi V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Synthi V.vst3"
+    },
+    {
+      "name": "The Infinite Crate",
+      "full_name": "VST3i: The Infinite Crate (Magenta)",
+      "format": "VST3i",
+      "manufacturer": "Magenta",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/The Infinite Crate.vst3"
+    },
+    {
+      "name": "Topos",
+      "full_name": "VST3: Topos (Forever89)",
+      "format": "VST3",
+      "manufacturer": "Forever89",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Topos.vst3"
+    },
+    {
+      "name": "Vocoder V",
+      "full_name": "VST3i: Vocoder V (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Vocoder V.vst3"
+    },
+    {
+      "name": "VOX Continental V2",
+      "full_name": "VST3i: VOX Continental V2 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/VOX Continental V2.vst3"
+    },
+    {
+      "name": "WideFire",
+      "full_name": "VST3: WideFire (JMGSound)",
+      "format": "VST3",
+      "manufacturer": "JMGSound",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/WideFire.vst3"
+    },
+    {
+      "name": "Wurli V2",
+      "full_name": "VST3i: Wurli V2 (Arturia)",
+      "format": "VST3i",
+      "manufacturer": "Arturia",
+      "is_instrument": false,
+      "ident": "/Library/Audio/Plug-Ins/VST3/Wurli V2.vst3"
+    },
+    {
+      "name": "MIDI CC to Note",
+      "full_name": "LV2: MIDI CC to Note (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#cctonote"
+    },
+    {
+      "name": "MIDI Channel Filter",
+      "full_name": "LV2: MIDI Channel Filter (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#channelfilter"
+    },
+    {
+      "name": "MIDI Channel Map",
+      "full_name": "LV2: MIDI Channel Map (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#channelmap"
+    },
+    {
+      "name": "MIDI Choke",
+      "full_name": "LV2: MIDI Choke (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#chokefilter"
+    },
+    {
+      "name": "MIDI Enforce Scale",
+      "full_name": "LV2: MIDI Enforce Scale (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#enforcescale"
+    },
+    {
+      "name": "MIDI Event Filter",
+      "full_name": "LV2: MIDI Event Filter (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#eventblocker"
+    },
+    {
+      "name": "MIDI Key-Range Filter",
+      "full_name": "LV2: MIDI Key-Range Filter (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#keyrange"
+    },
+    {
+      "name": "MIDI Keysplit",
+      "full_name": "LV2: MIDI Keysplit (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#keysplit"
+    },
+    {
+      "name": "MIDI CC Map",
+      "full_name": "LV2: MIDI CC Map (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#mapcc"
+    },
+    {
+      "name": "MIDI Note/Channel Map",
+      "full_name": "LV2: MIDI Note/Channel Map (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#mapkeychannel"
+    },
+    {
+      "name": "MIDI Note Transpose",
+      "full_name": "LV2: MIDI Note Transpose (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#mapkeyscale"
+    },
+    {
+      "name": "MIDI Chord",
+      "full_name": "LV2: MIDI Chord (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#midichord"
+    },
+    {
+      "name": "MIDI Delayline",
+      "full_name": "LV2: MIDI Delayline (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#mididelay"
+    },
+    {
+      "name": "MIDI Channel Unisono",
+      "full_name": "LV2: MIDI Channel Unisono (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#mididup"
+    },
+    {
+      "name": "MIDI Strum",
+      "full_name": "LV2: MIDI Strum (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#midistrum"
+    },
+    {
+      "name": "MIDI Chromatic Transpose",
+      "full_name": "LV2: MIDI Chromatic Transpose (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#miditranspose"
+    },
+    {
+      "name": "MIDI Monophonic Legato",
+      "full_name": "LV2: MIDI Monophonic Legato (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#monolegato"
+    },
+    {
+      "name": "MIDI Remove Active Sensing",
+      "full_name": "LV2: MIDI Remove Active Sensing (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#noactivesensing"
+    },
+    {
+      "name": "MIDI Duplicate Blocker",
+      "full_name": "LV2: MIDI Duplicate Blocker (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#nodup"
+    },
+    {
+      "name": "MIDI Note to CC",
+      "full_name": "LV2: MIDI Note to CC (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#notetocc"
+    },
+    {
+      "name": "MIDI Note Toggle",
+      "full_name": "LV2: MIDI Note Toggle (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#notetoggle"
+    },
+    {
+      "name": "MIDI Note to PC",
+      "full_name": "LV2: MIDI Note to PC (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#notetopgm"
+    },
+    {
+      "name": "MIDI N-Tap Delay",
+      "full_name": "LV2: MIDI N-Tap Delay (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#ntapdelay"
+    },
+    {
+      "name": "MIDI Simple Channel Filter",
+      "full_name": "LV2: MIDI Simple Channel Filter (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#onechannelfilter"
+    },
+    {
+      "name": "MIDI Thru",
+      "full_name": "LV2: MIDI Thru (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#passthru"
+    },
+    {
+      "name": "MIDI Quantization",
+      "full_name": "LV2: MIDI Quantization (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#quantize"
+    },
+    {
+      "name": "MIDI Velocity Randomization",
+      "full_name": "LV2: MIDI Velocity Randomization (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#randvelocity"
+    },
+    {
+      "name": "MIDI Scale CC Value",
+      "full_name": "LV2: MIDI Scale CC Value (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#scalecc"
+    },
+    {
+      "name": "MIDI Sostenuto",
+      "full_name": "LV2: MIDI Sostenuto (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#sostenuto"
+    },
+    {
+      "name": "MIDI Velocity Gamma",
+      "full_name": "LV2: MIDI Velocity Gamma (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#velocitygamma"
+    },
+    {
+      "name": "MIDI Velocity-Range Filter",
+      "full_name": "LV2: MIDI Velocity-Range Filter (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#velocityrange"
+    },
+    {
+      "name": "MIDI Velocity Adjust",
+      "full_name": "LV2: MIDI Velocity Adjust (MIDI)",
+      "format": "LV2",
+      "manufacturer": "MIDI",
+      "is_instrument": false,
+      "ident": "http://gareus.org/oss/lv2/midifilter#velocityscale"
+    },
+    {
+      "name": "Airwindows Consolidated",
+      "full_name": "CLAP: Airwindows Consolidated (Airwindows)",
+      "format": "CLAP",
+      "manufacturer": "Airwindows",
+      "is_instrument": false,
+      "ident": "com.airwindows.consolidated"
+    },
+    {
+      "name": "Speakers",
+      "full_name": "CLAP: Speakers (AudioThing)",
+      "format": "CLAP",
+      "manufacturer": "AudioThing",
+      "is_instrument": false,
+      "ident": "com.AudioThing.Speakers"
+    },
+    {
+      "name": "Micro",
+      "full_name": "CLAP: Micro (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Micro.1"
+    },
+    {
+      "name": "One",
+      "full_name": "CLAPi: One (FabFilter)",
+      "format": "CLAPi",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.One.3"
+    },
+    {
+      "name": "Pro-C 2",
+      "full_name": "CLAP: Pro-C 2 (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Pro-C.2"
+    },
+    {
+      "name": "Pro-DS",
+      "full_name": "CLAP: Pro-DS (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Pro-DS.1"
+    },
+    {
+      "name": "Pro-G",
+      "full_name": "CLAP: Pro-G (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Pro-G.1"
+    },
+    {
+      "name": "Pro-L 2",
+      "full_name": "CLAP: Pro-L 2 (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Pro-L.2"
+    },
+    {
+      "name": "Pro-MB",
+      "full_name": "CLAP: Pro-MB (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Pro-MB.1"
+    },
+    {
+      "name": "Pro-R 2",
+      "full_name": "CLAP: Pro-R 2 (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Pro-R.2"
+    },
+    {
+      "name": "Saturn 2",
+      "full_name": "CLAP: Saturn 2 (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Saturn.2"
+    },
+    {
+      "name": "Simplon",
+      "full_name": "CLAP: Simplon (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Simplon.1"
+    },
+    {
+      "name": "Timeless 3",
+      "full_name": "CLAP: Timeless 3 (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Timeless.3"
+    },
+    {
+      "name": "Twin 3",
+      "full_name": "CLAPi: Twin 3 (FabFilter)",
+      "format": "CLAPi",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Twin.3"
+    },
+    {
+      "name": "Volcano 3",
+      "full_name": "CLAP: Volcano 3 (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.preset-discovery.Volcano.3"
+    },
+    {
+      "name": "Pro-Q 4",
+      "full_name": "CLAP: Pro-Q 4 (FabFilter)",
+      "format": "CLAP",
+      "manufacturer": "FabFilter",
+      "is_instrument": false,
+      "ident": "com.FabFilter.Pro-Q.4"
+    },
+    {
+      "name": "PaulXStretch",
+      "full_name": "CLAP: PaulXStretch (Sonosaurus)",
+      "format": "CLAP",
+      "manufacturer": "Sonosaurus",
+      "is_instrument": false,
+      "ident": "com.sonosaurus.paulstretch.clap"
+    },
+    {
+      "name": "plugdata",
+      "full_name": "CLAPi: plugdata (plugdata)",
+      "format": "CLAPi",
+      "manufacturer": "plugdata",
+      "is_instrument": false,
+      "ident": "com.timothyschoen.plugdata"
+    },
+    {
+      "name": "plugdata-fx",
+      "full_name": "CLAP: plugdata-fx (plugdata)",
+      "format": "CLAP",
+      "manufacturer": "plugdata",
+      "is_instrument": false,
+      "ident": "com.timothyschoen.plugdata-fx"
+    },
+    {
+      "name": "Diva",
+      "full_name": "CLAPi: Diva (u-he)",
+      "format": "CLAPi",
+      "manufacturer": "u-he",
+      "is_instrument": false,
+      "ident": "com.u-he.Diva"
+    },
+    {
+      "name": "ClickBox",
+      "full_name": "CLAP: ClickBox (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.ClickBox"
+    },
+    {
+      "name": "CRMBL",
+      "full_name": "CLAP: CRMBL (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.CRMBL"
+    },
+    {
+      "name": "MPaint",
+      "full_name": "CLAPi: MPaint (unplugred)",
+      "format": "CLAPi",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.MPaint"
+    },
+    {
+      "name": "Pisstortion",
+      "full_name": "CLAP: Pisstortion (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.Pisstortion"
+    },
+    {
+      "name": "Plastic Funeral",
+      "full_name": "CLAP: Plastic Funeral (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.PlasticFuneral"
+    },
+    {
+      "name": "PNCH",
+      "full_name": "CLAP: PNCH (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.PNCH"
+    },
+    {
+      "name": "Prisma",
+      "full_name": "CLAP: Prisma (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.Prisma"
+    },
+    {
+      "name": "Red Bass",
+      "full_name": "CLAP: Red Bass (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.RedBass"
+    },
+    {
+      "name": "VU",
+      "full_name": "CLAP: VU (unplugred)",
+      "format": "CLAP",
+      "manufacturer": "unplugred",
+      "is_instrument": false,
+      "ident": "com.unplugred.VU"
+    },
+    {
+      "name": "Buffr Glitch",
+      "full_name": "CLAP: Buffr Glitch (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.buffr-glitch"
+    },
+    {
+      "name": "Crisp",
+      "full_name": "CLAP: Crisp (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.crisp"
+    },
+    {
+      "name": "Crossover",
+      "full_name": "CLAP: Crossover (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.crossover"
+    },
+    {
+      "name": "Diopser",
+      "full_name": "CLAP: Diopser (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.diopser"
+    },
+    {
+      "name": "Loudness War Winner",
+      "full_name": "CLAP: Loudness War Winner (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.loudness-war-winner"
+    },
+    {
+      "name": "Puberty Simulator",
+      "full_name": "CLAP: Puberty Simulator (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.puberty-simulator"
+    },
+    {
+      "name": "Safety Limiter",
+      "full_name": "CLAP: Safety Limiter (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.safety-limiter"
+    },
+    {
+      "name": "Soft Vacuum",
+      "full_name": "CLAP: Soft Vacuum (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.soft-vacuum"
+    },
+    {
+      "name": "Spectral Compressor",
+      "full_name": "CLAP: Spectral Compressor (Robbert van der Helm)",
+      "format": "CLAP",
+      "manufacturer": "Robbert van der Helm",
+      "is_instrument": false,
+      "ident": "nl.robbertvanderhelm.spectral-compressor"
+    },
+    {
+      "name": "ysfx-s instrument",
+      "full_name": "CLAPi: ysfx-s instrument (Jean Pierre Cimalando / Joep Vanlier)",
+      "format": "CLAPi",
+      "manufacturer": "Jean Pierre Cimalando / Joep Vanlier",
+      "is_instrument": true,
+      "ident": "org.saike.ysfx-s"
+    },
+    {
+      "name": "ysfx-s FX",
+      "full_name": "CLAP: ysfx-s FX (Jean Pierre Cimalando / Joep Vanlier)",
+      "format": "CLAP",
+      "manufacturer": "Jean Pierre Cimalando / Joep Vanlier",
+      "is_instrument": false,
+      "ident": "org.saike.ysfx-s-fx"
+    },
+    {
+      "name": "Stochas",
+      "full_name": "CLAP: Stochas (Surge Synth Team)",
+      "format": "CLAP",
+      "manufacturer": "Surge Synth Team",
+      "is_instrument": false,
+      "ident": "org.surge-synth-team.stochas"
+    },
+    {
+      "name": "Pitch Shifter 2",
+      "full_name": "JS: Pitch Shifter 2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "pitch/superpitch"
+    },
+    {
+      "name": "Pitch Down-Shifter 2",
+      "full_name": "JS: Pitch Down-Shifter 2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "pitch/pitch2"
+    },
+    {
+      "name": "MDCT Shifter",
+      "full_name": "JS: MDCT Shifter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "pitch/mdct-shift"
+    },
+    {
+      "name": "Pitch an Octave Down",
+      "full_name": "JS: Pitch an Octave Down",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "pitch/octavedown"
+    },
+    {
+      "name": "Pitch Down-Shifter",
+      "full_name": "JS: Pitch Down-Shifter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "pitch/pitchdown"
+    },
+    {
+      "name": "Pitch an Octave Up",
+      "full_name": "JS: Pitch an Octave Up",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "pitch/octaveup"
+    },
+    {
+      "name": "Delay w/Reverseness",
+      "full_name": "JS: Delay w/Reverseness",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "misc/reverseness"
+    },
+    {
+      "name": "ADPCM Simulator",
+      "full_name": "JS: ADPCM Simulator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "misc/adpcm_simulator"
+    },
+    {
+      "name": "Tonifier v2",
+      "full_name": "JS: Tonifier v2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "misc/tonifier2"
+    },
+    {
+      "name": "Tonifier",
+      "full_name": "JS: Tonifier",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "misc/tonifier"
+    },
+    {
+      "name": "video sample peeker",
+      "full_name": "JS: video sample peeker",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "misc/video_sample_peeker"
+    },
+    {
+      "name": "Sweeping Resonant Lowpass Filter",
+      "full_name": "JS: Sweeping Resonant Lowpass Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "filters/sweepinglowpass"
+    },
+    {
+      "name": "DC Filter",
+      "full_name": "JS: DC Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "filters/dc_remove"
+    },
+    {
+      "name": "MDCT Sweeping Filter",
+      "full_name": "JS: MDCT Sweeping Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "filters/mdct-volsweep"
+    },
+    {
+      "name": "MDCT Filter",
+      "full_name": "JS: MDCT Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "filters/mdct-filter"
+    },
+    {
+      "name": "Spectropaint Filter",
+      "full_name": "JS: Spectropaint Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "filters/spectro_filter_paint"
+    },
+    {
+      "name": "Resonant Lowpass Filter",
+      "full_name": "JS: Resonant Lowpass Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "filters/resonantlowpass"
+    },
+    {
+      "name": "FFT Peak-Following Filter",
+      "full_name": "JS: FFT Peak-Following Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "filters/autopeakfilter"
+    },
+    {
+      "name": "General Dynamics",
+      "full_name": "JS: General Dynamics (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "dynamics/general_dynamics"
+    },
+    {
+      "name": "WigWare Multi-channel Peak VU Meter",
+      "full_name": "JS: WigWare Multi-channel Peak VU Meter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "analysis/WigMCVUMeter"
+    },
+    {
+      "name": "Gain Reduction Scope",
+      "full_name": "JS: Gain Reduction Scope (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "analysis/gain_reduction_scope"
+    },
+    {
+      "name": "Spectrograph Spectrogram Meter",
+      "full_name": "JS: Spectrograph Spectrogram Meter (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "analysis/gfxspectrograph"
+    },
+    {
+      "name": "Spectropaint Synthesis",
+      "full_name": "JS: Spectropaint Synthesis",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "analysis/spectropaint"
+    },
+    {
+      "name": "Loudness Meter Peak/RMS/LUFS",
+      "full_name": "JS: Loudness Meter Peak/RMS/LUFS (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "analysis/loudness_meter"
+    },
+    {
+      "name": "Oscilloscope Meter",
+      "full_name": "JS: Oscilloscope Meter (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "analysis/gfxscope"
+    },
+    {
+      "name": "Zoom Analyzer Demo",
+      "full_name": "JS: Zoom Analyzer Demo",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "analysis/zoomanalyzer"
+    },
+    {
+      "name": "Frequency Spectrum Analyzer Meter",
+      "full_name": "JS: Frequency Spectrum Analyzer Meter (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "analysis/gfxanalyzer"
+    },
+    {
+      "name": "MTC Logger",
+      "full_name": "JS: MTC Logger",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/mtc_logger"
+    },
+    {
+      "name": "MIDI Choke",
+      "full_name": "JS: MIDI Choke",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_choke"
+    },
+    {
+      "name": "MIDI Chorderizer",
+      "full_name": "JS: MIDI Chorderizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_chorderizer"
+    },
+    {
+      "name": "MIDI Route Note To Channel",
+      "full_name": "JS: MIDI Route Note To Channel",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_note2channel"
+    },
+    {
+      "name": "MIDI CC Mapper",
+      "full_name": "JS: MIDI CC Mapper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_CC_mapper"
+    },
+    {
+      "name": "MIDI Chord In Key",
+      "full_name": "JS: MIDI Chord In Key",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_chordkey"
+    },
+    {
+      "name": "MIDI note sanitizer",
+      "full_name": "JS: MIDI note sanitizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_note_sanitizer"
+    },
+    {
+      "name": "MIDI Note Filter",
+      "full_name": "JS: MIDI Note Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_note_filter"
+    },
+    {
+      "name": "MIDI Note-On Delay",
+      "full_name": "JS: MIDI Note-On Delay",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midinoteondelay"
+    },
+    {
+      "name": "MIDI Sequencer Baby",
+      "full_name": "JS: MIDI Sequencer Baby",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/sequencer_baby"
+    },
+    {
+      "name": "MIDI Program/Bank Switch on Load",
+      "full_name": "JS: MIDI Program/Bank Switch on Load",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/program_bank_onload"
+    },
+    {
+      "name": "MIDI Note Repeater",
+      "full_name": "JS: MIDI Note Repeater",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_note_repeater"
+    },
+    {
+      "name": "MIDI Sequencer Megababy",
+      "full_name": "JS: MIDI Sequencer Megababy",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/sequencer_megababy"
+    },
+    {
+      "name": "MIDI Note Hold",
+      "full_name": "JS: MIDI Note Hold",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_note_hold"
+    },
+    {
+      "name": "MIDI Sequencer Baby v2",
+      "full_name": "JS: MIDI Sequencer Baby v2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/sequencer_baby_v2"
+    },
+    {
+      "name": "MIDI Velocity Control",
+      "full_name": "JS: MIDI Velocity Control",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_velocitycontrol"
+    },
+    {
+      "name": "MIDI Transpose Notes",
+      "full_name": "JS: MIDI Transpose Notes",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_transpose"
+    },
+    {
+      "name": "MIDI Arpeggiator",
+      "full_name": "JS: MIDI Arpeggiator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_arp"
+    },
+    {
+      "name": "MIDI Delay",
+      "full_name": "JS: MIDI Delay",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_delay"
+    },
+    {
+      "name": "MIDI Logger",
+      "full_name": "JS: MIDI Logger",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_logger"
+    },
+    {
+      "name": "Audio To MIDI Drum Trigger",
+      "full_name": "JS: Audio To MIDI Drum Trigger",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/drumtrigger"
+    },
+    {
+      "name": "MIDI Map To Key",
+      "full_name": "JS: MIDI Map To Key",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "midi/midi_maptokey"
+    },
+    {
+      "name": "Event Horizon Limiter/Clipper",
+      "full_name": "JS: Event Horizon Limiter/Clipper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/eventhorizon2"
+    },
+    {
+      "name": "Fairly Childish Compressor/Limiter",
+      "full_name": "JS: Fairly Childish Compressor/Limiter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/fairlychildish"
+    },
+    {
+      "name": "3x3 EQ",
+      "full_name": "JS: 3x3 EQ (1-Pole Crossover)",
+      "format": "JS",
+      "manufacturer": "1-Pole Crossover",
+      "is_instrument": false,
+      "ident": "sstillwell/3x3_6dbSlope"
+    },
+    {
+      "name": "Fairly Childish Stereo Compressor/Limiter",
+      "full_name": "JS: Fairly Childish Stereo Compressor/Limiter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/fairlychildish2"
+    },
+    {
+      "name": "Chorus",
+      "full_name": "JS: Chorus (Stereo)",
+      "format": "JS",
+      "manufacturer": "Stereo",
+      "is_instrument": false,
+      "ident": "sstillwell/chorus_stereo"
+    },
+    {
+      "name": "Bad Buss Mojo Waveshaper",
+      "full_name": "JS: Bad Buss Mojo Waveshaper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/badbussmojo"
+    },
+    {
+      "name": "4x4 EQ",
+      "full_name": "JS: 4x4 EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/4x4"
+    },
+    {
+      "name": "Subtractive Stereo Enhancer",
+      "full_name": "JS: Subtractive Stereo Enhancer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/width"
+    },
+    {
+      "name": "ReaLoud LP",
+      "full_name": "JS: ReaLoud LP",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/realoud_lpf"
+    },
+    {
+      "name": "Auto Expander",
+      "full_name": "JS: Auto Expander",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/autoexpand"
+    },
+    {
+      "name": "Event Horizon Clipper",
+      "full_name": "JS: Event Horizon Clipper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/eventhorizon"
+    },
+    {
+      "name": "RBJ 1073 EQ",
+      "full_name": "JS: RBJ 1073 EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/rbj1073"
+    },
+    {
+      "name": "Huge Booty Bass Enhancer",
+      "full_name": "JS: Huge Booty Bass Enhancer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/hugebooty"
+    },
+    {
+      "name": "3x3 EQ",
+      "full_name": "JS: 3x3 EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/3x3"
+    },
+    {
+      "name": "Bad Buss Mojo Waveshaper w/AA",
+      "full_name": "JS: Bad Buss Mojo Waveshaper w/AA",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/badbussmojo_aa"
+    },
+    {
+      "name": "Thunderkick",
+      "full_name": "JS: Thunderkick",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/thunderkick"
+    },
+    {
+      "name": "Louderizer",
+      "full_name": "JS: Louderizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/louderizer"
+    },
+    {
+      "name": "Stereo Width",
+      "full_name": "JS: Stereo Width",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/stereowidth"
+    },
+    {
+      "name": "Downward Expander",
+      "full_name": "JS: Downward Expander",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/expander"
+    },
+    {
+      "name": "Ozzifier Chorus",
+      "full_name": "JS: Ozzifier Chorus",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/ozzifier"
+    },
+    {
+      "name": "RBJ 7-Band Graphic EQ",
+      "full_name": "JS: RBJ 7-Band Graphic EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/rbj7eq"
+    },
+    {
+      "name": "ReaLoud",
+      "full_name": "JS: ReaLoud",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/realoud"
+    },
+    {
+      "name": "1175 Compressor",
+      "full_name": "JS: 1175 Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/1175"
+    },
+    {
+      "name": "Delay w/Tempo Length",
+      "full_name": "JS: Delay w/Tempo Length",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/delay_tempo"
+    },
+    {
+      "name": "Chorus",
+      "full_name": "JS: Chorus (Improved Shaping)",
+      "format": "JS",
+      "manufacturer": "Improved Shaping",
+      "is_instrument": false,
+      "ident": "sstillwell/chorus"
+    },
+    {
+      "name": "Dirt Squeeze Compressor",
+      "full_name": "JS: Dirt Squeeze Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/dirtsqueeze"
+    },
+    {
+      "name": "Express Bus Compressor",
+      "full_name": "JS: Express Bus Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/expressbus"
+    },
+    {
+      "name": "RBJ Highpass/Lowpass Filters",
+      "full_name": "JS: RBJ Highpass/Lowpass Filters",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/hpflpf"
+    },
+    {
+      "name": "Louderizer LP",
+      "full_name": "JS: Louderizer LP",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/louderizer_lpf"
+    },
+    {
+      "name": "MIDI Velocity Scaler/Compressor",
+      "full_name": "JS: MIDI Velocity Scaler/Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/volscale"
+    },
+    {
+      "name": "Exciter",
+      "full_name": "JS: Exciter (Treble Enhancer)",
+      "format": "JS",
+      "manufacturer": "Treble Enhancer",
+      "is_instrument": false,
+      "ident": "sstillwell/exciter"
+    },
+    {
+      "name": "Major Tom Compressor",
+      "full_name": "JS: Major Tom Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/majortom"
+    },
+    {
+      "name": "Delay w/Tempo Ping-Pong",
+      "full_name": "JS: Delay w/Tempo Ping-Pong",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/delay_pong"
+    },
+    {
+      "name": "Flange Baby",
+      "full_name": "JS: Flange Baby",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/flangebaby"
+    },
+    {
+      "name": "RBJ 4-Band Semi-Parametric EQ",
+      "full_name": "JS: RBJ 4-Band Semi-Parametric EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/rbj4eq"
+    },
+    {
+      "name": "Master Tom Compressor",
+      "full_name": "JS: Master Tom Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/mastertom"
+    },
+    {
+      "name": "MIDI Note Randomize",
+      "full_name": "JS: MIDI Note Randomize",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "sstillwell/randomizer"
+    },
+    {
+      "name": "Tone Gate",
+      "full_name": "JS: Tone Gate",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "remaincalm_org/tonegate"
+    },
+    {
+      "name": "Avocado Ducking Glitch Generator",
+      "full_name": "JS: Avocado Ducking Glitch Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "remaincalm_org/avocado_glitch"
+    },
+    {
+      "name": "Delay",
+      "full_name": "JS: Delay (Floaty)",
+      "format": "JS",
+      "manufacturer": "Floaty",
+      "is_instrument": false,
+      "ident": "remaincalm_org/floaty_delay"
+    },
+    {
+      "name": "Paranoia Mangler",
+      "full_name": "JS: Paranoia Mangler",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "remaincalm_org/paranoia_mangler"
+    },
+    {
+      "name": "Tremolo",
+      "full_name": "JS: Tremolo",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/tremolo"
+    },
+    {
+      "name": "Distortion",
+      "full_name": "JS: Distortion",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/distortion"
+    },
+    {
+      "name": "Convolution Dual Amp Modeler",
+      "full_name": "JS: Convolution Dual Amp Modeler",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/amp-model-dual"
+    },
+    {
+      "name": "Flanger",
+      "full_name": "JS: Flanger",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/flanger"
+    },
+    {
+      "name": "Wah-Wah",
+      "full_name": "JS: Wah-Wah",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/wah"
+    },
+    {
+      "name": "Distortion",
+      "full_name": "JS: Distortion (Fuzz)",
+      "format": "JS",
+      "manufacturer": "Fuzz",
+      "is_instrument": false,
+      "ident": "guitar/distort-fuzz"
+    },
+    {
+      "name": "4-Tap Phaser",
+      "full_name": "JS: 4-Tap Phaser",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/phaser"
+    },
+    {
+      "name": "Chorus",
+      "full_name": "JS: Chorus",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/chorus"
+    },
+    {
+      "name": "Convolution Amp/Cab Modeler",
+      "full_name": "JS: Convolution Amp/Cab Modeler",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "guitar/amp-model"
+    },
+    {
+      "name": "FFT Mono Template",
+      "full_name": "JS: FFT Mono Template",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "cookdsp/fft-mono-template"
+    },
+    {
+      "name": "FFT Stereo Template",
+      "full_name": "JS: FFT Stereo Template",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "cookdsp/fft-stereo-template"
+    },
+    {
+      "name": "Phase Vocoder Stereo Transposer",
+      "full_name": "JS: Phase Vocoder Stereo Transposer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "cookdsp/pvtrans-example"
+    },
+    {
+      "name": "Phase Vocoder Mono Template",
+      "full_name": "JS: Phase Vocoder Mono Template",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "cookdsp/pv-mono-template"
+    },
+    {
+      "name": "Phase Vocoder Stereo Template",
+      "full_name": "JS: Phase Vocoder Stereo Template",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "cookdsp/pv-stereo-template"
+    },
+    {
+      "name": "Tone Generator",
+      "full_name": "JS: Tone Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "synthesis/tonegenerator"
+    },
+    {
+      "name": "Sine Sweep Generator",
+      "full_name": "JS: Sine Sweep Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "synthesis/sine_sweep"
+    },
+    {
+      "name": "Spectral Hold",
+      "full_name": "JS: Spectral Hold (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "synthesis/spectral_hold"
+    },
+    {
+      "name": "Transient-Driven Auto-Pan",
+      "full_name": "JS: Transient-Driven Auto-Pan (Transmitter)",
+      "format": "JS",
+      "manufacturer": "Transmitter",
+      "is_instrument": false,
+      "ident": "Till/Transient-driven Auto-Pan v1.0 (Transmitter)"
+    },
+    {
+      "name": "Transient-Driven Auto-Pan",
+      "full_name": "JS: Transient-Driven Auto-Pan (Receiver)",
+      "format": "JS",
+      "manufacturer": "Receiver",
+      "is_instrument": false,
+      "ident": "Till/Transient-driven Auto-Pan v1.0 (Receiver)"
+    },
+    {
+      "name": "Transient-Driven Auto-Pan v1.1",
+      "full_name": "JS: Transient-Driven Auto-Pan v1.1 (Transmitter)",
+      "format": "JS",
+      "manufacturer": "Transmitter",
+      "is_instrument": false,
+      "ident": "Till/Transient-driven Auto-Pan v1.1 (Transmitter)"
+    },
+    {
+      "name": "Transient-Driven Auto-Pan v1.1",
+      "full_name": "JS: Transient-Driven Auto-Pan v1.1 (Receiver)",
+      "format": "JS",
+      "manufacturer": "Receiver",
+      "is_instrument": false,
+      "ident": "Till/Transient-driven Auto-Pan v1.1 (Receiver)"
+    },
+    {
+      "name": "Auto-Wideness",
+      "full_name": "JS: Auto-Wideness",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Till/Auto-Wideness v1.0"
+    },
+    {
+      "name": "Loop Sampler w/MIDI Triggers",
+      "full_name": "JS: Loop Sampler w/MIDI Triggers",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loopsamplers/loopsampler-m2-midi"
+    },
+    {
+      "name": "Auto Looper",
+      "full_name": "JS: Auto Looper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loopsamplers/autoloop"
+    },
+    {
+      "name": "Loop Sampler",
+      "full_name": "JS: Loop Sampler",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loopsamplers/loopsampler-m2"
+    },
+    {
+      "name": "Super8 MIDI-controlled synchronized looper",
+      "full_name": "JS: Super8 MIDI-controlled synchronized looper (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "loopsamplers/super8"
+    },
+    {
+      "name": "Granular Loop Sampler",
+      "full_name": "JS: Granular Loop Sampler",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loopsamplers/loopsampler-granul"
+    },
+    {
+      "name": "Dynamic Range Meter",
+      "full_name": "JS: Dynamic Range Meter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "meters/dynamics_meter"
+    },
+    {
+      "name": "Bit Meter",
+      "full_name": "JS: Bit Meter (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "meters/bit_meter"
+    },
+    {
+      "name": "Graphical Waveshaper",
+      "full_name": "JS: Graphical Waveshaper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "waveshapers/graphdist"
+    },
+    {
+      "name": "Graphical Dynamic Waveshaper",
+      "full_name": "JS: Graphical Dynamic Waveshaper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "waveshapers/graphdist-dyn"
+    },
+    {
+      "name": "Bit Reduction/Dither",
+      "full_name": "JS: Bit Reduction/Dither",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "old_unsupported/dither"
+    },
+    {
+      "name": "5-Band Joiner",
+      "full_name": "JS: 5-Band Joiner",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/5BandJoiner"
+    },
+    {
+      "name": "Digital Versatile Compressor",
+      "full_name": "JS: Digital Versatile Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/DVCJS"
+    },
+    {
+      "name": "Zero Crossing Maximizer",
+      "full_name": "JS: Zero Crossing Maximizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/ZeroCrossingMaximizer"
+    },
+    {
+      "name": "4-Band EQ",
+      "full_name": "JS: 4-Band EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/4BandEQ"
+    },
+    {
+      "name": "3-Band Joiner",
+      "full_name": "JS: 3-Band Joiner",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/3BandJoiner"
+    },
+    {
+      "name": "Master Limiter",
+      "full_name": "JS: Master Limiter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/masterLimiter"
+    },
+    {
+      "name": "5-Band Splitter",
+      "full_name": "JS: 5-Band Splitter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/5BandSplitter"
+    },
+    {
+      "name": "Stereo Upmix",
+      "full_name": "JS: Stereo Upmix",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/stereo"
+    },
+    {
+      "name": "Digital Versatile Compressor v2",
+      "full_name": "JS: Digital Versatile Compressor v2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/DVC2JS"
+    },
+    {
+      "name": "MGA JS Limiter",
+      "full_name": "JS: MGA JS Limiter (Unlinked Stereo)",
+      "format": "JS",
+      "manufacturer": "Unlinked Stereo",
+      "is_instrument": false,
+      "ident": "loser/MGA_JSLimiterST"
+    },
+    {
+      "name": "50 Hz Kicker",
+      "full_name": "JS: 50 Hz Kicker",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/50HzKicker"
+    },
+    {
+      "name": "Time Difference Pan",
+      "full_name": "JS: Time Difference Pan",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/timeDifferencePan"
+    },
+    {
+      "name": "Digital Drum Compressor",
+      "full_name": "JS: Digital Drum Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/DDC"
+    },
+    {
+      "name": "Center Canceler",
+      "full_name": "JS: Center Canceler",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/CenterCanceler"
+    },
+    {
+      "name": "Simple Peak-1 Limiter",
+      "full_name": "JS: Simple Peak-1 Limiter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/SP1LimiterJS"
+    },
+    {
+      "name": "Ping Pong Pan",
+      "full_name": "JS: Ping Pong Pan",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/ppp"
+    },
+    {
+      "name": "4-Band Joiner",
+      "full_name": "JS: 4-Band Joiner",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/4BandJoiner"
+    },
+    {
+      "name": "Channel Time Delayer",
+      "full_name": "JS: Channel Time Delayer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/TimeDelayer"
+    },
+    {
+      "name": "3-Band Splitter",
+      "full_name": "JS: 3-Band Splitter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/3BandSplitter"
+    },
+    {
+      "name": "3-Band EQ",
+      "full_name": "JS: 3-Band EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/3BandEQ"
+    },
+    {
+      "name": "MIDI EQ Ducker",
+      "full_name": "JS: MIDI EQ Ducker",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/MIDI_EQ_Ducker"
+    },
+    {
+      "name": "4-Band Splitter",
+      "full_name": "JS: 4-Band Splitter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/4BandSplitter"
+    },
+    {
+      "name": "Saturation",
+      "full_name": "JS: Saturation",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/Saturation"
+    },
+    {
+      "name": "Transient Killer",
+      "full_name": "JS: Transient Killer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/TransientKiller"
+    },
+    {
+      "name": "Stereo Field Manipulator",
+      "full_name": "JS: Stereo Field Manipulator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/StereoField"
+    },
+    {
+      "name": "Transient Controller",
+      "full_name": "JS: Transient Controller",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/TransientController"
+    },
+    {
+      "name": "Exciter",
+      "full_name": "JS: Exciter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/Exciter"
+    },
+    {
+      "name": "White Noise Generator",
+      "full_name": "JS: White Noise Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/WhiteNoise"
+    },
+    {
+      "name": "Goniometer",
+      "full_name": "JS: Goniometer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/gfxGoniometer"
+    },
+    {
+      "name": "Channel Phase Meter",
+      "full_name": "JS: Channel Phase Meter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/phaseMeter"
+    },
+    {
+      "name": "MGA JS Limiter",
+      "full_name": "JS: MGA JS Limiter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/MGA_JSLimiter"
+    },
+    {
+      "name": "Compciter",
+      "full_name": "JS: Compciter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/Compciter"
+    },
+    {
+      "name": "Upward Expander",
+      "full_name": "JS: Upward Expander",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/UpwardExpander"
+    },
+    {
+      "name": "Waveshaping Distortion",
+      "full_name": "JS: Waveshaping Distortion",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/waveShapingDstr"
+    },
+    {
+      "name": "Amplitude Modulator",
+      "full_name": "JS: Amplitude Modulator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/amplitudeModulator"
+    },
+    {
+      "name": "Stereo Enhancer",
+      "full_name": "JS: Stereo Enhancer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "loser/stereoEnhancer"
+    },
+    {
+      "name": "Gaussian Noise Generator",
+      "full_name": "JS: Gaussian Noise Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "schwa/gaussian_noise_generator"
+    },
+    {
+      "name": "Soft Clipper/Limiter",
+      "full_name": "JS: Soft Clipper/Limiter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "schwa/soft_clipper"
+    },
+    {
+      "name": "FFT Splitter",
+      "full_name": "JS: FFT Splitter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "schwa/fft_splitter"
+    },
+    {
+      "name": "MIDI Velocity and Timing Humanizer",
+      "full_name": "JS: MIDI Velocity and Timing Humanizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "schwa/midi_humanizer"
+    },
+    {
+      "name": "Audio Statistics",
+      "full_name": "JS: Audio Statistics",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "schwa/audio_statistics"
+    },
+    {
+      "name": "MIDI Modal Randomness",
+      "full_name": "JS: MIDI Modal Randomness",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "schwa/midi_modal_randomness"
+    },
+    {
+      "name": "MIDI Examiner",
+      "full_name": "JS: MIDI Examiner",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "schwa/midi_examine"
+    },
+    {
+      "name": "MIDI Tool v2",
+      "full_name": "JS: MIDI Tool v2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_Tool II"
+    },
+    {
+      "name": "MIDI Router/Transpose",
+      "full_name": "JS: MIDI Router/Transpose",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_Router"
+    },
+    {
+      "name": "MIDI CC LFO Generator",
+      "full_name": "JS: MIDI CC LFO Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_CCRider"
+    },
+    {
+      "name": "8x Stereo to 1x Stereo Mixer",
+      "full_name": "JS: 8x Stereo to 1x Stereo Mixer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/Mixer_8xS-1xS"
+    },
+    {
+      "name": "MIDI Pattern/Scale Variation Generator",
+      "full_name": "JS: MIDI Pattern/Scale Variation Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_Variant"
+    },
+    {
+      "name": "MIDI Velocity Variation Generator",
+      "full_name": "JS: MIDI Velocity Variation Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_Velocifier II"
+    },
+    {
+      "name": "MIDI Map To Key v2",
+      "full_name": "JS: MIDI Map To Key v2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_KeyMap"
+    },
+    {
+      "name": "MIDI Pitch Wheel LFO",
+      "full_name": "JS: MIDI Pitch Wheel LFO",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_Wobulator"
+    },
+    {
+      "name": "MIDI Snap To Key",
+      "full_name": "JS: MIDI Snap To Key",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_KeySnap"
+    },
+    {
+      "name": "Channel Polarity Control",
+      "full_name": "JS: Channel Polarity Control",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/StereoPhaseInvert"
+    },
+    {
+      "name": "Channel Router w/Polarity",
+      "full_name": "JS: Channel Router w/Polarity",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/PhaseAdjustingRouter"
+    },
+    {
+      "name": "SwixMitch",
+      "full_name": "JS: SwixMitch (4x Stereo In, 2 Bus X-Fader)",
+      "format": "JS",
+      "manufacturer": "4x Stereo In, 2 Bus X-Fader",
+      "is_instrument": false,
+      "ident": "IX/SwixMitch"
+    },
+    {
+      "name": "8-Channel Input Switcher",
+      "full_name": "JS: 8-Channel Input Switcher",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/Switcher2"
+    },
+    {
+      "name": "MIDI Duplicate Note Filter",
+      "full_name": "JS: MIDI Duplicate Note Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_DuplicateFilter"
+    },
+    {
+      "name": "8x Mono to 1x Stereo Mixer",
+      "full_name": "JS: 8x Mono to 1x Stereo Mixer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/Mixer_8xM-1xS"
+    },
+    {
+      "name": "MIDI Tool",
+      "full_name": "JS: MIDI Tool",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "IX/MIDI_Tool"
+    },
+    {
+      "name": "Delay w/LFO-Modulated Length",
+      "full_name": "JS: Delay w/LFO-Modulated Length",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "delay/delay_varlen"
+    },
+    {
+      "name": "Delay w/Tone Control",
+      "full_name": "JS: Delay w/Tone Control",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "delay/delay_tone"
+    },
+    {
+      "name": "Delay w/Stereo Bounce",
+      "full_name": "JS: Delay w/Stereo Bounce",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "delay/delay_chfun"
+    },
+    {
+      "name": "Delay w/Sustain",
+      "full_name": "JS: Delay w/Sustain",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "delay/delay_sustain"
+    },
+    {
+      "name": "Time Adjustment Delay",
+      "full_name": "JS: Time Adjustment Delay",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "delay/time_adjustment"
+    },
+    {
+      "name": "Delay",
+      "full_name": "JS: Delay (Lo-Fi)",
+      "format": "JS",
+      "manufacturer": "Lo-Fi",
+      "is_instrument": false,
+      "ident": "delay/delay_lowres"
+    },
+    {
+      "name": "Delay w/Chorus",
+      "full_name": "JS: Delay w/Chorus",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "delay/delay_chorus"
+    },
+    {
+      "name": "Delay",
+      "full_name": "JS: Delay",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "delay/delay"
+    },
+    {
+      "name": "RBJ 4-Band Semi-Parametric EQ v2",
+      "full_name": "JS: RBJ 4-Band Semi-Parametric EQ v2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Teej/rbj4eq-teej"
+    },
+    {
+      "name": "RBJ 12-Band EQ w/HPF",
+      "full_name": "JS: RBJ 12-Band EQ w/HPF",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Teej/rbj12eq-teej"
+    },
+    {
+      "name": "RBJ 4-Band Notch Filter",
+      "full_name": "JS: RBJ 4-Band Notch Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Teej/rbj4notch-teej"
+    },
+    {
+      "name": "Chebyshev 4-Pole Filter",
+      "full_name": "JS: Chebyshev 4-Pole Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/cheby24db"
+    },
+    {
+      "name": "Butterworth 4-Pole Filter",
+      "full_name": "JS: Butterworth 4-Pole Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/butterworth24db"
+    },
+    {
+      "name": "Shelving Filter",
+      "full_name": "JS: Shelving Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/shelvingfilter"
+    },
+    {
+      "name": "State Variable Morphing Filter",
+      "full_name": "JS: State Variable Morphing Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/statevariable"
+    },
+    {
+      "name": "Presence EQ",
+      "full_name": "JS: Presence EQ",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/presenceeq"
+    },
+    {
+      "name": "Tilt Equalizer",
+      "full_name": "JS: Tilt Equalizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/tilteq"
+    },
+    {
+      "name": "NP1136 Peak Limiter",
+      "full_name": "JS: NP1136 Peak Limiter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/np1136peaklimiter"
+    },
+    {
+      "name": "RBJ Stereo Image Filter",
+      "full_name": "JS: RBJ Stereo Image Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/rbjstereofilter12db"
+    },
+    {
+      "name": "Moog 4-Pole Filter",
+      "full_name": "JS: Moog 4-Pole Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/moog24db"
+    },
+    {
+      "name": "Lorenz Attractor",
+      "full_name": "JS: Lorenz Attractor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/lorenzattractor"
+    },
+    {
+      "name": "Apple 2-Pole Lowpass Filter",
+      "full_name": "JS: Apple 2-Pole Lowpass Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/applefilter12db"
+    },
+    {
+      "name": "MDA Pseudo-Stereo",
+      "full_name": "JS: MDA Pseudo-Stereo",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/pseudostereo"
+    },
+    {
+      "name": "Pink Noise Generator",
+      "full_name": "JS: Pink Noise Generator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/pinknoisegen"
+    },
+    {
+      "name": "VU Meter",
+      "full_name": "JS: VU Meter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/vumetergfx"
+    },
+    {
+      "name": "3-Band Peak Filter",
+      "full_name": "JS: 3-Band Peak Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/3bandpeakfilter"
+    },
+    {
+      "name": "Ring Modulator",
+      "full_name": "JS: Ring Modulator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/ringmodulator"
+    },
+    {
+      "name": "Multi Waveshaper",
+      "full_name": "JS: Multi Waveshaper",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/waveshapermulti"
+    },
+    {
+      "name": "Apple 12-Pole Filter",
+      "full_name": "JS: Apple 12-Pole Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/applefilter72db"
+    },
+    {
+      "name": "De-esser",
+      "full_name": "JS: De-esser",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/deesser"
+    },
+    {
+      "name": "VU Meter",
+      "full_name": "JS: VU Meter (Summed)",
+      "format": "JS",
+      "manufacturer": "Summed",
+      "is_instrument": false,
+      "ident": "Liteon/vumetergfxsum"
+    },
+    {
+      "name": "Bass Manager/Booster",
+      "full_name": "JS: Bass Manager/Booster",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/bassmanager"
+    },
+    {
+      "name": "Simple 1-Pole Filter",
+      "full_name": "JS: Simple 1-Pole Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/simplelp6db"
+    },
+    {
+      "name": "Non-Linear Processor",
+      "full_name": "JS: Non-Linear Processor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Liteon/nonlinear"
+    },
+    {
+      "name": "Channel Mixer",
+      "full_name": "JS: Channel Mixer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/channelmixer"
+    },
+    {
+      "name": "Mid/Side Decoder",
+      "full_name": "JS: Mid/Side Decoder",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/KanakaMS5"
+    },
+    {
+      "name": "Volume/Pan Smoother",
+      "full_name": "JS: Volume/Pan Smoother",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/volume_pan"
+    },
+    {
+      "name": "Mid/Side Encoder",
+      "full_name": "JS: Mid/Side Encoder",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/KanakaMSEncoder1"
+    },
+    {
+      "name": "Stereo Channel Volume/Pan/Polarity Control",
+      "full_name": "JS: Stereo Channel Volume/Pan/Polarity Control",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/chanmix2"
+    },
+    {
+      "name": "VCA Lead",
+      "full_name": "JS: VCA Lead",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/vca_lead"
+    },
+    {
+      "name": "Volume/Pan Smoother v5",
+      "full_name": "JS: Volume/Pan Smoother v5",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/volume_pan_sample_accurate_auto"
+    },
+    {
+      "name": "SMPTE LTC Reader/Meter",
+      "full_name": "JS: SMPTE LTC Reader/Meter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/smpte_ltc_reader"
+    },
+    {
+      "name": "Channel Mapper-Downmixer",
+      "full_name": "JS: Channel Mapper-Downmixer (Cockos)",
+      "format": "JS",
+      "manufacturer": "Cockos",
+      "is_instrument": false,
+      "ident": "utility/channel_mapper"
+    },
+    {
+      "name": "VCA Follow",
+      "full_name": "JS: VCA Follow",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/vca_follow"
+    },
+    {
+      "name": "Volume Adjustment",
+      "full_name": "JS: Volume Adjustment",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/volume"
+    },
+    {
+      "name": "Bit Reduction/Dither w/Noise Shaping",
+      "full_name": "JS: Bit Reduction/Dither w/Noise Shaping",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/dither_psycho"
+    },
+    {
+      "name": "Phase Rotator",
+      "full_name": "JS: Phase Rotator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "utility/phase_adjust"
+    },
+    {
+      "name": "Step sequencing",
+      "full_name": "JS: Step sequencing (replace mode) by cfillion",
+      "format": "JS",
+      "manufacturer": "replace mode",
+      "is_instrument": false,
+      "ident": "ReaTeam Scripts/MIDI Editor/cfillion_Step sequencing (replace mode).jsfx"
+    },
+    {
+      "name": "JSModulator",
+      "full_name": "JS: JSModulator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "ReaTeam JSFX/Synth/tilr_JSModulator.jsfx"
+    },
+    {
+      "name": "ReEQ - Parametric Graphic Equalizer",
+      "full_name": "JS: ReEQ - Parametric Graphic Equalizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "ReJJ/ReEQ/ReEQ.jsfx"
+    },
+    {
+      "name": "ReSpectrum",
+      "full_name": "JS: ReSpectrum",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "ReJJ/ReSpectrum/ReSpectrum.jsfx"
+    },
+    {
+      "name": "ReaBee",
+      "full_name": "JS: ReaBee",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/ReaBee/ReaBee.jsfx"
+    },
+    {
+      "name": "Saike Pitch Shifter",
+      "full_name": "JS: Saike Pitch Shifter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Saike_Pitch_Shift.jsfx"
+    },
+    {
+      "name": "Saike Stereo Bub II Stereoizer",
+      "full_name": "JS: Saike Stereo Bub II Stereoizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Saike Stereo Bub II.jsfx"
+    },
+    {
+      "name": "Super Spreader",
+      "full_name": "JS: Super Spreader",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Saike SuperSpreaderClone.jsfx"
+    },
+    {
+      "name": "Saike Wahriffic",
+      "full_name": "JS: Saike Wahriffic",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/wahriffic.jsfx"
+    },
+    {
+      "name": "Saike 4-pole phase matcher for IIR BandSplitter",
+      "full_name": "JS: Saike 4-pole phase matcher for IIR BandSplitter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/BandSplitter_phasematcher.jsfx"
+    },
+    {
+      "name": "Saike ToneStacks",
+      "full_name": "JS: Saike ToneStacks (BETA)",
+      "format": "JS",
+      "manufacturer": "BETA",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/ToneStacks.jsfx"
+    },
+    {
+      "name": "Saike Smooth",
+      "full_name": "JS: Saike Smooth",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/saike_smooth.jsfx"
+    },
+    {
+      "name": "Saike Stereo Bub III Stereoizer",
+      "full_name": "JS: Saike Stereo Bub III Stereoizer",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Saike Stereo Bub III.jsfx"
+    },
+    {
+      "name": "Saike Tanh Saturation with anti aliasing",
+      "full_name": "JS: Saike Tanh Saturation with anti aliasing",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Tanh_Saturator_AA.jsfx"
+    },
+    {
+      "name": "Saike Monitor Routing Utility [ALPHA]",
+      "full_name": "JS: Saike Monitor Routing Utility [ALPHA]",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Saike_Routing_Utility.jsfx"
+    },
+    {
+      "name": "Saike BandJoiner",
+      "full_name": "JS: Saike BandJoiner",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/BandJoiner.jsfx"
+    },
+    {
+      "name": "Saike MS-20 filter emulation",
+      "full_name": "JS: Saike MS-20 filter emulation",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/MS-20.jsfx"
+    },
+    {
+      "name": "Saike Tight Compressor",
+      "full_name": "JS: Saike Tight Compressor",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Tight_Compressor.jsfx"
+    },
+    {
+      "name": "Saike Morphing Filter",
+      "full_name": "JS: Saike Morphing Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Saike_Morph.jsfx"
+    },
+    {
+      "name": "Saike Never Odd or Even",
+      "full_name": "JS: Saike Never Odd or Even (Distortion)",
+      "format": "JS",
+      "manufacturer": "Distortion",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/saike_never_odd_or_even.jsfx"
+    },
+    {
+      "name": "Saike Transience",
+      "full_name": "JS: Saike Transience (transient shaper)",
+      "format": "JS",
+      "manufacturer": "transient shaper",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/Transience.jsfx"
+    },
+    {
+      "name": "Saike 4-pole BandSplitter",
+      "full_name": "JS: Saike 4-pole BandSplitter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Basics/BandSplitter.jsfx"
+    },
+    {
+      "name": "bric-a-brac",
+      "full_name": "JS: bric-a-brac (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/bric-a-brac/saike_bric_a_brac.jsfx"
+    },
+    {
+      "name": "Squashman",
+      "full_name": "JS: Squashman (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/Squashman/Squashman.jsfx"
+    },
+    {
+      "name": "Saike Reflectosaurus",
+      "full_name": "JS: Saike Reflectosaurus (beta)",
+      "format": "JS",
+      "manufacturer": "beta",
+      "is_instrument": false,
+      "ident": "Saike Tools/Reflectosaurus/Reflectosaurus.jsfx"
+    },
+    {
+      "name": "Saike Protosynth",
+      "full_name": "JS: Saike Protosynth",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/protosynth/saike_protosynth.jsfx"
+    },
+    {
+      "name": "Saike Nuker",
+      "full_name": "JS: Saike Nuker (EARLY ALPHA - DO NOT USE)",
+      "format": "JS",
+      "manufacturer": "EARLY ALPHA - DO NOT USE",
+      "is_instrument": false,
+      "ident": "Saike Tools/Nuker/saike_nuker.jsfx"
+    },
+    {
+      "name": "Final Boss",
+      "full_name": "JS: Final Boss (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/FinalBoss/saike_final_boss.jsfx"
+    },
+    {
+      "name": "Saike Spectral Analyzer",
+      "full_name": "JS: Saike Spectral Analyzer (Alternative)",
+      "format": "JS",
+      "manufacturer": "Alternative",
+      "is_instrument": false,
+      "ident": "Saike Tools/SpectrumAnalyzer/SaikeMultiSpectralAnalyzer_MK2.jsfx"
+    },
+    {
+      "name": "Saike StereoManipulator",
+      "full_name": "JS: Saike StereoManipulator",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/SpectrumAnalyzer/StereoManipulator.jsfx"
+    },
+    {
+      "name": "Saike SideSpectrum Meter",
+      "full_name": "JS: Saike SideSpectrum Meter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/SpectrumAnalyzer/StereoSpectrumSplit.jsfx"
+    },
+    {
+      "name": "Saike Spectral Analyzer",
+      "full_name": "JS: Saike Spectral Analyzer (beta)",
+      "format": "JS",
+      "manufacturer": "beta",
+      "is_instrument": false,
+      "ident": "Saike Tools/SpectrumAnalyzer/SaikeMultiSpectralAnalyzer.jsfx"
+    },
+    {
+      "name": "Saike Multiband Ravager",
+      "full_name": "JS: Saike Multiband Ravager (BETA)",
+      "format": "JS",
+      "manufacturer": "BETA",
+      "is_instrument": false,
+      "ident": "Saike Tools/Ravager/Ravager_MB.jsfx"
+    },
+    {
+      "name": "Dusk Verb",
+      "full_name": "JS: Dusk Verb (Saike) (beta)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/DuskVerb/saike_duskverb.jsfx"
+    },
+    {
+      "name": "Ripple",
+      "full_name": "JS: Ripple (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/Ripple/ripple.jsfx"
+    },
+    {
+      "name": "Saike SEQS",
+      "full_name": "JS: Saike SEQS (Sequenced FX) (beta)",
+      "format": "JS",
+      "manufacturer": "Sequenced FX",
+      "is_instrument": false,
+      "ident": "Saike Tools/SequencedFX/SequencedFX.jsfx"
+    },
+    {
+      "name": "Saike Not OTT",
+      "full_name": "JS: Saike Not OTT (ALPHA)",
+      "format": "JS",
+      "manufacturer": "ALPHA",
+      "is_instrument": false,
+      "ident": "Saike Tools/NOTT/nott.jsfx"
+    },
+    {
+      "name": "Saike MIDI ARP",
+      "full_name": "JS: Saike MIDI ARP (beta)",
+      "format": "JS",
+      "manufacturer": "beta",
+      "is_instrument": false,
+      "ident": "Saike Tools/saike_midi_arp/saike_midi_arp.jsfx"
+    },
+    {
+      "name": "Saike FM Filter",
+      "full_name": "JS: Saike FM Filter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/FMFilter/FM Filter.jsfx"
+    },
+    {
+      "name": "Saike Phase Mangler",
+      "full_name": "JS: Saike Phase Mangler (BETA)",
+      "format": "JS",
+      "manufacturer": "BETA",
+      "is_instrument": false,
+      "ident": "Saike Tools/PhaseMangler/saike_phase_mangler.jsfx"
+    },
+    {
+      "name": "Saike FM Filter 2",
+      "full_name": "JS: Saike FM Filter 2",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Yutani/Saike_FMFilter2.jsfx"
+    },
+    {
+      "name": "Yutani Mono Bass Synth [Saike]",
+      "full_name": "JS: Yutani Mono Bass Synth [Saike] (BETA)",
+      "format": "JS",
+      "manufacturer": "BETA",
+      "is_instrument": false,
+      "ident": "Saike Tools/Yutani/Saike_Yutani.jsfx"
+    },
+    {
+      "name": "Lava Reverb",
+      "full_name": "JS: Lava Reverb (Saike) [ALPHA]",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/lavaverb/saike_lava.jsfx"
+    },
+    {
+      "name": "Pop rocks",
+      "full_name": "JS: Pop rocks (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/Poprocks/poprocks.jsfx"
+    },
+    {
+      "name": "Saike Dum Drums",
+      "full_name": "JS: Saike Dum Drums (DD-101)",
+      "format": "JS",
+      "manufacturer": "DD-101",
+      "is_instrument": false,
+      "ident": "Saike Tools/saikedrums/saikedrums.jsfx"
+    },
+    {
+      "name": "Abyss Reverb",
+      "full_name": "JS: Abyss Reverb (Saike) [BETA]",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/Abyss/saike_abyss.jsfx"
+    },
+    {
+      "name": "Amaranth",
+      "full_name": "JS: Amaranth (Saike) [BETA]",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/Amaranth/Amaranth.jsfx"
+    },
+    {
+      "name": "Mod-izer",
+      "full_name": "JS: Mod-izer (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/Modizer/modizer.jsfx"
+    },
+    {
+      "name": "Partials",
+      "full_name": "JS: Partials (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/partials/saike_partials.jsfx"
+    },
+    {
+      "name": "Satan verb",
+      "full_name": "JS: Satan verb (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/SatanVerb/SatanVerb.jsfx"
+    },
+    {
+      "name": "Saike Swellotron",
+      "full_name": "JS: Saike Swellotron",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Saike Tools/Swellotron/Swellotron.jsfx"
+    },
+    {
+      "name": "Filther",
+      "full_name": "JS: Filther (Saike)",
+      "format": "JS",
+      "manufacturer": "Saike",
+      "is_instrument": false,
+      "ident": "Saike Tools/Filther/Filther.jsfx"
+    },
+    {
+      "name": "Saike / Nostalgizer / Lo-Fi",
+      "full_name": "JS: Saike / Nostalgizer / Lo-Fi (BETA)",
+      "format": "JS",
+      "manufacturer": "BETA",
+      "is_instrument": false,
+      "ident": "Saike Tools/Nostalgizer/saike_nostalgizer.jsfx"
+    },
+    {
+      "name": "FLTR-1",
+      "full_name": "JS: FLTR-1",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Tilr/Modulation/fltr1.jsfx"
+    },
+    {
+      "name": "GATE-1",
+      "full_name": "JS: GATE-1",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Tilr/Modulation/gate1.jsfx"
+    },
+    {
+      "name": "MSEG-1",
+      "full_name": "JS: MSEG-1",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Tilr/Modulation/mseg1.jsfx"
+    },
+    {
+      "name": "DIST-R",
+      "full_name": "JS: DIST-R",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Tilr/Modulation/distr.jsfx"
+    },
+    {
+      "name": "ADSR-1",
+      "full_name": "JS: ADSR-1",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Tilr/Modulation/adsr1.jsfx"
+    },
+    {
+      "name": "TIME-1",
+      "full_name": "JS: TIME-1",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Tilr/Modulation/time1.jsfx"
+    },
+    {
+      "name": "JSModulator [Tilr/Synth/jsmodulator.jsfx]",
+      "full_name": "JS: JSModulator [Tilr/Synth/jsmodulator.jsfx]",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Tilr/Synth/jsmodulator.jsfx"
+    },
+    {
+      "name": "FXD Macros",
+      "full_name": "JS: FXD Macros",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD Macros.jsfx"
+    },
+    {
+      "name": "FXD Split to 32 Channels",
+      "full_name": "JS: FXD Split to 32 Channels",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD Split to 32 Channels.jsfx"
+    },
+    {
+      "name": "FXD Saike BandSplitter",
+      "full_name": "JS: FXD Saike BandSplitter",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD Saike BandSplitter.jsfx"
+    },
+    {
+      "name": "FXD Band Joiner",
+      "full_name": "JS: FXD Band Joiner",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD Band Joiner.jsfx"
+    },
+    {
+      "name": "FXD Containr Macro",
+      "full_name": "JS: FXD Containr Macro",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD Container Macros.jsfx"
+    },
+    {
+      "name": "FXD ReSpectrum",
+      "full_name": "JS: FXD ReSpectrum",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD ReSpectrum.jsfx"
+    },
+    {
+      "name": "FXD",
+      "full_name": "JS: FXD (Mix)RackMixer",
+      "format": "JS",
+      "manufacturer": "Mix",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD (Mix)RackMixer.jsfx"
+    },
+    {
+      "name": "FXD Gain Reduction Scope",
+      "full_name": "JS: FXD Gain Reduction Scope",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD Gain Reduction Scope.jsfx"
+    },
+    {
+      "name": "FXD Split to 4 channels",
+      "full_name": "JS: FXD Split to 4 channels",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "FX Devices/BryanChi_FX_Devices/FXD JSFXs/FXD Split To 4 Channels.jsfx"
+    },
+    {
+      "name": "RDM MIDI Utility",
+      "full_name": "JS: RDM MIDI Utility",
+      "format": "JS",
+      "manufacturer": "",
+      "is_instrument": false,
+      "ident": "Suzuki Scripts/ReaDrum Machine/JSFX/RDM_midi_utility.jsfx"
+    },
+    {
+      "name": "RDM MIDI-Latch",
+      "full_name": "JS: RDM MIDI-Latch (mxb)",
+      "format": "JS",
+      "manufacturer": "mxb",
+      "is_instrument": false,
+      "ident": "Suzuki Scripts/ReaDrum Machine/JSFX/RDM_mxb_midi_latch.jsfx"
+    },
+    {
+      "name": "Reverse Audio",
+      "full_name": "JS: Reverse Audio (Methode Double-Buffer)",
+      "format": "JS",
+      "manufacturer": "Methode Double-Buffer",
+      "is_instrument": false,
+      "ident": "Suzuki Scripts/ReaDrum Machine/JSFX/Reverse - Double Buffer.jsfx"
+    }
+  ]
+}

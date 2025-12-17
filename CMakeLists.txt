@@ -39,14 +39,23 @@ endif()
 set(SOURCES
     src/main.cpp
     src/magda_chat_window.cpp
+    src/magda_imgui_chat.cpp
+    src/magda_imgui_plugin_window.cpp
+    src/magda_param_mapping.cpp
+    src/magda_param_mapping_window.cpp
     src/magda_api_client.cpp
     src/magda_state.cpp
     src/magda_login_window.cpp
+    src/magda_settings_window.cpp
+    src/magda_plugin_window.cpp
     src/magda_auth.cpp
     src/magda_env.cpp
     src/magda_executor.cpp
     src/magda_actions.cpp
     src/magda_plugin_scanner.cpp
+    src/magda_dsp_analyzer.cpp
+    src/magda_drum_mapping.cpp
+    src/magda_drum_mapping_window.cpp
     # WDL networking implementation
     WDL/WDL/jnetlib/httpget.cpp
     WDL/WDL/jnetlib/connection.cpp
@@ -138,7 +147,7 @@ if(APPLE)
 endif()
 
 # Test program for login (standalone, no REAPER dependencies)
-# Note: test_login.cpp not committed to main branch yet
+# Disabled - test_login.cpp not present
 # add_executable(test_login test_login.cpp
 #     WDL/WDL/jnetlib/httpget.cpp
 #     WDL/WDL/jnetlib/connection.cpp

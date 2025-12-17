@@ -58,6 +58,22 @@ public:
                           WDL_FastString &jwt_token_out,
                           WDL_FastString &error_msg);
 
+  // Get backend URL
+  const char *GetBackendURL() const { return m_backend_url.Get(); }
+
+  // Generic POST request (for plugin processing, etc.)
+  // timeout_seconds: Optional timeout in seconds (0 = use default 30s)
+  bool SendPOSTRequest(const char *endpoint, const char *json_data,
+                       WDL_FastString &response, WDL_FastString &error_msg,
+                       int timeout_seconds = 0);
+
+  // Health check - returns true if API is reachable
+  bool CheckHealth(WDL_FastString &error_msg, int timeout_seconds = 5);
+
+  // Helper to extract actions JSON from response
+  // Finds the "actions" field and extracts its value as a JSON string
+  static char *ExtractActionsJSON(const char *json_str, int json_len);
+
 private:
   WDL_FastString m_backend_url;
   WDL_FastString m_jwt_token;
@@ -67,8 +83,4 @@ private:
   // Helper to build request JSON with question
   // Note: State is fetched by backend via the extension's HTTP server
   char *BuildRequestJSON(const char *question);
-
-  // Helper to extract actions JSON from response
-  // Finds the "actions" field and extracts its value as a JSON string
-  static char *ExtractActionsJSON(const char *json_str, int json_len);
 };

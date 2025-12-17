@@ -1,5 +1,7 @@
 #include "magda_auth.h"
 #include "magda_api_client.h"
+#include "magda_env.h"
+#include "magda_settings_window.h"
 #include "reaper_plugin.h"
 #include <cstring>
 
@@ -177,6 +179,13 @@ void *LoginThreadProc(void *param)
 
   // Perform HTTP login request in background thread
   static MagdaHTTPClient httpClient;
+
+  // Set backend URL from settings (will check settings, then env, then default)
+  const char *backend_url = MagdaSettingsWindow::GetBackendURL();
+  if (backend_url && strlen(backend_url) > 0) {
+    httpClient.SetBackendURL(backend_url);
+  }
+
   WDL_FastString jwt_token, error_msg;
 
   data->success = httpClient.SendLoginRequest(data->email, data->password,

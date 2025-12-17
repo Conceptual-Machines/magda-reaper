@@ -2,7 +2,7 @@
 #pragma once
 
 // Simple .env file reader for development
-// Reads AIDEAS_EMAIL and AIDEAS_PASSWORD from .env file in the project root
+// Reads MAGDA_EMAIL and MAGDA_PASSWORD from .env file in the project root
 class MagdaEnv {
 public:
   // Get environment variable value, with optional default
