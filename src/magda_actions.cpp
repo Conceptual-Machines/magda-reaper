@@ -2316,6 +2316,9 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   TrackEnvelope *(*GetTrackEnvelopeByName)(MediaTrack *, const char *) =
       (TrackEnvelope * (*)(MediaTrack *, const char *))
           g_rec->GetFunc("GetTrackEnvelopeByName");
+  TrackEnvelope *(*GetTrackEnvelopeByChunkName)(MediaTrack *, const char *) =
+      (TrackEnvelope * (*)(MediaTrack *, const char *))
+          g_rec->GetFunc("GetTrackEnvelopeByChunkName");
   bool (*InsertEnvelopePoint)(TrackEnvelope *, double, double, int, double,
                               bool, bool *) =
       (bool (*)(TrackEnvelope *, double, double, int, double, bool,
@@ -2328,7 +2331,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
-  if (!GetTrack || !GetTrackEnvelopeByName || !InsertEnvelopePoint) {
+  if (!GetTrack || !InsertEnvelopePoint) {
     error_msg.Set("Required REAPER API functions not available");
     return false;
   }
@@ -2340,19 +2343,23 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   }
 
   // Get envelope by parameter name
-  // Map param names to REAPER envelope names
-  const char *envelope_name = nullptr;
+  // Map param names to REAPER envelope chunk names and display names
+  const char *envelope_chunk_name = nullptr;
+  const char *envelope_display_name = nullptr;
   bool is_volume = false;
   bool is_pan = false;
 
   if (strcmp(param, "volume") == 0) {
-    envelope_name = "Volume";
+    envelope_chunk_name = "<VOLENV";
+    envelope_display_name = "Volume";
     is_volume = true;
   } else if (strcmp(param, "pan") == 0) {
-    envelope_name = "Pan";
+    envelope_chunk_name = "<PANENV";
+    envelope_display_name = "Pan";
     is_pan = true;
   } else if (strcmp(param, "mute") == 0) {
-    envelope_name = "Mute";
+    envelope_chunk_name = "<MUTEENV";
+    envelope_display_name = "Mute";
   } else {
     // FX parameter - format is "FXName:ParamName"
     // For now, only support volume/pan - FX params need more complex handling
@@ -2361,11 +2368,21 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
     return false;
   }
 
-  TrackEnvelope *envelope = GetTrackEnvelopeByName(track, envelope_name);
+  // Try to get envelope by chunk name first (works even if not visible)
+  TrackEnvelope *envelope = nullptr;
+  if (GetTrackEnvelopeByChunkName) {
+    envelope = GetTrackEnvelopeByChunkName(track, envelope_chunk_name);
+  }
+  // Fall back to display name if chunk name didn't work
+  if (!envelope && GetTrackEnvelopeByName) {
+    envelope = GetTrackEnvelopeByName(track, envelope_display_name);
+  }
+
   if (!envelope) {
     error_msg.Set("Could not get envelope for parameter: ");
     error_msg.Append(param);
-    error_msg.Append(" (envelope may need to be visible/armed)");
+    error_msg.Append(
+        " - try showing the envelope first (View > Track Envelope > Volume)");
     return false;
   }
 
