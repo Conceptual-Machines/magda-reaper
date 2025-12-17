@@ -1,4 +1,5 @@
 #include "magda_state.h"
+#include "magda_settings_window.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
 // ReaProject) This is a typo in the REAPER SDK itself, not our code
 typedef ReaProject Reaproject;
@@ -145,16 +146,81 @@ void MagdaState::GetTimeSelection(WDL_FastString &json) {
   json.Append("}");
 }
 
-void MagdaState::GetTracksInfo(WDL_FastString &json) {
+StateFilterPreferences MagdaState::LoadStateFilterPreferences() {
+  StateFilterPreferences prefs;
+  MagdaSettingsWindow::LoadStateFilterPreferences(prefs);
+  return prefs;
+}
+
+bool MagdaState::ShouldIncludeTrack(int trackIndex, bool isSelected,
+                                    int clipCount,
+                                    const StateFilterPreferences *prefs) {
+  // Always include all tracks - filtering only applies to clips
+  // Tracks provide context even if they have no clips
+  (void)trackIndex; // Unused
+  (void)isSelected; // Unused
+  (void)clipCount;  // Unused
+  (void)prefs;      // Unused
+  return true;
+}
+
+bool MagdaState::ShouldIncludeClip(bool trackSelected, bool clipSelected,
+                                   const StateFilterPreferences *prefs) {
+  if (!prefs) {
+    return true; // No filtering
+  }
+
+  switch (prefs->mode) {
+  case StateFilterMode::All:
+  case StateFilterMode::SelectedTracksOnly:
+    // Include all clips on included tracks
+    return true;
+
+  case StateFilterMode::SelectedTrackClipsOnly:
+    // Only include selected clips on selected tracks
+    return trackSelected && clipSelected;
+
+  case StateFilterMode::SelectedClipsOnly:
+    // Include only selected clips (regardless of track)
+    return clipSelected;
+
+  default:
+    return true;
+  }
+}
+
+void MagdaState::GetTracksInfo(WDL_FastString &json,
+                               const StateFilterPreferences *prefs) {
   json.Append("\"tracks\":[");
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
   if (!GetNumTracks) {
     json.Append("]");
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: GetNumTracks function not available\n");
+      }
+    }
     return;
   }
 
   int numTracks = GetNumTracks();
+
+  // Debug logging
+  if (g_rec) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[256];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: GetNumTracks() returned %d tracks\n", numTracks);
+      ShowConsoleMsg(log_msg);
+    }
+  }
+
+  bool firstTrack = true;
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   const char *(*GetTrackInfo)(INT_PTR, int *) =
@@ -165,8 +231,38 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       (bool (*)(MediaTrack *, bool *))g_rec->GetFunc("GetTrackUIMute");
 
   for (int i = 0; i < numTracks; i++) {
-    if (i > 0)
+    // Check if we should include this track based on preferences
+    // We need to check selection state first
+    bool isSelected = false;
+    int clipCount = 0;
+
+    if (GetTrackInfo) {
+      int flags = 0;
+      GetTrackInfo(i, &flags);
+      isSelected = (flags & 2) != 0;
+    }
+
+    // Count clips to check if track is empty
+    MediaTrack *track = GetTrack ? GetTrack(nullptr, i) : nullptr;
+    if (track) {
+      int (*CountTrackMediaItems)(MediaTrack *) =
+          (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+      if (CountTrackMediaItems) {
+        clipCount = CountTrackMediaItems(track);
+      }
+    }
+
+    // Always include tracks - filtering only applies to clips
+    // (ShouldIncludeTrack now always returns true, but we keep the call for
+    // consistency)
+    if (!ShouldIncludeTrack(i, isSelected, clipCount, prefs)) {
+      continue;
+    }
+
+    if (!firstTrack) {
       json.Append(",");
+    }
+    firstTrack = false;
 
     json.Append("{");
 
@@ -234,6 +330,131 @@ void MagdaState::GetTracksInfo(WDL_FastString &json) {
       }
     }
 
+    // Get clips/items on this track
+    if (GetTrack) {
+      MediaTrack *track = GetTrack(nullptr, i);
+      if (track) {
+        int (*CountTrackMediaItems)(MediaTrack *) =
+            (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+        MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
+            (MediaItem * (*)(MediaTrack *, int))
+                g_rec->GetFunc("GetTrackMediaItem");
+        double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+            (double (*)(MediaItem *, const char *))g_rec->GetFunc(
+                "GetMediaItemInfo_Value");
+        // Get take info functions for item names (items don't have names, takes
+        // do)
+        MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+            (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+        bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
+                                               char *, bool) =
+            (bool (*)(MediaItem_Take *, const char *, char *,
+                      bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+
+        if (CountTrackMediaItems && GetTrackMediaItem &&
+            GetMediaItemInfo_Value) {
+          int numItems = CountTrackMediaItems(track);
+          json.Append(",\"clips\":[");
+
+          bool firstClip = true;
+          int clipsAdded = 0;
+
+          for (int clipIdx = 0; clipIdx < numItems; clipIdx++) {
+            // Check max clips per track limit
+            if (prefs && prefs->maxClipsPerTrack > 0 &&
+                clipsAdded >= prefs->maxClipsPerTrack) {
+              break;
+            }
+
+            MediaItem *item = GetTrackMediaItem(track, clipIdx);
+            if (!item || !GetMediaItemInfo_Value) {
+              continue;
+            }
+
+            // Check if clip is selected
+            // Defensive: validate item is still valid before accessing
+            double selected = 0;
+            if (GetMediaItemInfo_Value) {
+              selected = GetMediaItemInfo_Value(item, "B_UISEL");
+            }
+            bool clipSelected = selected > 0.5;
+
+            // Check if we should include this clip based on preferences
+            if (!ShouldIncludeClip(isSelected, clipSelected, prefs)) {
+              continue;
+            }
+
+            if (!firstClip) {
+              json.Append(",");
+            }
+            firstClip = false;
+            clipsAdded++;
+
+            json.Append("{");
+
+            // Clip index (0-based on track)
+            snprintf(buf, sizeof(buf), "\"index\":%d", clipIdx);
+            json.Append(buf);
+
+            // Position (in seconds) - validate item still valid
+            double position = 0;
+            if (GetMediaItemInfo_Value) {
+              position = GetMediaItemInfo_Value(item, "D_POSITION");
+            }
+            snprintf(buf, sizeof(buf), ",\"position\":%.6f", position);
+            json.Append(buf);
+
+            // Length (in seconds) - validate item still valid
+            double length = 0;
+            if (GetMediaItemInfo_Value) {
+              length = GetMediaItemInfo_Value(item, "D_LENGTH");
+            }
+            snprintf(buf, sizeof(buf), ",\"length\":%.6f", length);
+            json.Append(buf);
+
+            // Selected state
+            snprintf(buf, sizeof(buf), ",\"selected\":%s",
+                     clipSelected ? "true" : "false");
+            json.Append(buf);
+
+            // Clip name (from active take, if available)
+            // Items don't have names directly - takes do
+            // Defensive: validate all pointers before use
+            // NOTE: We removed GetSetMediaItemInfo_String call which was
+            // causing crashes Items don't have P_NAME - only takes do, so we
+            // get the active take first
+            if (item && GetActiveTake && GetSetMediaItemTakeInfo_String) {
+              // Double-check item is still valid (defensive)
+              if (!GetMediaItemInfo_Value) {
+                // Item or function became invalid, skip name
+              } else {
+                // Quick validation that item is still valid by reading a safe
+                // property
+                double testPos = GetMediaItemInfo_Value(item, "D_POSITION");
+                (void)testPos; // Suppress unused warning
+
+                MediaItem_Take *take = GetActiveTake(item);
+                if (take && GetSetMediaItemTakeInfo_String) {
+                  // Allocate buffer for take name
+                  char takeNameBuf[512] = {0};
+                  bool success = GetSetMediaItemTakeInfo_String(
+                      take, "P_NAME", takeNameBuf, false);
+                  if (success && takeNameBuf[0]) {
+                    json.Append(",\"name\":");
+                    EscapeJSONString(takeNameBuf, json);
+                  }
+                }
+              }
+            }
+
+            json.Append("}");
+          }
+
+          json.Append("]");
+        }
+      }
+    }
+
     json.Append("}");
   }
 
@@ -253,7 +474,9 @@ char *MagdaState::GetStateSnapshot() {
   GetTimeSelection(json);
   json.Append(",");
 
-  GetTracksInfo(json);
+  // Load preferences and apply filtering (only affects clips, not tracks)
+  StateFilterPreferences prefs = LoadStateFilterPreferences();
+  GetTracksInfo(json, &prefs);
 
   json.Append("}");
 

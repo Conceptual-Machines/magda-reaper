@@ -148,10 +148,10 @@ void MagdaLoginWindow::Show(bool toggle) {
     if (ShowConsoleMsg) {
       char log_msg[512];
       snprintf(log_msg, sizeof(log_msg), "MAGDA Login (.env) - Email: %s\n",
-               MagdaEnv::Get("AIDEAS_EMAIL", ""));
+               MagdaEnv::Get("MAGDA_EMAIL", ""));
       ShowConsoleMsg(log_msg);
       snprintf(log_msg, sizeof(log_msg), "MAGDA Login (.env) - Password: %s\n",
-               MagdaEnv::Get("AIDEAS_PASSWORD", ""));
+               MagdaEnv::Get("MAGDA_PASSWORD", ""));
       ShowConsoleMsg(log_msg);
     }
 
@@ -308,12 +308,12 @@ void MagdaLoginWindow::OnLogin() {
     password = stored_password.Get();
   } else {
     // Read credentials from .env for development
-    email = MagdaEnv::Get("AIDEAS_EMAIL", "");
-    password = MagdaEnv::Get("AIDEAS_PASSWORD", "");
+    email = MagdaEnv::Get("MAGDA_EMAIL", "");
+    password = MagdaEnv::Get("MAGDA_PASSWORD", "");
   }
 
   if (!email || strlen(email) == 0 || !password || strlen(password) == 0) {
-    SetStatus("Please ensure AIDEAS_EMAIL and AIDEAS_PASSWORD are set in .env",
+    SetStatus("Please ensure MAGDA_EMAIL and MAGDA_PASSWORD are set in .env",
               true);
     return;
   }
@@ -354,8 +354,8 @@ void MagdaLoginWindow::OnLoginComplete(bool success, const char *token,
     LoadCredentials(stored_email, stored_password);
     if (stored_email.GetLength() == 0 || stored_password.GetLength() == 0) {
       // Store from .env if not already stored
-      const char *email = MagdaEnv::Get("AIDEAS_EMAIL", "");
-      const char *password = MagdaEnv::Get("AIDEAS_PASSWORD", "");
+      const char *email = MagdaEnv::Get("MAGDA_EMAIL", "");
+      const char *password = MagdaEnv::Get("MAGDA_PASSWORD", "");
       if (strlen(email) > 0 && strlen(password) > 0) {
         StoreCredentials(email, password);
       }

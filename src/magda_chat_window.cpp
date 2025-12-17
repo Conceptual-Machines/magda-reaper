@@ -3,6 +3,7 @@
 #include "magda_api_client.h"
 #include "magda_auth.h"
 #include "magda_chat_resource.h"
+#include "magda_env.h"
 #include "magda_login_window.h"
 #include <cstring>
 
@@ -18,11 +19,22 @@ extern HINSTANCE g_hInst;
 #define IDC_QUESTION_DISPLAY 1002
 #define IDC_REPLY_DISPLAY 1003
 #define IDC_SEND_BUTTON 1004
+#define IDC_REQUEST_HEADER 1005
+#define IDC_RESPONSE_HEADER 1006
+#define IDC_STATUS_FOOTER 1007
+#define IDC_CONTROLS_HEADER 1008
+#define IDC_BTN_MIX_ANALYSIS 1010
+#define IDC_BTN_MASTER_ANALYSIS 1011
+#define IDC_BTN_GAIN_STAGING 1012
+#define IDC_BTN_HOUSEKEEPING 1013
 
 MagdaChatWindow::MagdaChatWindow()
     : m_hwnd(nullptr), m_hwndQuestionInput(nullptr),
       m_hwndQuestionDisplay(nullptr), m_hwndReplyDisplay(nullptr),
-      m_hwndSendButton(nullptr) {}
+      m_hwndSendButton(nullptr), m_hwndRequestHeader(nullptr),
+      m_hwndResponseHeader(nullptr), m_hwndControlsHeader(nullptr),
+      m_hwndStatusFooter(nullptr), m_requestLineCount(0),
+      m_responseLineCount(0) {}
 
 MagdaChatWindow::~MagdaChatWindow() {
   if (m_hwnd) {
@@ -156,8 +168,12 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     m_hwndReplyDisplay = GetDlgItem(m_hwnd, IDC_REPLY_DISPLAY);
     m_hwndQuestionInput = GetDlgItem(m_hwnd, IDC_QUESTION_INPUT);
     m_hwndSendButton = GetDlgItem(m_hwnd, IDC_SEND_BUTTON);
+    m_hwndRequestHeader = GetDlgItem(m_hwnd, IDC_REQUEST_HEADER);
+    m_hwndResponseHeader = GetDlgItem(m_hwnd, IDC_RESPONSE_HEADER);
+    m_hwndControlsHeader = GetDlgItem(m_hwnd, IDC_CONTROLS_HEADER);
+    m_hwndStatusFooter = GetDlgItem(m_hwnd, IDC_STATUS_FOOTER);
 
-    // Validate all controls were created
+    // Validate required controls were created
     if (!m_hwndQuestionDisplay || !m_hwndReplyDisplay || !m_hwndQuestionInput ||
         !m_hwndSendButton) {
       return FALSE;
@@ -168,9 +184,20 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     GetClientRect(m_hwnd, &r);
     UpdateLayout(r.right - r.left, r.bottom - r.top);
 
-    // Add welcome messages
-    AddQuestion("Welcome! Type your questions here.\n\n");
-    AddReply("MAGDA: Ready to help! Your responses will appear here.\n\n");
+    // Reset line counter
+    m_requestLineCount = 0;
+    m_responseLineCount = 0;
+
+    // Clear any initial text
+    if (m_hwndQuestionDisplay) {
+      SetWindowText(m_hwndQuestionDisplay, "");
+    }
+    if (m_hwndReplyDisplay) {
+      SetWindowText(m_hwndReplyDisplay, "");
+    }
+
+    // Check API health
+    CheckAPIHealth();
 
     return TRUE;
   }
@@ -188,6 +215,19 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
       UpdateLayout(width, height);
     }
     return 0;
+  }
+
+  case WM_CTLCOLORSTATIC: {
+    // Set darker color for header labels
+    HWND hCtrl = (HWND)lParam;
+    if (hCtrl == m_hwndRequestHeader || hCtrl == m_hwndResponseHeader ||
+        hCtrl == m_hwndControlsHeader) {
+      HDC hdc = (HDC)wParam;
+      SetTextColor(hdc, RGB(80, 80, 80)); // Dark gray
+      SetBkMode(hdc, TRANSPARENT);
+      return (INT_PTR)GetStockObject(NULL_BRUSH);
+    }
+    break;
   }
 
   case WM_CLOSE:
@@ -346,10 +386,16 @@ void MagdaChatWindow::OnSendMessage() {
   GetWindowText(m_hwndQuestionInput, buffer, sizeof(buffer));
 
   if (strlen(buffer) > 0) {
-    // Add question to question pane
+    // Add separator if not first message
+    if (m_responseLineCount > 0) {
+      AddRequest("─────────────────────────────\n");
+      AddResponse("─────────────────────────────\n");
+    }
+
+    // Add request to request pane
     if (m_hwndQuestionDisplay) {
-      AddQuestion(buffer);
-      AddQuestion("\n");
+      AddRequest(buffer);
+      AddRequest("\n");
     }
 
     // Clear input
@@ -357,12 +403,15 @@ void MagdaChatWindow::OnSendMessage() {
       SetWindowText(m_hwndQuestionInput, "");
     }
 
-    // Show "Thinking..." message
+    // Show "Processing..." message
     if (m_hwndReplyDisplay) {
-      AddReply("MAGDA: Thinking...\n");
+      AddResponse("Processing...\n");
     }
 
-    // Call backend API with streaming
+    // Align columns after adding request
+    AlignRequestWithResponse();
+
+    // Call backend API with non-streaming endpoint (uses DSL/CFG)
     static MagdaHTTPClient httpClient;
 
     // Set JWT token if available
@@ -393,137 +442,120 @@ void MagdaChatWindow::OnSendMessage() {
       }
     }
 
-    WDL_FastString error_msg;
-    struct StreamContext {
-      MagdaChatWindow *window;
-      int action_count;
-    };
-    static StreamContext s_ctx;
-    s_ctx.window = this;
-    s_ctx.action_count = 0;
+    WDL_FastString response_json, error_msg;
 
-    // Stream callback - executes each action as it arrives
-    // Must be a plain function pointer (no lambda captures)
-    static auto stream_callback = [](const char *action_json,
-                                     void *user_data) -> void {
-      StreamContext *ctx = (StreamContext *)user_data;
-      ctx->action_count++;
-
-      // Execute the action immediately
-      WDL_FastString result, action_error;
-      if (MagdaActions::ExecuteActions(action_json, result, action_error)) {
-        if (ctx->window->m_hwndReplyDisplay) {
-          char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA: Action #%d executed\n",
-                   ctx->action_count);
-          ctx->window->AddReply(msg);
-        }
-      } else {
-        if (ctx->window->m_hwndReplyDisplay) {
-          char msg[512];
-          snprintf(msg, sizeof(msg), "MAGDA: Action #%d failed: %s\n",
-                   ctx->action_count, action_error.Get());
-          ctx->window->AddReply(msg);
-        }
-      }
-    };
-
-    if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx,
-                                      error_msg)) {
+    if (httpClient.SendQuestion(buffer, response_json, error_msg)) {
+      // Actions are automatically executed by SendQuestion
       if (m_hwndReplyDisplay) {
-        char msg[256];
-        snprintf(msg, sizeof(msg), "MAGDA: Stream complete (%d actions)\n\n",
-                 s_ctx.action_count);
-        AddReply(msg);
+        AddResponse("Done\n");
       }
     } else {
-      // Check if error is 401 (unauthorized) - try to refresh token
-      if (strstr(error_msg.Get(), "401") ||
-          strstr(error_msg.Get(), "Unauthorized")) {
-        if (g_rec) {
-          void (*ShowConsoleMsg)(const char *msg) =
-              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-          if (ShowConsoleMsg) {
-            ShowConsoleMsg("MAGDA: Token expired, attempting refresh...\n");
-          }
-        }
-
-        WDL_FastString refresh_error;
-        if (MagdaAuth::RefreshToken(refresh_error)) {
-          // Refresh succeeded - retry the request with new token
-          const char *new_token = MagdaLoginWindow::GetStoredToken();
-          if (new_token && new_token[0]) {
-            httpClient.SetJWTToken(new_token);
-            if (g_rec) {
-              void (*ShowConsoleMsg)(const char *msg) =
-                  (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-              if (ShowConsoleMsg) {
-                ShowConsoleMsg("MAGDA: Token refreshed, retrying request...\n");
-              }
-            }
-
-            // Reset action count and retry
-            s_ctx.action_count = 0;
-            if (httpClient.SendQuestionStream(buffer, stream_callback, &s_ctx,
-                                              error_msg)) {
-              if (m_hwndReplyDisplay) {
-                char msg[256];
-                snprintf(msg, sizeof(msg),
-                         "MAGDA: Stream complete (%d actions)\n\n",
-                         s_ctx.action_count);
-                AddReply(msg);
-              }
-              return; // Success after refresh
-            }
-          }
-        } else {
-          // Refresh failed - user needs to re-login
-          if (m_hwndReplyDisplay) {
-            AddReply("MAGDA: Session expired. Please log in again.\n\n");
-          }
-          if (g_rec) {
-            void (*ShowConsoleMsg)(const char *msg) =
-                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-            if (ShowConsoleMsg) {
-              ShowConsoleMsg(
-                  "MAGDA: Token refresh failed - user must re-login\n");
-            }
-          }
-          return;
-        }
-      }
+      // Token refresh is now handled automatically by HTTP client
+      // If we still have an error, it means refresh failed or it's a different
+      // error
 
       // Other errors or refresh retry failed
       if (m_hwndReplyDisplay) {
         char response[2048];
-        snprintf(response, sizeof(response), "MAGDA: Error: %s\n\n",
-                 error_msg.Get());
-        AddReply(response);
+        snprintf(response, sizeof(response), "Error: %s\n", error_msg.Get());
+        AddResponse(response);
       }
     }
+
+    // Align after response is complete
+    AlignRequestWithResponse();
   }
 }
 
-void MagdaChatWindow::AddQuestion(const char *question) {
-  if (!m_hwndQuestionDisplay || !question)
+void MagdaChatWindow::AddRequest(const char *request) {
+  if (!m_hwndQuestionDisplay || !request)
     return;
 
   int len = GetWindowTextLength(m_hwndQuestionDisplay);
   SendMessage(m_hwndQuestionDisplay, EM_SETSEL, len, len);
-  SendMessage(m_hwndQuestionDisplay, EM_REPLACESEL, FALSE, (LPARAM)question);
+  SendMessage(m_hwndQuestionDisplay, EM_REPLACESEL, FALSE, (LPARAM)request);
   int newLen = GetWindowTextLength(m_hwndQuestionDisplay);
   SendMessage(m_hwndQuestionDisplay, EM_SETSEL, newLen, newLen);
+
+  // Count newlines added for alignment tracking
+  for (const char *p = request; *p; ++p) {
+    if (*p == '\n') {
+      m_requestLineCount++;
+    }
+  }
 }
 
-void MagdaChatWindow::AddReply(const char *reply) {
-  if (!m_hwndReplyDisplay || !reply)
+void MagdaChatWindow::AddResponse(const char *response) {
+  if (!m_hwndReplyDisplay || !response)
     return;
 
   int len = GetWindowTextLength(m_hwndReplyDisplay);
   SendMessage(m_hwndReplyDisplay, EM_SETSEL, len, len);
-  SendMessage(m_hwndReplyDisplay, EM_REPLACESEL, FALSE, (LPARAM)reply);
+  SendMessage(m_hwndReplyDisplay, EM_REPLACESEL, FALSE, (LPARAM)response);
   int newLen = GetWindowTextLength(m_hwndReplyDisplay);
   SendMessage(m_hwndReplyDisplay, EM_SETSEL, newLen, newLen);
+
+  // Count newlines added for alignment tracking
+  for (const char *p = response; *p; ++p) {
+    if (*p == '\n') {
+      m_responseLineCount++;
+    }
+  }
+}
+
+void MagdaChatWindow::AlignRequestWithResponse() {
+  if (!m_hwndQuestionDisplay || !m_hwndReplyDisplay)
+    return;
+
+  // Add blank lines to request pane to match response pane
+  while (m_requestLineCount < m_responseLineCount) {
+    int len = GetWindowTextLength(m_hwndQuestionDisplay);
+    SendMessage(m_hwndQuestionDisplay, EM_SETSEL, len, len);
+    SendMessage(m_hwndQuestionDisplay, EM_REPLACESEL, FALSE, (LPARAM) "\n");
+    m_requestLineCount++;
+  }
+
+  // Add blank lines to response pane to match request pane
+  while (m_responseLineCount < m_requestLineCount) {
+    int len = GetWindowTextLength(m_hwndReplyDisplay);
+    SendMessage(m_hwndReplyDisplay, EM_SETSEL, len, len);
+    SendMessage(m_hwndReplyDisplay, EM_REPLACESEL, FALSE, (LPARAM) "\n");
+    m_responseLineCount++;
+  }
+}
+
+void MagdaChatWindow::CheckAPIHealth() {
+  // Update status to checking
+  UpdateStatus("Checking API...", false);
+
+  // Try to ping the API health endpoint
+  static MagdaHTTPClient httpClient;
+  WDL_FastString error_msg;
+
+  bool success = httpClient.CheckHealth(error_msg, 5);
+
+  if (success) {
+    UpdateStatus("API: Connected", true);
+  } else {
+    char status[256];
+    snprintf(status, sizeof(status), "API: Offline - %s", error_msg.Get());
+    UpdateStatus(status, false);
+  }
+}
+
+void MagdaChatWindow::UpdateStatus(const char *status, bool isOK) {
+  if (!m_hwndStatusFooter)
+    return;
+
+  // Format status with indicator
+  char statusText[512];
+  if (isOK) {
+    snprintf(statusText, sizeof(statusText), "● %s", status);
+  } else {
+    snprintf(statusText, sizeof(statusText), "○ %s", status);
+  }
+
+  SetWindowText(m_hwndStatusFooter, statusText);
 }
 
 void MagdaChatWindow::UpdateLayout(int width, int height) {
@@ -533,51 +565,121 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
   // Update layout when window is resized
   if (width < 200)
     width = 200;
-  if (height < 100)
-    height = 100;
+  if (height < 150)
+    height = 150;
 
   int padding = 10;
+  int headerHeight = 18; // Smaller headers
   int inputHeight = 30;
   int buttonWidth = 70;
   int buttonHeight = 30;
+  int footerHeight = 25;
   int spacing = 10;
 
-  // Calculate available height for display panes
-  int displayHeight = height - padding * 3 - inputHeight;
+  // Calculate width for each display pane (3 columns)
+  int controlsPanelWidth = 180; // Fixed width for controls panel
+  int chatAreaWidth = width - padding * 2 - controlsPanelWidth - spacing * 2;
+  int paneWidth = (chatAreaWidth - spacing) / 2;
+  if (paneWidth < 80)
+    paneWidth = 80;
+
+  // Layout from top to bottom (in normal coords):
+  // - Input row at top
+  // - Headers below input
+  // - Display panes (main area)
+  // - Footer at bottom
+  //
+  // But SWELL flips Y, so we calculate in normal order then flip:
+  // flipY = height - normalY - controlHeight
+
+  // Normal Y positions (top = 0):
+  int inputY_normal = padding; // Input at top
+  int headerY_normal =
+      padding + inputHeight + 5; // Headers below input (less padding)
+  int displayTop_normal =
+      headerY_normal + headerHeight + 2; // Minimal gap to display
+  int displayHeight =
+      height - displayTop_normal - padding - footerHeight - padding;
   if (displayHeight < 50)
     displayHeight = 50;
+  int footerY_normal = displayTop_normal + displayHeight + padding;
 
-  // Calculate width for each display pane
-  int paneWidth = (width - padding * 3 - spacing) / 2;
-  if (paneWidth < 100)
-    paneWidth = 100;
+  // Flip Y for macOS SWELL
+  int inputY = height - inputY_normal - inputHeight;
+  int headerY = height - headerY_normal - headerHeight;
+  int displayTop = height - displayTop_normal - displayHeight;
+  int footerY = height - footerY_normal - footerHeight;
 
-  // Question display: left pane
-  if (m_hwndQuestionDisplay) {
-    SetWindowPos(m_hwndQuestionDisplay, NULL, padding, padding, paneWidth,
-                 displayHeight, SWP_NOZORDER);
-  }
-
-  // Reply display: right pane
-  if (m_hwndReplyDisplay) {
-    SetWindowPos(m_hwndReplyDisplay, NULL, padding + paneWidth + spacing,
-                 padding, paneWidth, displayHeight, SWP_NOZORDER);
-  }
-
-  // Input field: bottom
+  // Input field: at top (spans chat columns only, not controls)
+  int inputWidth = chatAreaWidth - buttonWidth - spacing;
+  if (inputWidth < 50)
+    inputWidth = 50;
   if (m_hwndQuestionInput) {
-    int inputY = height - padding - inputHeight;
-    int inputWidth = width - padding * 2 - buttonWidth - spacing;
-    if (inputWidth < 50)
-      inputWidth = 50;
     SetWindowPos(m_hwndQuestionInput, NULL, padding, inputY, inputWidth,
                  inputHeight, SWP_NOZORDER);
   }
 
-  // Send button: bottom right
+  // Send button: right of input (aligned with chat area)
   if (m_hwndSendButton) {
-    int buttonY = height - padding - buttonHeight;
-    SetWindowPos(m_hwndSendButton, NULL, width - padding - buttonWidth, buttonY,
+    SetWindowPos(m_hwndSendButton, NULL, padding + inputWidth + spacing, inputY,
                  buttonWidth, buttonHeight, SWP_NOZORDER);
+  }
+
+  // Request header: left
+  if (m_hwndRequestHeader) {
+    SetWindowPos(m_hwndRequestHeader, NULL, padding, headerY, paneWidth,
+                 headerHeight, SWP_NOZORDER);
+  }
+
+  // Response header: middle
+  if (m_hwndResponseHeader) {
+    SetWindowPos(m_hwndResponseHeader, NULL, padding + paneWidth + spacing,
+                 headerY, paneWidth, headerHeight, SWP_NOZORDER);
+  }
+
+  // Controls header: right
+  int controlsX = padding + paneWidth + spacing + paneWidth + spacing;
+  if (m_hwndControlsHeader) {
+    SetWindowPos(m_hwndControlsHeader, NULL, controlsX, headerY,
+                 controlsPanelWidth, headerHeight, SWP_NOZORDER);
+  }
+
+  // Request display: left pane
+  if (m_hwndQuestionDisplay) {
+    SetWindowPos(m_hwndQuestionDisplay, NULL, padding, displayTop, paneWidth,
+                 displayHeight, SWP_NOZORDER);
+  }
+
+  // Response display: middle pane
+  if (m_hwndReplyDisplay) {
+    SetWindowPos(m_hwndReplyDisplay, NULL, padding + paneWidth + spacing,
+                 displayTop, paneWidth, displayHeight, SWP_NOZORDER);
+  }
+
+  // Control buttons: right column (need Y-flip like other controls)
+  int btnWidth = controlsPanelWidth - 10;
+  int btnHeight = 28;
+  int btnSpacing = 8;
+  int btnStartY_normal = headerY_normal + headerHeight + 10;
+
+  // Button IDs - reduced set
+  int buttonIDs[] = {IDC_BTN_MIX_ANALYSIS, IDC_BTN_MASTER_ANALYSIS,
+                     IDC_BTN_GAIN_STAGING, IDC_BTN_HOUSEKEEPING};
+  int numButtons = sizeof(buttonIDs) / sizeof(buttonIDs[0]);
+
+  for (int i = 0; i < numButtons; i++) {
+    HWND hBtn = GetDlgItem(m_hwnd, buttonIDs[i]);
+    if (hBtn) {
+      int btnY_normal = btnStartY_normal + i * (btnHeight + btnSpacing);
+      int btnY = height - btnY_normal - btnHeight;
+      SetWindowPos(hBtn, NULL, controlsX + 5, btnY, btnWidth, btnHeight,
+                   SWP_NOZORDER);
+    }
+  }
+
+  // Status footer: at bottom
+  if (m_hwndStatusFooter) {
+    SetWindowPos(m_hwndStatusFooter, NULL, padding, footerY,
+                 width - padding * 2, footerHeight, SWP_NOZORDER);
   }
 }
