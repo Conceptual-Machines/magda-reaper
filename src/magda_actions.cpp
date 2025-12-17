@@ -1164,6 +1164,42 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return true;
     }
     return false;
+  } else if (strcmp(action_type, "drum_pattern") == 0) {
+    const char *drum_name = action->get_string_by_name("drum");
+    const char *grid = action->get_string_by_name("grid");
+    const char *velocity_str = action->get_string_by_name("velocity", true);
+    const char *track_str = action->get_string_by_name("track", true);
+    int velocity = velocity_str ? atoi(velocity_str) : 100;
+
+    if (!drum_name || !grid) {
+      error_msg.Set("drum_pattern: missing 'drum' or 'grid' field");
+      return false;
+    }
+
+    // Use specified track, or last track if not specified
+    int track_index = 0;
+    if (track_str) {
+      track_index = atoi(track_str);
+    } else {
+      // Default to last track (most recently created)
+      int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
+      if (GetNumTracks) {
+        int num_tracks = GetNumTracks();
+        if (num_tracks > 0) {
+          track_index = num_tracks - 1;
+        }
+      }
+    }
+
+    if (AddDrumPattern(track_index, drum_name, grid, velocity, nullptr,
+                       error_msg)) {
+      result.Append(
+          "{\"action\":\"drum_pattern\",\"success\":true,\"drum\":\"");
+      result.Append(drum_name);
+      result.Append("\"}");
+      return true;
+    }
+    return false;
   } else if (strcmp(action_type, "analyze_track") == 0) {
     // DSP Analysis action - analyze a track's audio content
     const char *track_str = action->get_string_by_name("track", true);
@@ -1206,32 +1242,6 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return false;
     }
   } else {
-    // Check for drum_pattern actions (uses 'type' field instead of 'action')
-    const char *type_field = action->get_string_by_name("type");
-    if (type_field && strcmp(type_field, "drum_pattern") == 0) {
-      const char *drum_name = action->get_string_by_name("drum");
-      const char *grid = action->get_string_by_name("grid");
-      const char *velocity_str = action->get_string_by_name("velocity", true);
-      int velocity = velocity_str ? atoi(velocity_str) : 100;
-
-      if (!drum_name || !grid) {
-        error_msg.Set("drum_pattern: missing 'drum' or 'grid' field");
-        return false;
-      }
-
-      // Use track 0 (most recently created drum track) or -1 for last created
-      // In practice, this is called after create_track so track 0 is correct
-      // TODO: Track context management for multi-track patterns
-      if (AddDrumPattern(0, drum_name, grid, velocity, nullptr, error_msg)) {
-        result.Append(
-            "{\"type\":\"drum_pattern\",\"success\":true,\"drum\":\"");
-        result.Append(drum_name);
-        result.Append("\"}");
-        return true;
-      }
-      return false;
-    }
-
     error_msg.Set("Unknown action type");
     return false;
   }
@@ -1290,24 +1300,120 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
   bool success = true;
   // Check if it's an array of actions or a single action
   if (root->is_array()) {
+    // First pass: collect all drum_pattern notes, execute other actions
+    WDL_FastString drum_notes_json;
+    drum_notes_json.Append("[");
+    int drum_note_count = 0;
+    int drum_track_index = -1;
+
     int num_actions = 0;
+    int result_count = 0;
     wdl_json_element *item = root->enum_item(0);
     while (item) {
-      if (num_actions > 0)
-        result.Append(",");
+      const char *action_type = item->get_string_by_name("action");
 
-      WDL_FastString action_result, action_error;
-      if (ExecuteAction(item, action_result, action_error)) {
-        result.Append(action_result.Get());
+      // Check if this is a drum_pattern action
+      if (action_type && strcmp(action_type, "drum_pattern") == 0) {
+        // Collect drum pattern notes instead of executing immediately
+        const char *drum_name = item->get_string_by_name("drum");
+        const char *grid = item->get_string_by_name("grid");
+        const char *velocity_str = item->get_string_by_name("velocity", true);
+        const char *track_str = item->get_string_by_name("track", true);
+        int velocity = velocity_str ? atoi(velocity_str) : 100;
+
+        // Determine track index
+        if (drum_track_index < 0) {
+          if (track_str) {
+            drum_track_index = atoi(track_str);
+          } else {
+            int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
+            if (GetNumTracks) {
+              int num_tracks = GetNumTracks();
+              drum_track_index = num_tracks > 0 ? num_tracks - 1 : 0;
+            }
+          }
+        }
+
+        if (drum_name && grid) {
+          int midi_note = ResolveDrumNote(drum_name, nullptr);
+          if (midi_note >= 0) {
+            // Parse grid and add notes to collection
+            size_t grid_len = strlen(grid);
+            double sixteenth = 0.25;
+            for (size_t i = 0; i < grid_len; i++) {
+              char c = grid[i];
+              int note_vel = 0;
+              if (c == 'x')
+                note_vel = velocity;
+              else if (c == 'X')
+                note_vel = 127;
+              else if (c == 'o')
+                note_vel = 60;
+              else
+                continue;
+
+              if (drum_note_count > 0)
+                drum_notes_json.Append(",");
+              char note_json[256];
+              snprintf(
+                  note_json, sizeof(note_json),
+                  "{\"pitch\":%d,\"velocity\":%d,\"start\":%.4f,\"length\":"
+                  "%.4f}",
+                  midi_note, note_vel, i * sixteenth, sixteenth);
+              drum_notes_json.Append(note_json);
+              drum_note_count++;
+            }
+          }
+        }
       } else {
-        result.Append("{\"error\":");
-        result.Append("\"");
-        result.Append(action_error.Get());
-        result.Append("\"}");
-        success = false;
+        // Execute non-drum_pattern action normally
+        if (result_count > 0)
+          result.Append(",");
+
+        WDL_FastString action_result, action_error;
+        if (ExecuteAction(item, action_result, action_error)) {
+          result.Append(action_result.Get());
+        } else {
+          result.Append("{\"error\":");
+          result.Append("\"");
+          result.Append(action_error.Get());
+          result.Append("\"}");
+          success = false;
+        }
+        result_count++;
       }
       num_actions++;
       item = root->enum_item(num_actions);
+    }
+
+    drum_notes_json.Append("]");
+
+    // Now add all drum notes at once if we collected any
+    if (drum_note_count > 0 && drum_track_index >= 0) {
+      if (result_count > 0)
+        result.Append(",");
+
+      wdl_json_parser drum_parser;
+      wdl_json_element *drum_notes_array = drum_parser.parse(
+          drum_notes_json.Get(), (int)drum_notes_json.GetLength());
+
+      if (drum_notes_array) {
+        WDL_FastString drum_error;
+        if (AddMIDI(drum_track_index, drum_notes_array, drum_error)) {
+          result.Append(
+              "{\"action\":\"drum_pattern\",\"success\":true,\"notes\":"
+              "");
+          char buf[32];
+          snprintf(buf, sizeof(buf), "%d", drum_note_count);
+          result.Append(buf);
+          result.Append("}");
+        } else {
+          result.Append("{\"error\":\"");
+          result.Append(drum_error.Get());
+          result.Append("\"}");
+          success = false;
+        }
+      }
     }
   } else if (root->is_object()) {
     // Single action
@@ -1592,6 +1698,11 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
         if (note_end > max_end_beats)
           max_end_beats = note_end;
       }
+    }
+
+    // Ensure minimum length of 4 beats (1 bar)
+    if (max_end_beats < 4.0) {
+      max_end_beats = 4.0;
     }
 
     if (ShowConsoleMsg) {
