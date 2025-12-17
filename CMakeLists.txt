@@ -138,18 +138,19 @@ if(APPLE)
 endif()
 
 # Test program for login (standalone, no REAPER dependencies)
-add_executable(test_login test_login.cpp
-    WDL/WDL/jnetlib/httpget.cpp
-    WDL/WDL/jnetlib/connection.cpp
-    WDL/WDL/jnetlib/asyncdns.cpp
-    WDL/WDL/jnetlib/util.cpp
-)
-target_include_directories(test_login PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/WDL
-)
-if(MSVC)
-    target_compile_options(test_login PRIVATE /W4)
-else()
-    target_compile_options(test_login PRIVATE -Wall -Wextra)
-endif()
+# Note: test_login.cpp not committed to main branch yet
+# add_executable(test_login test_login.cpp
+#     WDL/WDL/jnetlib/httpget.cpp
+#     WDL/WDL/jnetlib/connection.cpp
+#     WDL/WDL/jnetlib/asyncdns.cpp
+#     WDL/WDL/jnetlib/util.cpp
+# )
+# target_include_directories(test_login PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}
+#     ${CMAKE_CURRENT_SOURCE_DIR}/WDL
+# )
+# if(MSVC)
+#     target_compile_options(test_login PRIVATE /W4)
+# else()
+#     target_compile_options(test_login PRIVATE -Wall -Wextra)
+# endif()

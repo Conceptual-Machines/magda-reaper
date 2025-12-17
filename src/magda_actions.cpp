@@ -523,6 +523,77 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return true;
     }
     return false;
+  } else if (strcmp(action_type, "add_automation") == 0) {
+    // Automation envelope action - supports curve-based and point-based syntax
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *param = action->get_string_by_name("param");
+    if (!track_str || !param) {
+      error_msg.Set("Missing 'track' or 'param' field");
+      return false;
+    }
+    int track_index = atoi(track_str);
+
+    // Parse curve-based parameters
+    const char *curve = action->get_string_by_name("curve");
+    const char *start_str = action->get_string_by_name("start", true);
+    const char *end_str = action->get_string_by_name("end", true);
+    const char *start_bar_str = action->get_string_by_name("start_bar", true);
+    const char *end_bar_str = action->get_string_by_name("end_bar", true);
+    const char *from_str = action->get_string_by_name("from", true);
+    const char *to_str = action->get_string_by_name("to", true);
+    const char *freq_str = action->get_string_by_name("freq", true);
+    const char *amplitude_str = action->get_string_by_name("amplitude", true);
+    const char *phase_str = action->get_string_by_name("phase", true);
+    const char *shape_str = action->get_string_by_name("shape", true);
+    wdl_json_element *points_array = action->get_item_by_name("points");
+
+    // Calculate start/end times
+    double start_time = 0.0;
+    double end_time = 4.0; // Default 4 beats
+    if (start_str)
+      start_time = atof(start_str);
+    if (end_str)
+      end_time = atof(end_str);
+    if (start_bar_str)
+      start_time = BarToTime(atoi(start_bar_str));
+    if (end_bar_str)
+      end_time = BarToTime(atoi(end_bar_str));
+
+    // Parse optional parameters
+    double from_val = -60.0; // Default for volume fade_in
+    double to_val = 0.0;
+    double freq = 1.0;
+    double amplitude = 1.0;
+    double phase = 0.0;
+    int shape = 0; // Linear
+
+    if (from_str)
+      from_val = atof(from_str);
+    if (to_str)
+      to_val = atof(to_str);
+    if (freq_str)
+      freq = atof(freq_str);
+    if (amplitude_str)
+      amplitude = atof(amplitude_str);
+    if (phase_str)
+      phase = atof(phase_str);
+    if (shape_str)
+      shape = atoi(shape_str);
+
+    if (AddAutomation(track_index, param, curve, start_time, end_time, from_val,
+                      to_val, freq, amplitude, phase, shape, points_array,
+                      error_msg)) {
+      result.Append(
+          "{\"action\":\"add_automation\",\"success\":true,\"param\":\"");
+      result.Append(param);
+      if (curve) {
+        result.Append("\",\"curve\":\"");
+        result.Append(curve);
+      }
+      result.Append("\"}");
+      return true;
+    }
+    return false;
   } else {
     error_msg.Set("Unknown action type");
     return false;
@@ -654,4 +725,266 @@ double MagdaActions::BarsToTime(int bars) {
   double time_start = TimeMap2_QNToTime(nullptr, qn_start);
   double time_end = TimeMap2_QNToTime(nullptr, qn_end);
   return time_end - time_start;
+}
+
+// Add automation envelope to track
+// Supports curve-based and point-based syntax
+// Curve types: fade_in, fade_out, ramp, sine, saw, square, exp_in, exp_out
+bool MagdaActions::AddAutomation(int track_index, const char *param,
+                                 const char *curve, double start_time,
+                                 double end_time, double from_val,
+                                 double to_val, double freq, double amplitude,
+                                 double phase, int shape,
+                                 wdl_json_element *points_array,
+                                 WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  // Get REAPER API functions
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  TrackEnvelope *(*GetTrackEnvelopeByName)(MediaTrack *, const char *) =
+      (TrackEnvelope * (*)(MediaTrack *, const char *))
+          g_rec->GetFunc("GetTrackEnvelopeByName");
+  bool (*InsertEnvelopePoint)(TrackEnvelope *, double, double, int, double,
+                              bool, bool *) =
+      (bool (*)(TrackEnvelope *, double, double, int, double, bool,
+                bool *))g_rec->GetFunc("InsertEnvelopePoint");
+  bool (*Envelope_SortPoints)(TrackEnvelope *) =
+      (bool (*)(TrackEnvelope *))g_rec->GetFunc("Envelope_SortPoints");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+  double (*TimeMap2_QNToTime)(ReaProject *, double) =
+      (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+  if (!GetTrack || !GetTrackEnvelopeByName || !InsertEnvelopePoint) {
+    error_msg.Set("Required REAPER API functions not available");
+    return false;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, track_index);
+  if (!track) {
+    error_msg.Set("Track not found");
+    return false;
+  }
+
+  // Get envelope by parameter name
+  // Map param names to REAPER envelope names
+  const char *envelope_name = nullptr;
+  bool is_volume = false;
+  bool is_pan = false;
+
+  if (strcmp(param, "volume") == 0) {
+    envelope_name = "Volume";
+    is_volume = true;
+  } else if (strcmp(param, "pan") == 0) {
+    envelope_name = "Pan";
+    is_pan = true;
+  } else if (strcmp(param, "mute") == 0) {
+    envelope_name = "Mute";
+  } else {
+    // FX parameter - format is "FXName:ParamName"
+    // For now, only support volume/pan - FX params need more complex handling
+    error_msg.Set(
+        "FX parameter automation not yet supported - use 'volume' or 'pan'");
+    return false;
+  }
+
+  TrackEnvelope *envelope = GetTrackEnvelopeByName(track, envelope_name);
+  if (!envelope) {
+    error_msg.Set("Could not get envelope for parameter: ");
+    error_msg.Append(param);
+    error_msg.Append(" (envelope may need to be visible/armed)");
+    return false;
+  }
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddAutomation: track=%d, param=%s, curve=%s, start=%.2f, "
+             "end=%.2f\n",
+             track_index, param, curve ? curve : "points", start_time,
+             end_time);
+    ShowConsoleMsg(log_msg);
+  }
+
+  // Convert beat times to project time if needed
+  double start_sec = start_time;
+  double end_sec = end_time;
+  if (TimeMap2_QNToTime) {
+    // Assume start/end are in beats (quarter notes)
+    start_sec = TimeMap2_QNToTime(nullptr, start_time);
+    end_sec = TimeMap2_QNToTime(nullptr, end_time);
+  }
+
+  // Generate points based on curve type or use provided points
+  bool noSort = true;
+  int points_inserted = 0;
+
+  if (curve && curve[0]) {
+    // Curve-based automation
+    double duration = end_sec - start_sec;
+    if (duration <= 0) {
+      error_msg.Set("End time must be greater than start time");
+      return false;
+    }
+
+    // Set default from/to values based on curve type
+    if (strcmp(curve, "fade_in") == 0) {
+      from_val = is_volume ? 0.0 : 0.0; // 0.0 = -inf dB for volume envelope
+      to_val = is_volume ? 1.0 : 0.0;   // 1.0 = 0 dB
+    } else if (strcmp(curve, "fade_out") == 0) {
+      from_val = is_volume ? 1.0 : 0.0;
+      to_val = is_volume ? 0.0 : 0.0;
+    }
+
+    // For volume envelope, convert from/to values if they look like dB
+    if (is_volume) {
+      // If from/to are in reasonable dB range, convert to linear
+      // REAPER volume envelope: 0.0 = -inf, 1.0 = 0 dB, 2.0 = +6 dB
+      if (from_val < 0 || from_val > 2.0) {
+        // Convert dB to linear: linear = 10^(dB/20)
+        // But cap at some reasonable range
+        if (from_val <= -60)
+          from_val = 0.0;
+        else
+          from_val = pow(10.0, from_val / 20.0);
+      }
+      if (to_val < 0 || to_val > 2.0) {
+        if (to_val <= -60)
+          to_val = 0.0;
+        else
+          to_val = pow(10.0, to_val / 20.0);
+      }
+    }
+
+    // Generate points for the curve
+    int num_points = 32; // Resolution for curve generation
+
+    for (int i = 0; i <= num_points; i++) {
+      double t = (double)i / num_points; // 0.0 to 1.0
+      double time_pos = start_sec + t * duration;
+      double value = 0.0;
+
+      if (strcmp(curve, "fade_in") == 0 || strcmp(curve, "ramp") == 0) {
+        // Linear interpolation
+        value = from_val + t * (to_val - from_val);
+      } else if (strcmp(curve, "fade_out") == 0) {
+        // Linear interpolation
+        value = from_val + t * (to_val - from_val);
+      } else if (strcmp(curve, "exp_in") == 0) {
+        // Exponential ease-in: slow start, fast end
+        double exp_t = t * t;
+        value = from_val + exp_t * (to_val - from_val);
+      } else if (strcmp(curve, "exp_out") == 0) {
+        // Exponential ease-out: fast start, slow end
+        double exp_t = 1.0 - (1.0 - t) * (1.0 - t);
+        value = from_val + exp_t * (to_val - from_val);
+      } else if (strcmp(curve, "sine") == 0) {
+        // Sinusoidal oscillation
+        double center = is_pan ? 0.0 : 0.5;
+        double osc = sin(2.0 * M_PI * (freq * t + phase));
+        value = center + amplitude * osc * (is_pan ? 1.0 : 0.5);
+      } else if (strcmp(curve, "saw") == 0) {
+        // Sawtooth wave
+        double center = is_pan ? 0.0 : 0.5;
+        double saw_phase = fmod(freq * t + phase, 1.0);
+        double osc = 2.0 * saw_phase - 1.0; // -1 to 1
+        value = center + amplitude * osc * (is_pan ? 1.0 : 0.5);
+      } else if (strcmp(curve, "square") == 0) {
+        // Square wave
+        double center = is_pan ? 0.0 : 0.5;
+        double sq_phase = fmod(freq * t + phase, 1.0);
+        double osc = sq_phase < 0.5 ? 1.0 : -1.0;
+        value = center + amplitude * osc * (is_pan ? 1.0 : 0.5);
+      } else {
+        // Unknown curve - use linear ramp as fallback
+        value = from_val + t * (to_val - from_val);
+      }
+
+      // Clamp value to valid range
+      if (is_volume) {
+        if (value < 0.0)
+          value = 0.0;
+        if (value > 4.0)
+          value = 4.0; // ~12 dB max
+      } else if (is_pan) {
+        if (value < -1.0)
+          value = -1.0;
+        if (value > 1.0)
+          value = 1.0;
+      }
+
+      if (InsertEnvelopePoint(envelope, time_pos, value, shape, 0.0, false,
+                              &noSort)) {
+        points_inserted++;
+      }
+    }
+  } else if (points_array && points_array->is_array()) {
+    // Point-based automation
+    int i = 0;
+    wdl_json_element *point_obj = points_array->enum_item(i);
+    while (point_obj) {
+      if (point_obj->is_object()) {
+        const char *time_str = point_obj->get_string_by_name("time", true);
+        const char *bar_str = point_obj->get_string_by_name("bar", true);
+        const char *value_str = point_obj->get_string_by_name("value", true);
+
+        if (value_str) {
+          double time_pos = 0.0;
+          if (time_str) {
+            time_pos = atof(time_str);
+            if (TimeMap2_QNToTime) {
+              time_pos = TimeMap2_QNToTime(nullptr, time_pos);
+            }
+          } else if (bar_str) {
+            time_pos = BarToTime(atoi(bar_str));
+          }
+
+          double value = atof(value_str);
+
+          // Convert dB to linear for volume
+          if (is_volume && (value < 0 || value > 2.0)) {
+            if (value <= -60)
+              value = 0.0;
+            else
+              value = pow(10.0, value / 20.0);
+          }
+
+          if (InsertEnvelopePoint(envelope, time_pos, value, shape, 0.0, false,
+                                  &noSort)) {
+            points_inserted++;
+          }
+        }
+      }
+      i++;
+      point_obj = points_array->enum_item(i);
+    }
+  } else {
+    error_msg.Set("add_automation: must specify 'curve' or 'points'");
+    return false;
+  }
+
+  // Sort envelope points
+  if (points_inserted > 0 && Envelope_SortPoints) {
+    Envelope_SortPoints(envelope);
+  }
+
+  // Update UI
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  if (ShowConsoleMsg) {
+    char log_msg[512];
+    snprintf(log_msg, sizeof(log_msg),
+             "MAGDA: AddAutomation: SUCCESS - Inserted %d envelope points\n",
+             points_inserted);
+    ShowConsoleMsg(log_msg);
+  }
+
+  return points_inserted > 0;
 }
