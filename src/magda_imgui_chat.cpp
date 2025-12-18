@@ -343,6 +343,10 @@ void MagdaImGuiChat::Toggle() {
   m_visible = !m_visible;
   if (m_visible) {
     SetAPIStatus("Ready", 0x88FF88FF); // Green in 0xRRGGBBAA format
+  } else {
+    // When hiding, clean up context so it can be recreated on next show
+    // This matches the behavior when window is closed via X button
+    m_ctx = nullptr;
   }
 }
 

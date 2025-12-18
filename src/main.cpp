@@ -227,17 +227,26 @@ void magdaAction(int command_id, int flag) {
 
   switch (command_id) {
   case MAGDA_CMD_OPEN:
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Opening chat interface\n");
-    }
     // Use ImGui chat if available, otherwise fall back to SWELL
     if (g_useImGuiChat && g_imguiChat) {
-      g_imguiChat->Toggle();
+      // Only show if not already visible - don't close if already open
+      if (!g_imguiChat->IsVisible()) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Opening chat interface\n");
+        }
+        g_imguiChat->Show();
+      }
     } else {
       if (!g_chatWindow) {
         g_chatWindow = new MagdaChatWindow();
       }
-      g_chatWindow->Show(true); // Toggle - show if hidden, hide if shown
+      // Only show if not already visible - don't close if already open
+      if (!g_chatWindow->IsVisible()) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Opening chat interface\n");
+        }
+        g_chatWindow->Show(false); // Show only, don't toggle
+      }
     }
     break;
   case MAGDA_CMD_LOGIN:
