@@ -24,6 +24,7 @@ void MagdaBounceWorkflow::SetBounceModePreference(BounceMode mode) {
 }
 
 bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
+                                          const char *trackType,
                                           const char *userRequest,
                                           WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
@@ -43,6 +44,9 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
                                              bool *) =
       (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
           "GetSetMediaTrackInfo_String");
+
+  // Use trackType parameter (passed from dialog)
+  (void)trackType; // Will be used in SendToMixAPI
 
   if (!GetNumTracks || !GetTrack || !IsTrackSelected) {
     error_msg.Set("Required REAPER functions not available");
@@ -132,40 +136,58 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
     }
   }
 
-  // Step 2: Bounce track to new track
-  int newTrackIndex =
+  // Step 2: Copy track, hide it, and render item
+  int copiedTrackIndex =
       BounceTrackToNewTrack(selectedTrackIndex, bounceMode, error_msg);
-  if (newTrackIndex < 0) {
+  if (copiedTrackIndex < 0) {
     return false;
   }
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA: Bounced track %d to new track %d\n",
-             selectedTrackIndex, newTrackIndex);
+    snprintf(msg, sizeof(msg), "MAGDA: Copied track to index %d for analysis\n",
+             copiedTrackIndex);
     ShowConsoleMsg(msg);
   }
 
-  // Step 3: Hide original track
-  if (!HideTrack(selectedTrackIndex, error_msg)) {
-    // Non-fatal, continue anyway
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Warning: Could not hide original track\n");
+  // Step 3: Run DSP analysis on the copied track
+  WDL_FastString analysisJson, fxJson;
+  if (!RunDSPAnalysis(copiedTrackIndex, trackName, analysisJson, fxJson,
+                      error_msg)) {
+    // Even if analysis fails, clean up the copied track
+    // (fall through to cleanup)
+  }
+
+  // Step 4: Clean up - delete the copied track (which deletes the media item
+  // too) Reuse GetTrack from Step 0 (already declared above)
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+  void (*DeleteTrack)(MediaTrack *) =
+      (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+
+  if (DeleteTrack) {
+    MediaTrack *copiedTrack = GetTrack(nullptr, copiedTrackIndex);
+    if (copiedTrack) {
+      DeleteTrack(copiedTrack);
+      if (UpdateArrange) {
+        UpdateArrange();
+      }
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Deleted copied track after analysis\n");
+      }
     }
   }
 
-  // Step 4: Run DSP analysis on bounced track
-  WDL_FastString analysisJson, fxJson;
-  if (!RunDSPAnalysis(newTrackIndex, trackName, analysisJson, fxJson,
-                      error_msg)) {
+  // If analysis failed, return false
+  if (analysisJson.GetLength() == 0) {
     return false;
   }
 
   // Step 5: Send to mix API
   WDL_FastString responseJson;
   if (!SendToMixAPI(analysisJson.Get(), fxJson.Get(),
-                    userRequest ? userRequest : "", newTrackIndex, trackName,
-                    responseJson, error_msg)) {
+                    trackType ? trackType : "other",
+                    userRequest ? userRequest : "", selectedTrackIndex,
+                    trackName, responseJson, error_msg)) {
     return false;
   }
 
@@ -179,93 +201,117 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
 int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex,
                                                BounceMode mode,
                                                WDL_FastString &error_msg) {
+  // New approach: Copy track, hide it, render item, analyze, then delete
+  // This avoids modifying the original track at all
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
-  double (*GetSetProjectInfo)(ReaProject *, const char *, double, bool) =
-      (double (*)(ReaProject *, const char *, double, bool))g_rec->GetFunc(
-          "GetSetProjectInfo");
-  bool (*GetSetProjectInfo_String)(ReaProject *, const char *, char *, bool) =
-      (bool (*)(ReaProject *, const char *, char *, bool))g_rec->GetFunc(
-          "GetSetProjectInfo_String");
   void (*Main_OnCommand)(int command, int flag) =
       (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
 
-  if (!GetNumTracks || !GetSetProjectInfo || !GetSetProjectInfo_String ||
-      !Main_OnCommand) {
+  if (!GetNumTracks || !Main_OnCommand || !GetTrack) {
     error_msg.Set("Required REAPER functions not available");
     return -1;
   }
 
-  // Store number of tracks before bounce
+  (void)mode; // Suppress unused parameter warning
+
+  // Store number of tracks before copy
   int tracksBefore = GetNumTracks();
 
-  // Ensure only the source track is selected before bouncing
-  // (REAPER's stem render action bounces all selected tracks)
-  MediaTrack *(*GetTrack)(ReaProject *, int) =
-      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  // Step 1: Select only the source track (GetTrack already declared above)
   bool (*SetTrackSelected)(MediaTrack *, bool) =
       (bool (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
 
-  if (GetTrack && SetTrackSelected) {
-    // Deselect all tracks first
-    for (int i = 0; i < tracksBefore; i++) {
-      MediaTrack *track = GetTrack(nullptr, i);
-      if (track) {
-        SetTrackSelected(track, false);
-      }
-    }
-    // Select only the source track
-    MediaTrack *sourceTrack = GetTrack(nullptr, sourceTrackIndex);
-    if (sourceTrack) {
-      SetTrackSelected(sourceTrack, true);
-    }
+  if (!GetTrack || !SetTrackSelected) {
+    error_msg.Set("GetTrack or SetTrackSelected not available");
+    return -1;
   }
 
-  // Get source track and its media items
+  // GetTrack is now declared for this function scope
+
+  // Deselect all tracks first
+  for (int i = 0; i < tracksBefore; i++) {
+    MediaTrack *track = GetTrack(nullptr, i);
+    if (track) {
+      SetTrackSelected(track, false);
+    }
+  }
+  // Select only the source track
   MediaTrack *sourceTrack = GetTrack(nullptr, sourceTrackIndex);
   if (!sourceTrack) {
     error_msg.Set("Source track not found");
     return -1;
   }
+  SetTrackSelected(sourceTrack, true);
 
-  // Count media items on the track
+  // Step 2: Copy the track (action 40062: Track: Duplicate tracks)
+  Main_OnCommand(40062, 0);
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  // Step 3: Find the new copied track (should be right after source track)
+  int tracksAfter = GetNumTracks();
+  if (tracksAfter <= tracksBefore) {
+    error_msg.Set("Failed to copy track");
+    return -1;
+  }
+
+  int copiedTrackIndex = sourceTrackIndex + 1;
+  MediaTrack *copiedTrack = GetTrack(nullptr, copiedTrackIndex);
+  if (!copiedTrack) {
+    error_msg.Set("Failed to find copied track");
+    return -1;
+  }
+
+  if (ShowConsoleMsg) {
+    char msg[256];
+    snprintf(msg, sizeof(msg), "MAGDA: Copied track to index %d\n",
+             copiedTrackIndex);
+    ShowConsoleMsg(msg);
+  }
+
+  // Step 4: Hide the copied track
+  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo");
+  if (GetSetMediaTrackInfo) {
+    double minHeight = -1.0; // Collapsed
+    GetSetMediaTrackInfo((INT_PTR)copiedTrack, "I_HEIGHTOVERRIDE", &minHeight,
+                         nullptr);
+  }
+
+  // Step 5: Get the media item on the copied track
   int (*CountTrackMediaItems)(MediaTrack *) =
       (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
-  if (!CountTrackMediaItems) {
-    error_msg.Set("CountTrackMediaItems function not available");
-    return -1;
-  }
-
-  int itemCount = CountTrackMediaItems(sourceTrack);
-  if (itemCount == 0) {
-    error_msg.Set("Track has no media items to bounce");
-    return -1;
-  }
-
-  // Get first media item (for now, we'll bounce the first item)
-  // TODO: Support bouncing all items or selected items
   MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
       (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
-  if (!GetTrackMediaItem) {
-    error_msg.Set("GetTrackMediaItem function not available");
+
+  if (!CountTrackMediaItems || !GetTrackMediaItem) {
+    error_msg.Set("CountTrackMediaItems or GetTrackMediaItem not available");
     return -1;
   }
 
-  MediaItem *sourceItem = GetTrackMediaItem(sourceTrack, 0);
-  if (!sourceItem) {
-    error_msg.Set("Failed to get media item from track");
+  int itemCount = CountTrackMediaItems(copiedTrack);
+  if (itemCount == 0) {
+    error_msg.Set("Copied track has no media items");
     return -1;
   }
 
-  // Select only this media item
+  MediaItem *copiedItem = GetTrackMediaItem(copiedTrack, 0);
+  if (!copiedItem) {
+    error_msg.Set("Failed to get media item from copied track");
+    return -1;
+  }
+
+  // Step 6: Select only the copied item
   bool (*SetMediaItemSelected)(MediaItem *, bool) =
       (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
-  void (*Main_OnCommandEx)(int, int, ReaProject *) =
-      (void (*)(int, int, ReaProject *))g_rec->GetFunc("Main_OnCommandEx");
-
   if (SetMediaItemSelected) {
     // Deselect all items first
     int (*CountMediaItems)(ReaProject *) =
@@ -281,142 +327,50 @@ int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex,
         }
       }
     }
-    // Select only the source item
-    SetMediaItemSelected(sourceItem, true);
+    // Select only the copied item
+    SetMediaItemSelected(copiedItem, true);
   }
 
-  // Use action 40108: "Item: Apply track/take FX to items as new take"
-  // This applies the track's FX chain directly to the item, creating a new take
-  // without going through the master track
-  Main_OnCommand(40108, 0);
+  // Step 7: Ensure active take is set (important for MIDI items)
+  MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+      (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+  void (*SetActiveTake)(MediaItem_Take *) =
+      (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
 
-  // Get the newly created take from the item
-  // The new take should be the last take (take with applied FX)
-  int (*CountTakes)(MediaItem *) =
-      (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
-  MediaItem_Take *(*GetTake)(MediaItem *, int) =
-      (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
-
-  if (!CountTakes || !GetTake) {
-    error_msg.Set("Failed to get take functions");
-    return -1;
+  if (GetActiveTake && SetActiveTake) {
+    MediaItem_Take *activeTake = GetActiveTake(copiedItem);
+    if (!activeTake) {
+      // No active take, try to get the first take
+      int (*CountTakes)(MediaItem *) =
+          (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+      MediaItem_Take *(*GetTake)(MediaItem *, int) =
+          (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
+      if (CountTakes && GetTake) {
+        int takeCount = CountTakes(copiedItem);
+        if (takeCount > 0) {
+          MediaItem_Take *firstTake = GetTake(copiedItem, 0);
+          if (firstTake) {
+            SetActiveTake(firstTake);
+          }
+        }
+      }
+    }
   }
 
-  int takeCount = CountTakes(sourceItem);
-  if (takeCount == 0) {
-    error_msg.Set("No takes found after applying FX");
-    return -1;
-  }
-
-  // Get the last take (the one with FX applied)
-  MediaItem_Take *renderedTake = GetTake(sourceItem, takeCount - 1);
-  if (!renderedTake) {
-    error_msg.Set("Failed to get rendered take");
-    return -1;
-  }
-
-  // Get the PCM source from the rendered take
-  PCM_source *(*GetMediaItemTake_Source)(MediaItem_Take *) =
-      (PCM_source * (*)(MediaItem_Take *))
-          g_rec->GetFunc("GetMediaItemTake_Source");
-  if (!GetMediaItemTake_Source) {
-    error_msg.Set("GetMediaItemTake_Source function not available");
-    return -1;
-  }
-
-  PCM_source *pcmSource = GetMediaItemTake_Source(renderedTake);
-  if (!pcmSource) {
-    error_msg.Set("Rendered take has no PCM source");
-    return -1;
-  }
-
-  // Create a new track for the bounced audio
-  void (*InsertTrackInProject)(ReaProject *, int, int) =
-      (void (*)(ReaProject *, int, int))g_rec->GetFunc("InsertTrackInProject");
-  if (!InsertTrackInProject) {
-    error_msg.Set("InsertTrackInProject function not available");
-    return -1;
-  }
-
-  // Insert track right after the source track
-  int newTrackIndex = sourceTrackIndex + 1;
-  InsertTrackInProject(nullptr, newTrackIndex, 1);
-
-  MediaTrack *newTrack = GetTrack(nullptr, newTrackIndex);
-  if (!newTrack) {
-    error_msg.Set("Failed to create new track");
-    return -1;
-  }
-
-  // Create a media item on the new track
-  MediaItem *(*AddMediaItemToTrack)(MediaTrack *) =
-      (MediaItem * (*)(MediaTrack *)) g_rec->GetFunc("AddMediaItemToTrack");
-  if (!AddMediaItemToTrack) {
-    error_msg.Set("AddMediaItemToTrack function not available");
-    return -1;
-  }
-
-  MediaItem *newItem = AddMediaItemToTrack(newTrack);
-  if (!newItem) {
-    error_msg.Set("Failed to create media item on new track");
-    return -1;
-  }
-
-  // Get position and length from source item
-  double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
-      MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
-  bool (*SetMediaItemInfo_Value)(MediaItem *, const char *, double) =
-      (bool (*)(MediaItem *, const char *, double))g_rec->GetFunc(
-          "SetMediaItemInfo_Value");
-
-  if (GetMediaItemInfo_Value && SetMediaItemInfo_Value) {
-    double itemPos = GetMediaItemInfo_Value(sourceItem, "D_POSITION");
-    double itemLen = GetMediaItemInfo_Value(sourceItem, "D_LENGTH");
-    SetMediaItemInfo_Value(newItem, "D_POSITION", itemPos);
-    SetMediaItemInfo_Value(newItem, "D_LENGTH", itemLen);
-  }
-
-  // Add a take to the new item
-  MediaItem_Take *(*AddTakeToMediaItem)(MediaItem *) =
-      (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("AddTakeToMediaItem");
-  if (!AddTakeToMediaItem) {
-    error_msg.Set("AddTakeToMediaItem function not available");
-    return -1;
-  }
-
-  MediaItem_Take *newTake = AddTakeToMediaItem(newItem);
-  if (!newTake) {
-    error_msg.Set("Failed to create take on new item");
-    return -1;
-  }
-
-  // Set the PCM source to the rendered audio
-  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) = (bool (*)(
-      MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
-  if (!SetMediaItemTake_Source) {
-    error_msg.Set("SetMediaItemTake_Source function not available");
-    return -1;
-  }
-
-  // Use the PCM source directly - REAPER will handle reference counting
-  if (!SetMediaItemTake_Source(newTake, pcmSource)) {
-    error_msg.Set("Failed to set PCM source on new take");
-    return -1;
-  }
-
-  // Update arrange view
+  // Step 8: Render the item (apply FX to create new take)
+  // Use action 40209: "Item: Apply track FX to items as new take"
+  Main_OnCommand(40209, 0);
   if (UpdateArrange) {
     UpdateArrange();
   }
 
   if (ShowConsoleMsg) {
-    char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA: Created bounced track at index %d\n",
-             newTrackIndex);
-    ShowConsoleMsg(msg);
+    ShowConsoleMsg("MAGDA: Applied FX to copied item\n");
   }
 
-  return newTrackIndex;
+  // Return the copied track index - analysis will happen on this track
+  // After analysis, we'll delete this track
+  return copiedTrackIndex;
 }
 
 bool MagdaBounceWorkflow::HideTrack(int trackIndex, WDL_FastString &error_msg) {
@@ -503,12 +457,10 @@ bool MagdaBounceWorkflow::RunDSPAnalysis(int trackIndex, const char *trackName,
   return true;
 }
 
-bool MagdaBounceWorkflow::SendToMixAPI(const char *analysisJson,
-                                       const char *fxJson,
-                                       const char *userRequest, int trackIndex,
-                                       const char *trackName,
-                                       WDL_FastString &responseJson,
-                                       WDL_FastString &error_msg) {
+bool MagdaBounceWorkflow::SendToMixAPI(
+    const char *analysisJson, const char *fxJson, const char *trackType,
+    const char *userRequest, int trackIndex, const char *trackName,
+    WDL_FastString &responseJson, WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -562,6 +514,32 @@ bool MagdaBounceWorkflow::SendToMixAPI(const char *analysisJson,
     }
   }
   requestJson.Append("\"");
+
+  // Add track_type to context
+  if (trackType && trackType[0]) {
+    requestJson.Append(",\"track_type\":\"");
+    // Escape track type
+    for (const char *p = trackType; *p; p++) {
+      switch (*p) {
+      case '"':
+        requestJson.Append("\\\"");
+        break;
+      case '\\':
+        requestJson.Append("\\\\");
+        break;
+      case '\n':
+        requestJson.Append("\\n");
+        break;
+      case '\r':
+        requestJson.Append("\\r");
+        break;
+      default:
+        requestJson.Append(p, 1);
+        break;
+      }
+    }
+    requestJson.Append("\"");
+  }
 
   // Add existing_fx to context
   if (fxJson && fxJson[0]) {

@@ -56,6 +56,8 @@ set(SOURCES
     src/magda_dsp_analyzer.cpp
     src/magda_drum_mapping.cpp
     src/magda_drum_mapping_window.cpp
+    src/magda_bounce_workflow.cpp
+    src/magda_imgui_mix_analysis_dialog.cpp
     # WDL networking implementation
     WDL/WDL/jnetlib/httpget.cpp
     WDL/WDL/jnetlib/connection.cpp

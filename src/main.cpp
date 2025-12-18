@@ -1,9 +1,11 @@
 #include "magda_actions.h"
+#include "magda_bounce_workflow.h"
 #include "magda_chat_window.h"
 #include "magda_drum_mapping.h"
 #include "magda_drum_mapping_window.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_chat.h"
+#include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
 #include "magda_login_window.h"
 #include "magda_param_mapping.h"
@@ -34,6 +36,8 @@ MagdaPluginScanner *g_pluginScanner = nullptr;
 MagdaPluginWindow *g_pluginWindow = nullptr;
 // Global ImGui plugin window instance
 MagdaImGuiPluginWindow *g_imguiPluginWindow = nullptr;
+// Global ImGui mix analysis dialog instance
+MagdaImGuiMixAnalysisDialog *g_imguiMixAnalysisDialog = nullptr;
 // Global param mapping manager instance
 MagdaParamMappingWindow *g_paramMappingWindow = nullptr;
 // Global drum mapping manager instance (defined in magda_drum_mapping.cpp)
@@ -48,6 +52,70 @@ static void imguiTimerCallback() {
   // Also render ImGui plugin window if visible
   if (g_imguiPluginWindow && g_imguiPluginWindow->IsVisible()) {
     g_imguiPluginWindow->Render();
+  }
+  // Render mix analysis dialog if visible
+  if (g_imguiMixAnalysisDialog && g_imguiMixAnalysisDialog->IsVisible()) {
+    g_imguiMixAnalysisDialog->Render();
+
+    // Check if dialog was completed and process result
+    if (g_imguiMixAnalysisDialog->IsCompleted()) {
+      const auto &result = g_imguiMixAnalysisDialog->GetResult();
+
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+      if (result.cancelled) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Mix analysis cancelled by user\n");
+        }
+        g_imguiMixAnalysisDialog->Reset();
+        return;
+      }
+
+      // Execute workflow with track type and user query
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg), "MAGDA: Track type: %s, Query: %s\n",
+                 result.trackType.Get(),
+                 result.userQuery.GetLength() > 0 ? result.userQuery.Get()
+                                                  : "(none)");
+        ShowConsoleMsg(msg);
+      }
+
+      // Get bounce mode preference
+      BounceMode bounceMode = MagdaBounceWorkflow::GetBounceModePreference();
+
+      // Execute workflow
+      WDL_FastString error_msg;
+      bool success = MagdaBounceWorkflow::ExecuteWorkflow(
+          bounceMode, result.trackType.Get(),
+          result.userQuery.GetLength() > 0 ? result.userQuery.Get() : "",
+          error_msg);
+
+      if (!success) {
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg),
+                   "MAGDA: Mix analysis workflow failed: %s\n",
+                   error_msg.Get());
+          ShowConsoleMsg(msg);
+        }
+      } else {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: Mix analysis workflow completed successfully!\n");
+        }
+      }
+
+      // Update arrange view
+      void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+      if (UpdateArrange) {
+        UpdateArrange();
+      }
+
+      // Reset dialog
+      g_imguiMixAnalysisDialog->Reset();
+    }
   }
   // Also render param mapping window if visible
   if (g_paramMappingWindow && g_paramMappingWindow->IsVisible()) {
@@ -67,6 +135,7 @@ static void imguiTimerCallback() {
 #define MAGDA_CMD_ABOUT 1004
 #define MAGDA_CMD_SCAN_PLUGINS 1005
 #define MAGDA_CMD_ANALYZE_TRACK 1006
+#define MAGDA_CMD_MIX_ANALYZE 1007
 // Test/headless command IDs
 #define MAGDA_CMD_TEST_EXECUTE_ACTION 2000
 
@@ -360,6 +429,33 @@ void magdaAction(int command_id, int flag) {
       }
     }
     break;
+  case MAGDA_CMD_MIX_ANALYZE:
+    // Mix analysis workflow: bounce track, hide original, analyze, send to API
+    {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Starting mix analysis workflow...\n");
+      }
+
+      // Show dialog to get track type and optional query
+      if (g_imguiMixAnalysisDialog && g_imguiMixAnalysisDialog->IsAvailable()) {
+        g_imguiMixAnalysisDialog->Show();
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: Mix analysis dialog shown - waiting for user input\n");
+        }
+        // Dialog will be rendered in timer callback and workflow will execute
+        // there
+      } else {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: Mix analysis dialog not available (ReaImGui required)\n");
+        }
+      }
+    }
+    break;
   case MAGDA_CMD_TEST_EXECUTE_ACTION:
     // Headless/test mode: Execute MAGDA action from JSON stored in project
     // state This allows Lua scripts to execute MAGDA commands by setting
@@ -431,7 +527,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN ||
       command == MAGDA_CMD_LOGIN || command == MAGDA_CMD_SETTINGS ||
       command == MAGDA_CMD_ABOUT || command == MAGDA_CMD_SCAN_PLUGINS ||
-      command == MAGDA_CMD_ANALYZE_TRACK ||
+      command == MAGDA_CMD_ANALYZE_TRACK || command == MAGDA_CMD_MIX_ANALYZE ||
       command == MAGDA_CMD_TEST_EXECUTE_ACTION) {
     magdaAction(command, 0);
     return true; // handled
@@ -559,6 +655,19 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
+    // Separator
+    subMi.fMask = MIIM_TYPE;
+    subMi.fType = MFT_SEPARATOR;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "Mix Analysis" item (bounce track, analyze, send to mix agent)
+    subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
+    subMi.fType = MFT_STRING;
+    subMi.fState = MFS_UNCHECKED;
+    subMi.dwTypeData = (char *)"Mix Analysis...";
+    subMi.wID = MAGDA_CMD_MIX_ANALYZE;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
     // Now add the MAGDA menu item with submenu to Main extensions
     mi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE | MIIM_SUBMENU;
     mi.hSubMenu = hSubMenu;
@@ -605,6 +714,10 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     if (g_imguiChat) {
       delete g_imguiChat;
       g_imguiChat = nullptr;
+    }
+    if (g_imguiMixAnalysisDialog) {
+      delete g_imguiMixAnalysisDialog;
+      g_imguiMixAnalysisDialog = nullptr;
     }
     if (g_chatWindow) {
       delete g_chatWindow;
@@ -655,6 +768,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                                            "MAGDA: Plugins"};
   gaccel_register_t gaccel_analyze_track = {{0, 0, MAGDA_CMD_ANALYZE_TRACK},
                                             "MAGDA: Analyze Selected Track"};
+  gaccel_register_t gaccel_mix_analyze = {{0, 0, MAGDA_CMD_MIX_ANALYZE},
+                                          "MAGDA: Mix Analysis"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, MAGDA_CMD_TEST_EXECUTE_ACTION}, "MAGDA: Test Execute Action"};
 
@@ -686,6 +801,11 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   if (rec->Register("gaccel", &gaccel_analyze_track)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Analyze Selected Track' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_mix_analyze)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'Mix Analysis' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_test_execute)) {
@@ -753,6 +873,17 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       if (ShowConsoleMsg) {
         ShowConsoleMsg("MAGDA: Param mapping window initialized\n");
       }
+    }
+
+    // Initialize ImGui mix analysis dialog
+    g_imguiMixAnalysisDialog = new MagdaImGuiMixAnalysisDialog();
+    if (g_imguiMixAnalysisDialog->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui mix analysis dialog initialized\n");
+      }
+    } else {
+      delete g_imguiMixAnalysisDialog;
+      g_imguiMixAnalysisDialog = nullptr;
     }
   } else {
     // ReaImGui not available, fall back to SWELL chat
