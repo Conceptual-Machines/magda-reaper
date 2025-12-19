@@ -56,6 +56,13 @@ void MagdaImGuiMixAnalysisDialog::Show() {
   m_completed = false;
   m_dialogResult.cancelled = true; // Default to cancelled
 
+  // Recreate context if it was destroyed (e.g., when window was closed)
+  // This ensures the window can be reopened after being closed
+  if (!m_ctx && m_available && m_ImGui_CreateContext) {
+    int configFlags = 0;
+    m_ctx = m_ImGui_CreateContext("MAGDA_MixAnalysis", &configFlags);
+  }
+
   // Reset state
   m_trackTypeBuffer[0] = '\0';
   m_userQueryBuffer[0] = '\0';
@@ -160,6 +167,7 @@ void MagdaImGuiMixAnalysisDialog::Render() {
     m_dialogResult.cancelled = true;
     m_completed = true;
     m_visible = false;
+    m_ctx = nullptr; // Reset context so it can be recreated on next Show()
   }
 
   m_ImGui_End(m_ctx);
