@@ -39,6 +39,10 @@ struct ReaperCommand {
   // For delete take command
   void* itemPtr;  // MediaItem* to delete take from
   int takeIndex;  // Index of take to delete
+  // For deferred commands - wait until file is ready
+  int deferCount;       // Max attempts before giving up
+  long lastFileSize;    // Last checked file size (for stability check)
+  int stableCount;      // How many ticks file size has been stable
 };
 
 static std::vector<ReaperCommand> s_reaperCommandQueue;
@@ -802,6 +806,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         dspCmd.itemPtr = (void*)item;
         dspCmd.takeIndex = takesBefore;
         dspCmd.completed = false;
+        dspCmd.deferCount = 100;   // Max 100 attempts (~3-5 seconds)
+        dspCmd.lastFileSize = 0;   // Will check file size stability
+        dspCmd.stableCount = 0;    // Need 3 stable readings
         strncpy(dspCmd.trackName, cmd.trackName, sizeof(dspCmd.trackName) - 1);
         dspCmd.trackName[sizeof(dspCmd.trackName) - 1] = '\0';
         strncpy(dspCmd.trackType, cmd.trackType, sizeof(dspCmd.trackType) - 1);
@@ -896,6 +903,68 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       processedAny = true;
       ++it;
     } else if (cmd.type == CMD_DSP_ANALYZE) {
+      // Check if rendered file is ready (size has stabilized)
+      MediaItem* dspItem = (MediaItem*)cmd.itemPtr;
+      bool fileReady = false;
+      
+      if (dspItem) {
+        MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+            (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+        PCM_source *(*GetMediaItemTake_Source)(MediaItem_Take *) =
+            (PCM_source * (*)(MediaItem_Take *)) g_rec->GetFunc("GetMediaItemTake_Source");
+        void (*GetMediaSourceFileName)(PCM_source *, char *, int) =
+            (void (*)(PCM_source *, char *, int))g_rec->GetFunc("GetMediaSourceFileName");
+        
+        if (GetActiveTake && GetMediaItemTake_Source && GetMediaSourceFileName) {
+          MediaItem_Take* activeTake = GetActiveTake(dspItem);
+          if (activeTake) {
+            PCM_source* src = GetMediaItemTake_Source(activeTake);
+            if (src) {
+              char filename[512] = {0};
+              GetMediaSourceFileName(src, filename, sizeof(filename));
+              
+              if (filename[0]) {
+                FILE* f = fopen(filename, "rb");
+                if (f) {
+                  fseek(f, 0, SEEK_END);
+                  long currentSize = ftell(f);
+                  fclose(f);
+                  
+                  if (currentSize > 0 && currentSize == cmd.lastFileSize) {
+                    cmd.stableCount++;
+                    if (cmd.stableCount >= 3) {
+                      fileReady = true;
+                      if (ShowConsoleMsg) {
+                        char msg[256];
+                        snprintf(msg, sizeof(msg), "MAGDA: File ready (%ld bytes, stable for %d ticks)\n", 
+                                 currentSize, cmd.stableCount);
+                        ShowConsoleMsg(msg);
+                      }
+                    }
+                  } else {
+                    cmd.stableCount = 0;
+                  }
+                  cmd.lastFileSize = currentSize;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // If file not ready, defer (up to max attempts)
+      if (!fileReady && cmd.deferCount > 0) {
+        cmd.deferCount--;
+        ++it;
+        continue;  // Skip this command for now, process on next tick
+      }
+      
+      if (!fileReady) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Warning - proceeding with DSP despite file not stabilizing\n");
+        }
+      }
+      
       // Run DSP analysis on main thread (audio accessor requires main thread)
       // Note: REAPER automatically sets the rendered take as active after 40209
       if (ShowConsoleMsg) {
