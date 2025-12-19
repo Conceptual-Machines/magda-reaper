@@ -14,6 +14,12 @@
 extern reaper_plugin_info_t *g_rec;
 extern HINSTANCE g_hInst;
 
+// Forward declaration
+extern void magdaAction(int command_id, int flag);
+
+// Command ID for mix analysis (defined in main.cpp)
+#define MAGDA_CMD_MIX_ANALYZE 1007
+
 // Control IDs
 #define IDC_QUESTION_INPUT 1001
 #define IDC_QUESTION_DISPLAY 1002
@@ -47,15 +53,27 @@ void MagdaChatWindow::Show(bool toggle) {
   if (!g_rec)
     return;
 
-  if (m_hwnd && IsWindowVisible(m_hwnd)) {
-    if (toggle) {
-      Hide();
-    } else {
-      SetForegroundWindow(m_hwnd);
+  // Check if window exists and is valid
+  bool windowExists = (m_hwnd != nullptr);
+  bool windowVisible = false;
+  if (windowExists) {
+    // Check if window handle is still valid (not destroyed)
+    // On some systems, IsWindow can be unreliable, so we also check if it's
+    // visible
+    windowVisible = IsWindowVisible(m_hwnd);
+
+    if (windowVisible) {
+      if (toggle) {
+        Hide();
+      } else {
+        // Window is visible - just bring to front
+        SetForegroundWindow(m_hwnd);
+      }
+      return;
     }
-    return;
   }
 
+  // Window doesn't exist or is hidden - create or show it
   if (!m_hwnd) {
     // Create a modeless dialog - SWS pattern
     CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAGDA_CHAT),
@@ -105,6 +123,7 @@ void MagdaChatWindow::Show(bool toggle) {
 
     if (isDocked) {
       // Window is docked - activate the dock tab
+      // This works even if the window was previously hidden/closed
       void (*DockWindowActivate)(HWND hwnd) =
           (void (*)(HWND))g_rec->GetFunc("DockWindowActivate");
       if (DockWindowActivate) {
@@ -112,9 +131,11 @@ void MagdaChatWindow::Show(bool toggle) {
       }
     } else {
       // Window is floating - show it normally
+      // Always show, even if it was previously hidden
       ShowWindow(m_hwnd, SW_SHOW);
       SetForegroundWindow(m_hwnd);
       SetFocus(m_hwnd);
+      UpdateWindow(m_hwnd); // Ensure window is updated
     }
   }
 }
@@ -371,6 +392,37 @@ void MagdaChatWindow::OnCommand(int command, int notifyCode) {
 
   case IDOK: // Enter key in input field
     if (m_hwndQuestionInput && GetFocus() == m_hwndQuestionInput) {
+      OnSendMessage();
+    }
+    break;
+
+  case IDC_BTN_MIX_ANALYSIS:
+    // Trigger mix analysis workflow (bounce/analyze/send to agent)
+    magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
+    break;
+
+  case IDC_BTN_MASTER_ANALYSIS:
+    // For now, send chat message (can be updated later)
+    if (m_hwndQuestionInput) {
+      SetWindowText(m_hwndQuestionInput,
+                    "Analyze the master bus and suggest mastering adjustments");
+      OnSendMessage();
+    }
+    break;
+
+  case IDC_BTN_GAIN_STAGING:
+    // For now, send chat message (can be updated later)
+    if (m_hwndQuestionInput) {
+      SetWindowText(m_hwndQuestionInput,
+                    "Check gain staging across all tracks");
+      OnSendMessage();
+    }
+    break;
+
+  case IDC_BTN_HOUSEKEEPING:
+    // For now, send chat message (can be updated later)
+    if (m_hwndQuestionInput) {
+      SetWindowText(m_hwndQuestionInput, "Clean up and organize this project");
       OnSendMessage();
     }
     break;

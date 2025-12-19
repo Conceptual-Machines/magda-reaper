@@ -1076,7 +1076,8 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
 }
 
 void MagdaDSPAnalyzer::GetTrackFXInfo(int trackIndex, WDL_FastString &json) {
-  json.Append("\"existing_fx\":[");
+  // Output only the array - caller adds the key name
+  json.Append("[");
 
   if (!g_rec) {
     json.Append("]");

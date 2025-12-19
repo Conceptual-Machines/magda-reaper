@@ -16,6 +16,12 @@ static MagdaHTTPClient s_httpClient;
 // g_rec is needed for debug logging
 extern reaper_plugin_info_t *g_rec;
 
+// Forward declaration
+extern void magdaAction(int command_id, int flag);
+
+// Command ID for mix analysis (defined in main.cpp)
+#define MAGDA_CMD_MIX_ANALYZE 1007
+
 // ReaImGui constants
 namespace ImGuiCond {
 constexpr int FirstUseEver = 1 << 2;
@@ -327,6 +333,12 @@ bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
 
 void MagdaImGuiChat::Show() {
   m_visible = true;
+  // Recreate context if it was destroyed (e.g., when window was closed)
+  // This ensures the window can be reopened after being closed
+  if (!m_ctx && m_available) {
+    int configFlags = m_ImGui_ConfigFlags_DockingEnable();
+    m_ctx = m_ImGui_CreateContext("MAGDA", &configFlags);
+  }
   // Don't check API health on show - it's slow and logs too much
   SetAPIStatus("Ready", 0x88FF88FF); // Green in 0xRRGGBBAA format
 }
@@ -337,6 +349,10 @@ void MagdaImGuiChat::Toggle() {
   m_visible = !m_visible;
   if (m_visible) {
     SetAPIStatus("Ready", 0x88FF88FF); // Green in 0xRRGGBBAA format
+  } else {
+    // When hiding, clean up context so it can be recreated on next show
+    // This matches the behavior when window is closed via X button
+    m_ctx = nullptr;
   }
 }
 
@@ -652,8 +668,8 @@ void MagdaImGuiChat::Render() {
       m_ImGui_TextColored(m_ctx, g_theme.headerText, "ACTIONS");
       m_ImGui_Separator(m_ctx);
       if (m_ImGui_Button(m_ctx, "Mix Analysis", nullptr, nullptr)) {
-        if (m_onSend)
-          m_onSend("Analyze my mix and suggest improvements");
+        // Trigger mix analysis workflow (bounce/analyze/send to agent)
+        magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
       }
       if (m_ImGui_Button(m_ctx, "Master Analysis", nullptr, nullptr)) {
         if (m_onSend)
@@ -857,9 +873,8 @@ void MagdaImGuiChat::RenderControlsColumn() {
   double btnHeight = 28.0;
 
   if (m_ImGui_Button(m_ctx, "Mix Analysis", &btnWidth, &btnHeight)) {
-    if (m_onSend) {
-      m_onSend("Analyze my mix and suggest improvements");
-    }
+    // Trigger mix analysis workflow (bounce/analyze/send to agent)
+    magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
   }
 
   m_ImGui_Dummy(m_ctx, 0, 3);

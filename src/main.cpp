@@ -1,9 +1,11 @@
 #include "magda_actions.h"
+#include "magda_bounce_workflow.h"
 #include "magda_chat_window.h"
 #include "magda_drum_mapping.h"
 #include "magda_drum_mapping_window.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_chat.h"
+#include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
 #include "magda_login_window.h"
 #include "magda_param_mapping.h"
@@ -13,6 +15,7 @@
 #include "magda_settings_window.h"
 #include "reaper_plugin.h"
 // SWELL is already included by reaper_plugin.h
+#include <thread>
 
 // Plugin instance handle
 HINSTANCE g_hInst = nullptr;
@@ -34,11 +37,23 @@ MagdaPluginScanner *g_pluginScanner = nullptr;
 MagdaPluginWindow *g_pluginWindow = nullptr;
 // Global ImGui plugin window instance
 MagdaImGuiPluginWindow *g_imguiPluginWindow = nullptr;
+// Global ImGui mix analysis dialog instance
+MagdaImGuiMixAnalysisDialog *g_imguiMixAnalysisDialog = nullptr;
 // Global param mapping manager instance
 MagdaParamMappingWindow *g_paramMappingWindow = nullptr;
 // Global drum mapping manager instance (defined in magda_drum_mapping.cpp)
 // Global drum mapping window instance (defined in
 // magda_drum_mapping_window.cpp)
+
+// Separate timer callback for processing Reaper command queue
+// This runs at lower frequency and is separate from UI rendering
+static void commandQueueTimerCallback() {
+  // Process Reaper command queue (render, delete operations)
+  MagdaBounceWorkflow::ProcessCommandQueue();
+
+  // Process cleanup queue (legacy track deletion)
+  MagdaBounceWorkflow::ProcessCleanupQueue();
+}
 
 // Timer callback for ImGui rendering
 static void imguiTimerCallback() {
@@ -48,6 +63,70 @@ static void imguiTimerCallback() {
   // Also render ImGui plugin window if visible
   if (g_imguiPluginWindow && g_imguiPluginWindow->IsVisible()) {
     g_imguiPluginWindow->Render();
+  }
+  // Render mix analysis dialog if visible
+  if (g_imguiMixAnalysisDialog && g_imguiMixAnalysisDialog->IsVisible()) {
+    g_imguiMixAnalysisDialog->Render();
+
+    // Check if dialog was completed and process result
+    if (g_imguiMixAnalysisDialog->IsCompleted()) {
+      const auto &result = g_imguiMixAnalysisDialog->GetResult();
+
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+      if (result.cancelled) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Mix analysis cancelled by user\n");
+        }
+        g_imguiMixAnalysisDialog->Reset();
+        return;
+      }
+
+      // Execute workflow with track type and user query
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg), "MAGDA: Track type: %s, Query: %s\n",
+                 result.trackType.Get(),
+                 result.userQuery.GetLength() > 0 ? result.userQuery.Get()
+                                                  : "(none)");
+        ShowConsoleMsg(msg);
+      }
+
+      // Get bounce mode preference
+      BounceMode bounceMode = MagdaBounceWorkflow::GetBounceModePreference();
+
+      // Execute workflow
+      WDL_FastString error_msg;
+      bool success = MagdaBounceWorkflow::ExecuteWorkflow(
+          bounceMode, result.trackType.Get(),
+          result.userQuery.GetLength() > 0 ? result.userQuery.Get() : "",
+          error_msg);
+
+      if (!success) {
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg),
+                   "MAGDA: Mix analysis workflow failed: %s\n",
+                   error_msg.Get());
+          ShowConsoleMsg(msg);
+        }
+      } else {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: Mix analysis workflow completed successfully!\n");
+        }
+      }
+
+      // Update arrange view
+      void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+      if (UpdateArrange) {
+        UpdateArrange();
+      }
+
+      // Reset dialog
+      g_imguiMixAnalysisDialog->Reset();
+    }
   }
   // Also render param mapping window if visible
   if (g_paramMappingWindow && g_paramMappingWindow->IsVisible()) {
@@ -67,6 +146,7 @@ static void imguiTimerCallback() {
 #define MAGDA_CMD_ABOUT 1004
 #define MAGDA_CMD_SCAN_PLUGINS 1005
 #define MAGDA_CMD_ANALYZE_TRACK 1006
+#define MAGDA_CMD_MIX_ANALYZE 1007
 // Test/headless command IDs
 #define MAGDA_CMD_TEST_EXECUTE_ACTION 2000
 
@@ -158,17 +238,26 @@ void magdaAction(int command_id, int flag) {
 
   switch (command_id) {
   case MAGDA_CMD_OPEN:
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Opening chat interface\n");
-    }
     // Use ImGui chat if available, otherwise fall back to SWELL
     if (g_useImGuiChat && g_imguiChat) {
-      g_imguiChat->Toggle();
+      // Only show if not already visible - don't close if already open
+      if (!g_imguiChat->IsVisible()) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Opening chat interface\n");
+        }
+        g_imguiChat->Show();
+      }
     } else {
       if (!g_chatWindow) {
         g_chatWindow = new MagdaChatWindow();
       }
-      g_chatWindow->Show(true); // Toggle - show if hidden, hide if shown
+      // Only show if not already visible - don't close if already open
+      if (!g_chatWindow->IsVisible()) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Opening chat interface\n");
+        }
+        g_chatWindow->Show(false); // Show only, don't toggle
+      }
     }
     break;
   case MAGDA_CMD_LOGIN:
@@ -211,152 +300,154 @@ void magdaAction(int command_id, int flag) {
     }
     break;
   case MAGDA_CMD_ANALYZE_TRACK:
-    // Analyze the first selected track's audio (with FX applied)
-    // Custom render workflow - no built-in REAPER stem actions
+    // Analyze the first selected track's audio (non-blocking)
+    // Queue the work to run in background thread to avoid blocking UI
     {
       if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Analyzing selected track...\n");
+        ShowConsoleMsg("MAGDA: Queuing track analysis (non-blocking)...\n");
       }
 
-      // Get required REAPER functions
-      int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
-      MediaTrack *(*GetTrack)(ReaProject *, int) =
-          (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-      int (*IsTrackSelected)(MediaTrack *) =
-          (int (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
-      void (*SetTrackSelected)(MediaTrack *, bool) =
-          (void (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
-      void (*SetOnlyTrackSelected)(MediaTrack *) =
-          (void (*)(MediaTrack *))g_rec->GetFunc("SetOnlyTrackSelected");
-      void (*Main_OnCommand)(int, int) =
-          (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
-      void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *,
-                                    double *, bool) =
-          (void (*)(ReaProject *, bool, bool, double *, double *,
-                    bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
-      double (*GetProjectLength)(ReaProject *) =
-          (double (*)(ReaProject *))g_rec->GetFunc("GetProjectLength");
-      void (*DeleteTrack)(MediaTrack *) =
-          (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
-      bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *,
-                                          bool) =
-          (bool (*)(MediaTrack *, const char *, char *, bool))g_rec->GetFunc(
-              "GetSetMediaTrackInfo_String");
-      void *(*GetSetMediaTrackInfo)(MediaTrack *, const char *, void *) =
-          (void *(*)(MediaTrack *, const char *, void *))g_rec->GetFunc(
-              "GetSetMediaTrackInfo");
-      void (*InsertTrackInProject)(ReaProject *, int, int) = (void (*)(
-          ReaProject *, int, int))g_rec->GetFunc("InsertTrackInProject");
-      double (*GetMediaTrackInfo_Value)(MediaTrack *, const char *) =
-          (double (*)(MediaTrack *, const char *))g_rec->GetFunc(
-              "GetMediaTrackInfo_Value");
+      // Run analysis in background thread to avoid blocking
+      std::thread([]() {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
-      if (!GetNumTracks || !GetTrack || !IsTrackSelected) {
-        if (ShowConsoleMsg) {
-          ShowConsoleMsg("MAGDA: Required REAPER functions not available\n");
-        }
-        break;
-      }
+        // Get required REAPER functions (safe to call from background thread
+        // for read-only ops)
+        int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
+        MediaTrack *(*GetTrack)(ReaProject *, int) =
+            (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+        int (*IsTrackSelected)(MediaTrack *) =
+            (int (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
+        bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *,
+                                            bool) =
+            (bool (*)(MediaTrack *, const char *, char *, bool))g_rec->GetFunc(
+                "GetSetMediaTrackInfo_String");
+        void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *,
+                                      double *, bool) =
+            (void (*)(ReaProject *, bool, bool, double *, double *,
+                      bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
+        double (*GetProjectLength)(ReaProject *) =
+            (double (*)(ReaProject *))g_rec->GetFunc("GetProjectLength");
+        int (*CountTrackMediaItems)(MediaTrack *) =
+            (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
 
-      int numTracks = GetNumTracks();
-      int selectedTrackIndex = -1;
-      MediaTrack *selectedTrack = nullptr;
-      char trackName[256] = "Track";
-
-      // Find selected track
-      for (int i = 0; i < numTracks; i++) {
-        MediaTrack *track = GetTrack(nullptr, i);
-        if (track && IsTrackSelected(track)) {
-          selectedTrackIndex = i;
-          selectedTrack = track;
-          if (GetSetMediaTrackInfo_String) {
-            GetSetMediaTrackInfo_String(track, "P_NAME", trackName, false);
+        if (!GetNumTracks || !GetTrack || !IsTrackSelected) {
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: Required REAPER functions not available\n");
           }
-          break;
+          return;
         }
-      }
 
-      if (selectedTrackIndex < 0) {
-        if (ShowConsoleMsg) {
-          ShowConsoleMsg(
-              "MAGDA: No track selected. Please select a track first.\n");
+        int numTracks = GetNumTracks();
+        int selectedTrackIndex = -1;
+        MediaTrack *selectedTrack = nullptr;
+        char trackName[256] = "Track";
+
+        // Find selected track
+        for (int i = 0; i < numTracks; i++) {
+          MediaTrack *track = GetTrack(nullptr, i);
+          if (track && IsTrackSelected(track)) {
+            selectedTrackIndex = i;
+            selectedTrack = track;
+            if (GetSetMediaTrackInfo_String) {
+              GetSetMediaTrackInfo_String(track, "P_NAME", trackName, false);
+            }
+            break;
+          }
         }
-        break;
-      }
+
+        if (selectedTrackIndex < 0) {
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg(
+                "MAGDA: No track selected. Please select a track first.\n");
+          }
+          return;
+        }
+
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA: Analyzing track %d ('%s')...\n",
+                   selectedTrackIndex, trackName);
+          ShowConsoleMsg(msg);
+        }
+
+        // Check if we have a time selection
+        double timeSelStart = 0, timeSelEnd = 0;
+        bool hasTimeSelection = false;
+        if (GetSet_LoopTimeRange2) {
+          GetSet_LoopTimeRange2(nullptr, false, false, &timeSelStart,
+                                &timeSelEnd, false);
+          hasTimeSelection = (timeSelEnd - timeSelStart) > 0.1;
+        }
+
+        // Determine analysis length
+        double analysisLength = 30.0;
+        if (!hasTimeSelection) {
+          double projLen = GetProjectLength ? GetProjectLength(nullptr) : 60.0;
+          if (projLen < analysisLength)
+            analysisLength = projLen;
+          if (analysisLength < 1.0)
+            analysisLength = 1.0;
+          timeSelEnd = timeSelStart + analysisLength;
+        } else {
+          analysisLength = timeSelEnd - timeSelStart;
+        }
+
+        if (ShowConsoleMsg) {
+          char msg[256];
+          snprintf(msg, sizeof(msg),
+                   "MAGDA: Analysis range: %.2f - %.2f sec (%.1f sec)\n",
+                   timeSelStart, timeSelEnd, analysisLength);
+          ShowConsoleMsg(msg);
+        }
+
+        // Check if track has audio items
+        bool hasAudioItems = false;
+        if (CountTrackMediaItems && selectedTrack) {
+          hasAudioItems = CountTrackMediaItems(selectedTrack) > 0;
+        }
+
+        if (!hasAudioItems) {
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: Track has no media items to analyze.\n");
+            ShowConsoleMsg(
+                "MAGDA: For VSTi tracks, please bounce to audio first.\n");
+          }
+          return;
+        }
+
+        // Perform DSP analysis directly on the track's audio
+        // This reads the source audio (pre-FX for audio tracks)
+        performDSPAnalysis(selectedTrackIndex, trackName, (float)analysisLength,
+                           false);
+      }).detach();
+    }
+    break;
+  case MAGDA_CMD_MIX_ANALYZE:
+    // Mix analysis workflow: bounce track, hide original, analyze, send to API
+    {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
       if (ShowConsoleMsg) {
-        char msg[512];
-        snprintf(msg, sizeof(msg), "MAGDA: Analyzing track %d ('%s')...\n",
-                 selectedTrackIndex, trackName);
-        ShowConsoleMsg(msg);
+        ShowConsoleMsg("MAGDA: Starting mix analysis workflow...\n");
       }
 
-      // Check if we have a time selection
-      double timeSelStart = 0, timeSelEnd = 0;
-      bool hasTimeSelection = false;
-      if (GetSet_LoopTimeRange2) {
-        GetSet_LoopTimeRange2(nullptr, false, false, &timeSelStart, &timeSelEnd,
-                              false);
-        hasTimeSelection = (timeSelEnd - timeSelStart) > 0.1;
-      }
-
-      // Determine analysis length
-      double analysisLength = 30.0;
-      if (!hasTimeSelection) {
-        double projLen = GetProjectLength ? GetProjectLength(nullptr) : 60.0;
-        if (projLen < analysisLength)
-          analysisLength = projLen;
-        if (analysisLength < 1.0)
-          analysisLength = 1.0;
-        timeSelEnd = timeSelStart + analysisLength;
+      // Show dialog to get track type and optional query
+      if (g_imguiMixAnalysisDialog && g_imguiMixAnalysisDialog->IsAvailable()) {
+        g_imguiMixAnalysisDialog->Show();
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: Mix analysis dialog shown - waiting for user input\n");
+        }
+        // Dialog will be rendered in timer callback and workflow will execute
+        // there
       } else {
-        analysisLength = timeSelEnd - timeSelStart;
-      }
-
-      if (ShowConsoleMsg) {
-        char msg[256];
-        snprintf(msg, sizeof(msg),
-                 "MAGDA: Analysis range: %.2f - %.2f sec (%.1f sec)\n",
-                 timeSelStart, timeSelEnd, analysisLength);
-        ShowConsoleMsg(msg);
-      }
-
-      // For now, analyze raw audio directly from the track
-      // This works for audio tracks but not VSTi tracks
-      // TODO: Implement proper offline render for VSTi tracks
-
-      // Check if track has audio items
-      int (*CountTrackMediaItems)(MediaTrack *) =
-          (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
-
-      bool hasAudioItems = false;
-      if (CountTrackMediaItems && selectedTrack) {
-        hasAudioItems = CountTrackMediaItems(selectedTrack) > 0;
-      }
-
-      if (!hasAudioItems) {
         if (ShowConsoleMsg) {
-          ShowConsoleMsg("MAGDA: Track has no media items to analyze.\n");
           ShowConsoleMsg(
-              "MAGDA: For VSTi tracks, please bounce to audio first.\n");
+              "MAGDA: Mix analysis dialog not available (ReaImGui required)\n");
         }
-        break;
-      }
-
-      // Perform DSP analysis directly on the track's audio
-      // This reads the source audio (pre-FX for audio tracks)
-      performDSPAnalysis(selectedTrackIndex, trackName, (float)analysisLength,
-                         false);
-
-      // Re-select the original track
-      if (SetTrackSelected && selectedTrack) {
-        SetTrackSelected(selectedTrack, true);
-      }
-
-      // Update arrange view
-      void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
-      if (UpdateArrange) {
-        UpdateArrange();
       }
     }
     break;
@@ -431,7 +522,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN ||
       command == MAGDA_CMD_LOGIN || command == MAGDA_CMD_SETTINGS ||
       command == MAGDA_CMD_ABOUT || command == MAGDA_CMD_SCAN_PLUGINS ||
-      command == MAGDA_CMD_ANALYZE_TRACK ||
+      command == MAGDA_CMD_ANALYZE_TRACK || command == MAGDA_CMD_MIX_ANALYZE ||
       command == MAGDA_CMD_TEST_EXECUTE_ACTION) {
     magdaAction(command, 0);
     return true; // handled
@@ -559,6 +650,19 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
+    // Separator
+    subMi.fMask = MIIM_TYPE;
+    subMi.fType = MFT_SEPARATOR;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "Mix Analysis" item (bounce track, analyze, send to mix agent)
+    subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
+    subMi.fType = MFT_STRING;
+    subMi.fState = MFS_UNCHECKED;
+    subMi.dwTypeData = (char *)"Mix Analysis...";
+    subMi.wID = MAGDA_CMD_MIX_ANALYZE;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
     // Now add the MAGDA menu item with submenu to Main extensions
     mi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE | MIIM_SUBMENU;
     mi.hSubMenu = hSubMenu;
@@ -605,6 +709,10 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     if (g_imguiChat) {
       delete g_imguiChat;
       g_imguiChat = nullptr;
+    }
+    if (g_imguiMixAnalysisDialog) {
+      delete g_imguiMixAnalysisDialog;
+      g_imguiMixAnalysisDialog = nullptr;
     }
     if (g_chatWindow) {
       delete g_chatWindow;
@@ -655,6 +763,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                                            "MAGDA: Plugins"};
   gaccel_register_t gaccel_analyze_track = {{0, 0, MAGDA_CMD_ANALYZE_TRACK},
                                             "MAGDA: Analyze Selected Track"};
+  gaccel_register_t gaccel_mix_analyze = {{0, 0, MAGDA_CMD_MIX_ANALYZE},
+                                          "MAGDA: Mix Analysis"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, MAGDA_CMD_TEST_EXECUTE_ACTION}, "MAGDA: Test Execute Action"};
 
@@ -686,6 +796,11 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   if (rec->Register("gaccel", &gaccel_analyze_track)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Analyze Selected Track' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_mix_analyze)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'Mix Analysis' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_test_execute)) {
@@ -724,6 +839,9 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     g_imguiChat->SetPluginScanner(g_pluginScanner);
     // Register timer for ImGui rendering (~30 fps)
     rec->Register("timer", (void *)imguiTimerCallback);
+    // Register separate timer for command queue processing (lower frequency,
+    // separate from UI)
+    rec->Register("timer", (void *)commandQueueTimerCallback);
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: ImGui chat initialized (ReaImGui available)\n");
     }
@@ -753,6 +871,17 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       if (ShowConsoleMsg) {
         ShowConsoleMsg("MAGDA: Param mapping window initialized\n");
       }
+    }
+
+    // Initialize ImGui mix analysis dialog
+    g_imguiMixAnalysisDialog = new MagdaImGuiMixAnalysisDialog();
+    if (g_imguiMixAnalysisDialog->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui mix analysis dialog initialized\n");
+      }
+    } else {
+      delete g_imguiMixAnalysisDialog;
+      g_imguiMixAnalysisDialog = nullptr;
     }
   } else {
     // ReaImGui not available, fall back to SWELL chat

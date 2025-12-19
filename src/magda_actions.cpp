@@ -1233,7 +1233,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       result.Append(analysisJson.Get());
 
       // Also include FX info
-      result.Append(",");
+      result.Append(",\"existing_fx\":");
       MagdaDSPAnalyzer::GetTrackFXInfo(track_index, result);
       result.Append("}");
       return true;
