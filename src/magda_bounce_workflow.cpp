@@ -4,10 +4,12 @@
 #include "magda_login_window.h"
 #include "magda_settings_window.h"
 #include "reaper_plugin.h"
+#include <chrono>
 #include <condition_variable>
 #include <cstring>
 #include <ctime>
 #include <mutex>
+#include <string>
 #include <thread>
 
 extern reaper_plugin_info_t *g_rec;
@@ -21,7 +23,7 @@ static std::mutex s_cleanupMutex;
 
 // Command queue for Reaper operations that must run on main thread (outside
 // callbacks)
-enum ReaperCommandType { CMD_RENDER_ITEM = 0, CMD_DELETE_TRACK = 1, CMD_DELETE_TAKE = 2 };
+enum ReaperCommandType { CMD_RENDER_ITEM = 0, CMD_DELETE_TRACK = 1, CMD_DELETE_TAKE = 2, CMD_DSP_ANALYZE = 3 };
 
 struct ReaperCommand {
   ReaperCommandType type;
@@ -36,6 +38,7 @@ struct ReaperCommand {
   char userRequest[1024];
   // For delete take command
   void* itemPtr;  // MediaItem* to delete take from
+  int takeIndex;  // Index of take to delete
 };
 
 static std::vector<ReaperCommand> s_reaperCommandQueue;
@@ -672,6 +675,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
 
   bool processedAny = false;
+  
+  // Collect new commands to add after the loop (to avoid iterator invalidation)
+  std::vector<ReaperCommand> commandsToAdd;
 
   // Process commands one at a time (to avoid blocking)
   for (auto it = s_reaperCommandQueue.begin();
@@ -761,6 +767,11 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         }
       }
 
+      // Count takes BEFORE render so we know which one is new
+      int (*CountTakesFunc)(MediaItem *) =
+          (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+      int takesBefore = CountTakesFunc ? CountTakesFunc(item) : 0;
+
       // Render the item (apply FX to create new take)
       // Use action 40209: "Item: Apply track FX to items as new take"
       Main_OnCommand(40209, 0);
@@ -769,80 +780,35 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       }
 
       if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Applied FX to item (render completed)\n");
+        char msg[256];
+        int takesAfter = CountTakesFunc ? CountTakesFunc(item) : 0;
+        snprintf(msg, sizeof(msg), "MAGDA: Applied FX to item (takes: %d -> %d)\n", takesBefore, takesAfter);
+        ShowConsoleMsg(msg);
       }
 
       // Mark as completed
       cmd.completed = true;
       processedAny = true;
 
-      // If this render should start async thread, do it now
+      // If this render should continue with DSP analysis, queue it
+      // DSP must run on main thread because audio accessor API is not thread-safe
       if (cmd.startAsyncAfterRender) {
-        // Start async thread for DSP analysis + API call
-        // Copy parameters for thread
-        int trackIndex = cmd.trackIndex;
-        int selectedTrackIndex = cmd.selectedTrackIndex;
-        void* itemPtr = (void*)item;  // Store item pointer for take deletion
-        char trackName[256];
-        char trackType[256];
-        char userRequest[1024];
-        strncpy(trackName, cmd.trackName, sizeof(trackName) - 1);
-        trackName[sizeof(trackName) - 1] = '\0';
-        strncpy(trackType, cmd.trackType, sizeof(trackType) - 1);
-        trackType[sizeof(trackType) - 1] = '\0';
-        strncpy(userRequest, cmd.userRequest, sizeof(userRequest) - 1);
-        userRequest[sizeof(userRequest) - 1] = '\0';
-
-        std::thread([trackIndex, selectedTrackIndex, itemPtr, trackName, trackType,
-                     userRequest]() {
-          void (*ShowConsoleMsg)(const char *msg) =
-              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-
-          // Step 1: Run DSP analysis on the track (analyzes the active take which is the new rendered one)
-          WDL_FastString analysisJson, fxJson, error_msg, responseJson;
-          bool analysisSuccess = RunDSPAnalysis(
-              trackIndex, trackName, analysisJson, fxJson, error_msg);
-
-          if (!analysisSuccess) {
-            if (ShowConsoleMsg) {
-              char msg[512];
-              snprintf(msg, sizeof(msg), "MAGDA: DSP analysis failed: %s\n",
-                       error_msg.Get());
-              ShowConsoleMsg(msg);
-            }
-          } else {
-            // Step 2: Send to mix API (asynchronous)
-            if (!SendToMixAPI(analysisJson.Get(), fxJson.Get(),
-                              trackType[0] ? trackType : "other",
-                              userRequest[0] ? userRequest : "",
-                              selectedTrackIndex, trackName, responseJson,
-                              error_msg)) {
-              if (ShowConsoleMsg) {
-                char msg[512];
-                snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n",
-                         error_msg.Get());
-                ShowConsoleMsg(msg);
-              }
-            } else {
-              if (ShowConsoleMsg) {
-                ShowConsoleMsg(
-                    "MAGDA: Mix analysis workflow completed successfully!\n");
-              }
-            }
-          }
-
-          // Step 3: Queue take deletion (must be done on main thread)
-          // Delete the rendered take, keeping the original take
-          {
-            std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
-            ReaperCommand deleteCmd;
-            deleteCmd.type = CMD_DELETE_TAKE;
-            deleteCmd.trackIndex = trackIndex;
-            deleteCmd.itemPtr = itemPtr;
-            deleteCmd.completed = false;
-            s_reaperCommandQueue.push_back(deleteCmd);
-          }
-        }).detach();
+        // Queue DSP analysis command (runs on main thread)
+        // Note: Active take will be set in CMD_DSP_ANALYZE right before analysis
+        ReaperCommand dspCmd;
+        dspCmd.type = CMD_DSP_ANALYZE;
+        dspCmd.trackIndex = cmd.trackIndex;
+        dspCmd.selectedTrackIndex = cmd.selectedTrackIndex;
+        dspCmd.itemPtr = (void*)item;
+        dspCmd.takeIndex = takesBefore;
+        dspCmd.completed = false;
+        strncpy(dspCmd.trackName, cmd.trackName, sizeof(dspCmd.trackName) - 1);
+        dspCmd.trackName[sizeof(dspCmd.trackName) - 1] = '\0';
+        strncpy(dspCmd.trackType, cmd.trackType, sizeof(dspCmd.trackType) - 1);
+        dspCmd.trackType[sizeof(dspCmd.trackType) - 1] = '\0';
+        strncpy(dspCmd.userRequest, cmd.userRequest, sizeof(dspCmd.userRequest) - 1);
+        dspCmd.userRequest[sizeof(dspCmd.userRequest) - 1] = '\0';
+        commandsToAdd.push_back(dspCmd);
       }
 
       // Move to next command
@@ -873,41 +839,22 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       processedAny = true;
       ++it;
     } else if (cmd.type == CMD_DELETE_TAKE) {
-      // Delete the active take from the item (the rendered take)
+      // Delete the rendered take from the item by index
       MediaItem* item = (MediaItem*)cmd.itemPtr;
       if (item) {
         int (*CountTakes)(MediaItem *) =
             (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
-        MediaItem_Take *(*GetActiveTake)(MediaItem *) =
-            (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
         MediaItem_Take *(*GetTake)(MediaItem *, int) =
             (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
         void (*SetActiveTake)(MediaItem_Take *) =
             (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
         
-        if (CountTakes && GetActiveTake && GetTake && SetActiveTake) {
+        if (CountTakes && GetTake && SetActiveTake) {
           int takeCount = CountTakes(item);
-          if (takeCount > 1) {
-            // Get the active take (the rendered one)
-            MediaItem_Take* activeTake = GetActiveTake(item);
-            
-            // Find original take (the first one that's not active)
-            MediaItem_Take* originalTake = nullptr;
-            for (int i = 0; i < takeCount; i++) {
-              MediaItem_Take* take = GetTake(item, i);
-              if (take != activeTake) {
-                originalTake = take;
-                break;
-              }
-            }
-            
-            // Switch to original take first
-            if (originalTake) {
-              SetActiveTake(originalTake);
-            }
-            
-            // Delete the rendered take using action 40129: "Take: Delete active take from items"
-            // First, we need to select only this item
+          int takeToDelete = cmd.takeIndex;
+          
+          if (takeCount > 1 && takeToDelete < takeCount) {
+            // Select only this item for the delete action
             bool (*SetMediaItemSelected)(MediaItem *, bool) =
                 (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
             if (SetMediaItemSelected && CountMediaItems && GetMediaItem) {
@@ -921,17 +868,21 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               SetMediaItemSelected(item, true);
             }
             
-            // Set the rendered take as active again so we can delete it
-            if (activeTake) {
-              SetActiveTake(activeTake);
-              // Delete active take
-              Main_OnCommand(40129, 0);  // Take: Delete active take from items
-              if (UpdateArrange) {
-                UpdateArrange();
-              }
-              if (ShowConsoleMsg) {
-                ShowConsoleMsg("MAGDA: Deleted rendered take\n");
-              }
+            // The rendered take is currently active (REAPER made it active after render)
+            // Delete the active take
+            Main_OnCommand(40129, 0);  // Take: Delete active take from items
+            
+            // Set the original take (index 0) as active so user sees original
+            MediaItem_Take* originalTake = GetTake(item, 0);
+            if (originalTake) {
+              SetActiveTake(originalTake);
+            }
+            
+            if (UpdateArrange) {
+              UpdateArrange();
+            }
+            if (ShowConsoleMsg) {
+              ShowConsoleMsg("MAGDA: Deleted rendered take, restored original\n");
             }
           } else {
             if (ShowConsoleMsg) {
@@ -944,10 +895,106 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       cmd.completed = true;
       processedAny = true;
       ++it;
+    } else if (cmd.type == CMD_DSP_ANALYZE) {
+      // Run DSP analysis on main thread (audio accessor requires main thread)
+      // Note: REAPER automatically sets the rendered take as active after 40209
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Running DSP analysis on main thread...\n");
+      }
+
+      // Run DSP analysis synchronously on main thread
+      WDL_FastString analysisJson, fxJson, error_msg;
+      bool analysisSuccess = RunDSPAnalysis(
+          cmd.trackIndex, cmd.trackName, analysisJson, fxJson, error_msg);
+
+      if (!analysisSuccess) {
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA: DSP analysis failed: %s\n",
+                   error_msg.Get());
+          ShowConsoleMsg(msg);
+        }
+        // Still queue delete to clean up the rendered take
+        ReaperCommand deleteCmd;
+        deleteCmd.type = CMD_DELETE_TAKE;
+        deleteCmd.trackIndex = cmd.trackIndex;
+        deleteCmd.itemPtr = cmd.itemPtr;
+        deleteCmd.takeIndex = cmd.takeIndex;
+        deleteCmd.completed = false;
+        commandsToAdd.push_back(deleteCmd);
+      } else {
+        // DSP succeeded - send API call in background thread
+        // Copy data for thread
+        int trackIndex = cmd.trackIndex;
+        int selectedTrackIndex = cmd.selectedTrackIndex;
+        void* itemPtr = cmd.itemPtr;
+        int takeIndex = cmd.takeIndex;
+        char trackName[256];
+        char trackType[256];
+        char userRequest[1024];
+        strncpy(trackName, cmd.trackName, sizeof(trackName) - 1);
+        trackName[sizeof(trackName) - 1] = '\0';
+        strncpy(trackType, cmd.trackType, sizeof(trackType) - 1);
+        trackType[sizeof(trackType) - 1] = '\0';
+        strncpy(userRequest, cmd.userRequest, sizeof(userRequest) - 1);
+        userRequest[sizeof(userRequest) - 1] = '\0';
+
+        // Copy analysis results for thread
+        std::string analysisStr = analysisJson.Get();
+        std::string fxStr = fxJson.Get();
+
+        std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex,
+                     trackName, trackType, userRequest, analysisStr, fxStr]() {
+          void (*ShowConsoleMsg)(const char *msg) =
+              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+          // Send to mix API
+          WDL_FastString responseJson, error_msg;
+          if (!SendToMixAPI(analysisStr.c_str(), fxStr.c_str(),
+                              trackType[0] ? trackType : "other",
+                              userRequest[0] ? userRequest : "",
+                              selectedTrackIndex, trackName, responseJson,
+                              error_msg)) {
+              if (ShowConsoleMsg) {
+                char msg[512];
+                snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n",
+                         error_msg.Get());
+                ShowConsoleMsg(msg);
+              }
+            } else {
+              if (ShowConsoleMsg) {
+                ShowConsoleMsg(
+                    "MAGDA: Mix analysis workflow completed successfully!\n");
+            }
+          }
+
+          // Queue take deletion (must be done on main thread)
+          {
+            std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
+            ReaperCommand deleteCmd;
+            deleteCmd.type = CMD_DELETE_TAKE;
+            deleteCmd.trackIndex = trackIndex;
+            deleteCmd.itemPtr = itemPtr;
+            deleteCmd.takeIndex = takeIndex;
+            deleteCmd.completed = false;
+            s_reaperCommandQueue.push_back(deleteCmd);
+          }
+        }).detach();
+      }
+
+      cmd.completed = true;
+      processedAny = true;
+      ++it;
     } else {
       // Unknown command type, remove it
       it = s_reaperCommandQueue.erase(it);
     }
+  }
+
+  // Add any new commands that were queued during processing
+  // (done after loop to avoid iterator invalidation)
+  for (const auto& newCmd : commandsToAdd) {
+    s_reaperCommandQueue.push_back(newCmd);
   }
 
   return processedAny;

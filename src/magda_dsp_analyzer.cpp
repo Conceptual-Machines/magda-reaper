@@ -103,6 +103,23 @@ MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
     return result;
   }
 
+  // Log which take is active
+  int (*CountTakes)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+  MediaItem_Take *(*GetTake)(MediaItem *, int) = (MediaItem_Take *(*)(MediaItem *, int))g_rec->GetFunc("GetTake");
+  if (CountTakes && GetTake) {
+    int numTakes = CountTakes(item);
+    int activeTakeIdx = -1;
+    for (int i = 0; i < numTakes; i++) {
+      if (GetTake(item, i) == take) {
+        activeTakeIdx = i;
+        break;
+      }
+    }
+    char logBuf[128];
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Active take index: %d of %d\n", activeTakeIdx, numTakes);
+    LogMessage(logBuf);
+  }
+
   // Get audio samples
   std::vector<float> samples;
   int sampleRate = 0;
@@ -234,6 +251,31 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
     return false;
   }
 
+  // Log source filename and check if file exists
+  const char *(*GetMediaSourceFileName)(PCM_source *, char *, int) =
+      (const char *(*)(PCM_source *, char *, int))g_rec->GetFunc("GetMediaSourceFileName");
+  if (GetMediaSourceFileName) {
+    char filename[512] = {0};
+    GetMediaSourceFileName(source, filename, sizeof(filename));
+    char logBuf[600];
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Analyzing file: %s\n", filename[0] ? filename : "(no filename)");
+    LogMessage(logBuf);
+    
+    // Check if file exists and get size
+    if (filename[0]) {
+      FILE *f = fopen(filename, "rb");
+      if (f) {
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        fclose(f);
+        snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: File exists, size: %ld bytes\n", size);
+        LogMessage(logBuf);
+      } else {
+        LogMessage("MAGDA DSP: WARNING - File does not exist or cannot be opened!\n");
+      }
+    }
+  }
+
   // Get source properties
   int (*GetMediaSourceNumChannels)(PCM_source *) =
       (int (*)(PCM_source *))g_rec->GetFunc("GetMediaSourceNumChannels");
@@ -259,6 +301,13 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
     sourceLength = GetMediaSourceLength(source, nullptr);
   }
 
+  {
+    char logBuf[256];
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Source reports: %.2f sec, %d Hz, %d ch\n", 
+             sourceLength, sampleRate, channels);
+    LogMessage(logBuf);
+  }
+
   // Create audio accessor
   AudioAccessor *accessor = CreateTakeAudioAccessor(take);
   if (!accessor) {
@@ -266,9 +315,24 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
     return false;
   }
 
+  // Force accessor to reload state from source (important for newly rendered takes)
+  void (*AudioAccessorUpdate)(AudioAccessor *, void *, void *) =
+      (void (*)(AudioAccessor *, void *, void *))g_rec->GetFunc("AudioAccessorUpdate");
+  if (AudioAccessorUpdate) {
+    AudioAccessorUpdate(accessor, nullptr, nullptr);
+    LogMessage("MAGDA DSP: Called AudioAccessorUpdate\n");
+  }
+
   double startTime = GetAudioAccessorStartTime(accessor);
   double endTime = GetAudioAccessorEndTime(accessor);
   double duration = endTime - startTime;
+
+  {
+    char logBuf[256];
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Accessor reports: start=%.3f, end=%.3f, duration=%.3f sec\n", 
+             startTime, endTime, duration);
+    LogMessage(logBuf);
+  }
 
   // Limit analysis length if configured
   if (!config.analyzeFullItem && config.analysisLength > 0 &&
@@ -291,6 +355,12 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
     duration = (double)totalSamples / sampleRate;
   }
 
+  {
+    char logBuf[256];
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Requesting %d samples from %.3f sec\n", totalSamples, startTime);
+    LogMessage(logBuf);
+  }
+
   // Allocate buffer (interleaved)
   std::vector<double> buffer(totalSamples * channels);
 
@@ -299,6 +369,12 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
       accessor, sampleRate, channels, startTime, totalSamples, buffer.data());
 
   DestroyAudioAccessor(accessor);
+
+  {
+    char logBuf[256];
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: GetAudioAccessorSamples returned %d samples\n", samplesRead);
+    LogMessage(logBuf);
+  }
 
   if (samplesRead <= 0) {
     LogMessage("MAGDA DSP: Failed to read samples\n");
