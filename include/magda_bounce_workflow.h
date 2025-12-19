@@ -14,16 +14,23 @@ enum BounceMode {
 };
 
 // Mix analysis bounce workflow
-// Bounces selected track(s) to new track(s), hides original, runs DSP analysis,
-// and sends to mix agent API
+// Workflow structure:
+// 1. Prepare track (copy, hide, select item) - Synchronous (safe from callback)
+// 2. Render item to take - Queued, executed on main thread (outside callback)
+// 3. DSP Analysis - Synchronous (in async thread)
+// 4. API Call - Asynchronous (in async thread)
+// 5. Delete track - Queued, executed on main thread (outside callback)
+//
+// Reaper commands (render, delete) are queued and processed via
+// ProcessCommandQueue() which is called from the timer callback on the main
+// thread.
 class MagdaBounceWorkflow {
 public:
   // Execute the full workflow:
-  // 1. Bounce selected track based on bounce mode
-  // 2. Create new track with bounced audio
-  // 3. Hide original track
-  // 4. Run DSP analysis on bounced track
-  // 5. Send analysis to mix agent API
+  // 1. Prepare track (copy, hide, select item) - synchronous
+  // 2. Queue render command (executed later on main thread)
+  // 3. After render, start async thread for DSP analysis + API call
+  // 4. After async completes, queue delete command
   // Returns true on success, false on error (check error_msg)
   static bool ExecuteWorkflow(BounceMode bounceMode, const char *trackType,
                               const char *userRequest,
@@ -34,6 +41,14 @@ public:
 
   // Set bounce mode preference in settings
   static void SetBounceModePreference(BounceMode mode);
+
+  // Process queued Reaper commands (must be called from main thread, outside
+  // callbacks) Returns true if any commands were processed
+  static bool ProcessCommandQueue();
+
+  // Process cleanup queue (delete tracks)
+  // Returns true if any tracks were deleted
+  static bool ProcessCleanupQueue();
 
 private:
   // Step 1: Bounce track to new track

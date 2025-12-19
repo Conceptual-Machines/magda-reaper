@@ -4,13 +4,40 @@
 #include "magda_login_window.h"
 #include "magda_settings_window.h"
 #include "reaper_plugin.h"
+#include <condition_variable>
 #include <cstring>
 #include <ctime>
+#include <mutex>
+#include <thread>
 
 extern reaper_plugin_info_t *g_rec;
 
 // Static HTTP client instance for API calls
 static MagdaHTTPClient s_httpClient;
+
+// Cleanup queue for tracks to delete (must be done on main thread)
+static std::vector<int> s_tracksToDelete;
+static std::mutex s_cleanupMutex;
+
+// Command queue for Reaper operations that must run on main thread (outside
+// callbacks)
+enum ReaperCommandType { CMD_RENDER_ITEM = 0, CMD_DELETE_TRACK = 1 };
+
+struct ReaperCommand {
+  ReaperCommandType type;
+  int trackIndex;
+  int itemIndex; // For render command
+  bool completed;
+  // For render command: start async thread after render completes
+  bool startAsyncAfterRender;
+  int selectedTrackIndex; // For async thread
+  char trackName[256];
+  char trackType[256];
+  char userRequest[1024];
+};
+
+static std::vector<ReaperCommand> s_reaperCommandQueue;
+static std::mutex s_commandQueueMutex;
 
 BounceMode MagdaBounceWorkflow::GetBounceModePreference() {
   // For now, default to full track
@@ -136,7 +163,8 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
     }
   }
 
-  // Step 2: Copy track, hide it, and render item
+  // PART 1: Prepare track (copy, hide, select item) - Synchronous
+  // These operations are safe to do from callback
   int copiedTrackIndex =
       BounceTrackToNewTrack(selectedTrackIndex, bounceMode, error_msg);
   if (copiedTrackIndex < 0) {
@@ -150,51 +178,37 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
     ShowConsoleMsg(msg);
   }
 
-  // Step 3: Run DSP analysis on the copied track
-  WDL_FastString analysisJson, fxJson;
-  if (!RunDSPAnalysis(copiedTrackIndex, trackName, analysisJson, fxJson,
-                      error_msg)) {
-    // Even if analysis fails, clean up the copied track
-    // (fall through to cleanup)
-  }
-
-  // Step 4: Clean up - delete the copied track (which deletes the media item
-  // too) Reuse GetTrack from Step 0 (already declared above)
-  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
-  void (*DeleteTrack)(MediaTrack *) =
-      (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
-
-  if (DeleteTrack) {
-    MediaTrack *copiedTrack = GetTrack(nullptr, copiedTrackIndex);
-    if (copiedTrack) {
-      DeleteTrack(copiedTrack);
-      if (UpdateArrange) {
-        UpdateArrange();
-      }
-      if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Deleted copied track after analysis\n");
-      }
+  // PART 2: Queue render command (must be executed on main thread, outside
+  // callback) After render completes, async thread will be started for DSP +
+  // API
+  {
+    std::lock_guard<std::mutex> lock(s_commandQueueMutex);
+    ReaperCommand cmd;
+    cmd.type = CMD_RENDER_ITEM;
+    cmd.trackIndex = copiedTrackIndex;
+    cmd.itemIndex = 0; // First item on the track
+    cmd.completed = false;
+    cmd.startAsyncAfterRender = true;
+    cmd.selectedTrackIndex = selectedTrackIndex;
+    strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
+    cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
+    if (trackType) {
+      strncpy(cmd.trackType, trackType, sizeof(cmd.trackType) - 1);
+      cmd.trackType[sizeof(cmd.trackType) - 1] = '\0';
+    } else {
+      cmd.trackType[0] = '\0';
     }
+    if (userRequest) {
+      strncpy(cmd.userRequest, userRequest, sizeof(cmd.userRequest) - 1);
+      cmd.userRequest[sizeof(cmd.userRequest) - 1] = '\0';
+    } else {
+      cmd.userRequest[0] = '\0';
+    }
+    s_reaperCommandQueue.push_back(cmd);
   }
 
-  // If analysis failed, return false
-  if (analysisJson.GetLength() == 0) {
-    return false;
-  }
-
-  // Step 5: Send to mix API
-  WDL_FastString responseJson;
-  if (!SendToMixAPI(analysisJson.Get(), fxJson.Get(),
-                    trackType ? trackType : "other",
-                    userRequest ? userRequest : "", selectedTrackIndex,
-                    trackName, responseJson, error_msg)) {
-    return false;
-  }
-
-  if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Mix analysis workflow completed successfully!\n");
-  }
-
+  // Return immediately - render will be executed in ProcessCommandQueue
+  // which is called from timer callback on next tick
   return true;
 }
 
@@ -357,19 +371,15 @@ int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex,
     }
   }
 
-  // Step 8: Render the item (apply FX to create new take)
-  // Use action 40209: "Item: Apply track FX to items as new take"
-  Main_OnCommand(40209, 0);
-  if (UpdateArrange) {
-    UpdateArrange();
-  }
+  // Step 8: Render is now queued and will be executed in ProcessCommandQueue
+  // (Render must not be called from callback context)
 
   if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Applied FX to copied item\n");
+    ShowConsoleMsg("MAGDA: Prepared track for rendering (render queued)\n");
   }
 
-  // Return the copied track index - analysis will happen on this track
-  // After analysis, we'll delete this track
+  // Return the copied track index - render will be executed via queue
+  // After render and analysis, we'll delete this track
   return copiedTrackIndex;
 }
 
@@ -595,4 +605,283 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   }
 
   return success;
+}
+
+bool MagdaBounceWorkflow::ProcessCommandQueue() {
+  std::lock_guard<std::mutex> lock(s_commandQueueMutex);
+
+  if (s_reaperCommandQueue.empty()) {
+    return false;
+  }
+
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*Main_OnCommand)(int command, int flag) =
+      (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  int (*CountTrackMediaItems)(MediaTrack *) =
+      (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+  MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
+      (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
+  bool (*SetMediaItemSelected)(MediaItem *, bool) =
+      (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+  int (*CountMediaItems)(ReaProject *) =
+      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  MediaItem *(*GetMediaItem)(ReaProject *, int) =
+      (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
+  MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+      (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+  void (*SetActiveTake)(MediaItem_Take *) =
+      (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
+
+  bool processedAny = false;
+
+  // Process commands one at a time (to avoid blocking)
+  for (auto it = s_reaperCommandQueue.begin();
+       it != s_reaperCommandQueue.end();) {
+    ReaperCommand &cmd = *it;
+
+    if (cmd.completed) {
+      // Remove completed commands
+      it = s_reaperCommandQueue.erase(it);
+      continue;
+    }
+
+    if (cmd.type == CMD_RENDER_ITEM) {
+      // Execute render command
+      if (!Main_OnCommand) {
+        it = s_reaperCommandQueue.erase(it);
+        continue;
+      }
+
+      // Get the track and item
+      MediaTrack *track =
+          GetTrack ? GetTrack(nullptr, cmd.trackIndex) : nullptr;
+      if (!track) {
+        if (ShowConsoleMsg) {
+          char msg[256];
+          snprintf(msg, sizeof(msg), "MAGDA: Track %d not found for render\n",
+                   cmd.trackIndex);
+          ShowConsoleMsg(msg);
+        }
+        it = s_reaperCommandQueue.erase(it);
+        continue;
+      }
+
+      // Get the media item
+      int itemCount = CountTrackMediaItems ? CountTrackMediaItems(track) : 0;
+      if (itemCount == 0) {
+        if (ShowConsoleMsg) {
+          char msg[256];
+          snprintf(msg, sizeof(msg),
+                   "MAGDA: Track %d has no items for render\n", cmd.trackIndex);
+          ShowConsoleMsg(msg);
+        }
+        it = s_reaperCommandQueue.erase(it);
+        continue;
+      }
+
+      MediaItem *item =
+          GetTrackMediaItem ? GetTrackMediaItem(track, cmd.itemIndex) : nullptr;
+      if (!item) {
+        it = s_reaperCommandQueue.erase(it);
+        continue;
+      }
+
+      // Select only this item
+      if (SetMediaItemSelected) {
+        // Deselect all items first
+        if (CountMediaItems && GetMediaItem) {
+          int totalItems = CountMediaItems(nullptr);
+          for (int i = 0; i < totalItems; i++) {
+            MediaItem *otherItem = GetMediaItem(nullptr, i);
+            if (otherItem) {
+              SetMediaItemSelected(otherItem, false);
+            }
+          }
+        }
+        SetMediaItemSelected(item, true);
+      }
+
+      // Ensure active take is set
+      if (GetActiveTake && SetActiveTake) {
+        MediaItem_Take *activeTake = GetActiveTake(item);
+        if (!activeTake) {
+          int (*CountTakes)(MediaItem *) =
+              (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+          MediaItem_Take *(*GetTake)(MediaItem *, int) =
+              (MediaItem_Take * (*)(MediaItem *, int))
+                  g_rec->GetFunc("GetTake");
+          if (CountTakes && GetTake) {
+            int takeCount = CountTakes(item);
+            if (takeCount > 0) {
+              MediaItem_Take *firstTake = GetTake(item, 0);
+              if (firstTake) {
+                SetActiveTake(firstTake);
+              }
+            }
+          }
+        }
+      }
+
+      // Render the item (apply FX to create new take)
+      // Use action 40209: "Item: Apply track FX to items as new take"
+      Main_OnCommand(40209, 0);
+      if (UpdateArrange) {
+        UpdateArrange();
+      }
+
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Applied FX to item (render completed)\n");
+      }
+
+      // Mark as completed
+      cmd.completed = true;
+      processedAny = true;
+
+      // If this render should start async thread, do it now
+      if (cmd.startAsyncAfterRender) {
+        // Start async thread for DSP analysis + API call
+        // Copy parameters for thread
+        int copiedTrackIndex = cmd.trackIndex;
+        int selectedTrackIndex = cmd.selectedTrackIndex;
+        char trackName[256];
+        char trackType[256];
+        char userRequest[1024];
+        strncpy(trackName, cmd.trackName, sizeof(trackName) - 1);
+        trackName[sizeof(trackName) - 1] = '\0';
+        strncpy(trackType, cmd.trackType, sizeof(trackType) - 1);
+        trackType[sizeof(trackType) - 1] = '\0';
+        strncpy(userRequest, cmd.userRequest, sizeof(userRequest) - 1);
+        userRequest[sizeof(userRequest) - 1] = '\0';
+
+        std::thread([copiedTrackIndex, selectedTrackIndex, trackName, trackType,
+                     userRequest]() {
+          void (*ShowConsoleMsg)(const char *msg) =
+              (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+          // Step 1: Run DSP analysis on the copied track (synchronous)
+          WDL_FastString analysisJson, fxJson, error_msg, responseJson;
+          bool analysisSuccess = RunDSPAnalysis(
+              copiedTrackIndex, trackName, analysisJson, fxJson, error_msg);
+
+          if (!analysisSuccess) {
+            if (ShowConsoleMsg) {
+              char msg[512];
+              snprintf(msg, sizeof(msg), "MAGDA: DSP analysis failed: %s\n",
+                       error_msg.Get());
+              ShowConsoleMsg(msg);
+            }
+          } else {
+            // Step 2: Send to mix API (asynchronous)
+            if (!SendToMixAPI(analysisJson.Get(), fxJson.Get(),
+                              trackType[0] ? trackType : "other",
+                              userRequest[0] ? userRequest : "",
+                              selectedTrackIndex, trackName, responseJson,
+                              error_msg)) {
+              if (ShowConsoleMsg) {
+                char msg[512];
+                snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n",
+                         error_msg.Get());
+                ShowConsoleMsg(msg);
+              }
+            } else {
+              if (ShowConsoleMsg) {
+                ShowConsoleMsg(
+                    "MAGDA: Mix analysis workflow completed successfully!\n");
+              }
+            }
+          }
+
+          // Step 3: Queue track for deletion (must be done on main thread)
+          // Always delete the track, even on failure
+          {
+            std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
+            ReaperCommand deleteCmd;
+            deleteCmd.type = CMD_DELETE_TRACK;
+            deleteCmd.trackIndex = copiedTrackIndex;
+            deleteCmd.completed = false;
+            s_reaperCommandQueue.push_back(deleteCmd);
+          }
+        }).detach();
+      }
+
+      // Move to next command
+      ++it;
+    } else if (cmd.type == CMD_DELETE_TRACK) {
+      // Execute delete command
+      bool (*DeleteTrack)(MediaTrack *) =
+          (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+
+      if (DeleteTrack) {
+        MediaTrack *track =
+            GetTrack ? GetTrack(nullptr, cmd.trackIndex) : nullptr;
+        if (track) {
+          DeleteTrack(track);
+          if (UpdateArrange) {
+            UpdateArrange();
+          }
+          if (ShowConsoleMsg) {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "MAGDA: Deleted track %d\n",
+                     cmd.trackIndex);
+            ShowConsoleMsg(msg);
+          }
+        }
+      }
+
+      cmd.completed = true;
+      processedAny = true;
+      ++it;
+    } else {
+      // Unknown command type, remove it
+      it = s_reaperCommandQueue.erase(it);
+    }
+  }
+
+  return processedAny;
+}
+
+bool MagdaBounceWorkflow::ProcessCleanupQueue() {
+  std::lock_guard<std::mutex> lock(s_cleanupMutex);
+
+  if (s_tracksToDelete.empty()) {
+    return false;
+  }
+
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  bool (*DeleteTrack)(MediaTrack *) =
+      (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+
+  if (!DeleteTrack || !GetTrack) {
+    s_tracksToDelete.clear();
+    return false;
+  }
+
+  // Delete tracks one at a time
+  for (int trackIndex : s_tracksToDelete) {
+    MediaTrack *track = GetTrack(nullptr, trackIndex);
+    if (track) {
+      DeleteTrack(track);
+      if (ShowConsoleMsg) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "MAGDA: Deleted track %d\n", trackIndex);
+        ShowConsoleMsg(msg);
+      }
+    }
+  }
+
+  s_tracksToDelete.clear();
+
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  return true;
 }
