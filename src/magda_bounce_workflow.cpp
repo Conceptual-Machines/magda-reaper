@@ -532,11 +532,43 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     s_httpClient.SetJWTToken(token);
   }
 
-  // Build request JSON
-  // Format: { "mode": "track", "analysis_data": {...}, "context": {...},
-  // "user_request": "..." }
+  // Build request JSON for /api/v1/chat endpoint
+  // Format: { "question": "...", "state": {...} }
   WDL_FastString requestJson;
-  requestJson.Append("{\"mode\":\"track\",");
+  
+  // Build the question
+  requestJson.Append("{\"question\":\"Analyze this ");
+  // Escape and append track type
+  if (trackType && trackType[0]) {
+    for (const char *p = trackType; *p; p++) {
+      switch (*p) {
+      case '"': requestJson.Append("\\\""); break;
+      case '\\': requestJson.Append("\\\\"); break;
+      default: requestJson.Append(p, 1); break;
+      }
+    }
+  } else {
+    requestJson.Append("track");
+  }
+  requestJson.Append(" track");
+  
+  // Add user request to question
+  if (userRequest && userRequest[0]) {
+    requestJson.Append(" and ");
+    for (const char *p = userRequest; *p; p++) {
+      switch (*p) {
+      case '"': requestJson.Append("\\\""); break;
+      case '\\': requestJson.Append("\\\\"); break;
+      default: requestJson.Append(p, 1); break;
+      }
+    }
+  } else {
+    requestJson.Append(" and suggest mixing improvements");
+  }
+  requestJson.Append("\",");
+  
+  // Add state with analysis data and context
+  requestJson.Append("\"state\":{");
   requestJson.Append("\"analysis_data\":");
   requestJson.Append(analysisJson);
   requestJson.Append(",\"context\":{");
@@ -545,93 +577,36 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   snprintf(trackIdxStr, sizeof(trackIdxStr), "%d", trackIndex);
   requestJson.Append(trackIdxStr);
   requestJson.Append(",\"track_name\":\"");
-  // Escape track name
   for (const char *p = trackName; *p; p++) {
     switch (*p) {
-    case '"':
-      requestJson.Append("\\\"");
-      break;
-    case '\\':
-      requestJson.Append("\\\\");
-      break;
-    case '\n':
-      requestJson.Append("\\n");
-      break;
-    case '\r':
-      requestJson.Append("\\r");
-      break;
-    default:
-      requestJson.Append(p, 1);
-      break;
+    case '"': requestJson.Append("\\\""); break;
+    case '\\': requestJson.Append("\\\\"); break;
+    default: requestJson.Append(p, 1); break;
     }
   }
   requestJson.Append("\"");
-
-  // Add track_type to context
   if (trackType && trackType[0]) {
     requestJson.Append(",\"track_type\":\"");
-    // Escape track type
     for (const char *p = trackType; *p; p++) {
       switch (*p) {
-      case '"':
-        requestJson.Append("\\\"");
-        break;
-      case '\\':
-        requestJson.Append("\\\\");
-        break;
-      case '\n':
-        requestJson.Append("\\n");
-        break;
-      case '\r':
-        requestJson.Append("\\r");
-        break;
-      default:
-        requestJson.Append(p, 1);
-        break;
+      case '"': requestJson.Append("\\\""); break;
+      case '\\': requestJson.Append("\\\\"); break;
+      default: requestJson.Append(p, 1); break;
       }
     }
     requestJson.Append("\"");
   }
-
-  // Add existing_fx to context
   if (fxJson && fxJson[0]) {
     requestJson.Append(",\"existing_fx\":");
     requestJson.Append(fxJson);
   }
+  requestJson.Append("}"); // close context
+  requestJson.Append("}"); // close state
+  requestJson.Append("}"); // close request
 
-  requestJson.Append("}");
-
-  // Add user_request at top level (not in context)
-  if (userRequest && userRequest[0]) {
-    requestJson.Append(",\"user_request\":\"");
-    // Escape user request
-    for (const char *p = userRequest; *p; p++) {
-      switch (*p) {
-      case '"':
-        requestJson.Append("\\\"");
-        break;
-      case '\\':
-        requestJson.Append("\\\\");
-        break;
-      case '\n':
-        requestJson.Append("\\n");
-        break;
-      case '\r':
-        requestJson.Append("\\r");
-        break;
-      default:
-        requestJson.Append(p, 1);
-        break;
-      }
-    }
-    requestJson.Append("\"");
-  }
-
-  requestJson.Append("}");
-
-  // Send POST request to mix analysis endpoint
+  // Send POST request to /api/v1/chat endpoint
   bool success = s_httpClient.SendPOSTRequest(
-      "/api/v1/mix/analyze", requestJson.Get(), responseJson, error_msg,
+      "/api/v1/chat", requestJson.Get(), responseJson, error_msg,
       120); // 2 minute timeout
 
   if (success) {
@@ -965,22 +940,23 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         }
       }
       
-      // Read samples on main thread (audio accessor requires main thread)
-      // Then do DSP analysis on background thread to avoid UI blocking
+      // Run DSP analysis on main thread (audio accessor requires main thread)
+      // Note: REAPER automatically sets the rendered take as active after 40209
       if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Reading audio samples on main thread...\n");
+        ShowConsoleMsg("MAGDA: Running DSP analysis on main thread...\n");
       }
 
-      // Configure and read samples
-      DSPAnalysisConfig dspConfig;
-      dspConfig.fftSize = 4096;
-      dspConfig.analyzeFullItem = true;
-      
-      RawAudioData audioData = MagdaDSPAnalyzer::ReadTrackSamples(cmd.trackIndex, dspConfig);
-      
-      if (!audioData.valid || audioData.samples.empty()) {
+      // Run DSP analysis synchronously on main thread
+      WDL_FastString analysisJson, fxJson, error_msg;
+      bool analysisSuccess = RunDSPAnalysis(
+          cmd.trackIndex, cmd.trackName, analysisJson, fxJson, error_msg);
+
+      if (!analysisSuccess) {
         if (ShowConsoleMsg) {
-          ShowConsoleMsg("MAGDA: Failed to read audio samples\n");
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA: DSP analysis failed: %s\n",
+                   error_msg.Get());
+          ShowConsoleMsg(msg);
         }
         // Still queue delete to clean up the rendered take
         ReaperCommand deleteCmd;
@@ -991,19 +967,8 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         deleteCmd.completed = false;
         commandsToAdd.push_back(deleteCmd);
       } else {
-        if (ShowConsoleMsg) {
-          char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA: Read %zu samples, starting background analysis...\n", 
-                   audioData.samples.size());
-          ShowConsoleMsg(msg);
-        }
-        
-        // Get FX info on main thread (needs REAPER API)
-        WDL_FastString fxJson;
-        MagdaDSPAnalyzer::GetTrackFXInfo(cmd.trackIndex, fxJson);
-        std::string fxStr = fxJson.Get();
-        
-        // Copy data for background thread
+        // DSP succeeded - send API call in background thread
+        // Copy data for thread
         int trackIndex = cmd.trackIndex;
         int selectedTrackIndex = cmd.selectedTrackIndex;
         void* itemPtr = cmd.itemPtr;
@@ -1018,50 +983,32 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         strncpy(userRequest, cmd.userRequest, sizeof(userRequest) - 1);
         userRequest[sizeof(userRequest) - 1] = '\0';
 
-        // Move audio data to thread (avoid copy)
+        // Copy analysis results for thread
+        std::string analysisStr = analysisJson.Get();
+        std::string fxStr = fxJson.Get();
+
         std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex,
-                     trackName, trackType, userRequest, fxStr,
-                     audioData = std::move(audioData), dspConfig]() mutable {
+                     trackName, trackType, userRequest, analysisStr, fxStr]() {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
-          // Run DSP analysis on background thread
-          if (ShowConsoleMsg) {
-            ShowConsoleMsg("MAGDA: Running DSP analysis on background thread...\n");
-          }
-          
-          DSPAnalysisResult analysisResult = MagdaDSPAnalyzer::AnalyzeSamples(audioData, dspConfig);
-          
-          if (!analysisResult.success) {
-            if (ShowConsoleMsg) {
-              char msg[512];
-              snprintf(msg, sizeof(msg), "MAGDA: DSP analysis failed: %s\n",
-                       analysisResult.errorMessage.Get());
-              ShowConsoleMsg(msg);
-            }
-          } else {
-            // Convert to JSON
-            WDL_FastString analysisJson;
-            MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
-            
-            // Send to mix API
-            WDL_FastString responseJson, error_msg;
-            if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(),
-                                trackType[0] ? trackType : "other",
-                                userRequest[0] ? userRequest : "",
-                                selectedTrackIndex, trackName, responseJson,
-                                error_msg)) {
-                if (ShowConsoleMsg) {
-                  char msg[512];
-                  snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n",
-                           error_msg.Get());
-                  ShowConsoleMsg(msg);
-                }
-              } else {
-                if (ShowConsoleMsg) {
-                  ShowConsoleMsg(
-                      "MAGDA: Mix analysis workflow completed successfully!\n");
+          // Send to mix API
+          WDL_FastString responseJson, error_msg;
+          if (!SendToMixAPI(analysisStr.c_str(), fxStr.c_str(),
+                              trackType[0] ? trackType : "other",
+                              userRequest[0] ? userRequest : "",
+                              selectedTrackIndex, trackName, responseJson,
+                              error_msg)) {
+              if (ShowConsoleMsg) {
+                char msg[512];
+                snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n",
+                         error_msg.Get());
+                ShowConsoleMsg(msg);
               }
+            } else {
+              if (ShowConsoleMsg) {
+                ShowConsoleMsg(
+                    "MAGDA: Mix analysis workflow completed successfully!\n");
             }
           }
 
