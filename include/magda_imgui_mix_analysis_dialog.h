@@ -49,8 +49,6 @@ private:
   void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h,
                                     int *condInOptional);
   void (*m_ImGui_Text)(void *ctx, const char *text);
-  bool (*m_ImGui_Combo)(void *ctx, const char *label, int *current_item,
-                        const char *const *items, int items_count);
   bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf, int buf_sz,
                             int *flagsInOptional, void *callbackInOptional);
   bool (*m_ImGui_Button)(void *ctx, const char *label, double *size_wInOptional,
@@ -67,10 +65,6 @@ private:
   // Dialog state
   Result m_dialogResult;
   bool m_completed = false;
-  int m_selectedTrackType = 0; // Index into track types array
+  char m_trackTypeBuffer[256] = {0};
   char m_userQueryBuffer[512] = {0};
-
-  // Track type options
-  static const char *s_trackTypes[];
-  static const int s_trackTypeCount;
 };

@@ -4,14 +4,6 @@
 
 extern reaper_plugin_info_t *g_rec;
 
-// Track type options
-const char *MagdaImGuiMixAnalysisDialog::s_trackTypes[] = {
-    "drums", "bass",  "guitar",   "synth",      "strings", "vocals",
-    "piano", "brass", "woodwind", "percussion", "other"};
-
-const int MagdaImGuiMixAnalysisDialog::s_trackTypeCount =
-    sizeof(s_trackTypes) / sizeof(s_trackTypes[0]);
-
 #define LOAD_IMGUI_FUNC(name, type)                                            \
   m_##name = (type)g_rec->GetFunc(#name);                                      \
   if (!m_##name) {                                                             \
@@ -21,7 +13,7 @@ const int MagdaImGuiMixAnalysisDialog::s_trackTypeCount =
 MagdaImGuiMixAnalysisDialog::MagdaImGuiMixAnalysisDialog()
     : m_ImGui_CreateContext(nullptr), m_ImGui_Begin(nullptr),
       m_ImGui_End(nullptr), m_ImGui_SetNextWindowSize(nullptr),
-      m_ImGui_Text(nullptr), m_ImGui_Combo(nullptr), m_ImGui_InputText(nullptr),
+      m_ImGui_Text(nullptr), m_ImGui_InputText(nullptr),
       m_ImGui_Button(nullptr), m_ImGui_SameLine(nullptr),
       m_ImGui_Separator(nullptr) {}
 
@@ -38,8 +30,6 @@ bool MagdaImGuiMixAnalysisDialog::Initialize(reaper_plugin_info_t *rec) {
   LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize,
                   void (*)(void *, double, double, int *));
   LOAD_IMGUI_FUNC(ImGui_Text, void (*)(void *, const char *));
-  LOAD_IMGUI_FUNC(ImGui_Combo, bool (*)(void *, const char *, int *,
-                                        const char *const *, int));
   LOAD_IMGUI_FUNC(ImGui_InputText,
                   bool (*)(void *, const char *, char *, int, int *, void *));
   LOAD_IMGUI_FUNC(ImGui_Button,
@@ -67,7 +57,7 @@ void MagdaImGuiMixAnalysisDialog::Show() {
   m_dialogResult.cancelled = true; // Default to cancelled
 
   // Reset state
-  m_selectedTrackType = 0;
+  m_trackTypeBuffer[0] = '\0';
   m_userQueryBuffer[0] = '\0';
 
   void (*ShowConsoleMsg)(const char *msg) =
@@ -83,7 +73,7 @@ void MagdaImGuiMixAnalysisDialog::Reset() {
   m_dialogResult.cancelled = true;
   m_dialogResult.trackType.Set("");
   m_dialogResult.userQuery.Set("");
-  m_selectedTrackType = 0;
+  m_trackTypeBuffer[0] = '\0';
   m_userQueryBuffer[0] = '\0';
 }
 
@@ -123,17 +113,16 @@ void MagdaImGuiMixAnalysisDialog::Render() {
     return;
   }
 
-  // Track type combo
+  // Track type input
   m_ImGui_Text(m_ctx, "Track Type:");
-  m_ImGui_SameLine(m_ctx, nullptr, nullptr);
-  m_ImGui_Combo(m_ctx, "##tracktype", &m_selectedTrackType, s_trackTypes,
-                s_trackTypeCount);
+  int inputFlags = 0;
+  m_ImGui_InputText(m_ctx, "##tracktype", m_trackTypeBuffer,
+                    sizeof(m_trackTypeBuffer), &inputFlags, nullptr);
 
   m_ImGui_Separator(m_ctx);
 
   // User query input
   m_ImGui_Text(m_ctx, "Query (optional):");
-  int inputFlags = 0;
   m_ImGui_InputText(m_ctx, "##query", m_userQueryBuffer,
                     sizeof(m_userQueryBuffer), &inputFlags, nullptr);
 
@@ -147,11 +136,7 @@ void MagdaImGuiMixAnalysisDialog::Render() {
   if (m_ImGui_Button(m_ctx, "Analyze", &btnWidth, &btnHeight)) {
     // User clicked OK
     m_dialogResult.cancelled = false;
-    if (m_selectedTrackType >= 0 && m_selectedTrackType < s_trackTypeCount) {
-      m_dialogResult.trackType.Set(s_trackTypes[m_selectedTrackType]);
-    } else {
-      m_dialogResult.trackType.Set("other");
-    }
+    m_dialogResult.trackType.Set(m_trackTypeBuffer);
     m_dialogResult.userQuery.Set(m_userQueryBuffer);
     m_completed = true;
     m_visible = false;
