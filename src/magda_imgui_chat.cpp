@@ -333,6 +333,12 @@ bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
 
 void MagdaImGuiChat::Show() {
   m_visible = true;
+  // Recreate context if it was destroyed (e.g., when window was closed)
+  // This ensures the window can be reopened after being closed
+  if (!m_ctx && m_available) {
+    int configFlags = m_ImGui_ConfigFlags_DockingEnable();
+    m_ctx = m_ImGui_CreateContext("MAGDA", &configFlags);
+  }
   // Don't check API health on show - it's slow and logs too much
   SetAPIStatus("Ready", 0x88FF88FF); // Green in 0xRRGGBBAA format
 }
