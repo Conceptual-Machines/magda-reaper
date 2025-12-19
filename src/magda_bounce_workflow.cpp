@@ -21,7 +21,7 @@ static std::mutex s_cleanupMutex;
 
 // Command queue for Reaper operations that must run on main thread (outside
 // callbacks)
-enum ReaperCommandType { CMD_RENDER_ITEM = 0, CMD_DELETE_TRACK = 1 };
+enum ReaperCommandType { CMD_RENDER_ITEM = 0, CMD_DELETE_TRACK = 1, CMD_DELETE_TAKE = 2 };
 
 struct ReaperCommand {
   ReaperCommandType type;
@@ -34,6 +34,8 @@ struct ReaperCommand {
   char trackName[256];
   char trackType[256];
   char userRequest[1024];
+  // For delete take command
+  void* itemPtr;  // MediaItem* to delete take from
 };
 
 static std::vector<ReaperCommand> s_reaperCommandQueue;
@@ -163,29 +165,62 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
     }
   }
 
-  // PART 1: Prepare track (copy, hide, select item) - Synchronous
-  // These operations are safe to do from callback
-  int copiedTrackIndex =
-      BounceTrackToNewTrack(selectedTrackIndex, bounceMode, error_msg);
-  if (copiedTrackIndex < 0) {
+  // PART 1: Select the item on the track for rendering (no track copy)
+  int (*CountTrackMediaItems)(MediaTrack *) =
+      (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+  MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
+      (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
+  bool (*SetMediaItemSelected)(MediaItem *, bool) =
+      (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+  int (*CountMediaItems)(ReaProject *) =
+      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  MediaItem *(*GetMediaItem)(ReaProject *, int) =
+      (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
+
+  if (!CountTrackMediaItems || !GetTrackMediaItem) {
+    error_msg.Set("Required REAPER functions not available");
     return false;
+  }
+
+  int itemCount = CountTrackMediaItems(selectedTrack);
+  if (itemCount == 0) {
+    error_msg.Set("Selected track has no media items");
+    return false;
+  }
+
+  MediaItem *item = GetTrackMediaItem(selectedTrack, 0);
+  if (!item) {
+    error_msg.Set("Failed to get media item from track");
+    return false;
+  }
+
+  // Select only this item
+  if (SetMediaItemSelected && CountMediaItems && GetMediaItem) {
+    int totalItems = CountMediaItems(nullptr);
+    for (int i = 0; i < totalItems; i++) {
+      MediaItem *otherItem = GetMediaItem(nullptr, i);
+      if (otherItem) {
+        SetMediaItemSelected(otherItem, false);
+      }
+    }
+    SetMediaItemSelected(item, true);
   }
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA: Copied track to index %d for analysis\n",
-             copiedTrackIndex);
+    snprintf(msg, sizeof(msg), "MAGDA: Prepared track %d for rendering (render queued)\n",
+             selectedTrackIndex);
     ShowConsoleMsg(msg);
   }
 
   // PART 2: Queue render command (must be executed on main thread, outside
   // callback) After render completes, async thread will be started for DSP +
-  // API
+  // API - works on ORIGINAL track, not a copy
   {
     std::lock_guard<std::mutex> lock(s_commandQueueMutex);
     ReaperCommand cmd;
     cmd.type = CMD_RENDER_ITEM;
-    cmd.trackIndex = copiedTrackIndex;
+    cmd.trackIndex = selectedTrackIndex;  // Use original track, not a copy
     cmd.itemIndex = 0; // First item on the track
     cmd.completed = false;
     cmd.startAsyncAfterRender = true;
@@ -745,8 +780,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       if (cmd.startAsyncAfterRender) {
         // Start async thread for DSP analysis + API call
         // Copy parameters for thread
-        int copiedTrackIndex = cmd.trackIndex;
+        int trackIndex = cmd.trackIndex;
         int selectedTrackIndex = cmd.selectedTrackIndex;
+        void* itemPtr = (void*)item;  // Store item pointer for take deletion
         char trackName[256];
         char trackType[256];
         char userRequest[1024];
@@ -757,15 +793,15 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         strncpy(userRequest, cmd.userRequest, sizeof(userRequest) - 1);
         userRequest[sizeof(userRequest) - 1] = '\0';
 
-        std::thread([copiedTrackIndex, selectedTrackIndex, trackName, trackType,
+        std::thread([trackIndex, selectedTrackIndex, itemPtr, trackName, trackType,
                      userRequest]() {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
-          // Step 1: Run DSP analysis on the copied track (synchronous)
+          // Step 1: Run DSP analysis on the track (analyzes the active take which is the new rendered one)
           WDL_FastString analysisJson, fxJson, error_msg, responseJson;
           bool analysisSuccess = RunDSPAnalysis(
-              copiedTrackIndex, trackName, analysisJson, fxJson, error_msg);
+              trackIndex, trackName, analysisJson, fxJson, error_msg);
 
           if (!analysisSuccess) {
             if (ShowConsoleMsg) {
@@ -795,13 +831,14 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             }
           }
 
-          // Step 3: Queue track for deletion (must be done on main thread)
-          // Always delete the track, even on failure
+          // Step 3: Queue take deletion (must be done on main thread)
+          // Delete the rendered take, keeping the original take
           {
             std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
             ReaperCommand deleteCmd;
-            deleteCmd.type = CMD_DELETE_TRACK;
-            deleteCmd.trackIndex = copiedTrackIndex;
+            deleteCmd.type = CMD_DELETE_TAKE;
+            deleteCmd.trackIndex = trackIndex;
+            deleteCmd.itemPtr = itemPtr;
             deleteCmd.completed = false;
             s_reaperCommandQueue.push_back(deleteCmd);
           }
@@ -828,6 +865,78 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             snprintf(msg, sizeof(msg), "MAGDA: Deleted track %d\n",
                      cmd.trackIndex);
             ShowConsoleMsg(msg);
+          }
+        }
+      }
+
+      cmd.completed = true;
+      processedAny = true;
+      ++it;
+    } else if (cmd.type == CMD_DELETE_TAKE) {
+      // Delete the active take from the item (the rendered take)
+      MediaItem* item = (MediaItem*)cmd.itemPtr;
+      if (item) {
+        int (*CountTakes)(MediaItem *) =
+            (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+        MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+            (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+        MediaItem_Take *(*GetTake)(MediaItem *, int) =
+            (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
+        void (*SetActiveTake)(MediaItem_Take *) =
+            (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
+        
+        if (CountTakes && GetActiveTake && GetTake && SetActiveTake) {
+          int takeCount = CountTakes(item);
+          if (takeCount > 1) {
+            // Get the active take (the rendered one)
+            MediaItem_Take* activeTake = GetActiveTake(item);
+            
+            // Find original take (the first one that's not active)
+            MediaItem_Take* originalTake = nullptr;
+            for (int i = 0; i < takeCount; i++) {
+              MediaItem_Take* take = GetTake(item, i);
+              if (take != activeTake) {
+                originalTake = take;
+                break;
+              }
+            }
+            
+            // Switch to original take first
+            if (originalTake) {
+              SetActiveTake(originalTake);
+            }
+            
+            // Delete the rendered take using action 40129: "Take: Delete active take from items"
+            // First, we need to select only this item
+            bool (*SetMediaItemSelected)(MediaItem *, bool) =
+                (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+            if (SetMediaItemSelected && CountMediaItems && GetMediaItem) {
+              int totalItems = CountMediaItems(nullptr);
+              for (int i = 0; i < totalItems; i++) {
+                MediaItem *otherItem = GetMediaItem(nullptr, i);
+                if (otherItem) {
+                  SetMediaItemSelected(otherItem, false);
+                }
+              }
+              SetMediaItemSelected(item, true);
+            }
+            
+            // Set the rendered take as active again so we can delete it
+            if (activeTake) {
+              SetActiveTake(activeTake);
+              // Delete active take
+              Main_OnCommand(40129, 0);  // Take: Delete active take from items
+              if (UpdateArrange) {
+                UpdateArrange();
+              }
+              if (ShowConsoleMsg) {
+                ShowConsoleMsg("MAGDA: Deleted rendered take\n");
+              }
+            }
+          } else {
+            if (ShowConsoleMsg) {
+              ShowConsoleMsg("MAGDA: Only one take, skipping take deletion\n");
+            }
           }
         }
       }
