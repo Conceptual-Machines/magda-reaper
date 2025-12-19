@@ -1006,7 +1006,7 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
   // Peaks (top 10)
   if (!result.peaks.empty()) {
     json.Append(",\"peaks\":[");
-    int peakCount = std::min((int)result.peaks.size(), 10);
+    int peakCount = (std::min)((int)result.peaks.size(), 10);
     for (int i = 0; i < peakCount; i++) {
       if (i > 0)
         json.Append(",");
@@ -1144,7 +1144,7 @@ void MagdaDSPAnalyzer::GetTrackFXInfo(int trackIndex, WDL_FastString &json) {
     // Parameters (limit to first 20 for size)
     if (TrackFX_GetNumParams && TrackFX_GetParam && TrackFX_GetParamName) {
       int numParams = TrackFX_GetNumParams(track, fx);
-      int maxParams = std::min(numParams, 20);
+      int maxParams = (std::min)(numParams, 20);
 
       json.Append(",\"parameters\":[");
 

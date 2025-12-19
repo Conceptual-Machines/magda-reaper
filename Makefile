@@ -24,14 +24,14 @@ setup:
 	fi
 	@echo "Setup complete!"
 
-# Configure and build
+# Configure and build (using Ninja for faster builds)
 build: setup
 	@echo "Closing Reaper (if running)..."
 	@-killall REAPER 2>/dev/null || true
 	@sleep 1
-	@echo "Building MAGDA Reaper extension for $(PLATFORM)..."
+	@echo "Building MAGDA Reaper extension for $(PLATFORM) with Ninja..."
 	@mkdir -p $(BUILD_DIR)
-	cd $(BUILD_DIR) && $(CMAKE) ..
+	cd $(BUILD_DIR) && $(CMAKE) -G Ninja ..
 	$(CMAKE) --build $(BUILD_DIR)
 	@echo "Build complete!"
 	@echo "Opening Reaper..."
