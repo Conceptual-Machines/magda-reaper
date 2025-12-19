@@ -207,6 +207,142 @@ MagdaDSPAnalyzer::AnalyzeMaster(const DSPAnalysisConfig &config) {
   return result;
 }
 
+RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
+                                                const DSPAnalysisConfig &config) {
+  RawAudioData data;
+
+  if (!g_rec) {
+    return data;
+  }
+
+  // Get track
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  if (!GetTrack) {
+    return data;
+  }
+
+  MediaTrack *track = GetTrack(nullptr, trackIndex);
+  if (!track) {
+    return data;
+  }
+
+  // Get the first media item on the track
+  int (*CountTrackMediaItems)(MediaTrack *) =
+      (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+  MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
+      (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
+
+  if (!CountTrackMediaItems || !GetTrackMediaItem) {
+    return data;
+  }
+
+  int itemCount = CountTrackMediaItems(track);
+  if (itemCount == 0) {
+    return data;
+  }
+
+  MediaItem *item = GetTrackMediaItem(track, 0);
+  if (!item) {
+    return data;
+  }
+
+  // Get active take
+  MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+      (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+  if (!GetActiveTake) {
+    return data;
+  }
+
+  MediaItem_Take *take = GetActiveTake(item);
+  if (!take) {
+    return data;
+  }
+
+  // Read audio samples using main-thread-only audio accessor
+  if (GetAudioSamples(take, data.samples, data.sampleRate, data.channels, config)) {
+    data.valid = true;
+  }
+
+  return data;
+}
+
+DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
+                                                   const DSPAnalysisConfig &config) {
+  DSPAnalysisResult result;
+
+  if (!audioData.valid || audioData.samples.empty()) {
+    result.errorMessage.Set("Invalid audio data");
+    return result;
+  }
+
+  result.sampleRate = audioData.sampleRate;
+  result.channels = audioData.channels;
+  result.lengthSeconds = (double)audioData.samples.size() / 
+                         (audioData.sampleRate * audioData.channels);
+
+  char logBuf[256];
+  snprintf(logBuf, sizeof(logBuf),
+           "MAGDA DSP: Analyzing %zu samples, %d Hz, %d ch, %.2f sec\n",
+           audioData.samples.size(), audioData.sampleRate, audioData.channels, 
+           result.lengthSeconds);
+  LogMessage(logBuf);
+
+  // Perform FFT analysis
+  if (config.analyzeFrequency) {
+    PerformFFT(audioData.samples, audioData.sampleRate, config.fftSize, 
+               result.fftFrequencies, result.fftMagnitudes);
+
+    // Calculate frequency bands
+    CalculateFrequencyBands(result.fftFrequencies, result.fftMagnitudes,
+                            result.bands);
+
+    // Calculate EQ profile (1/3 octave)
+    CalculateEQProfile(result.fftFrequencies, result.fftMagnitudes,
+                       result.eqProfileFreqs, result.eqProfileMags);
+
+    // Detect peaks
+    DetectPeaks(result.fftFrequencies, result.fftMagnitudes, result.peaks);
+  }
+
+  // Detect resonances
+  if (config.analyzeResonances && !result.peaks.empty()) {
+    DetectResonances(result.peaks, result.eqProfileMags, result.resonances);
+  }
+
+  // Calculate spectral features
+  if (config.analyzeSpectralFeatures && !result.fftFrequencies.empty()) {
+    result.spectralFeatures =
+        CalculateSpectralFeatures(result.fftFrequencies, result.fftMagnitudes);
+  }
+
+  // Calculate loudness
+  if (config.analyzeLoudness) {
+    result.loudness = CalculateLoudness(audioData.samples, audioData.sampleRate, 
+                                        audioData.channels);
+  }
+
+  // Calculate dynamics
+  if (config.analyzeDynamics) {
+    result.dynamics = CalculateDynamics(audioData.samples, audioData.channels);
+  }
+
+  // Calculate stereo analysis
+  if (config.analyzeStereo && audioData.channels >= 2) {
+    result.stereo = CalculateStereo(audioData.samples, audioData.channels);
+  }
+
+  // Calculate transients
+  if (config.analyzeTransients) {
+    result.transients = CalculateTransients(audioData.samples, audioData.sampleRate, 
+                                            audioData.channels);
+  }
+
+  result.success = true;
+  LogMessage("MAGDA DSP: Analysis complete\n");
+  return result;
+}
+
 bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
                                        std::vector<float> &samples,
                                        int &sampleRate, int &channels,

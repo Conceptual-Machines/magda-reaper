@@ -95,6 +95,14 @@ struct TransientAnalysis {
   float transientEnergy; // 0-1
 };
 
+// Raw audio data (for passing between threads)
+struct RawAudioData {
+  bool valid = false;
+  std::vector<float> samples;
+  int sampleRate = 0;
+  int channels = 0;
+};
+
 // Complete analysis result
 struct DSPAnalysisResult {
   bool success = false;
@@ -137,6 +145,14 @@ public:
 
   // Analyze the master track
   static DSPAnalysisResult AnalyzeMaster(const DSPAnalysisConfig &config);
+
+  // Read raw audio samples from track (MUST be called from main thread)
+  static RawAudioData ReadTrackSamples(int trackIndex,
+                                       const DSPAnalysisConfig &config);
+
+  // Analyze pre-loaded samples (can be called from background thread)
+  static DSPAnalysisResult AnalyzeSamples(const RawAudioData &audioData,
+                                          const DSPAnalysisConfig &config);
 
   // Convert analysis result to JSON string
   static void ToJSON(const DSPAnalysisResult &result, WDL_FastString &json);

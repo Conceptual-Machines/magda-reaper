@@ -940,23 +940,22 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         }
       }
       
-      // Run DSP analysis on main thread (audio accessor requires main thread)
-      // Note: REAPER automatically sets the rendered take as active after 40209
+      // Read audio samples on main thread (audio accessor requires main thread)
+      // Then do DSP analysis + API call on background thread
       if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Running DSP analysis on main thread...\n");
+        ShowConsoleMsg("MAGDA: Reading audio samples on main thread...\n");
       }
 
-      // Run DSP analysis synchronously on main thread
-      WDL_FastString analysisJson, fxJson, error_msg;
-      bool analysisSuccess = RunDSPAnalysis(
-          cmd.trackIndex, cmd.trackName, analysisJson, fxJson, error_msg);
-
-      if (!analysisSuccess) {
+      // Configure and read samples (main thread only)
+      DSPAnalysisConfig dspConfig;
+      dspConfig.fftSize = 4096;
+      dspConfig.analyzeFullItem = true;
+      
+      RawAudioData audioData = MagdaDSPAnalyzer::ReadTrackSamples(cmd.trackIndex, dspConfig);
+      
+      if (!audioData.valid || audioData.samples.empty()) {
         if (ShowConsoleMsg) {
-          char msg[512];
-          snprintf(msg, sizeof(msg), "MAGDA: DSP analysis failed: %s\n",
-                   error_msg.Get());
-          ShowConsoleMsg(msg);
+          ShowConsoleMsg("MAGDA: Failed to read audio samples\n");
         }
         // Still queue delete to clean up the rendered take
         ReaperCommand deleteCmd;
@@ -967,8 +966,19 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         deleteCmd.completed = false;
         commandsToAdd.push_back(deleteCmd);
       } else {
-        // DSP succeeded - send API call in background thread
-        // Copy data for thread
+        if (ShowConsoleMsg) {
+          char msg[256];
+          snprintf(msg, sizeof(msg), "MAGDA: Read %zu samples, starting background analysis...\n", 
+                   audioData.samples.size());
+          ShowConsoleMsg(msg);
+        }
+
+        // Get FX info on main thread (needs REAPER API)
+        WDL_FastString fxJson;
+        MagdaDSPAnalyzer::GetTrackFXInfo(cmd.trackIndex, fxJson);
+        std::string fxStr = fxJson.Get();
+
+        // Copy data for background thread
         int trackIndex = cmd.trackIndex;
         int selectedTrackIndex = cmd.selectedTrackIndex;
         void* itemPtr = cmd.itemPtr;
@@ -983,22 +993,39 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         strncpy(userRequest, cmd.userRequest, sizeof(userRequest) - 1);
         userRequest[sizeof(userRequest) - 1] = '\0';
 
-        // Copy analysis results for thread
-        std::string analysisStr = analysisJson.Get();
-        std::string fxStr = fxJson.Get();
-
+        // Move audio data to background thread for processing
         std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex,
-                     trackName, trackType, userRequest, analysisStr, fxStr]() {
+                     trackName, trackType, userRequest, fxStr,
+                     audioData = std::move(audioData), dspConfig]() mutable {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
-          // Send to mix API
-          WDL_FastString responseJson, error_msg;
-          if (!SendToMixAPI(analysisStr.c_str(), fxStr.c_str(),
-                              trackType[0] ? trackType : "other",
-                              userRequest[0] ? userRequest : "",
-                              selectedTrackIndex, trackName, responseJson,
-                              error_msg)) {
+          // Run DSP analysis on background thread
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: Running DSP analysis on background thread...\n");
+          }
+          
+          DSPAnalysisResult analysisResult = MagdaDSPAnalyzer::AnalyzeSamples(audioData, dspConfig);
+          
+          if (!analysisResult.success) {
+            if (ShowConsoleMsg) {
+              char msg[512];
+              snprintf(msg, sizeof(msg), "MAGDA: DSP analysis failed: %s\n",
+                       analysisResult.errorMessage.Get());
+              ShowConsoleMsg(msg);
+            }
+          } else {
+            // Convert to JSON
+            WDL_FastString analysisJson;
+            MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
+            
+            // Send to mix API
+            WDL_FastString responseJson, error_msg;
+            if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(),
+                                trackType[0] ? trackType : "other",
+                                userRequest[0] ? userRequest : "",
+                                selectedTrackIndex, trackName, responseJson,
+                                error_msg)) {
               if (ShowConsoleMsg) {
                 char msg[512];
                 snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n",
@@ -1009,6 +1036,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               if (ShowConsoleMsg) {
                 ShowConsoleMsg(
                     "MAGDA: Mix analysis workflow completed successfully!\n");
+              }
             }
           }
 
