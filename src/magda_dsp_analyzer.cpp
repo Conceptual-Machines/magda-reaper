@@ -215,7 +215,6 @@ RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
     return data;
   }
 
-  // Get track
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   if (!GetTrack) {
@@ -227,7 +226,6 @@ RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
     return data;
   }
 
-  // Get the first media item on the track
   int (*CountTrackMediaItems)(MediaTrack *) =
       (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
   MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
@@ -247,7 +245,6 @@ RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
     return data;
   }
 
-  // Get active take
   MediaItem_Take *(*GetActiveTake)(MediaItem *) =
       (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
   if (!GetActiveTake) {
@@ -259,7 +256,6 @@ RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
     return data;
   }
 
-  // Read audio samples using main-thread-only audio accessor
   if (GetAudioSamples(take, data.samples, data.sampleRate, data.channels, config)) {
     data.valid = true;
   }
@@ -288,51 +284,38 @@ DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData
            result.lengthSeconds);
   LogMessage(logBuf);
 
-  // Perform FFT analysis
   if (config.analyzeFrequency) {
     PerformFFT(audioData.samples, audioData.sampleRate, config.fftSize, 
                result.fftFrequencies, result.fftMagnitudes);
-
-    // Calculate frequency bands
     CalculateFrequencyBands(result.fftFrequencies, result.fftMagnitudes,
                             result.bands);
-
-    // Calculate EQ profile (1/3 octave)
     CalculateEQProfile(result.fftFrequencies, result.fftMagnitudes,
                        result.eqProfileFreqs, result.eqProfileMags);
-
-    // Detect peaks
     DetectPeaks(result.fftFrequencies, result.fftMagnitudes, result.peaks);
   }
 
-  // Detect resonances
   if (config.analyzeResonances && !result.peaks.empty()) {
     DetectResonances(result.peaks, result.eqProfileMags, result.resonances);
   }
 
-  // Calculate spectral features
   if (config.analyzeSpectralFeatures && !result.fftFrequencies.empty()) {
     result.spectralFeatures =
         CalculateSpectralFeatures(result.fftFrequencies, result.fftMagnitudes);
   }
 
-  // Calculate loudness
   if (config.analyzeLoudness) {
     result.loudness = CalculateLoudness(audioData.samples, audioData.sampleRate, 
                                         audioData.channels);
   }
 
-  // Calculate dynamics
   if (config.analyzeDynamics) {
     result.dynamics = CalculateDynamics(audioData.samples, audioData.channels);
   }
 
-  // Calculate stereo analysis
   if (config.analyzeStereo && audioData.channels >= 2) {
     result.stereo = CalculateStereo(audioData.samples, audioData.channels);
   }
 
-  // Calculate transients
   if (config.analyzeTransients) {
     result.transients = CalculateTransients(audioData.samples, audioData.sampleRate, 
                                             audioData.channels);
