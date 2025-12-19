@@ -124,6 +124,14 @@ struct DSPAnalysisResult {
   TransientAnalysis transients;
 };
 
+// Raw audio data for background processing
+struct RawAudioData {
+  std::vector<float> samples;
+  int sampleRate = 0;
+  int channels = 0;
+  bool valid = false;
+};
+
 // DSP Analyzer class
 class MagdaDSPAnalyzer {
 public:
@@ -137,6 +145,15 @@ public:
 
   // Analyze the master track
   static DSPAnalysisResult AnalyzeMaster(const DSPAnalysisConfig &config);
+
+  // Read samples from track (MUST be called from main thread)
+  // Returns raw audio data that can be passed to background thread
+  static RawAudioData ReadTrackSamples(int trackIndex,
+                                       const DSPAnalysisConfig &config);
+
+  // Analyze pre-loaded samples (CAN be called from background thread)
+  static DSPAnalysisResult AnalyzeSamples(const RawAudioData &audio,
+                                          const DSPAnalysisConfig &config);
 
   // Convert analysis result to JSON string
   static void ToJSON(const DSPAnalysisResult &result, WDL_FastString &json);
