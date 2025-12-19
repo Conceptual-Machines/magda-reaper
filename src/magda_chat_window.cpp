@@ -17,8 +17,8 @@ extern HINSTANCE g_hInst;
 // Forward declaration
 extern void magdaAction(int command_id, int flag);
 
-// Command ID for mix analysis (defined in main.cpp)
-#define MAGDA_CMD_MIX_ANALYZE 1007
+// Command ID for mix analysis (defined in main.cpp, dynamically allocated)
+extern int g_cmdMixAnalyze;
 
 // Control IDs
 #define IDC_QUESTION_INPUT 1001
@@ -398,7 +398,7 @@ void MagdaChatWindow::OnCommand(int command, int notifyCode) {
 
   case IDC_BTN_MIX_ANALYSIS:
     // Trigger mix analysis workflow (bounce/analyze/send to agent)
-    magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
+    magdaAction(g_cmdMixAnalyze, 0);
     break;
 
   case IDC_BTN_MASTER_ANALYSIS:

@@ -138,17 +138,30 @@ static void imguiTimerCallback() {
   }
 }
 
-// Command IDs for MAGDA menu items
-#define MAGDA_MENU_CMD_ID 1000
-#define MAGDA_CMD_OPEN 1001
-#define MAGDA_CMD_LOGIN 1002
-#define MAGDA_CMD_SETTINGS 1003
-#define MAGDA_CMD_ABOUT 1004
-#define MAGDA_CMD_SCAN_PLUGINS 1005
-#define MAGDA_CMD_ANALYZE_TRACK 1006
-#define MAGDA_CMD_MIX_ANALYZE 1007
-// Test/headless command IDs
-#define MAGDA_CMD_TEST_EXECUTE_ACTION 2000
+// Command IDs - dynamically allocated to avoid conflicts with REAPER built-ins
+// These are set in the entry point via rec->Register("command_id", ...)
+int g_cmdMixAnalyze = 0;  // Exported for use by other files via extern
+
+// Internal command IDs (still using high numbers to avoid conflicts)
+static int g_cmdMenuID = 0;
+static int g_cmdOpen = 0;
+static int g_cmdLogin = 0;
+static int g_cmdSettings = 0;
+static int g_cmdAbout = 0;
+static int g_cmdScanPlugins = 0;
+static int g_cmdAnalyzeTrack = 0;
+static int g_cmdTestExecute = 0;
+
+// Macros for code compatibility
+#define MAGDA_MENU_CMD_ID g_cmdMenuID
+#define MAGDA_CMD_OPEN g_cmdOpen
+#define MAGDA_CMD_LOGIN g_cmdLogin
+#define MAGDA_CMD_SETTINGS g_cmdSettings
+#define MAGDA_CMD_ABOUT g_cmdAbout
+#define MAGDA_CMD_SCAN_PLUGINS g_cmdScanPlugins
+#define MAGDA_CMD_ANALYZE_TRACK g_cmdAnalyzeTrack
+#define MAGDA_CMD_MIX_ANALYZE g_cmdMixAnalyze
+#define MAGDA_CMD_TEST_EXECUTE_ACTION g_cmdTestExecute
 
 // Helper function to perform DSP analysis and output results
 static void performDSPAnalysis(int trackIndex, const char *trackName,
@@ -236,8 +249,8 @@ void magdaAction(int command_id, int flag) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
-  switch (command_id) {
-  case MAGDA_CMD_OPEN:
+  // Using if-else because command IDs are runtime values
+  if (command_id == g_cmdOpen) {
     // Use ImGui chat if available, otherwise fall back to SWELL
     if (g_useImGuiChat && g_imguiChat) {
       // Only show if not already visible - don't close if already open
@@ -259,8 +272,7 @@ void magdaAction(int command_id, int flag) {
         g_chatWindow->Show(false); // Show only, don't toggle
       }
     }
-    break;
-  case MAGDA_CMD_LOGIN:
+  } else if (command_id == g_cmdLogin) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening login dialog\n");
     }
@@ -268,8 +280,7 @@ void magdaAction(int command_id, int flag) {
       g_loginWindow = new MagdaLoginWindow();
     }
     g_loginWindow->Show();
-    break;
-  case MAGDA_CMD_SETTINGS:
+  } else if (command_id == g_cmdSettings) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening settings dialog\n");
     }
@@ -277,14 +288,12 @@ void magdaAction(int command_id, int flag) {
       g_settingsWindow = new MagdaSettingsWindow();
     }
     g_settingsWindow->Show();
-    break;
-  case MAGDA_CMD_ABOUT:
+  } else if (command_id == g_cmdAbout) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: About - TODO: Show about dialog\n");
     }
     // TODO: Show about dialog
-    break;
-  case MAGDA_CMD_SCAN_PLUGINS:
+  } else if (command_id == g_cmdScanPlugins) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening plugin alias window\n");
     }
@@ -298,8 +307,7 @@ void magdaAction(int command_id, int flag) {
       }
       g_pluginWindow->Show();
     }
-    break;
-  case MAGDA_CMD_ANALYZE_TRACK:
+  } else if (command_id == g_cmdAnalyzeTrack) {
     // Analyze the first selected track's audio (non-blocking)
     // Queue the work to run in background thread to avoid blocking UI
     {
@@ -423,8 +431,7 @@ void magdaAction(int command_id, int flag) {
                            false);
       }).detach();
     }
-    break;
-  case MAGDA_CMD_MIX_ANALYZE:
+  } else if (command_id == g_cmdMixAnalyze) {
     // Mix analysis workflow: bounce track, hide original, analyze, send to API
     {
       void (*ShowConsoleMsg)(const char *msg) =
@@ -450,8 +457,7 @@ void magdaAction(int command_id, int flag) {
         }
       }
     }
-    break;
-  case MAGDA_CMD_TEST_EXECUTE_ACTION:
+  } else if (command_id == g_cmdTestExecute) {
     // Headless/test mode: Execute MAGDA action from JSON stored in project
     // state This allows Lua scripts to execute MAGDA commands by setting
     // project state
@@ -502,12 +508,12 @@ void magdaAction(int command_id, int flag) {
         }
       }
     }
-    break;
-  default:
+  } else {
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Unknown command\n");
+      char msg[128];
+      snprintf(msg, sizeof(msg), "MAGDA: Unknown command ID: %d\n", command_id);
+      ShowConsoleMsg(msg);
     }
-    break;
   }
 }
 
@@ -519,11 +525,17 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   (void)val2;
   (void)relmode;
   (void)hwnd; // Suppress unused warnings
-  if (command == MAGDA_MENU_CMD_ID || command == MAGDA_CMD_OPEN ||
-      command == MAGDA_CMD_LOGIN || command == MAGDA_CMD_SETTINGS ||
-      command == MAGDA_CMD_ABOUT || command == MAGDA_CMD_SCAN_PLUGINS ||
-      command == MAGDA_CMD_ANALYZE_TRACK || command == MAGDA_CMD_MIX_ANALYZE ||
-      command == MAGDA_CMD_TEST_EXECUTE_ACTION) {
+  
+  // Only handle if IDs are allocated (non-zero) and command matches
+  if ((g_cmdMenuID != 0 && command == g_cmdMenuID) ||
+      (g_cmdOpen != 0 && command == g_cmdOpen) ||
+      (g_cmdLogin != 0 && command == g_cmdLogin) ||
+      (g_cmdSettings != 0 && command == g_cmdSettings) ||
+      (g_cmdAbout != 0 && command == g_cmdAbout) ||
+      (g_cmdScanPlugins != 0 && command == g_cmdScanPlugins) ||
+      (g_cmdAnalyzeTrack != 0 && command == g_cmdAnalyzeTrack) ||
+      (g_cmdMixAnalyze != 0 && command == g_cmdMixAnalyze) ||
+      (g_cmdTestExecute != 0 && command == g_cmdTestExecute)) {
     magdaAction(command, 0);
     return true; // handled
   }
@@ -753,20 +765,41 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     ShowConsoleMsg("MAGDA: Testing console output...\n");
   }
 
-  // Register actions for all menu items
-  gaccel_register_t gaccel_open = {{0, 0, MAGDA_CMD_OPEN}, "MAGDA: Open MAGDA"};
-  gaccel_register_t gaccel_login = {{0, 0, MAGDA_CMD_LOGIN}, "MAGDA: Login"};
-  gaccel_register_t gaccel_settings = {{0, 0, MAGDA_CMD_SETTINGS},
+  // Allocate unique command IDs dynamically to avoid conflicts with REAPER built-ins
+  g_cmdMenuID = rec->Register("command_id", (void *)"MAGDA_Menu");
+  g_cmdOpen = rec->Register("command_id", (void *)"MAGDA_Open");
+  g_cmdLogin = rec->Register("command_id", (void *)"MAGDA_Login");
+  g_cmdSettings = rec->Register("command_id", (void *)"MAGDA_Settings");
+  g_cmdAbout = rec->Register("command_id", (void *)"MAGDA_About");
+  g_cmdScanPlugins = rec->Register("command_id", (void *)"MAGDA_ScanPlugins");
+  g_cmdAnalyzeTrack = rec->Register("command_id", (void *)"MAGDA_AnalyzeTrack");
+  g_cmdMixAnalyze = rec->Register("command_id", (void *)"MAGDA_MixAnalyze");
+  g_cmdTestExecute = rec->Register("command_id", (void *)"MAGDA_TestExecute");
+
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg),
+             "MAGDA: Allocated command IDs: Open=%d, Login=%d, Settings=%d, "
+             "About=%d, Plugins=%d, Analyze=%d, MixAnalyze=%d, Test=%d\n",
+             g_cmdOpen, g_cmdLogin, g_cmdSettings, g_cmdAbout, g_cmdScanPlugins,
+             g_cmdAnalyzeTrack, g_cmdMixAnalyze, g_cmdTestExecute);
+    ShowConsoleMsg(msg);
+  }
+
+  // Register actions for all menu items (using dynamically allocated IDs)
+  gaccel_register_t gaccel_open = {{0, 0, (unsigned short)g_cmdOpen}, "MAGDA: Open MAGDA"};
+  gaccel_register_t gaccel_login = {{0, 0, (unsigned short)g_cmdLogin}, "MAGDA: Login"};
+  gaccel_register_t gaccel_settings = {{0, 0, (unsigned short)g_cmdSettings},
                                        "MAGDA: Settings"};
-  gaccel_register_t gaccel_about = {{0, 0, MAGDA_CMD_ABOUT}, "MAGDA: About"};
-  gaccel_register_t gaccel_scan_plugins = {{0, 0, MAGDA_CMD_SCAN_PLUGINS},
+  gaccel_register_t gaccel_about = {{0, 0, (unsigned short)g_cmdAbout}, "MAGDA: About"};
+  gaccel_register_t gaccel_scan_plugins = {{0, 0, (unsigned short)g_cmdScanPlugins},
                                            "MAGDA: Plugins"};
-  gaccel_register_t gaccel_analyze_track = {{0, 0, MAGDA_CMD_ANALYZE_TRACK},
+  gaccel_register_t gaccel_analyze_track = {{0, 0, (unsigned short)g_cmdAnalyzeTrack},
                                             "MAGDA: Analyze Selected Track"};
-  gaccel_register_t gaccel_mix_analyze = {{0, 0, MAGDA_CMD_MIX_ANALYZE},
+  gaccel_register_t gaccel_mix_analyze = {{0, 0, (unsigned short)g_cmdMixAnalyze},
                                           "MAGDA: Mix Analysis"};
   gaccel_register_t gaccel_test_execute = {
-      {0, 0, MAGDA_CMD_TEST_EXECUTE_ACTION}, "MAGDA: Test Execute Action"};
+      {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
 
   if (rec->Register("gaccel", &gaccel_open)) {
     if (ShowConsoleMsg) {

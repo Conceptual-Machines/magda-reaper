@@ -19,8 +19,8 @@ extern reaper_plugin_info_t *g_rec;
 // Forward declaration
 extern void magdaAction(int command_id, int flag);
 
-// Command ID for mix analysis (defined in main.cpp)
-#define MAGDA_CMD_MIX_ANALYZE 1007
+// Command ID for mix analysis (defined in main.cpp, dynamically allocated)
+extern int g_cmdMixAnalyze;
 
 // ReaImGui constants
 namespace ImGuiCond {
@@ -669,7 +669,7 @@ void MagdaImGuiChat::Render() {
       m_ImGui_Separator(m_ctx);
       if (m_ImGui_Button(m_ctx, "Mix Analysis", nullptr, nullptr)) {
         // Trigger mix analysis workflow (bounce/analyze/send to agent)
-        magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
+        magdaAction(g_cmdMixAnalyze, 0);
       }
       if (m_ImGui_Button(m_ctx, "Master Analysis", nullptr, nullptr)) {
         if (m_onSend)
@@ -874,7 +874,7 @@ void MagdaImGuiChat::RenderControlsColumn() {
 
   if (m_ImGui_Button(m_ctx, "Mix Analysis", &btnWidth, &btnHeight)) {
     // Trigger mix analysis workflow (bounce/analyze/send to agent)
-    magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
+    magdaAction(g_cmdMixAnalyze, 0);
   }
 
   m_ImGui_Dummy(m_ctx, 0, 3);
