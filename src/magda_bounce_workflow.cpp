@@ -579,7 +579,7 @@ bool MagdaBounceWorkflow::SendToMixAPI(
 
   // Send POST request to mix analysis endpoint
   bool success = s_httpClient.SendPOSTRequest(
-      "/api/v1/magda/mix/analyze", requestJson.Get(), responseJson, error_msg,
+      "/api/v1/mix/analyze", requestJson.Get(), responseJson, error_msg,
       120); // 2 minute timeout
 
   if (success) {
