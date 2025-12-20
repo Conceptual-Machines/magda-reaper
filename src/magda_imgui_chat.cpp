@@ -2,6 +2,7 @@
 #include "../WDL/WDL/jsonparse.h"
 #include "magda_actions.h"
 #include "magda_api_client.h"
+#include "magda_bounce_workflow.h"
 #include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
 #include "magda_settings_window.h"
@@ -576,11 +577,16 @@ void MagdaImGuiChat::Render() {
         AddUserMessage(msg);
         m_inputBuffer[0] = '\0';
 
-        // Start async request - this won't block the UI
-        StartAsyncRequest(msg);
+        // Check for @mix: command first
+        if (HandleMixCommand(msg)) {
+          // Mix command handled, don't send to regular API
+        } else {
+          // Start async request - this won't block the UI
+          StartAsyncRequest(msg);
 
-        if (m_onSend) {
-          m_onSend(msg);
+          if (m_onSend) {
+            m_onSend(msg);
+          }
         }
       }
     }
@@ -1048,7 +1054,7 @@ void MagdaImGuiChat::RenderInputArea() {
 
   if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr) ||
       submitted) {
-    if (canSend && m_onSend) {
+    if (canSend) {
       std::string msg = m_inputBuffer;
       // Add to command history
       m_inputHistory.push_back(msg);
@@ -1056,9 +1062,15 @@ void MagdaImGuiChat::RenderInputArea() {
       m_savedInput.clear();
 
       AddUserMessage(msg);
-      m_onSend(msg);
       m_inputBuffer[0] = '\0';
       m_showAutocomplete = false;
+
+      // Check for @mix: command first
+      if (HandleMixCommand(msg)) {
+        // Mix command handled, don't send to regular API
+      } else if (m_onSend) {
+        m_onSend(msg);
+      }
     }
   }
 
@@ -1198,18 +1210,24 @@ void MagdaImGuiChat::DetectAtTrigger() {
 void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
   m_suggestions.clear();
 
-  if (!m_pluginScanner) {
-    return;
-  }
-
   std::string query = m_autocompletePrefix;
   std::transform(query.begin(), query.end(), query.begin(), ::tolower);
 
-  const auto &aliases = m_pluginScanner->GetAliases();
+  // Add mix analysis types
+  static const std::vector<std::pair<std::string, std::string>> mixTypes = {
+      {"mix:drums", "Analyze drums/percussion track"},
+      {"mix:bass", "Analyze bass track"},
+      {"mix:synth", "Analyze synth/pad track"},
+      {"mix:vocals", "Analyze vocal track"},
+      {"mix:guitar", "Analyze guitar track"},
+      {"mix:piano", "Analyze piano/keys track"},
+      {"mix:strings", "Analyze strings track"},
+      {"mix:fx", "Analyze FX/sound design track"},
+  };
 
-  for (const auto &pair : aliases) {
+  for (const auto &pair : mixTypes) {
     const std::string &alias = pair.first;
-    const std::string &pluginName = pair.second;
+    const std::string &desc = pair.second;
 
     std::string aliasLower = alias;
     std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(),
@@ -1218,15 +1236,41 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
     if (query.empty() || aliasLower.find(query) == 0) {
       AutocompleteSuggestion suggestion;
       suggestion.alias = alias;
-      suggestion.plugin_name = pluginName;
-      suggestion.plugin_type = "fx"; // TODO: detect instrument vs fx
+      suggestion.plugin_name = desc;
+      suggestion.plugin_type = "mix";
       m_suggestions.push_back(suggestion);
+    }
+  }
+
+  // Add plugin aliases
+  if (m_pluginScanner) {
+    const auto &aliases = m_pluginScanner->GetAliases();
+
+    for (const auto &pair : aliases) {
+      const std::string &alias = pair.first;
+      const std::string &pluginName = pair.second;
+
+      std::string aliasLower = alias;
+      std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(),
+                     ::tolower);
+
+      if (query.empty() || aliasLower.find(query) == 0) {
+        AutocompleteSuggestion suggestion;
+        suggestion.alias = alias;
+        suggestion.plugin_name = pluginName;
+        suggestion.plugin_type = "fx";
+        m_suggestions.push_back(suggestion);
+      }
     }
   }
 
   std::sort(m_suggestions.begin(), m_suggestions.end(),
             [&query](const AutocompleteSuggestion &a,
                      const AutocompleteSuggestion &b) {
+              // Mix types first, then plugins
+              if (a.plugin_type != b.plugin_type) {
+                return a.plugin_type == "mix";
+              }
               bool aStartsWith = a.alias.find(query) == 0;
               bool bStartsWith = b.alias.find(query) == 0;
               if (aStartsWith != bStartsWith) {
@@ -1255,6 +1299,68 @@ void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
   m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
 
   m_atPosition = std::string::npos;
+}
+
+// Check if message is a @mix: command and handle it
+// Returns true if handled (should not be sent to regular API)
+bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
+  // Check for @mix: prefix
+  size_t mixPos = msg.find("@mix:");
+  if (mixPos == std::string::npos) {
+    return false;
+  }
+
+  // Extract track type and query
+  std::string afterMix = msg.substr(mixPos + 5); // After "@mix:"
+
+  // Find the track type (next word)
+  size_t typeStart = afterMix.find_first_not_of(" ");
+  if (typeStart == std::string::npos) {
+    AddAssistantMessage("Error: Please specify a track type after @mix: (e.g., @mix:synth make it brighter)");
+    return true;
+  }
+
+  size_t typeEnd = afterMix.find(' ', typeStart);
+  std::string trackType;
+  std::string userQuery;
+
+  if (typeEnd == std::string::npos) {
+    trackType = afterMix.substr(typeStart);
+    userQuery = "";
+  } else {
+    trackType = afterMix.substr(typeStart, typeEnd - typeStart);
+    userQuery = afterMix.substr(typeEnd + 1);
+    // Trim leading spaces from query
+    size_t queryStart = userQuery.find_first_not_of(" ");
+    if (queryStart != std::string::npos) {
+      userQuery = userQuery.substr(queryStart);
+    }
+  }
+
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  if (ShowConsoleMsg) {
+    char logMsg[512];
+    snprintf(logMsg, sizeof(logMsg),
+             "MAGDA: Mix analysis - type: '%s', query: '%s'\n",
+             trackType.c_str(), userQuery.c_str());
+    ShowConsoleMsg(logMsg);
+  }
+
+  // Execute the mix analysis workflow
+  WDL_FastString error_msg;
+  bool success = MagdaBounceWorkflow::ExecuteWorkflow(
+      BOUNCE_MODE_FULL_TRACK, trackType.c_str(), userQuery.c_str(), error_msg);
+
+  if (!success) {
+    std::string errorStr = "Mix analysis failed: ";
+    errorStr += error_msg.Get();
+    AddAssistantMessage(errorStr);
+  } else {
+    AddAssistantMessage("Mix analysis started. Processing...");
+  }
+
+  return true;
 }
 
 void MagdaImGuiChat::AddUserMessage(const std::string &msg) {

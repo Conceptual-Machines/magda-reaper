@@ -216,6 +216,7 @@ private:
   void UpdateAutocompleteSuggestions();
   void InsertCompletion(const std::string &alias);
   void RenderMessageWithHighlighting(const std::string &content);
+  bool HandleMixCommand(const std::string &msg);
 };
 
 // Global instance
