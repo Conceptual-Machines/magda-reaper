@@ -586,22 +586,24 @@ void MagdaImGuiChat::Render() {
     double zero = 0;
     m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    // Only send on button click (Enter key handling would need separate logic)
-    if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
-      if (!m_busy && strlen(m_inputBuffer) > 0) {
-        std::string msg = m_inputBuffer;
-        AddUserMessage(msg);
-        m_inputBuffer[0] = '\0';
+    // Hide Send button when autocomplete is showing to prevent accidental clicks
+    if (!m_showAutocomplete) {
+      if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
+        if (!m_busy && strlen(m_inputBuffer) > 0) {
+          std::string msg = m_inputBuffer;
+          AddUserMessage(msg);
+          m_inputBuffer[0] = '\0';
 
-        // Check for @mix: command first
-        if (HandleMixCommand(msg)) {
-          // Mix command handled, don't send to regular API
-        } else {
-          // Start async request - this won't block the UI
-          StartAsyncRequest(msg);
+          // Check for @mix: command first
+          if (HandleMixCommand(msg)) {
+            // Mix command handled, don't send to regular API
+          } else {
+            // Start async request - this won't block the UI
+            StartAsyncRequest(msg);
 
-          if (m_onSend) {
-            m_onSend(msg);
+            if (m_onSend) {
+              m_onSend(msg);
+            }
           }
         }
       }
@@ -1214,16 +1216,13 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
 
   if (m_ImGui_BeginChild(m_ctx, "##autocomplete_list", &acWidth, &acHeight,
                          &childFlags, &windowFlags)) {
-    int idx = 0;
     int selectableIdx = 0; // Index excluding separators
-    int maxItems = 20; // Show more items
     for (const auto &suggestion : localSuggestions) {
       // Handle separator
       if (suggestion.plugin_type == "separator") {
         m_ImGui_Separator(m_ctx);
         m_ImGui_TextColored(m_ctx, g_theme.dimText, "── Plugins ──");
         m_ImGui_Separator(m_ctx);
-        idx++;
         continue;
       }
 
@@ -1248,10 +1247,7 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         m_ImGui_PopStyleColor(m_ctx, nullptr);
       }
 
-      idx++;
       selectableIdx++;
-      if (idx >= maxItems)
-        break;
     }
   }
   m_ImGui_EndChild(m_ctx);
