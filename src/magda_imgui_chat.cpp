@@ -536,25 +536,41 @@ void MagdaImGuiChat::Render() {
       bool repeatTrue = true;
       bool repeatFalse = false;
 
-      // Up arrow - navigate up
-      if (m_ImGui_IsKeyPressed &&
-          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
-        m_autocompleteIndex =
-            (m_autocompleteIndex - 1 + (int)m_suggestions.size()) %
-            (int)m_suggestions.size();
+      // Count selectable items (exclude separators)
+      int selectableCount = 0;
+      for (const auto &s : m_suggestions) {
+        if (s.plugin_type != "separator") selectableCount++;
       }
-      // Down arrow - navigate down
-      if (m_ImGui_IsKeyPressed &&
-          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
-        m_autocompleteIndex =
-            (m_autocompleteIndex + 1) % (int)m_suggestions.size();
-      }
-      // Tab or Enter - accept completion
-      if (m_ImGui_IsKeyPressed &&
-          (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
-           m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse))) {
-        InsertCompletion(m_suggestions[m_autocompleteIndex].alias);
-        m_showAutocomplete = false;
+
+      if (selectableCount > 0) {
+        // Up arrow - navigate up
+        if (m_ImGui_IsKeyPressed &&
+            m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
+          m_autocompleteIndex =
+              (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
+        }
+        // Down arrow - navigate down
+        if (m_ImGui_IsKeyPressed &&
+            m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
+          m_autocompleteIndex = (m_autocompleteIndex + 1) % selectableCount;
+        }
+        // Tab or Enter - accept completion
+        if (m_ImGui_IsKeyPressed &&
+            (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
+             m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse))) {
+          // Find the nth selectable item
+          int idx = 0;
+          for (const auto &s : m_suggestions) {
+            if (s.plugin_type != "separator") {
+              if (idx == m_autocompleteIndex) {
+                InsertCompletion(s.alias);
+                break;
+              }
+              idx++;
+            }
+          }
+          m_showAutocomplete = false;
+        }
       }
       // Escape - close autocomplete
       if (m_ImGui_IsKeyPressed &&
@@ -991,19 +1007,37 @@ void MagdaImGuiChat::RenderInputArea() {
   bool repeatFalse = false;
 
   if (m_showAutocomplete && !m_suggestions.empty()) {
-    // Autocomplete navigation
-    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
-      m_autocompleteIndex = (m_autocompleteIndex - 1 + m_suggestions.size()) %
-                            m_suggestions.size();
+    // Count selectable items (exclude separators)
+    int selectableCount = 0;
+    for (const auto &s : m_suggestions) {
+      if (s.plugin_type != "separator") selectableCount++;
     }
-    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
-      m_autocompleteIndex = (m_autocompleteIndex + 1) % m_suggestions.size();
-    }
-    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
-        m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse)) {
-      InsertCompletion(m_suggestions[m_autocompleteIndex].alias);
-      m_showAutocomplete = false;
-      return;
+
+    if (selectableCount > 0) {
+      // Autocomplete navigation
+      if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
+        m_autocompleteIndex =
+            (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
+      }
+      if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
+        m_autocompleteIndex = (m_autocompleteIndex + 1) % selectableCount;
+      }
+      if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
+          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse)) {
+        // Find the nth selectable item
+        int idx = 0;
+        for (const auto &s : m_suggestions) {
+          if (s.plugin_type != "separator") {
+            if (idx == m_autocompleteIndex) {
+              InsertCompletion(s.alias);
+              break;
+            }
+            idx++;
+          }
+        }
+        m_showAutocomplete = false;
+        return;
+      }
     }
     if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Escape, &repeatFalse)) {
       m_showAutocomplete = false;
@@ -1098,9 +1132,19 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
   if (m_ImGui_BeginChild(m_ctx, "##autocomplete_list", &acWidth, &acHeight,
                          &childFlags, &windowFlags)) {
     int idx = 0;
-    int maxItems = 15; // Show more items
+    int selectableIdx = 0; // Index excluding separators
+    int maxItems = 20; // Show more items
     for (const auto &suggestion : localSuggestions) {
-      bool isSelected = (idx == m_autocompleteIndex);
+      // Handle separator
+      if (suggestion.plugin_type == "separator") {
+        m_ImGui_Separator(m_ctx);
+        m_ImGui_TextColored(m_ctx, g_theme.dimText, "── Plugins ──");
+        m_ImGui_Separator(m_ctx);
+        idx++;
+        continue;
+      }
+
+      bool isSelected = (selectableIdx == m_autocompleteIndex);
 
       // Highlight selected item
       if (isSelected) {
@@ -1108,7 +1152,7 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
       }
 
       std::string label =
-          "@" + suggestion.alias + " (" + suggestion.plugin_name + ")";
+          "@" + suggestion.alias + " - " + suggestion.plugin_name;
 
       if (m_ImGui_Selectable(m_ctx, label.c_str(), &isSelected, nullptr,
                              nullptr, nullptr)) {
@@ -1116,11 +1160,12 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         wasSelected = true;
       }
 
-      if (idx == m_autocompleteIndex) {
+      if (isSelected) {
         m_ImGui_PopStyleColor(m_ctx, nullptr);
       }
 
       idx++;
+      selectableIdx++;
       if (idx >= maxItems)
         break;
     }
@@ -1242,7 +1287,7 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
     }
   }
 
-  // Add plugin aliases
+  // Add plugin aliases with "plugin:" prefix
   if (m_pluginScanner) {
     const auto &aliases = m_pluginScanner->GetAliases();
 
@@ -1250,15 +1295,17 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
       const std::string &alias = pair.first;
       const std::string &pluginName = pair.second;
 
-      std::string aliasLower = alias;
-      std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(),
-                     ::tolower);
+      // Create prefixed alias for matching
+      std::string prefixedAlias = "plugin:" + alias;
+      std::string prefixedLower = prefixedAlias;
+      std::transform(prefixedLower.begin(), prefixedLower.end(),
+                     prefixedLower.begin(), ::tolower);
 
-      if (query.empty() || aliasLower.find(query) == 0) {
+      if (query.empty() || prefixedLower.find(query) == 0) {
         AutocompleteSuggestion suggestion;
-        suggestion.alias = alias;
+        suggestion.alias = prefixedAlias;
         suggestion.plugin_name = pluginName;
-        suggestion.plugin_type = "fx";
+        suggestion.plugin_type = "plugin";
         m_suggestions.push_back(suggestion);
       }
     }
@@ -1278,6 +1325,23 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
               }
               return a.alias < b.alias;
             });
+
+  // Insert separator between mix and plugin types
+  bool foundMix = false;
+  bool insertedSeparator = false;
+  for (size_t i = 0; i < m_suggestions.size() && !insertedSeparator; i++) {
+    if (m_suggestions[i].plugin_type == "mix") {
+      foundMix = true;
+    } else if (foundMix && m_suggestions[i].plugin_type == "plugin") {
+      // Insert separator before first plugin
+      AutocompleteSuggestion separator;
+      separator.alias = "---";
+      separator.plugin_name = "";
+      separator.plugin_type = "separator";
+      m_suggestions.insert(m_suggestions.begin() + i, separator);
+      insertedSeparator = true;
+    }
+  }
 }
 
 void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
