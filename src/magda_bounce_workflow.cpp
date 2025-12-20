@@ -1083,11 +1083,12 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               }
               
               // Parse response JSON
+              // API returns: { "response": "...", "actions": [...], ... }
               std::string fullJson = responseJson.Get();
               std::string responseText;
               std::string actionsJson;
               
-              // Extract "response" field
+              // Extract "response" field (human-readable text)
               size_t respPos = fullJson.find("\"response\"");
               if (respPos != std::string::npos) {
                 size_t colonPos = fullJson.find(':', respPos);
@@ -1096,9 +1097,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                   if (startQuote != std::string::npos) {
                     size_t endQuote = startQuote + 1;
                     while (endQuote < fullJson.length()) {
-                      if (fullJson[endQuote] == '"' && fullJson[endQuote - 1] != '\\') {
-                        break;
-                      }
+                      if (fullJson[endQuote] == '"' && fullJson[endQuote - 1] != '\\') break;
                       endQuote++;
                     }
                     responseText = fullJson.substr(startQuote + 1, endQuote - startQuote - 1);
@@ -1117,24 +1116,15 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                 }
               }
               
-              // Extract "actions" field (keep as JSON string)
-              size_t actionsPos = fullJson.find("\"actions\"");
-              if (actionsPos != std::string::npos) {
-                size_t colonPos = fullJson.find(':', actionsPos);
-                if (colonPos != std::string::npos) {
-                  size_t bracketStart = fullJson.find('[', colonPos);
-                  if (bracketStart != std::string::npos) {
-                    // Find matching closing bracket
-                    int depth = 1;
-                    size_t bracketEnd = bracketStart + 1;
-                    while (bracketEnd < fullJson.length() && depth > 0) {
-                      if (fullJson[bracketEnd] == '[') depth++;
-                      else if (fullJson[bracketEnd] == ']') depth--;
-                      bracketEnd++;
-                    }
-                    actionsJson = fullJson.substr(bracketStart, bracketEnd - bracketStart);
-                  }
-                }
+              // Extract "actions" field
+              char *extracted = MagdaHTTPClient::ExtractActionsJSON(fullJson.c_str(), (int)fullJson.length());
+              if (extracted) {
+                actionsJson = extracted;
+                free(extracted);
+              }
+              
+              if (responseText.empty()) {
+                responseText = "Mix analysis completed. No detailed response available.";
               }
               
               // Store result with both text and actions
