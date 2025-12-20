@@ -83,6 +83,9 @@ void MagdaParamMappingWindow::LoadPluginParams() {
   if (!g_rec)
     return;
 
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
   // Get Reaper API functions
   int (*CountTracks)(ReaProject *) =
       (int (*)(ReaProject *))g_rec->GetFunc("CountTracks");
@@ -103,7 +106,7 @@ void MagdaParamMappingWindow::LoadPluginParams() {
     return;
   }
 
-  // Find the first instance of this plugin on any track
+  // First try to find the plugin on any existing track
   int trackCount = CountTracks(nullptr);
   for (int t = 0; t < trackCount; t++) {
     MediaTrack *track = GetTrack(nullptr, t);
@@ -130,19 +133,102 @@ void MagdaParamMappingWindow::LoadPluginParams() {
           m_params.push_back(param);
         }
 
-        // Done - found and loaded params
+        if (ShowConsoleMsg) {
+          char msg[256];
+          snprintf(msg, sizeof(msg), "MAGDA: Loaded %d parameters from existing track\n", (int)m_params.size());
+          ShowConsoleMsg(msg);
+        }
         return;
       }
     }
   }
 
-  // Plugin not found on any track - show message in console
-  void (*ShowConsoleMsg)(const char *msg) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  // Plugin not found - create a temporary hidden track, add the plugin, read params, then delete
   if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Plugin not found on any track. Add the plugin to a "
-                   "track first to see its parameters.\n");
+    ShowConsoleMsg("MAGDA: Plugin not on any track, creating temp track to scan parameters...\n");
   }
+
+  // Get additional API functions for track creation
+  void (*InsertTrackAtIndex)(int, bool) =
+      (void (*)(int, bool))g_rec->GetFunc("InsertTrackAtIndex");
+  bool (*DeleteTrack)(MediaTrack *) =
+      (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+  int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
+  bool (*SetMediaTrackInfo_Value)(MediaTrack *, const char *, double) =
+      (bool (*)(MediaTrack *, const char *, double))g_rec->GetFunc("SetMediaTrackInfo_Value");
+  void (*Undo_BeginBlock)() = (void (*)())g_rec->GetFunc("Undo_BeginBlock");
+  void (*Undo_EndBlock)(const char *, int) =
+      (void (*)(const char *, int))g_rec->GetFunc("Undo_EndBlock");
+
+  if (!InsertTrackAtIndex || !DeleteTrack || !TrackFX_AddByName) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Required API functions not available\n");
+    }
+    return;
+  }
+
+  // Begin undo block (so we can cleanly undo if needed)
+  if (Undo_BeginBlock) Undo_BeginBlock();
+
+  // Create track at end
+  int newTrackIdx = CountTracks(nullptr);
+  InsertTrackAtIndex(newTrackIdx, false);
+  
+  MediaTrack *tempTrack = GetTrack(nullptr, newTrackIdx);
+  if (!tempTrack) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Failed to create temp track\n");
+    }
+    if (Undo_EndBlock) Undo_EndBlock("MAGDA Param Scan (failed)", -1);
+    return;
+  }
+
+  // Hide the track (set height to 0 and mute)
+  if (SetMediaTrackInfo_Value) {
+    SetMediaTrackInfo_Value(tempTrack, "B_MUTE", 1.0);
+    SetMediaTrackInfo_Value(tempTrack, "I_HEIGHTOVERRIDE", 1.0); // Minimum height
+  }
+
+  // Add the plugin to the track
+  // TrackFX_AddByName: recFX=-1 for normal FX chain, instantiate=true
+  int fxIdx = TrackFX_AddByName(tempTrack, m_pluginKey.c_str(), false, -1);
+  
+  if (fxIdx < 0) {
+    if (ShowConsoleMsg) {
+      char msg[512];
+      snprintf(msg, sizeof(msg), "MAGDA: Failed to add plugin '%s' to temp track\n", m_pluginKey.c_str());
+      ShowConsoleMsg(msg);
+    }
+    DeleteTrack(tempTrack);
+    if (Undo_EndBlock) Undo_EndBlock("MAGDA Param Scan (failed)", -1);
+    return;
+  }
+
+  // Read all parameters
+  int numParams = TrackFX_GetNumParams(tempTrack, fxIdx);
+  for (int p = 0; p < numParams; p++) {
+    char paramName[256] = {0};
+    TrackFX_GetParamName(tempTrack, fxIdx, p, paramName, sizeof(paramName));
+
+    PluginParam param;
+    param.index = p;
+    param.name = paramName;
+    param.currentAlias = "";
+    m_params.push_back(param);
+  }
+
+  if (ShowConsoleMsg) {
+    char msg[256];
+    snprintf(msg, sizeof(msg), "MAGDA: Loaded %d parameters from temp track\n", (int)m_params.size());
+    ShowConsoleMsg(msg);
+  }
+
+  // Delete the temp track
+  DeleteTrack(tempTrack);
+
+  // End undo block - mark as no-op so it doesn't appear in undo history
+  if (Undo_EndBlock) Undo_EndBlock("MAGDA Param Scan", -1);
 }
 
 void MagdaParamMappingWindow::LoadExistingAliases() {
