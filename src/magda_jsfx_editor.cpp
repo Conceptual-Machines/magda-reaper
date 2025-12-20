@@ -222,37 +222,16 @@ void MagdaJSFXEditor::RefreshFileList() {
     file.depth = 0;
     file.is_expanded = false;
 
-    // Use d_type for faster directory detection on macOS/Linux
-    #ifdef _DIRENT_HAVE_D_TYPE
-    if (entry->d_type == DT_DIR) {
-      file.is_directory = true;
-    } else if (entry->d_type == DT_REG) {
-      file.is_directory = false;
-    } else {
-      // Unknown type, fall back to stat
-      struct stat st;
-      if (stat(file.full_path.c_str(), &st) == 0) {
-        file.is_directory = S_ISDIR(st.st_mode);
-      } else {
-        file.is_directory = false;
-      }
-    }
-    #else
-    // Fallback for systems without d_type
+    // Use stat for reliable file type detection
     struct stat st;
     if (stat(file.full_path.c_str(), &st) == 0) {
       file.is_directory = S_ISDIR(st.st_mode);
     } else {
       file.is_directory = false;
     }
-    #endif
 
-    // Only show JSFX files and directories
-    if (file.is_directory || 
-        file.name.find(".jsfx") != std::string::npos ||
-        file.name.find(".JSFX") != std::string::npos) {
-      m_files.push_back(file);
-    }
+    // Show all directories and files (JSFX files often have no extension)
+    m_files.push_back(file);
   }
   closedir(dir);
 
@@ -267,6 +246,7 @@ void MagdaJSFXEditor::RefreshFileList() {
               }
               return a.name < b.name;
             });
+  
 }
 
 void MagdaJSFXEditor::OpenFile(const std::string &path) {
@@ -348,83 +328,32 @@ spl1 *= gain;
 }
 
 void MagdaJSFXEditor::Show() {
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-  
-  if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Show() called\n");
-  }
-  
-  if (!m_available) {
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA JSFX: Not available, returning\n");
-    }
+  if (!m_available)
     return;
-  }
 
   if (!m_ctx) {
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA JSFX: Creating new context...\n");
-    }
     int configFlags = 0;
     m_ctx = m_ImGui_CreateContext("MAGDA JSFX Editor", &configFlags);
-    if (!m_ctx) {
-      if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA JSFX: Failed to create ImGui context\n");
-      }
+    if (!m_ctx)
       return;
-    }
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA JSFX: Context created successfully\n");
-    }
   }
   m_visible = true;
-  if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA JSFX: Window is now visible\n");
-  }
 }
 
 void MagdaJSFXEditor::Hide() { m_visible = false; }
 
 void MagdaJSFXEditor::Render() {
-  static int debugCounter = 0;
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-  
-  if (!m_visible || !m_ctx || !m_available) {
-    if (debugCounter < 3 && ShowConsoleMsg) {
-      char msg[256];
-      snprintf(msg, sizeof(msg), "MAGDA JSFX Render: early return (visible=%d, ctx=%p, available=%d)\n",
-               m_visible ? 1 : 0, (void*)m_ctx, m_available ? 1 : 0);
-      ShowConsoleMsg(msg);
-      debugCounter++;
-    }
+  if (!m_visible || !m_ctx || !m_available)
     return;
-  }
-  
-  if (debugCounter < 3 && ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA JSFX: Render() executing...\n");
-    debugCounter++;
-  }
 
   // Set initial window size
   int cond = 4; // ImGuiCond_FirstUseEver
   m_ImGui_SetNextWindowSize(m_ctx, 1200, 700, &cond);
 
   bool open = true;
-  int windowFlags = 0; // Try without MenuBar flag first
+  int windowFlags = 0;
 
-  bool beginResult = m_ImGui_Begin(m_ctx, "MAGDA JSFX Editor", &open, &windowFlags);
-  
-  if (debugCounter < 5 && ShowConsoleMsg) {
-    char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA JSFX: Begin returned %d, open=%d\n", 
-             beginResult ? 1 : 0, open ? 1 : 0);
-    ShowConsoleMsg(msg);
-    debugCounter++;
-  }
-  
-  if (beginResult) {
+  if (m_ImGui_Begin(m_ctx, "MAGDA JSFX Editor", &open, &windowFlags)) {
     // Get available space
     double availW, availH;
     m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
@@ -485,10 +414,6 @@ void MagdaJSFXEditor::RenderFilePanel() {
   m_ImGui_TextColored(m_ctx, g_theme.headerText, "FILES");
   m_ImGui_Separator(m_ctx);
 
-  // Show current folder and file count for debugging
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-
   // File list in a scrollable child
   double childW = 0;  // Fill available width
   double childH = 0;  // Fill available height (0 = auto)
@@ -517,14 +442,6 @@ void MagdaJSFXEditor::RenderFilePanel() {
     bool selected = (file.full_path == m_currentFilePath);
     if (m_ImGui_Selectable(m_ctx, label.c_str(), &selected, nullptr, nullptr,
                            nullptr)) {
-      // Debug: log every click
-      if (ShowConsoleMsg) {
-        char msg[512];
-        snprintf(msg, sizeof(msg), "MAGDA JSFX: Clicked '%s' (is_directory=%d)\n", 
-                 file.name.c_str(), file.is_directory ? 1 : 0);
-        ShowConsoleMsg(msg);
-      }
-      
       if (file.is_directory) {
         // Queue navigation - don't modify m_files while iterating
         pendingNavigate = file.full_path;
@@ -539,24 +456,10 @@ void MagdaJSFXEditor::RenderFilePanel() {
 
   // Process pending actions after iteration is complete
   if (!pendingNavigate.empty()) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA JSFX: Navigating to %s\n", pendingNavigate.c_str());
-      ShowConsoleMsg(msg);
-    }
     m_currentFolder = pendingNavigate;
     RefreshFileList();
   }
   if (!pendingOpenFile.empty()) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA JSFX: Opening file %s\n", pendingOpenFile.c_str());
-      ShowConsoleMsg(msg);
-    }
     OpenFile(pendingOpenFile);
   }
 }
