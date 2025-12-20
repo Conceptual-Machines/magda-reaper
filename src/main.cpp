@@ -449,19 +449,16 @@ void magdaAction(int command_id, int flag) {
         // Get selected track name for smart suggestion
         MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
             (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetSelectedTrack");
-        const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *, bool *) =
-            (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
-                "GetSetMediaTrackInfo_String");
+        bool (*GetTrackName)(MediaTrack *, char *, int) =
+            (bool (*)(MediaTrack *, char *, int))g_rec->GetFunc("GetTrackName");
         
-        if (GetSelectedTrack && GetSetMediaTrackInfo_String) {
+        if (GetSelectedTrack && GetTrackName) {
           MediaTrack *track = GetSelectedTrack(nullptr, 0);
           if (track) {
             char trackName[256] = {0};
-            bool needFree = false;
-            const char *name = GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", trackName, &needFree);
-            if (name && name[0]) {
+            if (GetTrackName(track, trackName, sizeof(trackName)) && trackName[0]) {
               // Simple keyword detection (could be improved later)
-              std::string lowerName = name;
+              std::string lowerName = trackName;
               for (auto &c : lowerName) c = tolower(c);
               
               if (lowerName.find("drum") != std::string::npos || 
