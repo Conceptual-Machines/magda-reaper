@@ -296,29 +296,40 @@ void MagdaLoginWindow::OnLogin() {
     return;
   }
 
-  // Try to load stored credentials first
-  WDL_FastString stored_email, stored_password;
-  LoadCredentials(stored_email, stored_password);
-
-  // Fallback to .env if no stored credentials
-  const char *email = nullptr;
-  const char *password = nullptr;
-  if (stored_email.GetLength() > 0 && stored_password.GetLength() > 0) {
-    email = stored_email.Get();
-    password = stored_password.Get();
-  } else {
-    // Read credentials from .env for development
-    email = MagdaEnv::Get("MAGDA_EMAIL", "");
-    password = MagdaEnv::Get("MAGDA_PASSWORD", "");
+  // Priority: 1. Text fields, 2. Stored credentials, 3. .env (for debugging)
+  char emailBuf[256] = {0};
+  char passwordBuf[256] = {0};
+  
+  // First try the text input fields
+  if (m_hwndEmailInput && m_hwndPasswordInput) {
+    GetWindowText(m_hwndEmailInput, emailBuf, sizeof(emailBuf));
+    GetWindowText(m_hwndPasswordInput, passwordBuf, sizeof(passwordBuf));
+  }
+  
+  // If text fields are empty, try stored credentials
+  if (strlen(emailBuf) == 0 || strlen(passwordBuf) == 0) {
+    WDL_FastString stored_email, stored_password;
+    LoadCredentials(stored_email, stored_password);
+    if (stored_email.GetLength() > 0 && stored_password.GetLength() > 0) {
+      strncpy(emailBuf, stored_email.Get(), sizeof(emailBuf) - 1);
+      strncpy(passwordBuf, stored_password.Get(), sizeof(passwordBuf) - 1);
+    }
+  }
+  
+  // Last resort: .env (for development/debugging)
+  if (strlen(emailBuf) == 0 || strlen(passwordBuf) == 0) {
+    const char *envEmail = MagdaEnv::Get("MAGDA_EMAIL", "");
+    const char *envPassword = MagdaEnv::Get("MAGDA_PASSWORD", "");
+    if (strlen(envEmail) > 0) strncpy(emailBuf, envEmail, sizeof(emailBuf) - 1);
+    if (strlen(envPassword) > 0) strncpy(passwordBuf, envPassword, sizeof(passwordBuf) - 1);
   }
 
-  if (!email || strlen(email) == 0 || !password || strlen(password) == 0) {
-    SetStatus("Please ensure MAGDA_EMAIL and MAGDA_PASSWORD are set in .env",
-              true);
+  if (strlen(emailBuf) == 0 || strlen(passwordBuf) == 0) {
+    SetStatus("Please enter email and password", true);
     return;
   }
 
-  OnLoginWithCredentials(email, password);
+  OnLoginWithCredentials(emailBuf, passwordBuf);
 }
 
 void MagdaLoginWindow::OnLoginWithCredentials(const char *email,

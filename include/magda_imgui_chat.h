@@ -41,6 +41,12 @@ public:
   bool IsVisible() const { return m_visible; }
   void Toggle();
 
+  // Set input text (for prefilling from external triggers)
+  void SetInputText(const char *text);
+
+  // Show window and prefill input
+  void ShowWithInput(const char *text);
+
   // Main render loop - call from timer/defer
   void Render();
 
@@ -158,6 +164,10 @@ private:
   std::string m_streamingBuffer;
   bool m_scrollToBottom = false;
 
+  // Pending mix analysis actions (waiting for user confirmation)
+  bool m_hasPendingMixActions = false;
+  std::string m_pendingMixActionsJson;
+
   // Input command history (for up/down arrow navigation)
   std::vector<std::string> m_inputHistory;
   int m_inputHistoryIndex = -1;
@@ -210,6 +220,7 @@ private:
   void UpdateAutocompleteSuggestions();
   void InsertCompletion(const std::string &alias);
   void RenderMessageWithHighlighting(const std::string &content);
+  bool HandleMixCommand(const std::string &msg);
 };
 
 // Global instance

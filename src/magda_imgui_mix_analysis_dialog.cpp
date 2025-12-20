@@ -161,14 +161,16 @@ void MagdaImGuiMixAnalysisDialog::Render() {
     open = false;
   }
 
-  // Handle window close
-  if (!open && !m_completed) {
-    // Window was closed (X button) - treat as cancel
-    m_dialogResult.cancelled = true;
-    m_completed = true;
+  m_ImGui_End(m_ctx);
+
+  // Handle window close - always reset context when closed (by any means)
+  if (!open) {
+    if (!m_completed) {
+      // Window was closed (X button) - treat as cancel
+      m_dialogResult.cancelled = true;
+      m_completed = true;
+    }
     m_visible = false;
     m_ctx = nullptr; // Reset context so it can be recreated on next Show()
   }
-
-  m_ImGui_End(m_ctx);
 }

@@ -2,6 +2,7 @@
 #include "../WDL/WDL/jsonparse.h"
 #include "magda_actions.h"
 #include "magda_api_client.h"
+#include "magda_bounce_workflow.h"
 #include "magda_login_window.h"
 #include "magda_plugin_scanner.h"
 #include "magda_settings_window.h"
@@ -19,8 +20,8 @@ extern reaper_plugin_info_t *g_rec;
 // Forward declaration
 extern void magdaAction(int command_id, int flag);
 
-// Command ID for mix analysis (defined in main.cpp)
-#define MAGDA_CMD_MIX_ANALYZE 1007
+// Command ID for mix analysis (defined in main.cpp, dynamically allocated)
+extern int g_cmdMixAnalyze;
 
 // ReaImGui constants
 namespace ImGuiCond {
@@ -356,6 +357,18 @@ void MagdaImGuiChat::Toggle() {
   }
 }
 
+void MagdaImGuiChat::SetInputText(const char *text) {
+  if (text) {
+    strncpy(m_inputBuffer, text, sizeof(m_inputBuffer) - 1);
+    m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
+  }
+}
+
+void MagdaImGuiChat::ShowWithInput(const char *text) {
+  Show();
+  SetInputText(text);
+}
+
 void MagdaImGuiChat::CheckAPIHealth() {
   WDL_FastString error_msg;
   if (s_httpClient.CheckHealth(error_msg, 3)) {
@@ -523,25 +536,41 @@ void MagdaImGuiChat::Render() {
       bool repeatTrue = true;
       bool repeatFalse = false;
 
-      // Up arrow - navigate up
-      if (m_ImGui_IsKeyPressed &&
-          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
-        m_autocompleteIndex =
-            (m_autocompleteIndex - 1 + (int)m_suggestions.size()) %
-            (int)m_suggestions.size();
+      // Count selectable items (exclude separators)
+      int selectableCount = 0;
+      for (const auto &s : m_suggestions) {
+        if (s.plugin_type != "separator") selectableCount++;
       }
-      // Down arrow - navigate down
-      if (m_ImGui_IsKeyPressed &&
-          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
-        m_autocompleteIndex =
-            (m_autocompleteIndex + 1) % (int)m_suggestions.size();
-      }
-      // Tab or Enter - accept completion
-      if (m_ImGui_IsKeyPressed &&
-          (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
-           m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse))) {
-        InsertCompletion(m_suggestions[m_autocompleteIndex].alias);
-        m_showAutocomplete = false;
+
+      if (selectableCount > 0) {
+        // Up arrow - navigate up
+        if (m_ImGui_IsKeyPressed &&
+            m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
+          m_autocompleteIndex =
+              (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
+        }
+        // Down arrow - navigate down
+        if (m_ImGui_IsKeyPressed &&
+            m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
+          m_autocompleteIndex = (m_autocompleteIndex + 1) % selectableCount;
+        }
+        // Tab or Enter - accept completion
+        if (m_ImGui_IsKeyPressed &&
+            (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
+             m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse))) {
+          // Find the nth selectable item
+          int idx = 0;
+          for (const auto &s : m_suggestions) {
+            if (s.plugin_type != "separator") {
+              if (idx == m_autocompleteIndex) {
+                InsertCompletion(s.alias);
+                break;
+              }
+              idx++;
+            }
+          }
+          m_showAutocomplete = false;
+        }
       }
       // Escape - close autocomplete
       if (m_ImGui_IsKeyPressed &&
@@ -557,18 +586,25 @@ void MagdaImGuiChat::Render() {
     double zero = 0;
     m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    // Only send on button click (Enter key handling would need separate logic)
-    if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
-      if (!m_busy && strlen(m_inputBuffer) > 0) {
-        std::string msg = m_inputBuffer;
-        AddUserMessage(msg);
-        m_inputBuffer[0] = '\0';
+    // Hide Send button when autocomplete is showing to prevent accidental clicks
+    if (!m_showAutocomplete) {
+      if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
+        if (!m_busy && strlen(m_inputBuffer) > 0) {
+          std::string msg = m_inputBuffer;
+          AddUserMessage(msg);
+          m_inputBuffer[0] = '\0';
 
-        // Start async request - this won't block the UI
-        StartAsyncRequest(msg);
+          // Check for @mix: command first
+          if (HandleMixCommand(msg)) {
+            // Mix command handled, don't send to regular API
+          } else {
+            // Start async request - this won't block the UI
+            StartAsyncRequest(msg);
 
-        if (m_onSend) {
-          m_onSend(msg);
+            if (m_onSend) {
+              m_onSend(msg);
+            }
+          }
         }
       }
     }
@@ -587,11 +623,11 @@ void MagdaImGuiChat::Render() {
     m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
     double colSpacing = 8.0;              // spacing between columns
     double totalSpacing = colSpacing * 2; // 2 gaps for 3 columns
-    double colW = (availW - totalSpacing) / 3.0;
+    double totalW = availW - totalSpacing;
 
-    double col1W = colW; // Request
-    double col2W = colW; // Response
-    double col3W = colW; // Controls
+    double col1W = totalW * 0.25; // Request (narrower)
+    double col2W = totalW * 0.50; // Response (wider)
+    double col3W = totalW * 0.25; // Controls (narrower)
     double paneH = -30;  // Leave room for footer
 
     // Column 1: REQUEST (user messages)
@@ -624,6 +660,48 @@ void MagdaImGuiChat::Render() {
       if (!m_streamingBuffer.empty()) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       }
+      
+      // Show Yes/No buttons for pending mix actions
+      if (m_hasPendingMixActions) {
+        m_ImGui_Separator(m_ctx);
+        m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
+        m_ImGui_Dummy(m_ctx, 0, 5);
+        
+        double btnW = 80;
+        double btnH = 0;
+        
+        // Green "Yes" button
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
+        if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
+          // Execute the pending actions
+          WDL_FastString execution_result, execution_error;
+          if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
+                                           execution_result, execution_error)) {
+            AddAssistantMessage("Changes applied successfully!");
+          } else {
+            std::string errMsg = "Failed to apply changes: ";
+            errMsg += execution_error.Get();
+            AddAssistantMessage(errMsg);
+          }
+          m_hasPendingMixActions = false;
+          m_pendingMixActionsJson.clear();
+        }
+        m_ImGui_PopStyleColor(m_ctx, nullptr);
+        
+        m_ImGui_SameLine(m_ctx, &zero, &zero);
+        
+        // Red "No" button
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
+        if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
+          AddAssistantMessage("Changes cancelled.");
+          m_hasPendingMixActions = false;
+          m_pendingMixActionsJson.clear();
+        }
+        m_ImGui_PopStyleColor(m_ctx, nullptr);
+        
+        m_ImGui_Separator(m_ctx);
+      }
+      
       // Show loading spinner while busy
       if (m_busy) {
         // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
@@ -669,7 +747,7 @@ void MagdaImGuiChat::Render() {
       m_ImGui_Separator(m_ctx);
       if (m_ImGui_Button(m_ctx, "Mix Analysis", nullptr, nullptr)) {
         // Trigger mix analysis workflow (bounce/analyze/send to agent)
-        magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
+        magdaAction(g_cmdMixAnalyze, 0);
       }
       if (m_ImGui_Button(m_ctx, "Master Analysis", nullptr, nullptr)) {
         if (m_onSend)
@@ -728,9 +806,9 @@ void MagdaImGuiChat::RenderMainContent() {
   if (m_ImGui_BeginTable(m_ctx, "##main_layout", 3, &tableFlags, &outerSizeW,
                          &outerSizeH, &innerWidth)) {
     int stretchFlags = ImGuiTableColumnFlags::WidthStretch;
-    double col1Weight = 1.0;
-    double col2Weight = 1.0;
-    double col3Weight = 0.6;
+    double col1Weight = 0.5;  // Request (narrower)
+    double col2Weight = 1.0;  // Response (wider)
+    double col3Weight = 0.5;  // Controls (narrower)
     m_ImGui_TableSetupColumn(m_ctx, "REQUEST", &stretchFlags, &col1Weight,
                              nullptr);
     m_ImGui_TableSetupColumn(m_ctx, "RESPONSE", &stretchFlags, &col2Weight,
@@ -829,6 +907,47 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_PopStyleColor(m_ctx, &popCount);
     }
 
+    // Show Yes/No buttons for pending mix actions (compact view)
+    if (m_hasPendingMixActions) {
+      m_ImGui_Separator(m_ctx);
+      m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
+      m_ImGui_Dummy(m_ctx, 0, 5);
+      
+      double btnW = 80;
+      double btnH = 0;
+      double spacing = 10;
+      
+      // Green "Yes" button
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
+      if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
+        WDL_FastString execution_result, execution_error;
+        if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
+                                         execution_result, execution_error)) {
+          AddAssistantMessage("Changes applied successfully!");
+        } else {
+          std::string errMsg = "Failed to apply changes: ";
+          errMsg += execution_error.Get();
+          AddAssistantMessage(errMsg);
+        }
+        m_hasPendingMixActions = false;
+        m_pendingMixActionsJson.clear();
+      }
+      m_ImGui_PopStyleColor(m_ctx, nullptr);
+      
+      m_ImGui_SameLine(m_ctx, nullptr, &spacing);
+      
+      // Red "No" button
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
+      if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
+        AddAssistantMessage("Changes cancelled.");
+        m_hasPendingMixActions = false;
+        m_pendingMixActionsJson.clear();
+      }
+      m_ImGui_PopStyleColor(m_ctx, nullptr);
+      
+      m_ImGui_Separator(m_ctx);
+    }
+
     // Show loading spinner while busy
     if (m_busy) {
       // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
@@ -874,7 +993,7 @@ void MagdaImGuiChat::RenderControlsColumn() {
 
   if (m_ImGui_Button(m_ctx, "Mix Analysis", &btnWidth, &btnHeight)) {
     // Trigger mix analysis workflow (bounce/analyze/send to agent)
-    magdaAction(MAGDA_CMD_MIX_ANALYZE, 0);
+    magdaAction(g_cmdMixAnalyze, 0);
   }
 
   m_ImGui_Dummy(m_ctx, 0, 3);
@@ -973,19 +1092,37 @@ void MagdaImGuiChat::RenderInputArea() {
   bool repeatFalse = false;
 
   if (m_showAutocomplete && !m_suggestions.empty()) {
-    // Autocomplete navigation
-    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
-      m_autocompleteIndex = (m_autocompleteIndex - 1 + m_suggestions.size()) %
-                            m_suggestions.size();
+    // Count selectable items (exclude separators)
+    int selectableCount = 0;
+    for (const auto &s : m_suggestions) {
+      if (s.plugin_type != "separator") selectableCount++;
     }
-    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
-      m_autocompleteIndex = (m_autocompleteIndex + 1) % m_suggestions.size();
-    }
-    if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
-        m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse)) {
-      InsertCompletion(m_suggestions[m_autocompleteIndex].alias);
-      m_showAutocomplete = false;
-      return;
+
+    if (selectableCount > 0) {
+      // Autocomplete navigation
+      if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
+        m_autocompleteIndex =
+            (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
+      }
+      if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
+        m_autocompleteIndex = (m_autocompleteIndex + 1) % selectableCount;
+      }
+      if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
+          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse)) {
+        // Find the nth selectable item
+        int idx = 0;
+        for (const auto &s : m_suggestions) {
+          if (s.plugin_type != "separator") {
+            if (idx == m_autocompleteIndex) {
+              InsertCompletion(s.alias);
+              break;
+            }
+            idx++;
+          }
+        }
+        m_showAutocomplete = false;
+        return;
+      }
     }
     if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Escape, &repeatFalse)) {
       m_showAutocomplete = false;
@@ -1036,7 +1173,7 @@ void MagdaImGuiChat::RenderInputArea() {
 
   if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr) ||
       submitted) {
-    if (canSend && m_onSend) {
+    if (canSend) {
       std::string msg = m_inputBuffer;
       // Add to command history
       m_inputHistory.push_back(msg);
@@ -1044,9 +1181,15 @@ void MagdaImGuiChat::RenderInputArea() {
       m_savedInput.clear();
 
       AddUserMessage(msg);
-      m_onSend(msg);
       m_inputBuffer[0] = '\0';
       m_showAutocomplete = false;
+
+      // Check for @mix: command first
+      if (HandleMixCommand(msg)) {
+        // Mix command handled, don't send to regular API
+      } else if (m_onSend) {
+        m_onSend(msg);
+      }
     }
   }
 
@@ -1073,18 +1216,26 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
 
   if (m_ImGui_BeginChild(m_ctx, "##autocomplete_list", &acWidth, &acHeight,
                          &childFlags, &windowFlags)) {
-    int idx = 0;
-    int maxItems = 15; // Show more items
+    int selectableIdx = 0; // Index excluding separators
     for (const auto &suggestion : localSuggestions) {
-      bool isSelected = (idx == m_autocompleteIndex);
+      // Handle separator
+      if (suggestion.plugin_type == "separator") {
+        m_ImGui_Separator(m_ctx);
+        m_ImGui_TextColored(m_ctx, g_theme.dimText, "── Plugins ──");
+        m_ImGui_Separator(m_ctx);
+        continue;
+      }
+
+      bool wasHighlighted = (selectableIdx == m_autocompleteIndex);
+      bool isSelected = wasHighlighted;
 
       // Highlight selected item
-      if (isSelected) {
+      if (wasHighlighted) {
         m_ImGui_PushStyleColor(m_ctx, 24, g_theme.buttonBg); // Col_Header
       }
 
       std::string label =
-          "@" + suggestion.alias + " (" + suggestion.plugin_name + ")";
+          "@" + suggestion.alias + " - " + suggestion.plugin_name;
 
       if (m_ImGui_Selectable(m_ctx, label.c_str(), &isSelected, nullptr,
                              nullptr, nullptr)) {
@@ -1092,13 +1243,11 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         wasSelected = true;
       }
 
-      if (idx == m_autocompleteIndex) {
+      if (wasHighlighted) {
         m_ImGui_PopStyleColor(m_ctx, nullptr);
       }
 
-      idx++;
-      if (idx >= maxItems)
-        break;
+      selectableIdx++;
     }
   }
   m_ImGui_EndChild(m_ctx);
@@ -1112,7 +1261,15 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
 }
 
 void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
-  // Parse and render with @mention highlighting
+  // For mix analysis responses with multiple lines, just use TextWrapped
+  // The @ highlighting is mainly for user input anyway
+  if (content.find('\n') != std::string::npos) {
+    // Multi-line content - use wrapped text for proper display
+    m_ImGui_TextWrapped(m_ctx, content.c_str());
+    return;
+  }
+  
+  // Single line - parse and render with @mention highlighting
   size_t pos = 0;
   size_t len = content.length();
   int mentionColor = THEME_RGBA(0x66, 0xCC, 0xFF); // Cyan for @mentions
@@ -1121,9 +1278,9 @@ void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
     size_t atPos = content.find('@', pos);
 
     if (atPos == std::string::npos) {
-      // No more @, render rest as normal
+      // No more @, render rest as normal wrapped
       if (pos < len) {
-        m_ImGui_Text(m_ctx, content.substr(pos).c_str());
+        m_ImGui_TextWrapped(m_ctx, content.substr(pos).c_str());
       }
       break;
     }
@@ -1131,7 +1288,7 @@ void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
     // Render text before @
     if (atPos > pos) {
       std::string before = content.substr(pos, atPos - pos);
-      m_ImGui_Text(m_ctx, before.c_str());
+      m_ImGui_TextWrapped(m_ctx, before.c_str());
       m_ImGui_SameLine(m_ctx, nullptr, nullptr);
     }
 
@@ -1179,25 +1336,38 @@ void MagdaImGuiChat::DetectAtTrigger() {
   }
 
   UpdateAutocompleteSuggestions();
-  m_showAutocomplete = !m_suggestions.empty();
+  
+  // Count selectable items (exclude separators)
+  int selectableCount = 0;
+  for (const auto &s : m_suggestions) {
+    if (s.plugin_type != "separator") selectableCount++;
+  }
+  
+  m_showAutocomplete = selectableCount > 0;
   m_autocompleteIndex = 0;
 }
 
 void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
   m_suggestions.clear();
 
-  if (!m_pluginScanner) {
-    return;
-  }
-
   std::string query = m_autocompletePrefix;
   std::transform(query.begin(), query.end(), query.begin(), ::tolower);
 
-  const auto &aliases = m_pluginScanner->GetAliases();
+  // Add mix analysis types
+  static const std::vector<std::pair<std::string, std::string>> mixTypes = {
+      {"mix:drums", "Analyze drums/percussion track"},
+      {"mix:bass", "Analyze bass track"},
+      {"mix:synth", "Analyze synth/pad track"},
+      {"mix:vocals", "Analyze vocal track"},
+      {"mix:guitar", "Analyze guitar track"},
+      {"mix:piano", "Analyze piano/keys track"},
+      {"mix:strings", "Analyze strings track"},
+      {"mix:fx", "Analyze FX/sound design track"},
+  };
 
-  for (const auto &pair : aliases) {
+  for (const auto &pair : mixTypes) {
     const std::string &alias = pair.first;
-    const std::string &pluginName = pair.second;
+    const std::string &desc = pair.second;
 
     std::string aliasLower = alias;
     std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(),
@@ -1206,15 +1376,43 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
     if (query.empty() || aliasLower.find(query) == 0) {
       AutocompleteSuggestion suggestion;
       suggestion.alias = alias;
-      suggestion.plugin_name = pluginName;
-      suggestion.plugin_type = "fx"; // TODO: detect instrument vs fx
+      suggestion.plugin_name = desc;
+      suggestion.plugin_type = "mix";
       m_suggestions.push_back(suggestion);
+    }
+  }
+
+  // Add plugin aliases with "plugin:" prefix
+  if (m_pluginScanner) {
+    const auto &aliases = m_pluginScanner->GetAliases();
+
+    for (const auto &pair : aliases) {
+      const std::string &alias = pair.first;
+      const std::string &pluginName = pair.second;
+
+      // Create prefixed alias for matching
+      std::string prefixedAlias = "plugin:" + alias;
+      std::string prefixedLower = prefixedAlias;
+      std::transform(prefixedLower.begin(), prefixedLower.end(),
+                     prefixedLower.begin(), ::tolower);
+
+      if (query.empty() || prefixedLower.find(query) == 0) {
+        AutocompleteSuggestion suggestion;
+        suggestion.alias = prefixedAlias;
+        suggestion.plugin_name = pluginName;
+        suggestion.plugin_type = "plugin";
+        m_suggestions.push_back(suggestion);
+      }
     }
   }
 
   std::sort(m_suggestions.begin(), m_suggestions.end(),
             [&query](const AutocompleteSuggestion &a,
                      const AutocompleteSuggestion &b) {
+              // Mix types first, then plugins
+              if (a.plugin_type != b.plugin_type) {
+                return a.plugin_type == "mix";
+              }
               bool aStartsWith = a.alias.find(query) == 0;
               bool bStartsWith = b.alias.find(query) == 0;
               if (aStartsWith != bStartsWith) {
@@ -1222,6 +1420,23 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
               }
               return a.alias < b.alias;
             });
+
+  // Insert separator between mix and plugin types
+  bool foundMix = false;
+  bool insertedSeparator = false;
+  for (size_t i = 0; i < m_suggestions.size() && !insertedSeparator; i++) {
+    if (m_suggestions[i].plugin_type == "mix") {
+      foundMix = true;
+    } else if (foundMix && m_suggestions[i].plugin_type == "plugin") {
+      // Insert separator before first plugin
+      AutocompleteSuggestion separator;
+      separator.alias = "---";
+      separator.plugin_name = "";
+      separator.plugin_type = "separator";
+      m_suggestions.insert(m_suggestions.begin() + i, separator);
+      insertedSeparator = true;
+    }
+  }
 }
 
 void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
@@ -1243,6 +1458,74 @@ void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
   m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
 
   m_atPosition = std::string::npos;
+}
+
+// Check if message is a @mix: command and handle it
+// Returns true if handled (should not be sent to regular API)
+bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
+  // Check for @mix: prefix
+  size_t mixPos = msg.find("@mix:");
+  if (mixPos == std::string::npos) {
+    return false;
+  }
+
+  // Extract track type and query
+  std::string afterMix = msg.substr(mixPos + 5); // After "@mix:"
+
+  // Find the track type (next word)
+  size_t typeStart = afterMix.find_first_not_of(" ");
+  if (typeStart == std::string::npos) {
+    AddAssistantMessage("Error: Please specify a track type after @mix: (e.g., @mix:synth make it brighter)");
+    return true;
+  }
+
+  size_t typeEnd = afterMix.find(' ', typeStart);
+  std::string trackType;
+  std::string userQuery;
+
+  if (typeEnd == std::string::npos) {
+    trackType = afterMix.substr(typeStart);
+    userQuery = "";
+  } else {
+    trackType = afterMix.substr(typeStart, typeEnd - typeStart);
+    userQuery = afterMix.substr(typeEnd + 1);
+    // Trim leading spaces from query
+    size_t queryStart = userQuery.find_first_not_of(" ");
+    if (queryStart != std::string::npos) {
+      userQuery = userQuery.substr(queryStart);
+    }
+  }
+
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  if (ShowConsoleMsg) {
+    char logMsg[512];
+    snprintf(logMsg, sizeof(logMsg),
+             "MAGDA: Mix analysis - type: '%s', query: '%s'\n",
+             trackType.c_str(), userQuery.c_str());
+    ShowConsoleMsg(logMsg);
+  }
+
+  // Clear any pending result from previous run
+  MagdaBounceWorkflow::ClearPendingResult();
+
+  // Execute the mix analysis workflow
+  WDL_FastString error_msg;
+  bool success = MagdaBounceWorkflow::ExecuteWorkflow(
+      BOUNCE_MODE_FULL_TRACK, trackType.c_str(), userQuery.c_str(), error_msg);
+
+  if (!success) {
+    std::string errorStr = "Mix analysis failed: ";
+    errorStr += error_msg.Get();
+    AddAssistantMessage(errorStr);
+  } else {
+    // Set busy state to show spinner
+    m_busy = true;
+    m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+    SetAPIStatus("Analyzing...", 0xFFFF66FF); // Yellow
+  }
+
+  return true;
 }
 
 void MagdaImGuiChat::AddUserMessage(const std::string &msg) {
@@ -1379,6 +1662,34 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
 }
 
 void MagdaImGuiChat::ProcessAsyncResult() {
+  // First check for mix analysis results
+  {
+    MixAnalysisResult mixResult;
+    if (MagdaBounceWorkflow::GetPendingResult(mixResult)) {
+      MagdaBounceWorkflow::ClearPendingResult();
+      
+      if (mixResult.success) {
+        // Add the response text
+        AddAssistantMessage(mixResult.responseText);
+        
+        // Store pending actions if any
+        if (!mixResult.actionsJson.empty() && mixResult.actionsJson != "[]") {
+          m_hasPendingMixActions = true;
+          m_pendingMixActionsJson = mixResult.actionsJson;
+        }
+        
+        SetAPIStatus("Connected", 0x88FF88FF); // Green
+      } else {
+        std::string errorStr = "Mix analysis error: ";
+        errorStr += mixResult.responseText;
+        AddAssistantMessage(errorStr);
+        SetAPIStatus("Error", 0xFF6666FF); // Red
+      }
+      m_busy = false;
+      return;
+    }
+  }
+
   bool resultReady = false;
   bool success = false;
   std::string responseJson;

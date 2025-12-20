@@ -2,6 +2,9 @@
 
 #include "../WDL/WDL/wdlstring.h"
 #include "reaper_plugin.h"
+#include <functional>
+#include <string>
+#include <mutex>
 
 // Forward declarations
 class MediaTrack;
@@ -12,6 +15,16 @@ enum BounceMode {
   BOUNCE_MODE_LOOP = 1,       // Bounce loop range
   BOUNCE_MODE_SELECTION = 2   // Bounce time selection
 };
+
+// Result structure for mix analysis
+struct MixAnalysisResult {
+  bool success = false;
+  std::string responseText;  // Human-readable explanation
+  std::string actionsJson;   // JSON actions to execute
+};
+
+// Result callback type for mix analysis
+using MixAnalysisCallback = std::function<void(bool success, const std::string &result)>;
 
 // Mix analysis bounce workflow
 // Workflow structure:
@@ -35,6 +48,16 @@ public:
   static bool ExecuteWorkflow(BounceMode bounceMode, const char *trackType,
                               const char *userRequest,
                               WDL_FastString &error_msg);
+
+  // Set callback for when mix analysis completes
+  static void SetResultCallback(MixAnalysisCallback callback);
+
+  // Check if there's a pending result (thread-safe)
+  // Returns true if result is ready
+  static bool GetPendingResult(MixAnalysisResult &result);
+
+  // Clear pending result
+  static void ClearPendingResult();
 
   // Get current bounce mode preference from settings
   static BounceMode GetBounceModePreference();

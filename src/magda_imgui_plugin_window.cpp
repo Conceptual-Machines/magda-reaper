@@ -353,9 +353,7 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
 
       // Column 5: Params (clickable to open param mapping)
       m_ImGui_TableNextColumn(m_ctx);
-      std::string paramsDisplay = row.param_mapping_count > 0
-                                      ? std::to_string(row.param_mapping_count)
-                                      : "-";
+      std::string paramsDisplay = row.param_mapping_count > 0 ? "✓" : "-";
       std::string paramsId = paramsDisplay + "##params_" + std::to_string(i);
       bool paramsSelected = false;
       if (row.param_mapping_count > 0) {
