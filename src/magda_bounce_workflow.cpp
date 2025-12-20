@@ -51,8 +51,7 @@ static std::mutex s_commandQueueMutex;
 // Result storage for async mix analysis
 static std::mutex s_resultMutex;
 static bool s_resultPending = false;
-static bool s_resultSuccess = false;
-static std::string s_resultMessage;
+static MixAnalysisResult s_result;
 static MixAnalysisCallback s_resultCallback = nullptr;
 
 void MagdaBounceWorkflow::SetResultCallback(MixAnalysisCallback callback) {
@@ -60,33 +59,32 @@ void MagdaBounceWorkflow::SetResultCallback(MixAnalysisCallback callback) {
   s_resultCallback = callback;
 }
 
-bool MagdaBounceWorkflow::GetPendingResult(bool &success, std::string &result) {
+bool MagdaBounceWorkflow::GetPendingResult(MixAnalysisResult &result) {
   std::lock_guard<std::mutex> lock(s_resultMutex);
   if (!s_resultPending) {
     return false;
   }
-  success = s_resultSuccess;
-  result = s_resultMessage;
+  result = s_result;
   return true;
 }
 
 void MagdaBounceWorkflow::ClearPendingResult() {
   std::lock_guard<std::mutex> lock(s_resultMutex);
   s_resultPending = false;
-  s_resultSuccess = false;
-  s_resultMessage.clear();
+  s_result = MixAnalysisResult();
 }
 
 // Helper to store result (called from background thread)
-static void StoreResult(bool success, const std::string &message) {
+static void StoreResult(bool success, const std::string &responseText, const std::string &actionsJson = "") {
   std::lock_guard<std::mutex> lock(s_resultMutex);
   s_resultPending = true;
-  s_resultSuccess = success;
-  s_resultMessage = message;
+  s_result.success = success;
+  s_result.responseText = responseText;
+  s_result.actionsJson = actionsJson;
   
   // Call callback if set
   if (s_resultCallback) {
-    s_resultCallback(success, message);
+    s_resultCallback(success, responseText);
   }
 }
 
@@ -1083,40 +1081,64 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                 ShowConsoleMsg(
                     "MAGDA: Mix analysis workflow completed successfully!\n");
               }
-              // Parse response and extract assistant message
-              std::string resultText = responseJson.Get();
-              // Try to extract "response" field from JSON
-              size_t respPos = resultText.find("\"response\"");
+              
+              // Parse response JSON
+              std::string fullJson = responseJson.Get();
+              std::string responseText;
+              std::string actionsJson;
+              
+              // Extract "response" field
+              size_t respPos = fullJson.find("\"response\"");
               if (respPos != std::string::npos) {
-                size_t colonPos = resultText.find(':', respPos);
+                size_t colonPos = fullJson.find(':', respPos);
                 if (colonPos != std::string::npos) {
-                  size_t startQuote = resultText.find('"', colonPos + 1);
+                  size_t startQuote = fullJson.find('"', colonPos + 1);
                   if (startQuote != std::string::npos) {
                     size_t endQuote = startQuote + 1;
-                    // Find end quote, handling escaped quotes
-                    while (endQuote < resultText.length()) {
-                      if (resultText[endQuote] == '"' && resultText[endQuote - 1] != '\\') {
+                    while (endQuote < fullJson.length()) {
+                      if (fullJson[endQuote] == '"' && fullJson[endQuote - 1] != '\\') {
                         break;
                       }
                       endQuote++;
                     }
-                    resultText = resultText.substr(startQuote + 1, endQuote - startQuote - 1);
-                    // Unescape basic sequences
+                    responseText = fullJson.substr(startQuote + 1, endQuote - startQuote - 1);
+                    // Unescape
                     size_t pos = 0;
-                    while ((pos = resultText.find("\\n", pos)) != std::string::npos) {
-                      resultText.replace(pos, 2, "\n");
+                    while ((pos = responseText.find("\\n", pos)) != std::string::npos) {
+                      responseText.replace(pos, 2, "\n");
                       pos++;
                     }
                     pos = 0;
-                    while ((pos = resultText.find("\\\"", pos)) != std::string::npos) {
-                      resultText.replace(pos, 2, "\"");
+                    while ((pos = responseText.find("\\\"", pos)) != std::string::npos) {
+                      responseText.replace(pos, 2, "\"");
                       pos++;
                     }
                   }
                 }
               }
-              // Store success result for chat
-              StoreResult(true, resultText);
+              
+              // Extract "actions" field (keep as JSON string)
+              size_t actionsPos = fullJson.find("\"actions\"");
+              if (actionsPos != std::string::npos) {
+                size_t colonPos = fullJson.find(':', actionsPos);
+                if (colonPos != std::string::npos) {
+                  size_t bracketStart = fullJson.find('[', colonPos);
+                  if (bracketStart != std::string::npos) {
+                    // Find matching closing bracket
+                    int depth = 1;
+                    size_t bracketEnd = bracketStart + 1;
+                    while (bracketEnd < fullJson.length() && depth > 0) {
+                      if (fullJson[bracketEnd] == '[') depth++;
+                      else if (fullJson[bracketEnd] == ']') depth--;
+                      bracketEnd++;
+                    }
+                    actionsJson = fullJson.substr(bracketStart, bracketEnd - bracketStart);
+                  }
+                }
+              }
+              
+              // Store result with both text and actions
+              StoreResult(true, responseText, actionsJson);
             }
           }
 

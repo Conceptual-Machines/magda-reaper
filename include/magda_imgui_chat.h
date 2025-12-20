@@ -164,6 +164,10 @@ private:
   std::string m_streamingBuffer;
   bool m_scrollToBottom = false;
 
+  // Pending mix analysis actions (waiting for user confirmation)
+  bool m_hasPendingMixActions = false;
+  std::string m_pendingMixActionsJson;
+
   // Input command history (for up/down arrow navigation)
   std::vector<std::string> m_inputHistory;
   int m_inputHistoryIndex = -1;

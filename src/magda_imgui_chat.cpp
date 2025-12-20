@@ -658,6 +658,48 @@ void MagdaImGuiChat::Render() {
       if (!m_streamingBuffer.empty()) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       }
+      
+      // Show Yes/No buttons for pending mix actions
+      if (m_hasPendingMixActions) {
+        m_ImGui_Separator(m_ctx);
+        m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
+        m_ImGui_Dummy(m_ctx, 0, 5);
+        
+        double btnW = 80;
+        double btnH = 0;
+        
+        // Green "Yes" button
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
+        if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
+          // Execute the pending actions
+          WDL_FastString execution_result, execution_error;
+          if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
+                                           execution_result, execution_error)) {
+            AddAssistantMessage("Changes applied successfully!");
+          } else {
+            std::string errMsg = "Failed to apply changes: ";
+            errMsg += execution_error.Get();
+            AddAssistantMessage(errMsg);
+          }
+          m_hasPendingMixActions = false;
+          m_pendingMixActionsJson.clear();
+        }
+        m_ImGui_PopStyleColor(m_ctx, nullptr);
+        
+        m_ImGui_SameLine(m_ctx, &zero, &zero);
+        
+        // Red "No" button
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
+        if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
+          AddAssistantMessage("Changes cancelled.");
+          m_hasPendingMixActions = false;
+          m_pendingMixActionsJson.clear();
+        }
+        m_ImGui_PopStyleColor(m_ctx, nullptr);
+        
+        m_ImGui_Separator(m_ctx);
+      }
+      
       // Show loading spinner while busy
       if (m_busy) {
         // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
@@ -861,6 +903,47 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_EndChild(m_ctx);
       int popCount = 1;
       m_ImGui_PopStyleColor(m_ctx, &popCount);
+    }
+
+    // Show Yes/No buttons for pending mix actions (compact view)
+    if (m_hasPendingMixActions) {
+      m_ImGui_Separator(m_ctx);
+      m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
+      m_ImGui_Dummy(m_ctx, 0, 5);
+      
+      double btnW = 80;
+      double btnH = 0;
+      double spacing = 10;
+      
+      // Green "Yes" button
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
+      if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
+        WDL_FastString execution_result, execution_error;
+        if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
+                                         execution_result, execution_error)) {
+          AddAssistantMessage("Changes applied successfully!");
+        } else {
+          std::string errMsg = "Failed to apply changes: ";
+          errMsg += execution_error.Get();
+          AddAssistantMessage(errMsg);
+        }
+        m_hasPendingMixActions = false;
+        m_pendingMixActionsJson.clear();
+      }
+      m_ImGui_PopStyleColor(m_ctx, nullptr);
+      
+      m_ImGui_SameLine(m_ctx, nullptr, &spacing);
+      
+      // Red "No" button
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
+      if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
+        AddAssistantMessage("Changes cancelled.");
+        m_hasPendingMixActions = false;
+        m_pendingMixActionsJson.clear();
+      }
+      m_ImGui_PopStyleColor(m_ctx, nullptr);
+      
+      m_ImGui_Separator(m_ctx);
     }
 
     // Show loading spinner while busy
@@ -1577,17 +1660,24 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
 void MagdaImGuiChat::ProcessAsyncResult() {
   // First check for mix analysis results
   {
-    bool mixSuccess = false;
-    std::string mixResult;
-    if (MagdaBounceWorkflow::GetPendingResult(mixSuccess, mixResult)) {
+    MixAnalysisResult mixResult;
+    if (MagdaBounceWorkflow::GetPendingResult(mixResult)) {
       MagdaBounceWorkflow::ClearPendingResult();
       
-      if (mixSuccess) {
-        AddAssistantMessage(mixResult);
+      if (mixResult.success) {
+        // Add the response text
+        AddAssistantMessage(mixResult.responseText);
+        
+        // Store pending actions if any
+        if (!mixResult.actionsJson.empty() && mixResult.actionsJson != "[]") {
+          m_hasPendingMixActions = true;
+          m_pendingMixActionsJson = mixResult.actionsJson;
+        }
+        
         SetAPIStatus("Connected", 0x88FF88FF); // Green
       } else {
         std::string errorStr = "Mix analysis error: ";
-        errorStr += mixResult;
+        errorStr += mixResult.responseText;
         AddAssistantMessage(errorStr);
         SetAPIStatus("Error", 0xFF6666FF); // Red
       }

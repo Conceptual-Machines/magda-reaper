@@ -16,6 +16,13 @@ enum BounceMode {
   BOUNCE_MODE_SELECTION = 2   // Bounce time selection
 };
 
+// Result structure for mix analysis
+struct MixAnalysisResult {
+  bool success = false;
+  std::string responseText;  // Human-readable explanation
+  std::string actionsJson;   // JSON actions to execute
+};
+
 // Result callback type for mix analysis
 using MixAnalysisCallback = std::function<void(bool success, const std::string &result)>;
 
@@ -46,8 +53,8 @@ public:
   static void SetResultCallback(MixAnalysisCallback callback);
 
   // Check if there's a pending result (thread-safe)
-  // Returns true if result is ready, fills success and result
-  static bool GetPendingResult(bool &success, std::string &result);
+  // Returns true if result is ready
+  static bool GetPendingResult(MixAnalysisResult &result);
 
   // Clear pending result
   static void ClearPendingResult();
