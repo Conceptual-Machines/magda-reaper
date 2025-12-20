@@ -411,7 +411,15 @@ void MagdaJSFXEditor::Render() {
 }
 
 void MagdaJSFXEditor::RenderFilePanel() {
-  m_ImGui_TextColored(m_ctx, g_theme.headerText, "FILES");
+  // Show current folder name as header
+  std::string folderName;
+  size_t lastSlash = m_currentFolder.find_last_of("/");
+  if (lastSlash != std::string::npos) {
+    folderName = m_currentFolder.substr(lastSlash + 1);
+  } else {
+    folderName = m_currentFolder;
+  }
+  m_ImGui_TextColored(m_ctx, g_theme.headerText, folderName.c_str());
   m_ImGui_Separator(m_ctx);
 
   // File list in a scrollable child
