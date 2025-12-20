@@ -621,11 +621,11 @@ void MagdaImGuiChat::Render() {
     m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
     double colSpacing = 8.0;              // spacing between columns
     double totalSpacing = colSpacing * 2; // 2 gaps for 3 columns
-    double colW = (availW - totalSpacing) / 3.0;
+    double totalW = availW - totalSpacing;
 
-    double col1W = colW; // Request
-    double col2W = colW; // Response
-    double col3W = colW; // Controls
+    double col1W = totalW * 0.25; // Request (narrower)
+    double col2W = totalW * 0.50; // Response (wider)
+    double col3W = totalW * 0.25; // Controls (narrower)
     double paneH = -30;  // Leave room for footer
 
     // Column 1: REQUEST (user messages)
@@ -804,9 +804,9 @@ void MagdaImGuiChat::RenderMainContent() {
   if (m_ImGui_BeginTable(m_ctx, "##main_layout", 3, &tableFlags, &outerSizeW,
                          &outerSizeH, &innerWidth)) {
     int stretchFlags = ImGuiTableColumnFlags::WidthStretch;
-    double col1Weight = 1.0;
-    double col2Weight = 1.0;
-    double col3Weight = 0.6;
+    double col1Weight = 0.5;  // Request (narrower)
+    double col2Weight = 1.0;  // Response (wider)
+    double col3Weight = 0.5;  // Controls (narrower)
     m_ImGui_TableSetupColumn(m_ctx, "REQUEST", &stretchFlags, &col1Weight,
                              nullptr);
     m_ImGui_TableSetupColumn(m_ctx, "RESPONSE", &stretchFlags, &col2Weight,
@@ -1265,7 +1265,15 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
 }
 
 void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
-  // Parse and render with @mention highlighting
+  // For mix analysis responses with multiple lines, just use TextWrapped
+  // The @ highlighting is mainly for user input anyway
+  if (content.find('\n') != std::string::npos) {
+    // Multi-line content - use wrapped text for proper display
+    m_ImGui_TextWrapped(m_ctx, content.c_str());
+    return;
+  }
+  
+  // Single line - parse and render with @mention highlighting
   size_t pos = 0;
   size_t len = content.length();
   int mentionColor = THEME_RGBA(0x66, 0xCC, 0xFF); // Cyan for @mentions
@@ -1274,9 +1282,9 @@ void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
     size_t atPos = content.find('@', pos);
 
     if (atPos == std::string::npos) {
-      // No more @, render rest as normal
+      // No more @, render rest as normal wrapped
       if (pos < len) {
-        m_ImGui_Text(m_ctx, content.substr(pos).c_str());
+        m_ImGui_TextWrapped(m_ctx, content.substr(pos).c_str());
       }
       break;
     }
@@ -1284,7 +1292,7 @@ void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
     // Render text before @
     if (atPos > pos) {
       std::string before = content.substr(pos, atPos - pos);
-      m_ImGui_Text(m_ctx, before.c_str());
+      m_ImGui_TextWrapped(m_ctx, before.c_str());
       m_ImGui_SameLine(m_ctx, nullptr, nullptr);
     }
 
