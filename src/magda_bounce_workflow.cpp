@@ -1054,7 +1054,6 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                        analysisResult.errorMessage.Get());
               ShowConsoleMsg(msg);
             }
-            // Store error result for chat
             StoreResult(false, std::string("DSP analysis failed: ") + analysisResult.errorMessage.Get());
           } else {
             // Convert to JSON
@@ -1074,7 +1073,6 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                          error_msg.Get());
                 ShowConsoleMsg(msg);
               }
-              // Store error result for chat
               StoreResult(false, error_msg.Get());
             } else {
               if (ShowConsoleMsg) {
@@ -1082,13 +1080,12 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                     "MAGDA: Mix analysis workflow completed successfully!\n");
               }
               
-              // Parse response JSON
-              // API returns: { "response": "...", "actions": [...], ... }
+              // Parse response JSON and store result
               std::string fullJson = responseJson.Get();
               std::string responseText;
               std::string actionsJson;
               
-              // Extract "response" field (human-readable text)
+              // Extract "response" field
               size_t respPos = fullJson.find("\"response\"");
               if (respPos != std::string::npos) {
                 size_t colonPos = fullJson.find(':', respPos);
@@ -1124,10 +1121,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               }
               
               if (responseText.empty()) {
-                responseText = "Mix analysis completed. No detailed response available.";
+                responseText = "Mix analysis completed.";
               }
               
-              // Store result with both text and actions
               StoreResult(true, responseText, actionsJson);
             }
           }
