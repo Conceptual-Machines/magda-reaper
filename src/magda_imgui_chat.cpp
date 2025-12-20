@@ -1144,10 +1144,11 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         continue;
       }
 
-      bool isSelected = (selectableIdx == m_autocompleteIndex);
+      bool wasHighlighted = (selectableIdx == m_autocompleteIndex);
+      bool isSelected = wasHighlighted;
 
       // Highlight selected item
-      if (isSelected) {
+      if (wasHighlighted) {
         m_ImGui_PushStyleColor(m_ctx, 24, g_theme.buttonBg); // Col_Header
       }
 
@@ -1160,7 +1161,7 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         wasSelected = true;
       }
 
-      if (isSelected) {
+      if (wasHighlighted) {
         m_ImGui_PopStyleColor(m_ctx, nullptr);
       }
 
@@ -1248,7 +1249,14 @@ void MagdaImGuiChat::DetectAtTrigger() {
   }
 
   UpdateAutocompleteSuggestions();
-  m_showAutocomplete = !m_suggestions.empty();
+  
+  // Count selectable items (exclude separators)
+  int selectableCount = 0;
+  for (const auto &s : m_suggestions) {
+    if (s.plugin_type != "separator") selectableCount++;
+  }
+  
+  m_showAutocomplete = selectableCount > 0;
   m_autocompleteIndex = 0;
 }
 
