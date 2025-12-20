@@ -48,6 +48,48 @@ struct ReaperCommand {
 static std::vector<ReaperCommand> s_reaperCommandQueue;
 static std::mutex s_commandQueueMutex;
 
+// Result storage for async mix analysis
+static std::mutex s_resultMutex;
+static bool s_resultPending = false;
+static bool s_resultSuccess = false;
+static std::string s_resultMessage;
+static MixAnalysisCallback s_resultCallback = nullptr;
+
+void MagdaBounceWorkflow::SetResultCallback(MixAnalysisCallback callback) {
+  std::lock_guard<std::mutex> lock(s_resultMutex);
+  s_resultCallback = callback;
+}
+
+bool MagdaBounceWorkflow::GetPendingResult(bool &success, std::string &result) {
+  std::lock_guard<std::mutex> lock(s_resultMutex);
+  if (!s_resultPending) {
+    return false;
+  }
+  success = s_resultSuccess;
+  result = s_resultMessage;
+  return true;
+}
+
+void MagdaBounceWorkflow::ClearPendingResult() {
+  std::lock_guard<std::mutex> lock(s_resultMutex);
+  s_resultPending = false;
+  s_resultSuccess = false;
+  s_resultMessage.clear();
+}
+
+// Helper to store result (called from background thread)
+static void StoreResult(bool success, const std::string &message) {
+  std::lock_guard<std::mutex> lock(s_resultMutex);
+  s_resultPending = true;
+  s_resultSuccess = success;
+  s_resultMessage = message;
+  
+  // Call callback if set
+  if (s_resultCallback) {
+    s_resultCallback(success, message);
+  }
+}
+
 BounceMode MagdaBounceWorkflow::GetBounceModePreference() {
   // For now, default to full track
   // TODO: Load from settings/preferences
@@ -1014,6 +1056,8 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                        analysisResult.errorMessage.Get());
               ShowConsoleMsg(msg);
             }
+            // Store error result for chat
+            StoreResult(false, std::string("DSP analysis failed: ") + analysisResult.errorMessage.Get());
           } else {
             // Convert to JSON
             WDL_FastString analysisJson;
@@ -1032,11 +1076,47 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                          error_msg.Get());
                 ShowConsoleMsg(msg);
               }
+              // Store error result for chat
+              StoreResult(false, error_msg.Get());
             } else {
               if (ShowConsoleMsg) {
                 ShowConsoleMsg(
                     "MAGDA: Mix analysis workflow completed successfully!\n");
               }
+              // Parse response and extract assistant message
+              std::string resultText = responseJson.Get();
+              // Try to extract "response" field from JSON
+              size_t respPos = resultText.find("\"response\"");
+              if (respPos != std::string::npos) {
+                size_t colonPos = resultText.find(':', respPos);
+                if (colonPos != std::string::npos) {
+                  size_t startQuote = resultText.find('"', colonPos + 1);
+                  if (startQuote != std::string::npos) {
+                    size_t endQuote = startQuote + 1;
+                    // Find end quote, handling escaped quotes
+                    while (endQuote < resultText.length()) {
+                      if (resultText[endQuote] == '"' && resultText[endQuote - 1] != '\\') {
+                        break;
+                      }
+                      endQuote++;
+                    }
+                    resultText = resultText.substr(startQuote + 1, endQuote - startQuote - 1);
+                    // Unescape basic sequences
+                    size_t pos = 0;
+                    while ((pos = resultText.find("\\n", pos)) != std::string::npos) {
+                      resultText.replace(pos, 2, "\n");
+                      pos++;
+                    }
+                    pos = 0;
+                    while ((pos = resultText.find("\\\"", pos)) != std::string::npos) {
+                      resultText.replace(pos, 2, "\"");
+                      pos++;
+                    }
+                  }
+                }
+              }
+              // Store success result for chat
+              StoreResult(true, resultText);
             }
           }
 

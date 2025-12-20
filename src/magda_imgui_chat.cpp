@@ -1419,6 +1419,9 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
     ShowConsoleMsg(logMsg);
   }
 
+  // Clear any pending result from previous run
+  MagdaBounceWorkflow::ClearPendingResult();
+
   // Execute the mix analysis workflow
   WDL_FastString error_msg;
   bool success = MagdaBounceWorkflow::ExecuteWorkflow(
@@ -1429,7 +1432,10 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
     errorStr += error_msg.Get();
     AddAssistantMessage(errorStr);
   } else {
-    AddAssistantMessage("Mix analysis started. Processing...");
+    // Set busy state to show spinner
+    m_busy = true;
+    m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+    SetAPIStatus("Analyzing...", 0xFFFF66FF); // Yellow
   }
 
   return true;
@@ -1569,6 +1575,27 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
 }
 
 void MagdaImGuiChat::ProcessAsyncResult() {
+  // First check for mix analysis results
+  {
+    bool mixSuccess = false;
+    std::string mixResult;
+    if (MagdaBounceWorkflow::GetPendingResult(mixSuccess, mixResult)) {
+      MagdaBounceWorkflow::ClearPendingResult();
+      
+      if (mixSuccess) {
+        AddAssistantMessage(mixResult);
+        SetAPIStatus("Connected", 0x88FF88FF); // Green
+      } else {
+        std::string errorStr = "Mix analysis error: ";
+        errorStr += mixResult;
+        AddAssistantMessage(errorStr);
+        SetAPIStatus("Error", 0xFF6666FF); // Red
+      }
+      m_busy = false;
+      return;
+    }
+  }
+
   bool resultReady = false;
   bool success = false;
   std::string responseJson;
