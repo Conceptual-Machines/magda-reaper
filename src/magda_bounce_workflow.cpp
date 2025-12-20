@@ -572,46 +572,19 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     s_httpClient.SetJWTToken(token);
   }
 
-  // Build request JSON for /api/v1/chat endpoint
-  // Format: { "question": "...", "state": {...} }
+  // Build request JSON for /api/v1/mix/analyze endpoint
+  // Format: { "mode": "single_track", "analysis_data": {...}, "context": {...}, "user_request": "..." }
   WDL_FastString requestJson;
   
-  // Build the question
-  requestJson.Append("{\"question\":\"Analyze this ");
-  // Escape and append track type
-  if (trackType && trackType[0]) {
-    for (const char *p = trackType; *p; p++) {
-      switch (*p) {
-      case '"': requestJson.Append("\\\""); break;
-      case '\\': requestJson.Append("\\\\"); break;
-      default: requestJson.Append(p, 1); break;
-      }
-    }
-  } else {
-    requestJson.Append("track");
-  }
-  requestJson.Append(" track");
+  requestJson.Append("{\"mode\":\"single_track\",");
   
-  // Add user request to question
-  if (userRequest && userRequest[0]) {
-    requestJson.Append(" and ");
-    for (const char *p = userRequest; *p; p++) {
-      switch (*p) {
-      case '"': requestJson.Append("\\\""); break;
-      case '\\': requestJson.Append("\\\\"); break;
-      default: requestJson.Append(p, 1); break;
-      }
-    }
-  } else {
-    requestJson.Append(" and suggest mixing improvements");
-  }
-  requestJson.Append("\",");
-  
-  // Add state with analysis data and context
-  requestJson.Append("\"state\":{");
+  // Add analysis data
   requestJson.Append("\"analysis_data\":");
   requestJson.Append(analysisJson);
-  requestJson.Append(",\"context\":{");
+  requestJson.Append(",");
+  
+  // Add context
+  requestJson.Append("\"context\":{");
   requestJson.Append("\"track_index\":");
   char trackIdxStr[32];
   snprintf(trackIdxStr, sizeof(trackIdxStr), "%d", trackIndex);
@@ -641,12 +614,25 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     requestJson.Append(fxJson);
   }
   requestJson.Append("}"); // close context
-  requestJson.Append("}"); // close state
+  
+  // Add user request
+  if (userRequest && userRequest[0]) {
+    requestJson.Append(",\"user_request\":\"");
+    for (const char *p = userRequest; *p; p++) {
+      switch (*p) {
+      case '"': requestJson.Append("\\\""); break;
+      case '\\': requestJson.Append("\\\\"); break;
+      default: requestJson.Append(p, 1); break;
+      }
+    }
+    requestJson.Append("\"");
+  }
+  
   requestJson.Append("}"); // close request
 
-  // Send POST request to /api/v1/chat endpoint
+  // Send POST request to /api/v1/mix/analyze endpoint
   bool success = s_httpClient.SendPOSTRequest(
-      "/api/v1/chat", requestJson.Get(), responseJson, error_msg,
+      "/api/v1/mix/analyze", requestJson.Get(), responseJson, error_msg,
       120); // 2 minute timeout
 
   if (success) {
