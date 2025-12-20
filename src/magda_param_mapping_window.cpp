@@ -1,9 +1,61 @@
 #include "magda_param_mapping_window.h"
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 
 extern reaper_plugin_info_t *g_rec;
+
+// Generate a smart alias from a parameter name
+// "Filter Cutoff Hz" -> "filter_cutoff_hz"
+// "Osc1Vol" -> "osc1_vol"  
+// "LFO Rate" -> "lfo_rate"
+static std::string GenerateSmartAlias(const std::string &paramName) {
+  std::string result;
+  bool lastWasUnderscore = false;
+  bool lastWasLower = false;
+  
+  for (size_t i = 0; i < paramName.length(); i++) {
+    char c = paramName[i];
+    
+    // Skip special characters except numbers
+    if (!std::isalnum(c) && c != ' ' && c != '_' && c != '-') {
+      continue;
+    }
+    
+    // Convert spaces, dashes to underscores
+    if (c == ' ' || c == '-' || c == '_') {
+      if (!lastWasUnderscore && !result.empty()) {
+        result += '_';
+        lastWasUnderscore = true;
+      }
+      lastWasLower = false;
+      continue;
+    }
+    
+    // Handle camelCase: insert underscore before uppercase if previous was lowercase
+    if (std::isupper(c) && lastWasLower && !lastWasUnderscore) {
+      result += '_';
+    }
+    
+    // Convert to lowercase
+    result += (char)std::tolower(c);
+    lastWasUnderscore = false;
+    lastWasLower = std::islower(c) || std::isdigit(c);
+  }
+  
+  // Remove trailing underscores
+  while (!result.empty() && result.back() == '_') {
+    result.pop_back();
+  }
+  
+  // Remove leading underscores
+  while (!result.empty() && result.front() == '_') {
+    result.erase(0, 1);
+  }
+  
+  return result;
+}
 
 // Global instance - defined in main.cpp
 // MagdaParamMappingWindow *g_paramMappingWindow = nullptr;
@@ -129,7 +181,7 @@ void MagdaParamMappingWindow::LoadPluginParams() {
           PluginParam param;
           param.index = p;
           param.name = paramName;
-          param.currentAlias = "";
+          param.currentAlias = GenerateSmartAlias(paramName);
           m_params.push_back(param);
         }
 
@@ -214,13 +266,13 @@ void MagdaParamMappingWindow::LoadPluginParams() {
     PluginParam param;
     param.index = p;
     param.name = paramName;
-    param.currentAlias = "";
+    param.currentAlias = GenerateSmartAlias(paramName);
     m_params.push_back(param);
   }
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA: Loaded %d parameters from temp track\n", (int)m_params.size());
+    snprintf(msg, sizeof(msg), "MAGDA: Loaded %d parameters with auto-generated aliases\n", (int)m_params.size());
     ShowConsoleMsg(msg);
   }
 
