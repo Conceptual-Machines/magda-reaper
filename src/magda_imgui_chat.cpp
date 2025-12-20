@@ -356,6 +356,18 @@ void MagdaImGuiChat::Toggle() {
   }
 }
 
+void MagdaImGuiChat::SetInputText(const char *text) {
+  if (text) {
+    strncpy(m_inputBuffer, text, sizeof(m_inputBuffer) - 1);
+    m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
+  }
+}
+
+void MagdaImGuiChat::ShowWithInput(const char *text) {
+  Show();
+  SetInputText(text);
+}
+
 void MagdaImGuiChat::CheckAPIHealth() {
   WDL_FastString error_msg;
   if (s_httpClient.CheckHealth(error_msg, 3)) {

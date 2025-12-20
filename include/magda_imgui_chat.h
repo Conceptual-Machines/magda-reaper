@@ -41,6 +41,12 @@ public:
   bool IsVisible() const { return m_visible; }
   void Toggle();
 
+  // Set input text (for prefilling from external triggers)
+  void SetInputText(const char *text);
+
+  // Show window and prefill input
+  void ShowWithInput(const char *text);
+
   // Main render loop - call from timer/defer
   void Render();
 

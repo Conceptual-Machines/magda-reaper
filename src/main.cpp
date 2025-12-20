@@ -432,28 +432,69 @@ void magdaAction(int command_id, int flag) {
       }).detach();
     }
   } else if (command_id == g_cmdMixAnalyze) {
-    // Mix analysis workflow: bounce track, hide original, analyze, send to API
+    // Mix analysis: open chat with @mix: prefilled
+    // User can then type track type and query
     {
       void (*ShowConsoleMsg)(const char *msg) =
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
       if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Starting mix analysis workflow...\n");
+        ShowConsoleMsg("MAGDA: Opening chat for mix analysis...\n");
       }
 
-      // Show dialog to get track type and optional query
-      if (g_imguiMixAnalysisDialog && g_imguiMixAnalysisDialog->IsAvailable()) {
-        g_imguiMixAnalysisDialog->Show();
-        if (ShowConsoleMsg) {
-          ShowConsoleMsg(
-              "MAGDA: Mix analysis dialog shown - waiting for user input\n");
+      if (g_imguiChat && g_imguiChat->IsAvailable()) {
+        // Try to guess track type from selected track name
+        std::string prefill = "@mix:";
+        
+        // Get selected track name for smart suggestion
+        MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
+            (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetSelectedTrack");
+        const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *, bool *) =
+            (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
+                "GetSetMediaTrackInfo_String");
+        
+        if (GetSelectedTrack && GetSetMediaTrackInfo_String) {
+          MediaTrack *track = GetSelectedTrack(nullptr, 0);
+          if (track) {
+            char trackName[256] = {0};
+            bool needFree = false;
+            const char *name = GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", trackName, &needFree);
+            if (name && name[0]) {
+              // Simple keyword detection (could be improved later)
+              std::string lowerName = name;
+              for (auto &c : lowerName) c = tolower(c);
+              
+              if (lowerName.find("drum") != std::string::npos || 
+                  lowerName.find("kick") != std::string::npos ||
+                  lowerName.find("snare") != std::string::npos ||
+                  lowerName.find("hat") != std::string::npos) {
+                prefill += "drums ";
+              } else if (lowerName.find("bass") != std::string::npos ||
+                         lowerName.find("808") != std::string::npos) {
+                prefill += "bass ";
+              } else if (lowerName.find("synth") != std::string::npos ||
+                         lowerName.find("pad") != std::string::npos ||
+                         lowerName.find("lead") != std::string::npos) {
+                prefill += "synth ";
+              } else if (lowerName.find("vocal") != std::string::npos ||
+                         lowerName.find("vox") != std::string::npos) {
+                prefill += "vocals ";
+              } else if (lowerName.find("guitar") != std::string::npos ||
+                         lowerName.find("gtr") != std::string::npos) {
+                prefill += "guitar ";
+              } else if (lowerName.find("piano") != std::string::npos ||
+                         lowerName.find("keys") != std::string::npos) {
+                prefill += "piano ";
+              }
+              // If no match, just leave @mix: for user to type
+            }
+          }
         }
-        // Dialog will be rendered in timer callback and workflow will execute
-        // there
+        
+        g_imguiChat->ShowWithInput(prefill.c_str());
       } else {
         if (ShowConsoleMsg) {
-          ShowConsoleMsg(
-              "MAGDA: Mix analysis dialog not available (ReaImGui required)\n");
+          ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");
         }
       }
     }
@@ -662,18 +703,8 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // Separator
-    subMi.fMask = MIIM_TYPE;
-    subMi.fType = MFT_SEPARATOR;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
-    // "Mix Analysis" item (bounce track, analyze, send to mix agent)
-    subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
-    subMi.fType = MFT_STRING;
-    subMi.fState = MFS_UNCHECKED;
-    subMi.dwTypeData = (char *)"Mix Analysis...";
-    subMi.wID = MAGDA_CMD_MIX_ANALYZE;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+    // Note: Mix Analysis removed from menu - use @mix: in chat instead
+    // The action is still registered so it can be triggered via Actions list
 
     // Now add the MAGDA menu item with submenu to Main extensions
     mi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE | MIIM_SUBMENU;
