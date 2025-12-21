@@ -41,6 +41,7 @@ struct ThemeColors {
   int childBg = THEME_RGBA(0x2D, 0x2D, 0x2D);      // Slightly darker panels
   int inputBg = THEME_RGBA(0x1E, 0x1E, 0x1E);      // Dark input
   int frameBg = THEME_RGBA(0x1A, 0x1A, 0x1A);      // Near-black for text areas
+  int textAreaBg = THEME_RGBA(0x0A, 0x0A, 0x0A);   // Near-black for code editor
   int popupBg = THEME_RGBA(0x2D, 0x2D, 0x2D);      // Popup/menu background
 
   // Electric accent colors (cyan/teal)
@@ -697,8 +698,11 @@ void MagdaJSFXEditor::RenderEditorPanel() {
   double editorH = -1; // Fill height
   int inputFlags = 0; // No special flags - ReaImGui uses different values
 
-  // Dark background for code
-  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, 0xFF1E1E1E);
+  // Dark background for code - use dynamic color index
+  int (*Col_FrameBg)() = (int (*)())m_rec->GetFunc("ImGui_Col_FrameBg");
+  if (Col_FrameBg) {
+    m_ImGui_PushStyleColor(m_ctx, Col_FrameBg(), g_theme.textAreaBg);
+  }
 
   if (m_ImGui_InputTextMultiline(m_ctx, "##code_editor", m_editorBuffer,
                                   sizeof(m_editorBuffer), &editorW, &editorH,
@@ -706,8 +710,10 @@ void MagdaJSFXEditor::RenderEditorPanel() {
     m_modified = true;
   }
 
-  int one = 1;
-  m_ImGui_PopStyleColor(m_ctx, &one);
+  if (Col_FrameBg) {
+    int one = 1;
+    m_ImGui_PopStyleColor(m_ctx, &one);
+  }
 
 }
 
