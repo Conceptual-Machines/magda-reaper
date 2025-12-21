@@ -328,85 +328,45 @@ spl1 *= gain;
 }
 
 void MagdaJSFXEditor::Show() {
-  if (!m_available)
-    return;
-
-  if (!m_ctx) {
-    int configFlags = 0;
-    m_ctx = m_ImGui_CreateContext("MAGDA JSFX Editor", &configFlags);
-    if (!m_ctx)
-      return;
-  }
   m_visible = true;
 }
 
 void MagdaJSFXEditor::Hide() { m_visible = false; }
 
 void MagdaJSFXEditor::Render() {
-  if (!m_visible || !m_ctx || !m_available)
+  if (!m_available || !m_visible)
     return;
 
-  // Set initial window size
-  int cond = 4; // ImGuiCond_FirstUseEver
-  m_ImGui_SetNextWindowSize(m_ctx, 1200, 700, &cond);
+  // Create context if needed
+  if (!m_ctx) {
+    int flags = 0;
+    m_ctx = m_ImGui_CreateContext("JSFX", &flags);
+  }
+
+  if (!m_ctx)
+    return;
+
+  // Set window size
+  int condOnce = 2; // ImGuiCond_Once
+  m_ImGui_SetNextWindowSize(m_ctx, 1200, 700, &condOnce);
 
   bool open = true;
-  int windowFlags = 0;
+  int windowFlags = ImGuiWindowFlags::NoCollapse;
 
   if (m_ImGui_Begin(m_ctx, "MAGDA JSFX Editor", &open, &windowFlags)) {
-    // Get available space
-    double availW, availH;
-    m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
-
-    // Panel widths
-    double filePanelW = 200;
-    double chatPanelW = 300;
-    double editorPanelW = availW - filePanelW - chatPanelW - 20;
-    double panelH = availH - 40; // Leave room for toolbar
-
-    // Three-panel layout using table
-    int tableFlags = ImGuiTableFlags::Resizable | ImGuiTableFlags::BordersInnerV;
-    double zero = 0;
-
-    if (m_ImGui_BeginTable(m_ctx, "##layout", 3, &tableFlags, &zero, &zero, &zero)) {
-      // Setup columns
-      int fixedFlags = ImGuiTableColumnFlags::WidthFixed;
-      int stretchFlags = ImGuiTableColumnFlags::WidthStretch;
-
-      m_ImGui_TableSetupColumn(m_ctx, "Files", &fixedFlags, &filePanelW, &zero);
-      m_ImGui_TableSetupColumn(m_ctx, "Editor", &stretchFlags, &zero, &zero);
-      m_ImGui_TableSetupColumn(m_ctx, "Chat", &fixedFlags, &chatPanelW, &zero);
-
-      m_ImGui_TableNextRow(m_ctx, nullptr, &panelH);
-
-      // Files panel
-      m_ImGui_TableNextColumn(m_ctx);
-      RenderFilePanel();
-
-      // Editor panel
-      m_ImGui_TableNextColumn(m_ctx);
-      RenderEditorPanel();
-
-      // Chat panel
-      m_ImGui_TableNextColumn(m_ctx);
-      RenderChatPanel();
-
-      m_ImGui_EndTable(m_ctx);
-    }
-
-    // Toolbar at bottom
-    m_ImGui_Separator(m_ctx);
+    // Toolbar
     RenderToolbar();
+    m_ImGui_Separator(m_ctx);
+    
+    // File panel
+    RenderFilePanel();
   }
   m_ImGui_End(m_ctx);
 
+  // Handle window close
   if (!open) {
     m_visible = false;
-    // Destroy context when window is closed so it can be recreated on reopen
-    if (m_ctx && m_ImGui_DestroyContext) {
-      m_ImGui_DestroyContext(m_ctx);
-      m_ctx = nullptr;
-    }
+    m_ctx = nullptr;
   }
 }
 
@@ -574,6 +534,14 @@ void MagdaJSFXEditor::RenderToolbar() {
   m_ImGui_SameLine(m_ctx, &zero, &spacing);
 
   if (m_ImGui_Button(m_ctx, "Save", nullptr, nullptr)) {
+    if (m_currentFilePath.empty()) {
+      // Save as new file in current folder
+      std::string path = m_currentFolder + "/" + m_currentFileName;
+      if (m_currentFileName.empty() || m_currentFileName == "untitled.jsfx") {
+        path = m_currentFolder + "/untitled.jsfx";
+      }
+      m_currentFilePath = path;
+    }
     SaveCurrentFile();
   }
 
@@ -581,6 +549,20 @@ void MagdaJSFXEditor::RenderToolbar() {
 
   if (m_ImGui_Button(m_ctx, "Refresh", nullptr, nullptr)) {
     RefreshFileList();
+  }
+
+  m_ImGui_SameLine(m_ctx, &zero, &spacing);
+
+  if (m_ImGui_Button(m_ctx, "Recompile", nullptr, nullptr)) {
+    // Save and refresh any loaded instances
+    if (m_modified) {
+      SaveCurrentFile();
+    }
+    void (*ShowConsoleMsg)(const char *) =
+        (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA JSFX: Recompiled\n");
+    }
   }
 
   m_ImGui_SameLine(m_ctx, &zero, &spacing);
