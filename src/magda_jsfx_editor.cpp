@@ -445,6 +445,37 @@ void MagdaJSFXEditor::Render() {
   if (!m_ctx)
     return;
 
+  // Load color index functions from ReaImGui (same pattern as main chat)
+  int (*Col_WindowBg)() = (int (*)())m_rec->GetFunc("ImGui_Col_WindowBg");
+  int (*Col_ChildBg)() = (int (*)())m_rec->GetFunc("ImGui_Col_ChildBg");
+  int (*Col_Text)() = (int (*)())m_rec->GetFunc("ImGui_Col_Text");
+  int (*Col_FrameBg)() = (int (*)())m_rec->GetFunc("ImGui_Col_FrameBg");
+  int (*Col_FrameBgHovered)() = (int (*)())m_rec->GetFunc("ImGui_Col_FrameBgHovered");
+  int (*Col_FrameBgActive)() = (int (*)())m_rec->GetFunc("ImGui_Col_FrameBgActive");
+  int (*Col_Button)() = (int (*)())m_rec->GetFunc("ImGui_Col_Button");
+  int (*Col_ButtonHovered)() = (int (*)())m_rec->GetFunc("ImGui_Col_ButtonHovered");
+  int (*Col_ButtonActive)() = (int (*)())m_rec->GetFunc("ImGui_Col_ButtonActive");
+  int (*Col_Border)() = (int (*)())m_rec->GetFunc("ImGui_Col_Border");
+  int (*Col_Separator)() = (int (*)())m_rec->GetFunc("ImGui_Col_Separator");
+  int (*Col_ScrollbarBg)() = (int (*)())m_rec->GetFunc("ImGui_Col_ScrollbarBg");
+  int (*Col_ScrollbarGrab)() = (int (*)())m_rec->GetFunc("ImGui_Col_ScrollbarGrab");
+
+  // Apply theme colors
+  int styleColorCount = 0;
+  if (Col_WindowBg) { m_ImGui_PushStyleColor(m_ctx, Col_WindowBg(), g_theme.windowBg); styleColorCount++; }
+  if (Col_ChildBg) { m_ImGui_PushStyleColor(m_ctx, Col_ChildBg(), g_theme.childBg); styleColorCount++; }
+  if (Col_Text) { m_ImGui_PushStyleColor(m_ctx, Col_Text(), g_theme.normalText); styleColorCount++; }
+  if (Col_FrameBg) { m_ImGui_PushStyleColor(m_ctx, Col_FrameBg(), g_theme.inputBg); styleColorCount++; }
+  if (Col_FrameBgHovered) { m_ImGui_PushStyleColor(m_ctx, Col_FrameBgHovered(), g_theme.buttonHover); styleColorCount++; }
+  if (Col_FrameBgActive) { m_ImGui_PushStyleColor(m_ctx, Col_FrameBgActive(), g_theme.buttonBg); styleColorCount++; }
+  if (Col_Button) { m_ImGui_PushStyleColor(m_ctx, Col_Button(), g_theme.buttonBg); styleColorCount++; }
+  if (Col_ButtonHovered) { m_ImGui_PushStyleColor(m_ctx, Col_ButtonHovered(), g_theme.buttonHover); styleColorCount++; }
+  if (Col_ButtonActive) { m_ImGui_PushStyleColor(m_ctx, Col_ButtonActive(), g_theme.childBg); styleColorCount++; }
+  if (Col_Border) { m_ImGui_PushStyleColor(m_ctx, Col_Border(), g_theme.border); styleColorCount++; }
+  if (Col_Separator) { m_ImGui_PushStyleColor(m_ctx, Col_Separator(), g_theme.separator); styleColorCount++; }
+  if (Col_ScrollbarBg) { m_ImGui_PushStyleColor(m_ctx, Col_ScrollbarBg(), g_theme.childBg); styleColorCount++; }
+  if (Col_ScrollbarGrab) { m_ImGui_PushStyleColor(m_ctx, Col_ScrollbarGrab(), g_theme.buttonBg); styleColorCount++; }
+
   // Set window size
   int condOnce = 2; // ImGuiCond_Once
   m_ImGui_SetNextWindowSize(m_ctx, 1200, 700, &condOnce);
@@ -496,6 +527,11 @@ void MagdaJSFXEditor::Render() {
   // Render Save As dialog if open
   if (m_showSaveAsDialog) {
     RenderSaveAsDialog();
+  }
+
+  // Pop style colors
+  if (styleColorCount > 0) {
+    m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
   }
 
   // Handle window close
