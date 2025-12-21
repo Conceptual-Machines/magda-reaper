@@ -358,8 +358,29 @@ void MagdaJSFXEditor::Render() {
     RenderToolbar();
     m_ImGui_Separator(m_ctx);
     
-    // File panel
-    RenderFilePanel();
+    // Two columns: file panel and editor
+    double zero = 0;
+    double spacing = 10;
+    
+    // File panel on left (fixed width)
+    double filePanelW = 200;
+    double childH = 0; // auto height
+    int childFlags = 0;
+    int windowFlags2 = 0;
+    
+    if (m_ImGui_BeginChild(m_ctx, "##files", &filePanelW, &childH, &childFlags, &windowFlags2)) {
+      RenderFilePanel();
+    }
+    m_ImGui_EndChild(m_ctx);
+    
+    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+    
+    // Editor panel (fill remaining)
+    double editorW = 0; // fill
+    if (m_ImGui_BeginChild(m_ctx, "##editor", &editorW, &childH, &childFlags, &windowFlags2)) {
+      RenderEditorPanel();
+    }
+    m_ImGui_EndChild(m_ctx);
   }
   m_ImGui_End(m_ctx);
 
