@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <dirent.h>
 #include <fstream>
 #include <mutex>
@@ -517,7 +518,7 @@ void MagdaJSFXEditor::Render() {
     m_ImGui_SameLine(m_ctx, &zero, &spacing);
 
     // Chat panel on right (fixed width)
-    double chatPanelW = 300;
+    double chatPanelW = 380;
     if (m_ImGui_BeginChild(m_ctx, "##chat", &chatPanelW, &childH, &childFlags, &windowFlags2)) {
       RenderChatPanel();
     }
@@ -790,8 +791,29 @@ void MagdaJSFXEditor::RenderChatPanel() {
       msgIndex++;
     }
 
+    // Show loading spinner while waiting for AI
     if (m_waitingForAI) {
-      m_ImGui_TextColored(m_ctx, g_theme.dimText, "Thinking...");
+      // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
+      const char *spinnerFrames[] = {
+          "\xe2\xa0\x8b", // ⠋
+          "\xe2\xa0\x99", // ⠙
+          "\xe2\xa0\xb9", // ⠹
+          "\xe2\xa0\xb8", // ⠸
+          "\xe2\xa0\xbc", // ⠼
+          "\xe2\xa0\xb4", // ⠴
+          "\xe2\xa0\xa6", // ⠦
+          "\xe2\xa0\xa7", // ⠧
+          "\xe2\xa0\x87", // ⠇
+          "\xe2\xa0\x8f"  // ⠏
+      };
+      const int numFrames = 10;
+      double elapsed = ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
+      int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
+
+      char loadingMsg[128];
+      snprintf(loadingMsg, sizeof(loadingMsg), "%s Generating JSFX...",
+               spinnerFrames[frameIndex]);
+      m_ImGui_TextColored(m_ctx, g_theme.accent, loadingMsg);
     }
   }
   m_ImGui_EndChild(m_ctx);
@@ -956,6 +978,7 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
   m_chatHistory.push_back(userMsg);
 
   m_waitingForAI = true;
+  m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
 
   // Set backend URL from settings
   const char *backendUrl = MagdaSettingsWindow::GetBackendURL();

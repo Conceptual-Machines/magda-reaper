@@ -94,6 +94,7 @@ private:
   std::vector<JSFXChatMessage> m_chatHistory;
   char m_chatInput[1024];
   bool m_waitingForAI = false;
+  double m_spinnerStartTime = 0;
 
   // ReaImGui function pointers
   void *(*m_ImGui_CreateContext)(const char *, int *) = nullptr;
