@@ -903,22 +903,22 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
       // Parse response JSON
       std::string responseStr = response.Get();
 
-      // Check for parse_error first
-      size_t parseErrorStart = responseStr.find("\"parse_error\":\"");
-      bool hasParseError = false;
-      std::string parseError;
+      // Check for compile_error (EEL2 validation error)
+      size_t compileErrorStart = responseStr.find("\"compile_error\":\"");
+      bool hasCompileError = false;
+      std::string compileError;
 
-      if (parseErrorStart != std::string::npos) {
-        parseErrorStart += 15; // length of "\"parse_error\":\""
-        size_t parseErrorEnd = parseErrorStart;
-        while (parseErrorEnd < responseStr.length()) {
-          if (responseStr[parseErrorEnd] == '"' && responseStr[parseErrorEnd - 1] != '\\') {
+      if (compileErrorStart != std::string::npos) {
+        compileErrorStart += 17; // length of "\"compile_error\":\""
+        size_t compileErrorEnd = compileErrorStart;
+        while (compileErrorEnd < responseStr.length()) {
+          if (responseStr[compileErrorEnd] == '"' && responseStr[compileErrorEnd - 1] != '\\') {
             break;
           }
-          parseErrorEnd++;
+          compileErrorEnd++;
         }
-        parseError = responseStr.substr(parseErrorStart, parseErrorEnd - parseErrorStart);
-        hasParseError = !parseError.empty();
+        compileError = responseStr.substr(compileErrorStart, compileErrorEnd - compileErrorStart);
+        hasCompileError = !compileError.empty();
       }
 
       // Extract jsfx_code field
@@ -978,21 +978,26 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
         }
 
         if (!unescaped.empty()) {
-          aiMsg.content = "Generated JSFX code:";
+          if (hasCompileError) {
+            // Code generated but has compile errors
+            aiMsg.content = "⚠️ Generated JSFX (with compile warning):\n" + compileError;
+          } else {
+            aiMsg.content = "Generated JSFX code:";
+          }
           aiMsg.code_block = unescaped;
           aiMsg.has_code_block = true;
-        } else if (hasParseError) {
-          // Parse error - show error and DSL for feedback
-          aiMsg.content = "⚠️ DSL parsing failed:\n" + parseError +
-                         "\n\nPlease describe what you want differently, or report this issue.";
+        } else if (hasCompileError) {
+          // Compile error without code
+          aiMsg.content = "⚠️ EEL2 compile error:\n" + compileError +
+                         "\n\nPlease describe what you want differently.";
           aiMsg.has_code_block = false;
         } else {
           aiMsg.content = "JSFX generated but code was empty.";
           aiMsg.has_code_block = false;
         }
-      } else if (hasParseError) {
-        // Parse error without code - show error for feedback
-        aiMsg.content = "⚠️ DSL parsing failed:\n" + parseError +
+      } else if (hasCompileError) {
+        // Compile error without code
+        aiMsg.content = "⚠️ EEL2 compile error:\n" + compileError +
                        "\n\nPlease try rephrasing your request.";
         aiMsg.has_code_block = false;
       } else {
