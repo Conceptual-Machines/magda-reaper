@@ -375,10 +375,19 @@ void MagdaJSFXEditor::Render() {
     
     m_ImGui_SameLine(m_ctx, &zero, &spacing);
     
-    // Editor panel (fill remaining)
-    double editorW = 0; // fill
+    // Editor panel (middle, stretch)
+    double editorW = -310; // leave room for chat panel
     if (m_ImGui_BeginChild(m_ctx, "##editor", &editorW, &childH, &childFlags, &windowFlags2)) {
       RenderEditorPanel();
+    }
+    m_ImGui_EndChild(m_ctx);
+    
+    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+    
+    // Chat panel on right (fixed width)
+    double chatPanelW = 300;
+    if (m_ImGui_BeginChild(m_ctx, "##chat", &chatPanelW, &childH, &childFlags, &windowFlags2)) {
+      RenderChatPanel();
     }
     m_ImGui_EndChild(m_ctx);
   }
