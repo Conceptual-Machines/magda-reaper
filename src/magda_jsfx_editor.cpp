@@ -1269,6 +1269,65 @@ void MagdaJSFXEditor::AddToTrackAndOpen() {
                m_currentFileName.c_str(), fxIdx + 1);
       ShowConsoleMsg(msg);
     }
+
+    // Check for compile error - try multiple approaches
+    std::string compileError;
+
+    // Approach 1: Try TrackFX_GetNamedConfigParm with "error"
+    bool (*TrackFX_GetNamedConfigParm)(MediaTrack *, int, const char *, char *, int) =
+        (bool (*)(MediaTrack *, int, const char *, char *, int))m_rec->GetFunc(
+            "TrackFX_GetNamedConfigParm");
+
+    if (TrackFX_GetNamedConfigParm) {
+      char errorBuf[1024] = {0};
+      if (TrackFX_GetNamedConfigParm(track, fxIdx, "error", errorBuf, sizeof(errorBuf))) {
+        if (errorBuf[0] != '\0') {
+          compileError = errorBuf;
+        }
+      }
+    }
+
+    // Approach 2: Check FX name for embedded error (JSFX shows errors in name)
+    if (compileError.empty()) {
+      bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
+          (bool (*)(MediaTrack *, int, char *, int))m_rec->GetFunc("TrackFX_GetFXName");
+      if (TrackFX_GetFXName) {
+        char fxNameBuf[1024] = {0};
+        if (TrackFX_GetFXName(track, fxIdx, fxNameBuf, sizeof(fxNameBuf))) {
+          std::string fxNameStr = fxNameBuf;
+          // Check if name contains error indicators
+          if (fxNameStr.find("syntax error") != std::string::npos ||
+              fxNameStr.find("error:") != std::string::npos ||
+              fxNameStr.find("@init:") != std::string::npos ||
+              fxNameStr.find("@slider:") != std::string::npos ||
+              fxNameStr.find("@block:") != std::string::npos ||
+              fxNameStr.find("@sample:") != std::string::npos) {
+            compileError = fxNameStr;
+          }
+        }
+      }
+    }
+
+    // If we found an error, report it and trigger AI fix
+    if (!compileError.empty()) {
+      if (ShowConsoleMsg) {
+        char msg[1280];
+        snprintf(msg, sizeof(msg), "MAGDA JSFX: Compile error detected: %s\n", compileError.c_str());
+        ShowConsoleMsg(msg);
+      }
+
+      // Add error to chat as user message to trigger AI fix
+      std::string errorMsg = "Fix this compile error: " + compileError;
+
+      JSFXChatMessage errChatMsg;
+      errChatMsg.is_user = true;
+      errChatMsg.content = errorMsg;
+      errChatMsg.has_code_block = false;
+      m_chatHistory.push_back(errChatMsg);
+
+      // Trigger AI call to fix it
+      SendToAI(errorMsg);
+    }
   } else {
     if (ShowConsoleMsg) {
       char msg[256];
