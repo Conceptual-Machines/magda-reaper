@@ -655,6 +655,7 @@ void MagdaJSFXEditor::RenderChatPanel() {
       m_ImGui_TextColored(m_ctx, g_theme.dimText, "• Explain this code");
     }
 
+    int msgIndex = 0;
     for (const auto &msg : m_chatHistory) {
       if (msg.is_user) {
         m_ImGui_TextColored(m_ctx, 0xFF88CCFF, "You:");
@@ -667,13 +668,13 @@ void MagdaJSFXEditor::RenderChatPanel() {
       if (!msg.is_user && msg.has_code_block) {
         // Use index to create unique button ID
         char buttonLabel[64];
-        snprintf(buttonLabel, sizeof(buttonLabel), "Apply to Editor##msg%zu",
-                 &msg - &m_chatHistory[0]);  // Use message index as unique ID
+        snprintf(buttonLabel, sizeof(buttonLabel), "Apply to Editor##msg%d", msgIndex);
         if (m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr)) {
           ApplyCodeBlock(msg.code_block);
         }
       }
       m_ImGui_Separator(m_ctx);
+      msgIndex++;
     }
 
     if (m_waitingForAI) {
