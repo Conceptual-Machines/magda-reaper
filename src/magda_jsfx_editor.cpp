@@ -663,9 +663,13 @@ void MagdaJSFXEditor::RenderChatPanel() {
       }
       m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
 
-      // Show Apply button for AI messages with code
+      // Show Apply button for AI messages with code (unique ID per message)
       if (!msg.is_user && msg.has_code_block) {
-        if (m_ImGui_Button(m_ctx, "Apply to Editor", nullptr, nullptr)) {
+        // Use index to create unique button ID
+        char buttonLabel[64];
+        snprintf(buttonLabel, sizeof(buttonLabel), "Apply to Editor##msg%zu",
+                 &msg - &m_chatHistory[0]);  // Use message index as unique ID
+        if (m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr)) {
           ApplyCodeBlock(msg.code_block);
         }
       }
