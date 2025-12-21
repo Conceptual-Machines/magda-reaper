@@ -445,35 +445,6 @@ void MagdaJSFXEditor::Render() {
   if (!m_ctx)
     return;
 
-  // Apply electric theme - using ReaImGui color indices
-  // ReaImGui Col indices: https://github.com/cfillion/reaimgui/blob/master/api/col.cpp
-  // 0=Text, 2=WindowBg, 3=ChildBg, 4=PopupBg, 5=Border, 7=FrameBg, 21=Button, etc.
-  m_ImGui_PushStyleColor(m_ctx, 0, g_theme.normalText);      // Text
-  m_ImGui_PushStyleColor(m_ctx, 1, g_theme.dimText);         // TextDisabled
-  m_ImGui_PushStyleColor(m_ctx, 2, g_theme.windowBg);        // WindowBg
-  m_ImGui_PushStyleColor(m_ctx, 3, g_theme.childBg);         // ChildBg
-  m_ImGui_PushStyleColor(m_ctx, 4, g_theme.popupBg);         // PopupBg
-  m_ImGui_PushStyleColor(m_ctx, 5, g_theme.border);          // Border
-  m_ImGui_PushStyleColor(m_ctx, 7, g_theme.frameBg);         // FrameBg
-  m_ImGui_PushStyleColor(m_ctx, 8, g_theme.inputBg);         // FrameBgHovered
-  m_ImGui_PushStyleColor(m_ctx, 9, g_theme.inputBg);         // FrameBgActive
-  m_ImGui_PushStyleColor(m_ctx, 10, g_theme.windowBg);       // TitleBg
-  m_ImGui_PushStyleColor(m_ctx, 11, g_theme.childBg);        // TitleBgActive
-  m_ImGui_PushStyleColor(m_ctx, 14, g_theme.scrollbar);      // ScrollbarBg
-  m_ImGui_PushStyleColor(m_ctx, 15, g_theme.accent);         // ScrollbarGrab
-  m_ImGui_PushStyleColor(m_ctx, 16, g_theme.accentHover);    // ScrollbarGrabHovered
-  m_ImGui_PushStyleColor(m_ctx, 17, g_theme.accentActive);   // ScrollbarGrabActive
-  m_ImGui_PushStyleColor(m_ctx, 18, g_theme.accent);         // CheckMark
-  m_ImGui_PushStyleColor(m_ctx, 19, g_theme.accent);         // SliderGrab
-  m_ImGui_PushStyleColor(m_ctx, 20, g_theme.accentHover);    // SliderGrabActive
-  m_ImGui_PushStyleColor(m_ctx, 21, g_theme.buttonBg);       // Button
-  m_ImGui_PushStyleColor(m_ctx, 22, g_theme.buttonHover);    // ButtonHovered
-  m_ImGui_PushStyleColor(m_ctx, 23, g_theme.buttonActive);   // ButtonActive
-  m_ImGui_PushStyleColor(m_ctx, 24, g_theme.buttonBg);       // Header
-  m_ImGui_PushStyleColor(m_ctx, 25, g_theme.buttonHover);    // HeaderHovered
-  m_ImGui_PushStyleColor(m_ctx, 26, g_theme.buttonActive);   // HeaderActive
-  m_ImGui_PushStyleColor(m_ctx, 27, g_theme.separator);      // Separator
-
   // Set window size
   int condOnce = 2; // ImGuiCond_Once
   m_ImGui_SetNextWindowSize(m_ctx, 1200, 700, &condOnce);
@@ -526,10 +497,6 @@ void MagdaJSFXEditor::Render() {
   if (m_showSaveAsDialog) {
     RenderSaveAsDialog();
   }
-
-  // Pop all 27 style colors we pushed
-  int styleCount = 27;
-  m_ImGui_PopStyleColor(m_ctx, &styleCount);
 
   // Handle window close
   if (!open) {
