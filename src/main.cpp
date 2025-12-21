@@ -671,9 +671,19 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
 
-    // "Open MAGDA" item
-    subMi.dwTypeData = (char *)"Open MAGDA";
+    // "MAGDA Chat" item (main chat window)
+    subMi.dwTypeData = (char *)"MAGDA Chat";
     subMi.wID = MAGDA_CMD_OPEN;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "JSFX Editor" item
+    subMi.dwTypeData = (char *)"JSFX Editor";
+    subMi.wID = MAGDA_CMD_JSFX_EDITOR;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "Plugins" item (opens plugin alias window)
+    subMi.dwTypeData = (char *)"Plugins...";
+    subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
     // Separator
@@ -689,40 +699,22 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.wID = MAGDA_CMD_LOGIN;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // Separator
-    subMi.fMask = MIIM_TYPE;
-    subMi.fType = MFT_SEPARATOR;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
     // "Settings" item
-    subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
-    subMi.fType = MFT_STRING;
-    subMi.fState = MFS_UNCHECKED;
     subMi.dwTypeData = (char *)"Settings...";
     subMi.wID = MAGDA_CMD_SETTINGS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "About" item
-    subMi.dwTypeData = (char *)"About MAGDA...";
-    subMi.wID = MAGDA_CMD_ABOUT;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
     // Separator
     subMi.fMask = MIIM_TYPE;
     subMi.fType = MFT_SEPARATOR;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "Plugins" item (opens plugin alias window)
+    // "About" item
     subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
-    subMi.dwTypeData = (char *)"Plugins...";
-    subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
-    // "JSFX Editor" item
-    subMi.dwTypeData = (char *)"JSFX Editor...";
-    subMi.wID = MAGDA_CMD_JSFX_EDITOR;
+    subMi.dwTypeData = (char *)"About MAGDA...";
+    subMi.wID = MAGDA_CMD_ABOUT;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
     // Note: Mix Analysis removed from menu - use @mix: in chat instead
