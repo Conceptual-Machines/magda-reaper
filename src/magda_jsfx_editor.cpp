@@ -31,13 +31,40 @@ MagdaJSFXEditor *g_jsfxEditor = nullptr;
 // Theme colors (ABGR format for ImGui)
 #define THEME_RGBA(r, g, b) (0xFF000000 | ((b) << 16) | ((g) << 8) | (r))
 struct ThemeColors {
-  int headerText = THEME_RGBA(0xE0, 0xE0, 0xE0);   // White headers
-  int normalText = THEME_RGBA(0xC0, 0xC0, 0xC0);   // Light grey text
-  int dimText = THEME_RGBA(0x90, 0x90, 0x90);      // Dimmed grey
-  int windowBg = THEME_RGBA(0x1A, 0x1A, 0x1A);     // Dark background
-  int childBg = THEME_RGBA(0x25, 0x25, 0x25);      // Slightly lighter
-  int inputBg = THEME_RGBA(0x30, 0x30, 0x30);      // Input field background
-  int buttonBg = THEME_RGBA(0x40, 0x40, 0x40);     // Button background
+  // Text
+  int headerText = THEME_RGBA(0xF0, 0xF0, 0xF0);   // Bright white headers
+  int normalText = THEME_RGBA(0xD0, 0xD0, 0xD0);   // Light grey text
+  int dimText = THEME_RGBA(0x80, 0x80, 0x80);      // Dimmed grey
+
+  // Backgrounds
+  int windowBg = THEME_RGBA(0x12, 0x12, 0x16);     // Very dark blue-black
+  int childBg = THEME_RGBA(0x1A, 0x1A, 0x22);      // Slightly lighter
+  int inputBg = THEME_RGBA(0x22, 0x22, 0x2A);      // Input field background
+  int frameBg = THEME_RGBA(0x1E, 0x1E, 0x28);      // Frame background
+  int popupBg = THEME_RGBA(0x18, 0x18, 0x20);      // Popup/menu background
+
+  // Electric accent colors (cyan/teal)
+  int accent = THEME_RGBA(0x00, 0xD4, 0xE0);       // Electric cyan
+  int accentHover = THEME_RGBA(0x20, 0xF0, 0xFF);  // Brighter cyan
+  int accentActive = THEME_RGBA(0x00, 0xA0, 0xB0); // Darker cyan when pressed
+
+  // Buttons
+  int buttonBg = THEME_RGBA(0x2A, 0x4A, 0x5A);     // Teal-ish button
+  int buttonHover = THEME_RGBA(0x35, 0x60, 0x75);  // Lighter on hover
+  int buttonActive = THEME_RGBA(0x20, 0x35, 0x45); // Darker on press
+
+  // User/AI chat colors
+  int userText = THEME_RGBA(0x80, 0xD0, 0xFF);     // Light blue for user
+  int aiText = THEME_RGBA(0x00, 0xE0, 0xA0);       // Electric green for AI
+
+  // Scrollbar
+  int scrollbar = THEME_RGBA(0x30, 0x30, 0x40);
+  int scrollbarHover = THEME_RGBA(0x50, 0x50, 0x70);
+  int scrollbarActive = THEME_RGBA(0x60, 0x60, 0x90);
+
+  // Borders
+  int border = THEME_RGBA(0x40, 0x40, 0x55);
+  int separator = THEME_RGBA(0x35, 0x35, 0x45);
 };
 static ThemeColors g_theme;
 
@@ -67,8 +94,41 @@ constexpr int WidthStretch = 32;
 
 namespace ImGuiCol {
 constexpr int Text = 0;
-constexpr int ChildBg = 7;
-constexpr int FrameBg = 10;
+constexpr int TextDisabled = 1;
+constexpr int WindowBg = 2;
+constexpr int ChildBg = 3;
+constexpr int PopupBg = 4;
+constexpr int Border = 5;
+constexpr int BorderShadow = 6;
+constexpr int FrameBg = 7;
+constexpr int FrameBgHovered = 8;
+constexpr int FrameBgActive = 9;
+constexpr int TitleBg = 10;
+constexpr int TitleBgActive = 11;
+constexpr int TitleBgCollapsed = 12;
+constexpr int MenuBarBg = 13;
+constexpr int ScrollbarBg = 14;
+constexpr int ScrollbarGrab = 15;
+constexpr int ScrollbarGrabHovered = 16;
+constexpr int ScrollbarGrabActive = 17;
+constexpr int CheckMark = 18;
+constexpr int SliderGrab = 19;
+constexpr int SliderGrabActive = 20;
+constexpr int Button = 21;
+constexpr int ButtonHovered = 22;
+constexpr int ButtonActive = 23;
+constexpr int Header = 24;
+constexpr int HeaderHovered = 25;
+constexpr int HeaderActive = 26;
+constexpr int Separator = 27;
+constexpr int SeparatorHovered = 28;
+constexpr int SeparatorActive = 29;
+constexpr int ResizeGrip = 30;
+constexpr int ResizeGripHovered = 31;
+constexpr int ResizeGripActive = 32;
+constexpr int Tab = 33;
+constexpr int TabHovered = 34;
+constexpr int TabActive = 35;
 } // namespace ImGuiCol
 
 MagdaJSFXEditor::MagdaJSFXEditor() {
@@ -385,6 +445,42 @@ void MagdaJSFXEditor::Render() {
   if (!m_ctx)
     return;
 
+  // Apply electric theme
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::WindowBg, g_theme.windowBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.childBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::PopupBg, g_theme.popupBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Border, g_theme.border);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, g_theme.frameBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered, g_theme.inputBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgActive, g_theme.inputBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBg, g_theme.windowBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive, g_theme.childBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::MenuBarBg, g_theme.childBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ScrollbarBg, g_theme.scrollbar);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ScrollbarGrab, g_theme.accent);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ScrollbarGrabHovered, g_theme.accentHover);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ScrollbarGrabActive, g_theme.accentActive);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::CheckMark, g_theme.accent);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::SliderGrab, g_theme.accent);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::SliderGrabActive, g_theme.accentHover);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.buttonBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered, g_theme.buttonHover);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.buttonActive);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Header, g_theme.buttonBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::HeaderHovered, g_theme.buttonHover);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::HeaderActive, g_theme.buttonActive);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Separator, g_theme.separator);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::SeparatorHovered, g_theme.accent);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::SeparatorActive, g_theme.accentHover);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ResizeGrip, g_theme.buttonBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ResizeGripHovered, g_theme.accent);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ResizeGripActive, g_theme.accentHover);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Tab, g_theme.buttonBg);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TabHovered, g_theme.buttonHover);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TabActive, g_theme.accent);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Text, g_theme.normalText);
+  m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TextDisabled, g_theme.dimText);
+
   // Set window size
   int condOnce = 2; // ImGuiCond_Once
   m_ImGui_SetNextWindowSize(m_ctx, 1200, 700, &condOnce);
@@ -437,6 +533,10 @@ void MagdaJSFXEditor::Render() {
   if (m_showSaveAsDialog) {
     RenderSaveAsDialog();
   }
+
+  // Pop all 35 style colors we pushed
+  int styleCount = 35;
+  m_ImGui_PopStyleColor(m_ctx, &styleCount);
 
   // Handle window close
   if (!open) {
@@ -669,9 +769,9 @@ void MagdaJSFXEditor::RenderChatPanel() {
     int msgIndex = 0;
     for (const auto &msg : m_chatHistory) {
       if (msg.is_user) {
-        m_ImGui_TextColored(m_ctx, 0xFF88CCFF, "You:");
+        m_ImGui_TextColored(m_ctx, g_theme.userText, "You:");
       } else {
-        m_ImGui_TextColored(m_ctx, 0xFF88FF88, "AI:");
+        m_ImGui_TextColored(m_ctx, g_theme.aiText, "AI:");
       }
       m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
 
