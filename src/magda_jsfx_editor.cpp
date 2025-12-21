@@ -152,6 +152,21 @@ bool MagdaJSFXEditor::Initialize(reaper_plugin_info_t *rec) {
   m_ImGui_SetScrollY = (void (*)(void *, double))rec->GetFunc("ImGui_SetScrollY");
   m_ImGui_GetScrollMaxY =
       (double (*)(void *))rec->GetFunc("ImGui_GetScrollMaxY");
+  
+  // Popup/context menu functions
+  m_ImGui_BeginPopupContextItem =
+      (bool (*)(void *, const char *, int *))rec->GetFunc("ImGui_BeginPopupContextItem");
+  m_ImGui_BeginPopupContextWindow =
+      (bool (*)(void *, const char *, int *))rec->GetFunc("ImGui_BeginPopupContextWindow");
+  m_ImGui_BeginPopup =
+      (bool (*)(void *, const char *, int *))rec->GetFunc("ImGui_BeginPopup");
+  m_ImGui_OpenPopup =
+      (void (*)(void *, const char *, int *))rec->GetFunc("ImGui_OpenPopup");
+  m_ImGui_EndPopup = (void (*)(void *))rec->GetFunc("ImGui_EndPopup");
+  m_ImGui_MenuItem =
+      (bool (*)(void *, const char *, const char *, bool *, bool *))rec->GetFunc("ImGui_MenuItem");
+  m_ImGui_CloseCurrentPopup =
+      (void (*)(void *))rec->GetFunc("ImGui_CloseCurrentPopup");
 
   // Check if all required functions are available
   m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
@@ -243,18 +258,23 @@ void MagdaJSFXEditor::RefreshFileList() {
   }
   closedir(dir);
 
-  // Sort: directories first (except ..), then alphabetically
+  // Sort: directories first (except ..), then alphabetically (case-insensitive)
   std::sort(m_files.begin(), m_files.end(),
             [](const JSFXFileEntry &a, const JSFXFileEntry &b) {
               // Keep ".." at the top
               if (a.name == "..") return true;
               if (b.name == "..") return false;
+              // Directories before files
               if (a.is_directory != b.is_directory) {
                 return a.is_directory > b.is_directory;
               }
-              return a.name < b.name;
+              // Case-insensitive alphabetical sort
+              std::string aLower = a.name;
+              std::string bLower = b.name;
+              std::transform(aLower.begin(), aLower.end(), aLower.begin(), ::tolower);
+              std::transform(bLower.begin(), bLower.end(), bLower.begin(), ::tolower);
+              return aLower < bLower;
             });
-  
 }
 
 void MagdaJSFXEditor::OpenFile(const std::string &path) {
@@ -387,6 +407,7 @@ void MagdaJSFXEditor::Render() {
     double editorW = -310; // leave room for chat panel
     if (m_ImGui_BeginChild(m_ctx, "##editor", &editorW, &childH, &childFlags, &windowFlags2)) {
       RenderEditorPanel();
+      RenderEditorContextMenu();  // Context menu for editor panel
     }
     m_ImGui_EndChild(m_ctx);
     
@@ -400,6 +421,11 @@ void MagdaJSFXEditor::Render() {
     m_ImGui_EndChild(m_ctx);
   }
   m_ImGui_End(m_ctx);
+  
+  // Render Save As dialog if open
+  if (m_showSaveAsDialog) {
+    RenderSaveAsDialog();
+  }
 
   // Handle window close
   if (!open) {
@@ -429,6 +455,9 @@ void MagdaJSFXEditor::RenderFilePanel() {
   // Track if we need to refresh after the loop (can't modify m_files while iterating)
   std::string pendingNavigate;
   std::string pendingOpenFile;
+  bool pendingNewFile = false;
+  bool pendingNewFolder = false;
+  std::string pendingDelete;
 
   bool childVisible = m_ImGui_BeginChild(m_ctx, "##file_list", &childW, &childH, &childFlags,
                          &windowFlags);
@@ -444,6 +473,7 @@ void MagdaJSFXEditor::RenderFilePanel() {
       icon = "📄 ";
     }
     std::string label = icon + file.name;
+    std::string itemId = "##file_" + file.full_path;
 
     bool selected = (file.full_path == m_currentFilePath);
     if (m_ImGui_Selectable(m_ctx, label.c_str(), &selected, nullptr, nullptr,
@@ -456,6 +486,60 @@ void MagdaJSFXEditor::RenderFilePanel() {
         pendingOpenFile = file.full_path;
       }
     }
+    
+    // Right-click context menu for each file/folder
+    if (m_ImGui_BeginPopupContextItem && m_ImGui_MenuItem && m_ImGui_EndPopup) {
+      int popupFlags = 1;  // ImGuiPopupFlags_MouseButtonRight
+      if (m_ImGui_BeginPopupContextItem(m_ctx, itemId.c_str(), &popupFlags)) {
+        if (file.name != "..") {
+          if (file.is_directory) {
+            // Directory context menu
+            if (m_ImGui_MenuItem(m_ctx, "Open", nullptr, nullptr, nullptr)) {
+              pendingNavigate = file.full_path;
+            }
+            if (m_ImGui_MenuItem(m_ctx, "New File Here...", nullptr, nullptr, nullptr)) {
+              m_currentFolder = file.full_path;
+              pendingNewFile = true;
+            }
+            if (m_ImGui_MenuItem(m_ctx, "New Folder...", nullptr, nullptr, nullptr)) {
+              m_currentFolder = file.full_path;
+              pendingNewFolder = true;
+            }
+            m_ImGui_Separator(m_ctx);
+            if (m_ImGui_MenuItem(m_ctx, "Delete Folder", nullptr, nullptr, nullptr)) {
+              pendingDelete = file.full_path;
+            }
+          } else {
+            // File context menu
+            if (m_ImGui_MenuItem(m_ctx, "Open", nullptr, nullptr, nullptr)) {
+              pendingOpenFile = file.full_path;
+            }
+            if (m_ImGui_MenuItem(m_ctx, "Delete", nullptr, nullptr, nullptr)) {
+              pendingDelete = file.full_path;
+            }
+          }
+        }
+        m_ImGui_EndPopup(m_ctx);
+      }
+    }
+  }
+  
+  // Context menu for file panel background (right-click anywhere in panel)
+  if (m_ImGui_BeginPopupContextWindow && m_ImGui_MenuItem && m_ImGui_EndPopup) {
+    int popupFlags = 1;  // ImGuiPopupFlags_MouseButtonRight
+    if (m_ImGui_BeginPopupContextWindow(m_ctx, "##file_panel_context", &popupFlags)) {
+      if (m_ImGui_MenuItem(m_ctx, "New File...", nullptr, nullptr, nullptr)) {
+        pendingNewFile = true;
+      }
+      if (m_ImGui_MenuItem(m_ctx, "New Folder...", nullptr, nullptr, nullptr)) {
+        pendingNewFolder = true;
+      }
+      m_ImGui_Separator(m_ctx);
+      if (m_ImGui_MenuItem(m_ctx, "Refresh", nullptr, nullptr, nullptr)) {
+        RefreshFileList();
+      }
+      m_ImGui_EndPopup(m_ctx);
+    }
   }
   
   m_ImGui_EndChild(m_ctx);
@@ -467,6 +551,28 @@ void MagdaJSFXEditor::RenderFilePanel() {
   }
   if (!pendingOpenFile.empty()) {
     OpenFile(pendingOpenFile);
+  }
+  if (pendingNewFile) {
+    NewFile();
+    m_showSaveAsDialog = true;
+    strncpy(m_saveAsFilename, "new_effect.jsfx", sizeof(m_saveAsFilename));
+  }
+  if (pendingNewFolder) {
+    m_showSaveAsDialog = true;  // Reuse dialog for folder name
+    strncpy(m_saveAsFilename, "New Folder", sizeof(m_saveAsFilename));
+    m_contextMenuTarget = "new_folder";
+  }
+  if (!pendingDelete.empty()) {
+    // Delete file or empty folder
+    struct stat st;
+    if (stat(pendingDelete.c_str(), &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        rmdir(pendingDelete.c_str());  // Only works on empty dirs
+      } else {
+        remove(pendingDelete.c_str());
+      }
+      RefreshFileList();
+    }
   }
 }
 
@@ -495,6 +601,36 @@ void MagdaJSFXEditor::RenderEditorPanel() {
 
   int one = 1;
   m_ImGui_PopStyleColor(m_ctx, &one);
+  
+}
+
+void MagdaJSFXEditor::RenderEditorContextMenu() {
+  // Right-click context menu for editor (works anywhere in editor panel)
+  if (m_ImGui_BeginPopupContextWindow && m_ImGui_MenuItem && m_ImGui_EndPopup) {
+    int popupFlags = 1;  // ImGuiPopupFlags_MouseButtonRight
+    if (m_ImGui_BeginPopupContextWindow(m_ctx, "##editor_context", &popupFlags)) {
+      if (m_ImGui_MenuItem(m_ctx, "Save", "Ctrl+S", nullptr, nullptr)) {
+        if (m_currentFilePath.empty()) {
+          m_showSaveAsDialog = true;
+          strncpy(m_saveAsFilename, m_currentFileName.c_str(), sizeof(m_saveAsFilename));
+        } else {
+          SaveCurrentFile();
+        }
+      }
+      if (m_ImGui_MenuItem(m_ctx, "Save As...", nullptr, nullptr, nullptr)) {
+        m_showSaveAsDialog = true;
+        strncpy(m_saveAsFilename, m_currentFileName.c_str(), sizeof(m_saveAsFilename));
+      }
+      m_ImGui_Separator(m_ctx);
+      if (m_ImGui_MenuItem(m_ctx, "Recompile", "F5", nullptr, nullptr)) {
+        RecompileJSFX();
+      }
+      if (m_ImGui_MenuItem(m_ctx, "Add to Selected Track", nullptr, nullptr, nullptr)) {
+        AddToSelectedTrack();
+      }
+      m_ImGui_EndPopup(m_ctx);
+    }
+  }
 }
 
 void MagdaJSFXEditor::RenderChatPanel() {
@@ -563,85 +699,137 @@ void MagdaJSFXEditor::RenderChatPanel() {
 }
 
 void MagdaJSFXEditor::RenderToolbar() {
-  if (m_ImGui_Button(m_ctx, "New", nullptr, nullptr)) {
-    NewFile();
-  }
-
+  // Minimal toolbar - most operations are in context menus
+  m_ImGui_TextColored(m_ctx, g_theme.dimText, "Right-click for options");
+  
   double zero = 0;
-  double spacing = 5;
+  double spacing = 20;
   m_ImGui_SameLine(m_ctx, &zero, &spacing);
 
-  if (m_ImGui_Button(m_ctx, "Save", nullptr, nullptr)) {
-    if (m_currentFilePath.empty()) {
-      // Save as new file in current folder
-      std::string path = m_currentFolder + "/" + m_currentFileName;
-      if (m_currentFileName.empty() || m_currentFileName == "untitled.jsfx") {
-        path = m_currentFolder + "/untitled.jsfx";
-      }
-      m_currentFilePath = path;
-    }
+  // Show current file path
+  if (!m_currentFilePath.empty()) {
+    m_ImGui_TextColored(m_ctx, g_theme.normalText, m_currentFilePath.c_str());
+  } else if (!m_currentFileName.empty()) {
+    std::string unsaved = m_currentFileName + " (unsaved)";
+    m_ImGui_TextColored(m_ctx, 0xFF8888FF, unsaved.c_str());
+  }
+}
+
+void MagdaJSFXEditor::RecompileJSFX() {
+  if (!m_rec) return;
+  
+  // Save first if modified
+  if (m_modified && !m_currentFilePath.empty()) {
     SaveCurrentFile();
   }
-
-  m_ImGui_SameLine(m_ctx, &zero, &spacing);
-
-  if (m_ImGui_Button(m_ctx, "Refresh", nullptr, nullptr)) {
-    RefreshFileList();
-  }
-
-  m_ImGui_SameLine(m_ctx, &zero, &spacing);
-
-  if (m_ImGui_Button(m_ctx, "Recompile", nullptr, nullptr)) {
-    // Save and refresh any loaded instances
-    if (m_modified) {
-      SaveCurrentFile();
-    }
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+  
+  // Get REAPER functions for FX manipulation
+  int (*CountTracks)(ReaProject *) =
+      (int (*)(ReaProject *))m_rec->GetFunc("CountTracks");
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int))m_rec->GetFunc("GetTrack");
+  int (*TrackFX_GetCount)(MediaTrack *) =
+      (int (*)(MediaTrack *))m_rec->GetFunc("TrackFX_GetCount");
+  bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
+      (bool (*)(MediaTrack *, int, char *, int))m_rec->GetFunc("TrackFX_GetFXName");
+  void (*TrackFX_SetEnabled)(MediaTrack *, int, bool) =
+      (void (*)(MediaTrack *, int, bool))m_rec->GetFunc("TrackFX_SetEnabled");
+  bool (*TrackFX_GetEnabled)(MediaTrack *, int) =
+      (bool (*)(MediaTrack *, int))m_rec->GetFunc("TrackFX_GetEnabled");
+  
+  void (*ShowConsoleMsg)(const char *) =
+      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+  
+  if (!CountTracks || !GetTrack || !TrackFX_GetCount || !TrackFX_GetFXName) {
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA JSFX: Recompiled\n");
+      ShowConsoleMsg("MAGDA JSFX: Recompile - REAPER API functions not available\n");
     }
+    return;
   }
-
-  m_ImGui_SameLine(m_ctx, &zero, &spacing);
-
-  if (m_ImGui_Button(m_ctx, "Test on Track", nullptr, nullptr)) {
-    // Add current JSFX to selected track
-    if (!m_currentFilePath.empty() && m_rec) {
-      // Save first if modified
-      if (m_modified) {
-        SaveCurrentFile();
-      }
-
-      // Get selected track and add FX
-      MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
-          (MediaTrack * (*)(ReaProject *, int)) m_rec->GetFunc("GetSelectedTrack");
-      int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-          (int (*)(MediaTrack *, const char *, bool, int))m_rec->GetFunc(
-              "TrackFX_AddByName");
-
-      if (GetSelectedTrack && TrackFX_AddByName) {
-        MediaTrack *track = GetSelectedTrack(nullptr, 0);
-        if (track) {
-          TrackFX_AddByName(track, m_currentFilePath.c_str(), false, -1);
-
-          void (*ShowConsoleMsg)(const char *) =
-              (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-          if (ShowConsoleMsg) {
-            ShowConsoleMsg("MAGDA JSFX: Added effect to selected track\n");
+  
+  // Find all instances of this JSFX on tracks and toggle them to force recompile
+  int recompileCount = 0;
+  int trackCount = CountTracks(nullptr);
+  
+  for (int t = 0; t < trackCount; t++) {
+    MediaTrack *track = GetTrack(nullptr, t);
+    if (!track) continue;
+    
+    int fxCount = TrackFX_GetCount(track);
+    for (int fx = 0; fx < fxCount; fx++) {
+      char fxName[256];
+      if (TrackFX_GetFXName(track, fx, fxName, sizeof(fxName))) {
+        // Check if this FX matches our file
+        if (strstr(fxName, m_currentFileName.c_str()) != nullptr) {
+          // Toggle off then on to force recompile
+          if (TrackFX_SetEnabled && TrackFX_GetEnabled) {
+            bool wasEnabled = TrackFX_GetEnabled(track, fx);
+            TrackFX_SetEnabled(track, fx, false);
+            TrackFX_SetEnabled(track, fx, wasEnabled);
+            recompileCount++;
           }
         }
       }
     }
   }
+  
+  if (ShowConsoleMsg) {
+    char msg[256];
+    snprintf(msg, sizeof(msg), "MAGDA JSFX: Recompiled %d instance(s) of %s\n", 
+             recompileCount, m_currentFileName.c_str());
+    ShowConsoleMsg(msg);
+  }
+}
 
-  // Status on the right
-  m_ImGui_SameLine(m_ctx, &zero, &spacing);
-  m_ImGui_Dummy(m_ctx, 20, 0);
-  m_ImGui_SameLine(m_ctx, &zero, &spacing);
+void MagdaJSFXEditor::AddToSelectedTrack() {
+  if (!m_rec) return;
+  
+  // Save first if modified
+  if (m_modified) {
+    if (m_currentFilePath.empty()) {
+      m_showSaveAsDialog = true;
+      strncpy(m_saveAsFilename, m_currentFileName.c_str(), sizeof(m_saveAsFilename));
+      return;
+    }
+    SaveCurrentFile();
+  }
+  
+  if (m_currentFilePath.empty()) {
+    void (*ShowConsoleMsg)(const char *) =
+        (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA JSFX: Please save the file first\n");
+    }
+    return;
+  }
 
-  if (!m_currentFilePath.empty()) {
-    m_ImGui_TextColored(m_ctx, g_theme.dimText, m_currentFilePath.c_str());
+  // Get selected track and add FX
+  MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int))m_rec->GetFunc("GetSelectedTrack");
+  int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
+      (int (*)(MediaTrack *, const char *, bool, int))m_rec->GetFunc(
+          "TrackFX_AddByName");
+
+  if (GetSelectedTrack && TrackFX_AddByName) {
+    MediaTrack *track = GetSelectedTrack(nullptr, 0);
+    if (track) {
+      TrackFX_AddByName(track, m_currentFilePath.c_str(), false, -1);
+
+      void (*ShowConsoleMsg)(const char *) =
+          (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "MAGDA JSFX: Added %s to selected track\n", 
+                 m_currentFileName.c_str());
+        ShowConsoleMsg(msg);
+      }
+    } else {
+      void (*ShowConsoleMsg)(const char *) =
+          (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA JSFX: No track selected\n");
+      }
+    }
   }
 }
 
@@ -711,10 +899,28 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
     aiMsg.is_user = false;
 
     if (success) {
-      // Parse response JSON to extract jsfx_code
+      // Parse response JSON
       std::string responseStr = response.Get();
       
-      // Simple JSON parsing for jsfx_code field
+      // Check for parse_error first
+      size_t parseErrorStart = responseStr.find("\"parse_error\":\"");
+      bool hasParseError = false;
+      std::string parseError;
+      
+      if (parseErrorStart != std::string::npos) {
+        parseErrorStart += 15; // length of "\"parse_error\":\""
+        size_t parseErrorEnd = parseErrorStart;
+        while (parseErrorEnd < responseStr.length()) {
+          if (responseStr[parseErrorEnd] == '"' && responseStr[parseErrorEnd - 1] != '\\') {
+            break;
+          }
+          parseErrorEnd++;
+        }
+        parseError = responseStr.substr(parseErrorStart, parseErrorEnd - parseErrorStart);
+        hasParseError = !parseError.empty();
+      }
+      
+      // Extract jsfx_code field
       size_t codeStart = responseStr.find("\"jsfx_code\":\"");
       if (codeStart != std::string::npos) {
         codeStart += 13; // length of "\"jsfx_code\":\""
@@ -746,11 +952,26 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
           }
         }
         
-        aiMsg.content = "Generated JSFX code:";
-        aiMsg.code_block = unescaped;
-        aiMsg.has_code_block = true;
+        if (!unescaped.empty()) {
+          aiMsg.content = "Generated JSFX code:";
+          aiMsg.code_block = unescaped;
+          aiMsg.has_code_block = true;
+        } else if (hasParseError) {
+          // Parse error - show error and DSL for feedback
+          aiMsg.content = "⚠️ DSL parsing failed:\n" + parseError + 
+                         "\n\nPlease describe what you want differently, or report this issue.";
+          aiMsg.has_code_block = false;
+        } else {
+          aiMsg.content = "JSFX generated but code was empty.";
+          aiMsg.has_code_block = false;
+        }
+      } else if (hasParseError) {
+        // Parse error without code - show error for feedback
+        aiMsg.content = "⚠️ DSL parsing failed:\n" + parseError + 
+                       "\n\nPlease try rephrasing your request.";
+        aiMsg.has_code_block = false;
       } else {
-        aiMsg.content = "JSFX generated but couldn't parse response.";
+        aiMsg.content = "Couldn't parse response from server.";
         aiMsg.has_code_block = false;
       }
     } else {
@@ -782,5 +1003,85 @@ void MagdaJSFXEditor::ApplyCodeBlock(const std::string &code) {
 void MagdaJSFXEditor::ProcessAIResponse(const std::string &response) {
   // Parse response and extract code blocks
   // TODO: Implement proper parsing
+}
+
+void MagdaJSFXEditor::RenderSaveAsDialog() {
+  if (!m_ctx) return;
+  
+  // Set dialog size
+  int condOnce = 2; // ImGuiCond_Once
+  m_ImGui_SetNextWindowSize(m_ctx, 400, 120, &condOnce);
+  
+  bool open = true;
+  int windowFlags = 0;
+  
+  std::string title = (m_contextMenuTarget == "new_folder") ? "New Folder" : "Save As";
+  
+  if (m_ImGui_Begin(m_ctx, title.c_str(), &open, &windowFlags)) {
+    if (m_contextMenuTarget == "new_folder") {
+      m_ImGui_Text(m_ctx, "Folder name:");
+    } else {
+      m_ImGui_Text(m_ctx, "Filename:");
+    }
+    
+    int inputFlags = 0;
+    m_ImGui_InputText(m_ctx, "##saveas_filename", m_saveAsFilename, 
+                      sizeof(m_saveAsFilename), &inputFlags, nullptr);
+    
+    m_ImGui_Separator(m_ctx);
+    
+    double zero = 0;
+    double spacing = 10;
+    
+    if (m_ImGui_Button(m_ctx, "OK", nullptr, nullptr)) {
+      if (strlen(m_saveAsFilename) > 0) {
+        if (m_contextMenuTarget == "new_folder") {
+          CreateNewFolder(m_saveAsFilename);
+        } else {
+          // Save As - create new file
+          std::string newPath = m_currentFolder + "/" + m_saveAsFilename;
+          m_currentFilePath = newPath;
+          m_currentFileName = m_saveAsFilename;
+          SaveCurrentFile();
+          RefreshFileList();  // Update file list to show new file
+        }
+        m_showSaveAsDialog = false;
+        m_contextMenuTarget.clear();
+      }
+    }
+    
+    m_ImGui_SameLine(m_ctx, &zero, &spacing);
+    
+    if (m_ImGui_Button(m_ctx, "Cancel", nullptr, nullptr)) {
+      m_showSaveAsDialog = false;
+      m_contextMenuTarget.clear();
+    }
+  }
+  m_ImGui_End(m_ctx);
+  
+  if (!open) {
+    m_showSaveAsDialog = false;
+    m_contextMenuTarget.clear();
+  }
+}
+
+void MagdaJSFXEditor::CreateNewFolder(const std::string &name) {
+  std::string folderPath = m_currentFolder + "/" + name;
+  
+#ifdef _WIN32
+  mkdir(folderPath.c_str());
+#else
+  mkdir(folderPath.c_str(), 0755);
+#endif
+  
+  RefreshFileList();
+  
+  void (*ShowConsoleMsg)(const char *) =
+      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA JSFX: Created folder %s\n", name.c_str());
+    ShowConsoleMsg(msg);
+  }
 }
 
