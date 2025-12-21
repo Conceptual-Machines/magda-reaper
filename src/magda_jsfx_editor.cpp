@@ -904,17 +904,16 @@ void MagdaJSFXEditor::RecompileJSFX() {
     return;
   }
 
-  // Save the file (this is the key to "recompiling" - REAPER watches the file)
+  // Save the file first
   SaveCurrentFile();
 
-  // JSFX effects automatically recompile when their source file changes
-  // The save above triggers this. We just need to confirm to the user.
   if (ShowConsoleMsg) {
-    char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA JSFX: Saved %s - any loaded instances will recompile automatically\n",
-             m_currentFileName.c_str());
-    ShowConsoleMsg(msg);
+    ShowConsoleMsg("MAGDA JSFX: Recompiling...\n");
   }
+
+  // To actually compile and check for errors, we need to add to a track
+  // Use AddToTrackAndOpen which handles error detection
+  AddToTrackAndOpen();
 }
 
 void MagdaJSFXEditor::AddToSelectedTrack() {
