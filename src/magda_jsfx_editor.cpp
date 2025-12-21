@@ -754,8 +754,18 @@ void MagdaJSFXEditor::RenderToolbar() {
 void MagdaJSFXEditor::RecompileJSFX() {
   if (!m_rec) return;
 
+  void (*ShowConsoleMsg)(const char *) =
+      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+
+  if (m_currentFilePath.empty()) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA JSFX: No file to recompile - please save first\n");
+    }
+    return;
+  }
+
   // Save first if modified
-  if (m_modified && !m_currentFilePath.empty()) {
+  if (m_modified) {
     SaveCurrentFile();
   }
 
@@ -764,17 +774,16 @@ void MagdaJSFXEditor::RecompileJSFX() {
       (int (*)(ReaProject *))m_rec->GetFunc("CountTracks");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int))m_rec->GetFunc("GetTrack");
+  MediaTrack *(*GetMasterTrack)(ReaProject *) =
+      (MediaTrack * (*)(ReaProject *))m_rec->GetFunc("GetMasterTrack");
   int (*TrackFX_GetCount)(MediaTrack *) =
       (int (*)(MediaTrack *))m_rec->GetFunc("TrackFX_GetCount");
   bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
       (bool (*)(MediaTrack *, int, char *, int))m_rec->GetFunc("TrackFX_GetFXName");
-  void (*TrackFX_SetEnabled)(MediaTrack *, int, bool) =
-      (void (*)(MediaTrack *, int, bool))m_rec->GetFunc("TrackFX_SetEnabled");
-  bool (*TrackFX_GetEnabled)(MediaTrack *, int) =
-      (bool (*)(MediaTrack *, int))m_rec->GetFunc("TrackFX_GetEnabled");
-
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+  bool (*TrackFX_Delete)(MediaTrack *, int) =
+      (bool (*)(MediaTrack *, int))m_rec->GetFunc("TrackFX_Delete");
+  int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
+      (int (*)(MediaTrack *, const char *, bool, int))m_rec->GetFunc("TrackFX_AddByName");
 
   if (!CountTracks || !GetTrack || !TrackFX_GetCount || !TrackFX_GetFXName) {
     if (ShowConsoleMsg) {
@@ -783,36 +792,71 @@ void MagdaJSFXEditor::RecompileJSFX() {
     return;
   }
 
-  // Find all instances of this JSFX on tracks and toggle them to force recompile
+  // Build FX name for re-adding
+  std::string effectsFolder = GetEffectsFolder();
+  std::string relativePath = m_currentFilePath;
+  if (m_currentFilePath.find(effectsFolder) == 0) {
+    relativePath = m_currentFilePath.substr(effectsFolder.length() + 1);
+  }
+  std::string fxName = "JS:" + relativePath;
+
+  if (ShowConsoleMsg) {
+    char msg[256];
+    snprintf(msg, sizeof(msg), "MAGDA JSFX: Looking for instances of %s...\n", m_currentFileName.c_str());
+    ShowConsoleMsg(msg);
+  }
+
+  // Find all instances of this JSFX on tracks and delete+re-add to force recompile
   int recompileCount = 0;
   int trackCount = CountTracks(nullptr);
 
-  for (int t = 0; t < trackCount; t++) {
-    MediaTrack *track = GetTrack(nullptr, t);
-    if (!track) continue;
+  // Helper lambda to process a track
+  auto processTrack = [&](MediaTrack *track) {
+    if (!track) return;
 
     int fxCount = TrackFX_GetCount(track);
-    for (int fx = 0; fx < fxCount; fx++) {
-      char fxName[256];
-      if (TrackFX_GetFXName(track, fx, fxName, sizeof(fxName))) {
-        // Check if this FX matches our file
-        if (strstr(fxName, m_currentFileName.c_str()) != nullptr) {
-          // Toggle off then on to force recompile
-          if (TrackFX_SetEnabled && TrackFX_GetEnabled) {
-            bool wasEnabled = TrackFX_GetEnabled(track, fx);
-            TrackFX_SetEnabled(track, fx, false);
-            TrackFX_SetEnabled(track, fx, wasEnabled);
+    // Go backwards since we might delete
+    for (int fx = fxCount - 1; fx >= 0; fx--) {
+      char fxNameBuf[512];
+      if (TrackFX_GetFXName(track, fx, fxNameBuf, sizeof(fxNameBuf))) {
+        // Check if this FX matches our file (check both filename and relative path)
+        if (strstr(fxNameBuf, m_currentFileName.c_str()) != nullptr ||
+            strstr(fxNameBuf, relativePath.c_str()) != nullptr) {
+          if (ShowConsoleMsg) {
+            char msg[512];
+            snprintf(msg, sizeof(msg), "  Found: %s at FX #%d\n", fxNameBuf, fx + 1);
+            ShowConsoleMsg(msg);
+          }
+          // Delete and re-add to force full recompile
+          if (TrackFX_Delete && TrackFX_AddByName) {
+            TrackFX_Delete(track, fx);
+            TrackFX_AddByName(track, fxName.c_str(), false, fx);  // Re-add at same position
             recompileCount++;
           }
         }
       }
     }
+  };
+
+  // Process master track
+  if (GetMasterTrack) {
+    processTrack(GetMasterTrack(nullptr));
+  }
+
+  // Process all regular tracks
+  for (int t = 0; t < trackCount; t++) {
+    processTrack(GetTrack(nullptr, t));
   }
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA JSFX: Recompiled %d instance(s) of %s\n",
-             recompileCount, m_currentFileName.c_str());
+    if (recompileCount > 0) {
+      snprintf(msg, sizeof(msg), "MAGDA JSFX: Recompiled %d instance(s) of %s\n",
+               recompileCount, m_currentFileName.c_str());
+    } else {
+      snprintf(msg, sizeof(msg), "MAGDA JSFX: No instances of %s found on any track\n",
+               m_currentFileName.c_str());
+    }
     ShowConsoleMsg(msg);
   }
 }
@@ -1074,6 +1118,9 @@ void MagdaJSFXEditor::AddToTrackAndOpen() {
     return;
   }
 
+  void (*ShowConsoleMsg)(const char *) =
+      (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+
   // Get selected track
   MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int))m_rec->GetFunc("GetSelectedTrack");
@@ -1084,36 +1131,63 @@ void MagdaJSFXEditor::AddToTrackAndOpen() {
   int (*TrackFX_GetCount)(MediaTrack *) =
       (int (*)(MediaTrack *))m_rec->GetFunc("TrackFX_GetCount");
 
-  if (GetSelectedTrack && TrackFX_AddByName) {
-    MediaTrack *track = GetSelectedTrack(nullptr, 0);
-    if (track) {
-      int fxIdx = TrackFX_AddByName(track, m_currentFilePath.c_str(), false, -1);
+  if (!GetSelectedTrack || !TrackFX_AddByName) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA JSFX: REAPER API functions not available\n");
+    }
+    return;
+  }
 
-      // Open the FX window
-      if (fxIdx >= 0 && TrackFX_Show) {
-        TrackFX_Show(track, fxIdx, 1);  // 1 = show floating window
-      } else if (TrackFX_GetCount && TrackFX_Show) {
-        // FX was added, get last index
-        int count = TrackFX_GetCount(track);
-        if (count > 0) {
-          TrackFX_Show(track, count - 1, 1);
-        }
-      }
+  MediaTrack *track = GetSelectedTrack(nullptr, 0);
+  if (!track) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA JSFX: No track selected - please select a track first\n");
+    }
+    return;
+  }
 
-      void (*ShowConsoleMsg)(const char *) =
-          (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-      if (ShowConsoleMsg) {
-        char msg[256];
-        snprintf(msg, sizeof(msg), "MAGDA JSFX: Added %s to track and opened FX window\n",
-                 m_currentFileName.c_str());
-        ShowConsoleMsg(msg);
-      }
-    } else {
-      void (*ShowConsoleMsg)(const char *) =
-          (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
-      if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA JSFX: No track selected\n");
-      }
+  // Build the JSFX identifier - REAPER needs path relative to Effects folder with JS: prefix
+  std::string effectsFolder = GetEffectsFolder();
+  std::string relativePath = m_currentFilePath;
+
+  // Remove the Effects folder prefix to get relative path
+  if (m_currentFilePath.find(effectsFolder) == 0) {
+    relativePath = m_currentFilePath.substr(effectsFolder.length() + 1);  // +1 for the /
+  }
+
+  // Format: "JS:relative/path/to/effect.jsfx"
+  std::string fxName = "JS:" + relativePath;
+
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA JSFX: Adding FX: %s\n", fxName.c_str());
+    ShowConsoleMsg(msg);
+  }
+
+  int fxIdx = TrackFX_AddByName(track, fxName.c_str(), false, -1);
+
+  if (fxIdx < 0 && TrackFX_GetCount) {
+    // TrackFX_AddByName returns -1 but still adds the FX sometimes
+    int count = TrackFX_GetCount(track);
+    if (count > 0) {
+      fxIdx = count - 1;
+    }
+  }
+
+  // Open the FX window
+  if (fxIdx >= 0 && TrackFX_Show) {
+    TrackFX_Show(track, fxIdx, 1);  // 1 = show floating window
+    if (ShowConsoleMsg) {
+      char msg[256];
+      snprintf(msg, sizeof(msg), "MAGDA JSFX: Added %s to track (FX #%d)\n",
+               m_currentFileName.c_str(), fxIdx + 1);
+      ShowConsoleMsg(msg);
+    }
+  } else {
+    if (ShowConsoleMsg) {
+      char msg[256];
+      snprintf(msg, sizeof(msg), "MAGDA JSFX: Could not add FX (result: %d)\n", fxIdx);
+      ShowConsoleMsg(msg);
     }
   }
 }
