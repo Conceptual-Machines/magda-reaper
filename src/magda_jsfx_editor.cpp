@@ -215,6 +215,12 @@ bool MagdaJSFXEditor::Initialize(reaper_plugin_info_t *rec) {
   m_ImGui_GetScrollMaxY =
       (double (*)(void *))rec->GetFunc("ImGui_GetScrollMaxY");
 
+  // Text wrap control
+  m_ImGui_PushTextWrapPos =
+      (void (*)(void *, double *))rec->GetFunc("ImGui_PushTextWrapPos");
+  m_ImGui_PopTextWrapPos =
+      (void (*)(void *))rec->GetFunc("ImGui_PopTextWrapPos");
+
   // Popup/context menu functions
   m_ImGui_BeginPopupContextItem =
       (bool (*)(void *, const char *, int *))rec->GetFunc("ImGui_BeginPopupContextItem");
@@ -513,7 +519,7 @@ void MagdaJSFXEditor::Render() {
     m_ImGui_SameLine(m_ctx, &zero, &spacing);
 
     // Editor panel (middle, stretch)
-    double editorW = -310; // leave room for chat panel
+    double editorW = -510; // leave room for 500px chat panel + 10px spacing
     if (m_ImGui_BeginChild(m_ctx, "##editor", &editorW, &childH, &childFlags, &windowFlags2)) {
       RenderEditorPanel();
       RenderEditorContextMenu();  // Context menu for editor panel
@@ -522,8 +528,8 @@ void MagdaJSFXEditor::Render() {
 
     m_ImGui_SameLine(m_ctx, &zero, &spacing);
 
-    // Chat panel on right (fixed width)
-    double chatPanelW = 380;
+    // Chat panel on right (fixed width, wider for AI output + scrollbar)
+    double chatPanelW = 500;
     if (m_ImGui_BeginChild(m_ctx, "##chat", &chatPanelW, &childH, &childFlags, &windowFlags2)) {
       RenderChatPanel();
     }
@@ -757,13 +763,26 @@ void MagdaJSFXEditor::RenderChatPanel() {
   m_ImGui_Separator(m_ctx);
 
   // Chat history
-  double chatW = 0;
+  double chatW = 0;   // Full width
   double chatH = -60; // Leave room for input
-  int childFlags = 1; // Border
-  int windowFlags = ImGuiWindowFlags::AlwaysVerticalScrollbar;
+  int childFlags = 0; // No border
+  int windowFlags = 0; // No forced scrollbar - let it appear when needed
 
   if (m_ImGui_BeginChild(m_ctx, "##chat_history", &chatW, &chatH, &childFlags,
                          &windowFlags)) {
+    // Add padding around content
+    m_ImGui_Dummy(m_ctx, 0, 5);  // Top padding
+    
+    // Inner container with left and right padding
+    double innerW = -8;  // 8px right padding  
+    double innerH = 0;
+    int innerFlags = 0;
+    int innerWinFlags = 0;
+    
+    m_ImGui_Dummy(m_ctx, 1, 0);  // 1px left padding
+    m_ImGui_SameLine(m_ctx, nullptr, nullptr);
+    
+    if (m_ImGui_BeginChild(m_ctx, "##chat_content", &innerW, &innerH, &innerFlags, &innerWinFlags)) {
     if (m_chatHistory.empty()) {
       m_ImGui_TextColored(m_ctx, g_theme.dimText,
                           "Ask me to help write or modify your JSFX code!");
@@ -865,8 +884,11 @@ void MagdaJSFXEditor::RenderChatPanel() {
                spinnerFrames[frameIndex]);
       m_ImGui_TextColored(m_ctx, g_theme.accent, loadingMsg);
     }
+
+    }
+    m_ImGui_EndChild(m_ctx);  // End ##chat_content
   }
-  m_ImGui_EndChild(m_ctx);
+  m_ImGui_EndChild(m_ctx);  // End ##chat_history
 
   // Chat input
   m_ImGui_Separator(m_ctx);

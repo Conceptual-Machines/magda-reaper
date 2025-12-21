@@ -140,6 +140,10 @@ private:
   void (*m_ImGui_SetScrollY)(void *, double) = nullptr;
   double (*m_ImGui_GetScrollMaxY)(void *) = nullptr;
 
+  // Text wrap control
+  void (*m_ImGui_PushTextWrapPos)(void *, double *) = nullptr;
+  void (*m_ImGui_PopTextWrapPos)(void *) = nullptr;
+
   // Popup/context menu functions
   bool (*m_ImGui_BeginPopupContextItem)(void *, const char *, int *) = nullptr;
   bool (*m_ImGui_BeginPopupContextWindow)(void *, const char *, int *) = nullptr;
