@@ -28,20 +28,20 @@ static MagdaHTTPClient s_jsfxHttpClient;
 
 MagdaJSFXEditor *g_jsfxEditor = nullptr;
 
-// Theme colors (ABGR format for ImGui)
-#define THEME_RGBA(r, g, b) (0xFF000000 | ((b) << 16) | ((g) << 8) | (r))
+// Theme colors - format is 0xRRGGBBAA (same as main ImGui chat)
+#define THEME_RGBA(r, g, b) (((r) << 24) | ((g) << 16) | ((b) << 8) | 0xFF)
 struct ThemeColors {
   // Text
   int headerText = THEME_RGBA(0xF0, 0xF0, 0xF0);   // Bright white headers
   int normalText = THEME_RGBA(0xD0, 0xD0, 0xD0);   // Light grey text
   int dimText = THEME_RGBA(0x80, 0x80, 0x80);      // Dimmed grey
 
-  // Backgrounds
-  int windowBg = THEME_RGBA(0x12, 0x12, 0x16);     // Very dark blue-black
-  int childBg = THEME_RGBA(0x1A, 0x1A, 0x22);      // Slightly lighter
-  int inputBg = THEME_RGBA(0x22, 0x22, 0x2A);      // Input field background
-  int frameBg = THEME_RGBA(0x1E, 0x1E, 0x28);      // Frame background
-  int popupBg = THEME_RGBA(0x18, 0x18, 0x20);      // Popup/menu background
+  // Backgrounds (match main chat window style)
+  int windowBg = THEME_RGBA(0x3C, 0x3C, 0x3C);     // Dark grey
+  int childBg = THEME_RGBA(0x2D, 0x2D, 0x2D);      // Slightly darker panels
+  int inputBg = THEME_RGBA(0x1E, 0x1E, 0x1E);      // Dark input
+  int frameBg = THEME_RGBA(0x1A, 0x1A, 0x1A);      // Near-black for text areas
+  int popupBg = THEME_RGBA(0x2D, 0x2D, 0x2D);      // Popup/menu background
 
   // Electric accent colors (cyan/teal)
   int accent = THEME_RGBA(0x00, 0xD4, 0xE0);       // Electric cyan
@@ -49,22 +49,22 @@ struct ThemeColors {
   int accentActive = THEME_RGBA(0x00, 0xA0, 0xB0); // Darker cyan when pressed
 
   // Buttons
-  int buttonBg = THEME_RGBA(0x2A, 0x4A, 0x5A);     // Teal-ish button
-  int buttonHover = THEME_RGBA(0x35, 0x60, 0x75);  // Lighter on hover
-  int buttonActive = THEME_RGBA(0x20, 0x35, 0x45); // Darker on press
+  int buttonBg = THEME_RGBA(0x48, 0x48, 0x48);     // Grey button
+  int buttonHover = THEME_RGBA(0x58, 0x58, 0x58);  // Lighter on hover
+  int buttonActive = THEME_RGBA(0x38, 0x38, 0x38); // Darker on press
 
   // User/AI chat colors
   int userText = THEME_RGBA(0x80, 0xD0, 0xFF);     // Light blue for user
   int aiText = THEME_RGBA(0x00, 0xE0, 0xA0);       // Electric green for AI
 
   // Scrollbar
-  int scrollbar = THEME_RGBA(0x30, 0x30, 0x40);
-  int scrollbarHover = THEME_RGBA(0x50, 0x50, 0x70);
-  int scrollbarActive = THEME_RGBA(0x60, 0x60, 0x90);
+  int scrollbar = THEME_RGBA(0x2D, 0x2D, 0x2D);
+  int scrollbarHover = THEME_RGBA(0x48, 0x48, 0x48);
+  int scrollbarActive = THEME_RGBA(0x58, 0x58, 0x58);
 
   // Borders
-  int border = THEME_RGBA(0x40, 0x40, 0x55);
-  int separator = THEME_RGBA(0x35, 0x35, 0x45);
+  int border = THEME_RGBA(0x50, 0x50, 0x50);
+  int separator = THEME_RGBA(0x50, 0x50, 0x50);
 };
 static ThemeColors g_theme;
 
