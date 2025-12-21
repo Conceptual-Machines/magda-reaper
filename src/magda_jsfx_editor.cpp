@@ -330,6 +330,17 @@ void MagdaJSFXEditor::SaveCurrentFile() {
   }
 }
 
+void MagdaJSFXEditor::RefreshFXBrowser() {
+  if (!m_rec) return;
+
+  // Action 41997 = "Refresh list of JSFX"
+  void (*Main_OnCommand)(int, int) =
+      (void (*)(int, int))m_rec->GetFunc("Main_OnCommand");
+  if (Main_OnCommand) {
+    Main_OnCommand(41997, 0);
+  }
+}
+
 void MagdaJSFXEditor::NewFile() {
   memset(m_editorBuffer, 0, sizeof(m_editorBuffer));
   m_currentFilePath = "";
@@ -1232,7 +1243,8 @@ void MagdaJSFXEditor::RenderSaveAsDialog() {
           m_currentFilePath = newPath;
           m_currentFileName = m_saveAsFilename;
           SaveCurrentFile();
-          RefreshFileList();  // Update file list to show new file
+          RefreshFileList();    // Update file list to show new file
+          RefreshFXBrowser();   // Update REAPER's FX browser
         }
         m_showSaveAsDialog = false;
         m_contextMenuTarget.clear();

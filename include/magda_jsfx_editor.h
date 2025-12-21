@@ -51,6 +51,7 @@ private:
   void SaveCurrentFile();
   void SaveAs(const std::string &path);
   void NewFile();
+  void RefreshFXBrowser();
   std::string GetEffectsFolder();
 
   // AI operations
