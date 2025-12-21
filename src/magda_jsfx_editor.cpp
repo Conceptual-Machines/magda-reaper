@@ -1,11 +1,16 @@
 #include "magda_jsfx_editor.h"
+#include "magda_api_client.h"
+#include "magda_login_window.h"
+#include "magda_settings_window.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <sys/stat.h>
+#include <thread>
 
 #ifdef _WIN32
 #include <shlobj.h>
@@ -17,6 +22,9 @@
 
 #define REAPER_PLUGIN_DLL_EXPORT
 #include "reaper_plugin.h"
+
+// HTTP client for JSFX API calls
+static MagdaHTTPClient s_jsfxHttpClient;
 
 MagdaJSFXEditor *g_jsfxEditor = nullptr;
 
@@ -647,25 +655,128 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
 
   m_waitingForAI = true;
 
-  // TODO: Implement actual API call
-  // For now, add a placeholder response
-  JSFXChatMessage aiMsg;
-  aiMsg.is_user = false;
-  aiMsg.content = "AI integration coming soon! This will send your code and "
-                  "message to the MAGDA API for assistance.";
-  aiMsg.has_code_block = false;
-  m_chatHistory.push_back(aiMsg);
+  // Set backend URL from settings
+  const char *backendUrl = MagdaSettingsWindow::GetBackendURL();
+  if (backendUrl && backendUrl[0]) {
+    s_jsfxHttpClient.SetBackendURL(backendUrl);
+  }
 
-  m_waitingForAI = false;
+  // Set JWT token if available
+  const char *token = MagdaLoginWindow::GetStoredToken();
+  if (token && token[0]) {
+    s_jsfxHttpClient.SetJWTToken(token);
+  }
+
+  // Build request JSON
+  WDL_FastString requestJson;
+  requestJson.Append("{\"message\":\"");
+  
+  // Escape message
+  for (const char *p = message.c_str(); *p; p++) {
+    switch (*p) {
+    case '"': requestJson.Append("\\\""); break;
+    case '\\': requestJson.Append("\\\\"); break;
+    case '\n': requestJson.Append("\\n"); break;
+    case '\r': requestJson.Append("\\r"); break;
+    case '\t': requestJson.Append("\\t"); break;
+    default: requestJson.Append(p, 1); break;
+    }
+  }
+  requestJson.Append("\",\"code\":\"");
+  
+  // Escape current code
+  for (const char *p = m_editorBuffer; *p; p++) {
+    switch (*p) {
+    case '"': requestJson.Append("\\\""); break;
+    case '\\': requestJson.Append("\\\\"); break;
+    case '\n': requestJson.Append("\\n"); break;
+    case '\r': requestJson.Append("\\r"); break;
+    case '\t': requestJson.Append("\\t"); break;
+    default: requestJson.Append(p, 1); break;
+    }
+  }
+  requestJson.Append("\",\"filename\":\"");
+  requestJson.Append(m_currentFileName.c_str());
+  requestJson.Append("\"}");
+
+  // Make API call in background thread
+  std::string requestStr = requestJson.Get();
+  std::thread([this, requestStr]() {
+    WDL_FastString response, errorMsg;
+    bool success = s_jsfxHttpClient.SendPOSTRequest(
+        "/api/v1/jsfx/generate", requestStr.c_str(), response, errorMsg, 60);
+
+    // Process response on main thread data structures
+    JSFXChatMessage aiMsg;
+    aiMsg.is_user = false;
+
+    if (success) {
+      // Parse response JSON to extract jsfx_code
+      std::string responseStr = response.Get();
+      
+      // Simple JSON parsing for jsfx_code field
+      size_t codeStart = responseStr.find("\"jsfx_code\":\"");
+      if (codeStart != std::string::npos) {
+        codeStart += 13; // length of "\"jsfx_code\":\""
+        size_t codeEnd = codeStart;
+        
+        // Find end of string value (handle escapes)
+        while (codeEnd < responseStr.length()) {
+          if (responseStr[codeEnd] == '"' && responseStr[codeEnd - 1] != '\\') {
+            break;
+          }
+          codeEnd++;
+        }
+        
+        std::string code = responseStr.substr(codeStart, codeEnd - codeStart);
+        
+        // Unescape the code
+        std::string unescaped;
+        for (size_t i = 0; i < code.length(); i++) {
+          if (code[i] == '\\' && i + 1 < code.length()) {
+            switch (code[i + 1]) {
+            case 'n': unescaped += '\n'; i++; break;
+            case 't': unescaped += '\t'; i++; break;
+            case '"': unescaped += '"'; i++; break;
+            case '\\': unescaped += '\\'; i++; break;
+            default: unescaped += code[i]; break;
+            }
+          } else {
+            unescaped += code[i];
+          }
+        }
+        
+        aiMsg.content = "Generated JSFX code:";
+        aiMsg.code_block = unescaped;
+        aiMsg.has_code_block = true;
+      } else {
+        aiMsg.content = "JSFX generated but couldn't parse response.";
+        aiMsg.has_code_block = false;
+      }
+    } else {
+      aiMsg.content = "Error: " + std::string(errorMsg.Get());
+      aiMsg.has_code_block = false;
+    }
+
+    m_chatHistory.push_back(aiMsg);
+    m_waitingForAI = false;
+  }).detach();
 }
 
 void MagdaJSFXEditor::ApplyCodeBlock(const std::string &code) {
-  // For now, append code at cursor position (simplified)
-  // TODO: Smarter insertion based on context
-  std::string current = m_editorBuffer;
-  current += "\n" + code;
-  strncpy(m_editorBuffer, current.c_str(), sizeof(m_editorBuffer) - 1);
+  // Replace entire editor content with the generated JSFX code
+  strncpy(m_editorBuffer, code.c_str(), sizeof(m_editorBuffer) - 1);
+  m_editorBuffer[sizeof(m_editorBuffer) - 1] = '\0';
   m_modified = true;
+  
+  // Log to console
+  if (m_rec) {
+    void (*ShowConsoleMsg)(const char *) =
+        (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA JSFX: Applied AI-generated code to editor\n");
+    }
+  }
 }
 
 void MagdaJSFXEditor::ProcessAIResponse(const std::string &response) {
