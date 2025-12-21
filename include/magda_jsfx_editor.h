@@ -57,10 +57,12 @@ private:
   void SendToAI(const std::string &message);
   void ApplyCodeBlock(const std::string &code);
   void ProcessAIResponse(const std::string &response);
-  
+
   // JSFX operations
   void RecompileJSFX();
   void AddToSelectedTrack();
+  void AddToTrackAndOpen();
+  void OpenInReaperEditor();
   void RenderSaveAsDialog();
   void CreateNewFolder(const std::string &name);
 
@@ -72,7 +74,7 @@ private:
   bool m_available = false;
   bool m_visible = false;
   void *m_ctx = nullptr;
-  
+
   // Save As dialog
   bool m_showSaveAsDialog = false;
   char m_saveAsFilename[256] = {0};
@@ -133,7 +135,7 @@ private:
   double (*m_ImGui_GetScrollY)(void *) = nullptr;
   void (*m_ImGui_SetScrollY)(void *, double) = nullptr;
   double (*m_ImGui_GetScrollMaxY)(void *) = nullptr;
-  
+
   // Popup/context menu functions
   bool (*m_ImGui_BeginPopupContextItem)(void *, const char *, int *) = nullptr;
   bool (*m_ImGui_BeginPopupContextWindow)(void *, const char *, int *) = nullptr;
@@ -144,10 +146,9 @@ private:
   void (*m_ImGui_CloseCurrentPopup)(void *) = nullptr;
 
   reaper_plugin_info_t *m_rec = nullptr;
-  
+
   // Context menu state
   std::string m_contextMenuTarget;  // File path for context menu actions
 };
 
 extern MagdaJSFXEditor *g_jsfxEditor;
-
