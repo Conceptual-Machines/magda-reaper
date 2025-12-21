@@ -411,7 +411,9 @@ void MagdaLoginWindow::UpdateUIForLoggedOutState() {
     EnableWindow(m_hwndEmailInput, TRUE);
   if (m_hwndPasswordInput)
     EnableWindow(m_hwndPasswordInput, TRUE);
-  if (m_hwndLoginButton)
+  if (m_hwndLoginButton) {
     SetWindowText(m_hwndLoginButton, "Login");
+    EnableWindow(m_hwndLoginButton, TRUE); // Re-enable login button
+  }
   SetStatus("", false); // Clear status on logout
 }

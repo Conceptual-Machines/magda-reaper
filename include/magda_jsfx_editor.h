@@ -10,8 +10,10 @@ struct reaper_plugin_info_t;
 struct JSFXChatMessage {
   bool is_user;
   std::string content;
-  std::string code_block;  // Extracted code from AI response
+  std::string description;  // Description of generated code
+  std::string code_block;   // Extracted code from AI response
   bool has_code_block;
+  bool streaming_complete = false;  // True when streaming is done
 };
 
 // File entry for browser
@@ -146,6 +148,10 @@ private:
   void (*m_ImGui_EndPopup)(void *) = nullptr;
   bool (*m_ImGui_MenuItem)(void *, const char *, const char *, bool *, bool *) = nullptr;
   void (*m_ImGui_CloseCurrentPopup)(void *) = nullptr;
+
+  // Keyboard input functions
+  int (*m_ImGui_GetKeyMods)(void *) = nullptr;
+  bool (*m_ImGui_IsKeyPressed)(void *, int, bool *) = nullptr;
 
   reaper_plugin_info_t *m_rec = nullptr;
 

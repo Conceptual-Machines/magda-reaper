@@ -230,6 +230,11 @@ bool MagdaJSFXEditor::Initialize(reaper_plugin_info_t *rec) {
   m_ImGui_CloseCurrentPopup =
       (void (*)(void *))rec->GetFunc("ImGui_CloseCurrentPopup");
 
+  // Keyboard input functions
+  m_ImGui_GetKeyMods = (int (*)(void *))rec->GetFunc("ImGui_GetKeyMods");
+  m_ImGui_IsKeyPressed =
+      (bool (*)(void *, int, bool *))rec->GetFunc("ImGui_IsKeyPressed");
+
   // Check if all required functions are available
   m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
                 m_ImGui_Text && m_ImGui_Button && m_ImGui_InputTextMultiline &&
@@ -776,16 +781,61 @@ void MagdaJSFXEditor::RenderChatPanel() {
       } else {
         m_ImGui_TextColored(m_ctx, g_theme.aiText, "AI:");
       }
-      m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
-
-      // Show Apply button for AI messages with code (unique ID per message)
-      if (!msg.is_user && msg.has_code_block) {
-        // Use index to create unique button ID
-        char buttonLabel[64];
-        snprintf(buttonLabel, sizeof(buttonLabel), "Apply to Editor##msg%d", msgIndex);
-        if (m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr)) {
-          ApplyCodeBlock(msg.code_block);
+      
+      // Show AI response with description and code block
+      if (!msg.is_user && msg.has_code_block && !msg.code_block.empty()) {
+        // Show description if available (visually distinct with accent color)
+        if (!msg.description.empty()) {
+          // Description header
+          m_ImGui_TextColored(m_ctx, g_theme.accent, "💡 About this effect:");
+          m_ImGui_Dummy(m_ctx, 0, 3);
+          
+          // Description text with normal color (stands out from dimmed code)
+          m_ImGui_TextWrapped(m_ctx, msg.description.c_str());
+          m_ImGui_Dummy(m_ctx, 0, 8); // More spacing before code
+        } else {
+          // No description - show generic message
+          m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
+          m_ImGui_Dummy(m_ctx, 0, 5);
         }
+        
+        // Visual separator between description and code
+        m_ImGui_Separator(m_ctx);
+        m_ImGui_TextColored(m_ctx, g_theme.dimText, "📄 Generated JSFX code:");
+        m_ImGui_Dummy(m_ctx, 0, 3);
+        
+        // Display first 400 chars of code as preview (truncate for performance)
+        std::string preview = msg.code_block;
+        if (preview.length() > 400) {
+          preview = preview.substr(0, 400) + "\n... (" + std::to_string(msg.code_block.length()) + " chars total)";
+        }
+        
+        // Code preview with dimmer color (clearly different from description)
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Text, g_theme.dimText);
+        m_ImGui_TextWrapped(m_ctx, preview.c_str());
+        m_ImGui_PopStyleColor(m_ctx, nullptr);
+        
+        m_ImGui_Dummy(m_ctx, 0, 8);
+        
+        // Apply button - only enabled when streaming is complete
+        char buttonLabel[64];
+        if (msg.streaming_complete) {
+          snprintf(buttonLabel, sizeof(buttonLabel), "Apply to Editor##msg%d", msgIndex);
+          if (m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr)) {
+            ApplyCodeBlock(msg.code_block);
+          }
+        } else {
+          // Show disabled button while streaming
+          m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.buttonBg & 0x80808080);
+          m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Text, g_theme.dimText);
+          snprintf(buttonLabel, sizeof(buttonLabel), "Streaming...##msg%d", msgIndex);
+          m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr);
+          m_ImGui_PopStyleColor(m_ctx, nullptr);
+          m_ImGui_PopStyleColor(m_ctx, nullptr);
+        }
+      } else {
+        // Regular message content (user messages or AI messages without code)
+        m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
       }
       m_ImGui_Separator(m_ctx);
       msgIndex++;
@@ -976,6 +1026,14 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
   userMsg.has_code_block = false;
   m_chatHistory.push_back(userMsg);
 
+  // Add placeholder AI message for streaming updates
+  JSFXChatMessage aiPlaceholder;
+  aiPlaceholder.is_user = false;
+  aiPlaceholder.content = "Generating JSFX...";
+  aiPlaceholder.has_code_block = false;
+  size_t aiIndex = m_chatHistory.size();
+  m_chatHistory.push_back(aiPlaceholder);
+
   m_waitingForAI = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
 
@@ -1025,126 +1083,150 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
 
   // Make API call in background thread
   std::string requestStr = requestJson.Get();
-  std::thread([this, requestStr]() {
-    WDL_FastString response, errorMsg;
-    bool success = s_jsfxHttpClient.SendPOSTRequest(
-        "/api/v1/jsfx/generate", requestStr.c_str(), response, errorMsg, 60);
+  std::thread([this, requestStr, aiIndex]() {
+    WDL_FastString errorMsg;
 
-    // Process response on main thread data structures
-    JSFXChatMessage aiMsg;
-    aiMsg.is_user = false;
+    struct JSFXStreamContext {
+      MagdaJSFXEditor *editor;
+      size_t messageIndex;
+      std::string codeBuffer;
+    } ctx{this, aiIndex, ""};
 
-    if (success) {
-      // Parse response JSON
-      std::string responseStr = response.Get();
-
-      // Check for compile_error (EEL2 validation error)
-      size_t compileErrorStart = responseStr.find("\"compile_error\":\"");
-      bool hasCompileError = false;
-      std::string compileError;
-
-      if (compileErrorStart != std::string::npos) {
-        compileErrorStart += 17; // length of "\"compile_error\":\""
-        size_t compileErrorEnd = compileErrorStart;
-        while (compileErrorEnd < responseStr.length()) {
-          if (responseStr[compileErrorEnd] == '"' && responseStr[compileErrorEnd - 1] != '\\') {
-            break;
-          }
-          compileErrorEnd++;
-        }
-        compileError = responseStr.substr(compileErrorStart, compileErrorEnd - compileErrorStart);
-        hasCompileError = !compileError.empty();
+    auto sseCallback = [](const char *event_json, void *user_data) {
+      JSFXStreamContext *ctx = static_cast<JSFXStreamContext *>(user_data);
+      if (!ctx || !ctx->editor || ctx->messageIndex >= ctx->editor->m_chatHistory.size()) {
+        return;
       }
 
-      // Extract jsfx_code field
-      size_t codeStart = responseStr.find("\"jsfx_code\":\"");
-      if (codeStart != std::string::npos) {
-        codeStart += 13; // length of "\"jsfx_code\":\""
-        size_t codeEnd = codeStart;
+      MagdaJSFXEditor *editor = ctx->editor;
+      wdl_json_parser parser;
+      wdl_json_element *root =
+          parser.parse(event_json, (int)strlen(event_json));
 
-        // Find end of string value (handle escapes)
-        while (codeEnd < responseStr.length()) {
-          if (responseStr[codeEnd] == '"' && responseStr[codeEnd - 1] != '\\') {
-            break;
+      if (!parser.m_err && root) {
+        const char *eventType = nullptr;
+        if (wdl_json_element *type_elem = root->get_item_by_name("type")) {
+          if (type_elem->m_value_string) {
+            eventType = type_elem->m_value;
           }
-          codeEnd++;
         }
 
-        std::string code = responseStr.substr(codeStart, codeEnd - codeStart);
-
-        // Unescape the code (handles \n, \t, \", \\, and \uXXXX Unicode escapes)
-        std::string unescaped;
-        for (size_t i = 0; i < code.length(); i++) {
-          if (code[i] == '\\' && i + 1 < code.length()) {
-            char next = code[i + 1];
-            if (next == 'n') { unescaped += '\n'; i++; }
-            else if (next == 't') { unescaped += '\t'; i++; }
-            else if (next == 'r') { unescaped += '\r'; i++; }
-            else if (next == '"') { unescaped += '"'; i++; }
-            else if (next == '\\') { unescaped += '\\'; i++; }
-            else if (next == 'u' && i + 5 < code.length()) {
-              // Unicode escape: \uXXXX
-              std::string hex = code.substr(i + 2, 4);
-              try {
-                int codepoint = std::stoi(hex, nullptr, 16);
-                if (codepoint < 128) {
-                  // ASCII - single char
-                  unescaped += static_cast<char>(codepoint);
-                } else if (codepoint < 2048) {
-                  // 2-byte UTF-8
-                  unescaped += static_cast<char>(0xC0 | (codepoint >> 6));
-                  unescaped += static_cast<char>(0x80 | (codepoint & 0x3F));
-                } else {
-                  // 3-byte UTF-8
-                  unescaped += static_cast<char>(0xE0 | (codepoint >> 12));
-                  unescaped += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-                  unescaped += static_cast<char>(0x80 | (codepoint & 0x3F));
-                }
-                i += 5;  // Skip \uXXXX
-              } catch (...) {
-                unescaped += code[i];  // Invalid escape, keep as-is
-              }
-            } else {
-              unescaped += code[i];  // Unknown escape, keep backslash
+        if (eventType && strcmp(eventType, "chunk") == 0) {
+          // TRUE STREAMING: receive character chunks as they arrive from LLM
+          if (wdl_json_element *chunk_elem = root->get_item_by_name("chunk")) {
+            if (chunk_elem->m_value_string) {
+              ctx->codeBuffer.append(chunk_elem->m_value);
+              JSFXChatMessage &aiMsg =
+                  editor->m_chatHistory[ctx->messageIndex];
+              aiMsg.content = "Streaming JSFX code...";
+              aiMsg.code_block = ctx->codeBuffer;
+              aiMsg.has_code_block = true;
             }
-          } else {
-            unescaped += code[i];
           }
-        }
+        } else if (eventType && strcmp(eventType, "line") == 0) {
+          // LEGACY: line-by-line streaming (fallback compatibility)
+          if (wdl_json_element *line_elem = root->get_item_by_name("line")) {
+            if (line_elem->m_value_string) {
+              ctx->codeBuffer.append(line_elem->m_value);
+              ctx->codeBuffer.append("\n");
+              JSFXChatMessage &aiMsg =
+                  editor->m_chatHistory[ctx->messageIndex];
+              aiMsg.content = "Streaming JSFX code...";
+              aiMsg.code_block = ctx->codeBuffer;
+              aiMsg.has_code_block = true;
+            }
+          }
+        } else if (eventType && strcmp(eventType, "done") == 0) {
+          std::string finalCode = ctx->codeBuffer;
+          if (wdl_json_element *code_elem = root->get_item_by_name("jsfx_code")) {
+            if (code_elem->m_value_string) {
+              finalCode = code_elem->m_value;
+            }
+          }
 
-        if (!unescaped.empty()) {
-          if (hasCompileError) {
-            // Code generated but has compile errors
-            aiMsg.content = "⚠️ Generated JSFX (with compile warning):\n" + compileError;
-          } else {
-            aiMsg.content = "Generated JSFX code:";
+          // Extract description
+          std::string description;
+          if (wdl_json_element *desc_elem = root->get_item_by_name("description")) {
+            if (desc_elem->m_value_string && desc_elem->m_value[0]) {
+              description = desc_elem->m_value;
+            }
           }
-          aiMsg.code_block = unescaped;
-          aiMsg.has_code_block = true;
-        } else if (hasCompileError) {
-          // Compile error without code
-          aiMsg.content = "⚠️ EEL2 compile error:\n" + compileError +
-                         "\n\nPlease describe what you want differently.";
+
+          const char *compileErr = "";
+          if (wdl_json_element *compile_elem =
+                  root->get_item_by_name("compile_error")) {
+            if (compile_elem->m_value_string) {
+              compileErr = compile_elem->m_value;
+            }
+          }
+
+          const char *messageTxt = nullptr;
+          if (wdl_json_element *msg_elem = root->get_item_by_name("message")) {
+            if (msg_elem->m_value_string) {
+              messageTxt = msg_elem->m_value;
+            }
+          }
+
+          JSFXChatMessage &aiMsg = editor->m_chatHistory[ctx->messageIndex];
+          aiMsg.code_block = finalCode;
+          aiMsg.description = description;
+          aiMsg.has_code_block = !finalCode.empty();
+          aiMsg.streaming_complete = true;  // Mark streaming as done
+
+          if (compileErr && strlen(compileErr) > 0) {
+            aiMsg.content = std::string("⚠️ ") + compileErr;
+          } else if (!description.empty()) {
+            aiMsg.content = description;
+          } else if (messageTxt) {
+            aiMsg.content = messageTxt;
+          } else if (!finalCode.empty()) {
+            aiMsg.content = "Generated JSFX code.";
+          } else {
+            aiMsg.content = "JSFX generation finished with empty result.";
+            aiMsg.has_code_block = false;
+          }
+
+          editor->m_waitingForAI = false;
+        } else if (eventType && strcmp(eventType, "start") == 0) {
+          if (wdl_json_element *msg_elem = root->get_item_by_name("message")) {
+            if (msg_elem->m_value_string) {
+              editor->m_chatHistory[ctx->messageIndex].content =
+                  msg_elem->m_value;
+            }
+          }
+        } else if (eventType && strcmp(eventType, "error") == 0) {
+          const char *msg = "Streaming error";
+          if (wdl_json_element *msg_elem = root->get_item_by_name("message")) {
+            if (msg_elem->m_value_string) {
+              msg = msg_elem->m_value;
+            }
+          }
+          JSFXChatMessage &aiMsg = editor->m_chatHistory[ctx->messageIndex];
+          aiMsg.content = std::string("Error: ") + msg;
           aiMsg.has_code_block = false;
-        } else {
-          aiMsg.content = "JSFX generated but code was empty.";
-          aiMsg.has_code_block = false;
+          editor->m_waitingForAI = false;
         }
-      } else if (hasCompileError) {
-        // Compile error without code
-        aiMsg.content = "⚠️ EEL2 compile error:\n" + compileError +
-                       "\n\nPlease try rephrasing your request.";
-        aiMsg.has_code_block = false;
       } else {
-        aiMsg.content = "Couldn't parse response from server.";
-        aiMsg.has_code_block = false;
+        // Fallback: treat raw event as streamed text
+        ctx->codeBuffer.append(event_json);
+        ctx->codeBuffer.append("\n");
+        JSFXChatMessage &aiMsg = editor->m_chatHistory[ctx->messageIndex];
+        aiMsg.content = "Streaming JSFX code...";
+        aiMsg.code_block = ctx->codeBuffer;
+        aiMsg.has_code_block = true;
       }
-    } else {
+    };
+
+    bool success = s_jsfxHttpClient.SendPOSTStream(
+        "/api/v1/jsfx/generate/stream", requestStr.c_str(), sseCallback, &ctx,
+        errorMsg, 180); // 3 minutes - CFG grammar can be slow
+
+    if (!success) {
+      JSFXChatMessage &aiMsg = m_chatHistory[aiIndex];
       aiMsg.content = "Error: " + std::string(errorMsg.Get());
       aiMsg.has_code_block = false;
     }
 
-    m_chatHistory.push_back(aiMsg);
     m_waitingForAI = false;
   }).detach();
 }
@@ -1269,41 +1351,50 @@ void MagdaJSFXEditor::AddToTrackAndOpen() {
       ShowConsoleMsg(msg);
     }
 
-    // Check for compile error - try multiple approaches
+    // Check for compile error using TrackFX_GetNamedConfigParm
     std::string compileError;
 
-    // Approach 1: Try TrackFX_GetNamedConfigParm with "error"
     bool (*TrackFX_GetNamedConfigParm)(MediaTrack *, int, const char *, char *, int) =
         (bool (*)(MediaTrack *, int, const char *, char *, int))m_rec->GetFunc(
             "TrackFX_GetNamedConfigParm");
 
     if (TrackFX_GetNamedConfigParm) {
       char errorBuf[1024] = {0};
-      if (TrackFX_GetNamedConfigParm(track, fxIdx, "error", errorBuf, sizeof(errorBuf))) {
+      
+      // Try "jsfx_compile_error" parameter
+      if (TrackFX_GetNamedConfigParm(track, fxIdx, "jsfx_compile_error", errorBuf, sizeof(errorBuf))) {
         if (errorBuf[0] != '\0') {
           compileError = errorBuf;
-        }
-      }
-    }
-
-    // Approach 2: Check FX name for embedded error (JSFX shows errors in name)
-    if (compileError.empty()) {
-      bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
-          (bool (*)(MediaTrack *, int, char *, int))m_rec->GetFunc("TrackFX_GetFXName");
-      if (TrackFX_GetFXName) {
-        char fxNameBuf[1024] = {0};
-        if (TrackFX_GetFXName(track, fxIdx, fxNameBuf, sizeof(fxNameBuf))) {
-          std::string fxNameStr = fxNameBuf;
-          // Check if name contains error indicators
-          if (fxNameStr.find("syntax error") != std::string::npos ||
-              fxNameStr.find("error:") != std::string::npos ||
-              fxNameStr.find("@init:") != std::string::npos ||
-              fxNameStr.find("@slider:") != std::string::npos ||
-              fxNameStr.find("@block:") != std::string::npos ||
-              fxNameStr.find("@sample:") != std::string::npos) {
-            compileError = fxNameStr;
+          if (ShowConsoleMsg) {
+            char msg[1280];
+            snprintf(msg, sizeof(msg), "MAGDA JSFX: Got compile error via jsfx_compile_error: %s\n", errorBuf);
+            ShowConsoleMsg(msg);
           }
         }
+      }
+      
+      // Also try "error" parameter as fallback
+      if (compileError.empty()) {
+        memset(errorBuf, 0, sizeof(errorBuf));
+        if (TrackFX_GetNamedConfigParm(track, fxIdx, "error", errorBuf, sizeof(errorBuf))) {
+          if (errorBuf[0] != '\0') {
+            compileError = errorBuf;
+            if (ShowConsoleMsg) {
+              char msg[1280];
+              snprintf(msg, sizeof(msg), "MAGDA JSFX: Got compile error via error: %s\n", errorBuf);
+              ShowConsoleMsg(msg);
+            }
+          }
+        }
+      }
+
+      // Debug: list what parameters are available
+      if (ShowConsoleMsg && compileError.empty()) {
+        ShowConsoleMsg("MAGDA JSFX: No compile error detected via API\n");
+      }
+    } else {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA JSFX: TrackFX_GetNamedConfigParm not available\n");
       }
     }
 
