@@ -764,99 +764,15 @@ void MagdaJSFXEditor::RecompileJSFX() {
     return;
   }
 
-  // Save first if modified
-  if (m_modified) {
-    SaveCurrentFile();
-  }
+  // Save the file (this is the key to "recompiling" - REAPER watches the file)
+  SaveCurrentFile();
 
-  // Get REAPER functions for FX manipulation
-  int (*CountTracks)(ReaProject *) =
-      (int (*)(ReaProject *))m_rec->GetFunc("CountTracks");
-  MediaTrack *(*GetTrack)(ReaProject *, int) =
-      (MediaTrack * (*)(ReaProject *, int))m_rec->GetFunc("GetTrack");
-  MediaTrack *(*GetMasterTrack)(ReaProject *) =
-      (MediaTrack * (*)(ReaProject *))m_rec->GetFunc("GetMasterTrack");
-  int (*TrackFX_GetCount)(MediaTrack *) =
-      (int (*)(MediaTrack *))m_rec->GetFunc("TrackFX_GetCount");
-  bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
-      (bool (*)(MediaTrack *, int, char *, int))m_rec->GetFunc("TrackFX_GetFXName");
-  bool (*TrackFX_Delete)(MediaTrack *, int) =
-      (bool (*)(MediaTrack *, int))m_rec->GetFunc("TrackFX_Delete");
-  int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))m_rec->GetFunc("TrackFX_AddByName");
-
-  if (!CountTracks || !GetTrack || !TrackFX_GetCount || !TrackFX_GetFXName) {
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA JSFX: Recompile - REAPER API functions not available\n");
-    }
-    return;
-  }
-
-  // Build FX name for re-adding
-  std::string effectsFolder = GetEffectsFolder();
-  std::string relativePath = m_currentFilePath;
-  if (m_currentFilePath.find(effectsFolder) == 0) {
-    relativePath = m_currentFilePath.substr(effectsFolder.length() + 1);
-  }
-  std::string fxName = "JS:" + relativePath;
-
+  // JSFX effects automatically recompile when their source file changes
+  // The save above triggers this. We just need to confirm to the user.
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA JSFX: Looking for instances of %s...\n", m_currentFileName.c_str());
-    ShowConsoleMsg(msg);
-  }
-
-  // Find all instances of this JSFX on tracks and delete+re-add to force recompile
-  int recompileCount = 0;
-  int trackCount = CountTracks(nullptr);
-
-  // Helper lambda to process a track
-  auto processTrack = [&](MediaTrack *track) {
-    if (!track) return;
-
-    int fxCount = TrackFX_GetCount(track);
-    // Go backwards since we might delete
-    for (int fx = fxCount - 1; fx >= 0; fx--) {
-      char fxNameBuf[512];
-      if (TrackFX_GetFXName(track, fx, fxNameBuf, sizeof(fxNameBuf))) {
-        // Check if this FX matches our file (check both filename and relative path)
-        if (strstr(fxNameBuf, m_currentFileName.c_str()) != nullptr ||
-            strstr(fxNameBuf, relativePath.c_str()) != nullptr) {
-          if (ShowConsoleMsg) {
-            char msg[512];
-            snprintf(msg, sizeof(msg), "  Found: %s at FX #%d\n", fxNameBuf, fx + 1);
-            ShowConsoleMsg(msg);
-          }
-          // Delete and re-add to force full recompile
-          if (TrackFX_Delete && TrackFX_AddByName) {
-            TrackFX_Delete(track, fx);
-            TrackFX_AddByName(track, fxName.c_str(), false, fx);  // Re-add at same position
-            recompileCount++;
-          }
-        }
-      }
-    }
-  };
-
-  // Process master track
-  if (GetMasterTrack) {
-    processTrack(GetMasterTrack(nullptr));
-  }
-
-  // Process all regular tracks
-  for (int t = 0; t < trackCount; t++) {
-    processTrack(GetTrack(nullptr, t));
-  }
-
-  if (ShowConsoleMsg) {
-    char msg[256];
-    if (recompileCount > 0) {
-      snprintf(msg, sizeof(msg), "MAGDA JSFX: Recompiled %d instance(s) of %s\n",
-               recompileCount, m_currentFileName.c_str());
-    } else {
-      snprintf(msg, sizeof(msg), "MAGDA JSFX: No instances of %s found on any track\n",
-               m_currentFileName.c_str());
-    }
+    snprintf(msg, sizeof(msg), "MAGDA JSFX: Saved %s - any loaded instances will recompile automatically\n",
+             m_currentFileName.c_str());
     ShowConsoleMsg(msg);
   }
 }
@@ -1016,16 +932,40 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
 
         std::string code = responseStr.substr(codeStart, codeEnd - codeStart);
 
-        // Unescape the code
+        // Unescape the code (handles \n, \t, \", \\, and \uXXXX Unicode escapes)
         std::string unescaped;
         for (size_t i = 0; i < code.length(); i++) {
           if (code[i] == '\\' && i + 1 < code.length()) {
-            switch (code[i + 1]) {
-            case 'n': unescaped += '\n'; i++; break;
-            case 't': unescaped += '\t'; i++; break;
-            case '"': unescaped += '"'; i++; break;
-            case '\\': unescaped += '\\'; i++; break;
-            default: unescaped += code[i]; break;
+            char next = code[i + 1];
+            if (next == 'n') { unescaped += '\n'; i++; }
+            else if (next == 't') { unescaped += '\t'; i++; }
+            else if (next == 'r') { unescaped += '\r'; i++; }
+            else if (next == '"') { unescaped += '"'; i++; }
+            else if (next == '\\') { unescaped += '\\'; i++; }
+            else if (next == 'u' && i + 5 < code.length()) {
+              // Unicode escape: \uXXXX
+              std::string hex = code.substr(i + 2, 4);
+              try {
+                int codepoint = std::stoi(hex, nullptr, 16);
+                if (codepoint < 128) {
+                  // ASCII - single char
+                  unescaped += static_cast<char>(codepoint);
+                } else if (codepoint < 2048) {
+                  // 2-byte UTF-8
+                  unescaped += static_cast<char>(0xC0 | (codepoint >> 6));
+                  unescaped += static_cast<char>(0x80 | (codepoint & 0x3F));
+                } else {
+                  // 3-byte UTF-8
+                  unescaped += static_cast<char>(0xE0 | (codepoint >> 12));
+                  unescaped += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+                  unescaped += static_cast<char>(0x80 | (codepoint & 0x3F));
+                }
+                i += 5;  // Skip \uXXXX
+              } catch (...) {
+                unescaped += code[i];  // Invalid escape, keep as-is
+              }
+            } else {
+              unescaped += code[i];  // Unknown escape, keep backslash
             }
           } else {
             unescaped += code[i];
