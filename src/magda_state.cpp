@@ -1,5 +1,5 @@
 #include "magda_state.h"
-#include "magda_settings_window.h"
+#include "magda_imgui_settings.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
 // ReaProject) This is a typo in the REAPER SDK itself, not our code
 typedef ReaProject Reaproject;
@@ -147,9 +147,7 @@ void MagdaState::GetTimeSelection(WDL_FastString &json) {
 }
 
 StateFilterPreferences MagdaState::LoadStateFilterPreferences() {
-  StateFilterPreferences prefs;
-  MagdaSettingsWindow::LoadStateFilterPreferences(prefs);
-  return prefs;
+  return MagdaImGuiSettings::GetPreferences();
 }
 
 bool MagdaState::ShouldIncludeTrack(int trackIndex, bool isSelected,

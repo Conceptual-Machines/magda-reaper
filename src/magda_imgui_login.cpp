@@ -185,6 +185,35 @@ const char *MagdaImGuiLogin::GetAPIUrl() const {
   return DEFAULT_API_URL;
 }
 
+const char *MagdaImGuiLogin::GetBackendURL() {
+  // Use the global instance if available
+  extern MagdaImGuiLogin *g_imguiLogin;
+  if (g_imguiLogin) {
+    return g_imguiLogin->GetAPIUrl();
+  }
+
+  // Fall back to environment variable or default
+  const char *env_url = MagdaEnv::Get("MAGDA_BACKEND_URL", "");
+  if (env_url && strlen(env_url) > 0) {
+    return env_url;
+  }
+
+  // Fall back to ExtState
+  if (g_rec) {
+    const char *(*GetExtState)(const char *, const char *) =
+        (const char *(*)(const char *, const char *))g_rec->GetFunc(
+            "GetExtState");
+    if (GetExtState) {
+      const char *stored = GetExtState("MAGDA", "api_url");
+      if (stored && strlen(stored) > 0) {
+        return stored;
+      }
+    }
+  }
+
+  return DEFAULT_API_URL;
+}
+
 void MagdaImGuiLogin::SetAPIUrl(const char *url) {
   if (url) {
     strncpy(m_apiUrlBuffer, url, sizeof(m_apiUrlBuffer) - 1);

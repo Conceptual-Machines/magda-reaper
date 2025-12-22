@@ -43,6 +43,9 @@ public:
   const char *GetAPIUrl() const;
   void SetAPIUrl(const char *url);
 
+  // Static helper to get backend URL (for use by other components)
+  static const char *GetBackendURL();
+
   // Get stored JWT token (if logged in)
   static const char *GetStoredToken();
   static void StoreToken(const char *token);

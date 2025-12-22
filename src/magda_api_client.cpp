@@ -8,7 +8,7 @@
 #include "magda_actions.h"
 #include "magda_auth.h"
 #include "magda_env.h"
-#include "magda_settings_window.h"
+#include "magda_imgui_login.h"
 #include "magda_state.h"
 #include "reaper_plugin.h"
 #include <cstring>
@@ -30,7 +30,7 @@ MagdaHTTPClient::MagdaHTTPClient() : m_http_get(nullptr), m_dns(nullptr) {
   m_dns = new JNL_AsyncDNS;
 
   // Check for backend URL from settings first, then environment variable
-  const char *backend_url = MagdaSettingsWindow::GetBackendURL();
+  const char *backend_url = MagdaImGuiLogin::GetBackendURL();
   if (backend_url && strlen(backend_url) > 0) {
     m_backend_url.Set(backend_url);
   } else {

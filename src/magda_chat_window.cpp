@@ -4,7 +4,7 @@
 #include "magda_auth.h"
 #include "magda_chat_resource.h"
 #include "magda_env.h"
-#include "magda_login_window.h"
+#include "magda_imgui_login.h"
 #include <cstring>
 
 #ifndef _WIN32
@@ -467,7 +467,7 @@ void MagdaChatWindow::OnSendMessage() {
     static MagdaHTTPClient httpClient;
 
     // Set JWT token if available
-    const char *token = MagdaLoginWindow::GetStoredToken();
+    const char *token = MagdaImGuiLogin::GetStoredToken();
     if (token && token[0]) {
       httpClient.SetJWTToken(token);
 
