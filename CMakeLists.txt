@@ -45,8 +45,6 @@ set(SOURCES
     src/magda_param_mapping_window.cpp
     src/magda_api_client.cpp
     src/magda_state.cpp
-    src/magda_login_window.cpp
-    src/magda_settings_window.cpp
     src/magda_plugin_window.cpp
     src/magda_auth.cpp
     src/magda_env.cpp

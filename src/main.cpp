@@ -9,12 +9,10 @@
 #include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
 #include "magda_imgui_settings.h"
-#include "magda_login_window.h"
 #include "magda_param_mapping.h"
 #include "magda_param_mapping_window.h"
 #include "magda_plugin_scanner.h"
 #include "magda_plugin_window.h"
-#include "magda_settings_window.h"
 #include "reaper_plugin.h"
 // SWELL is already included by reaper_plugin.h
 #include <thread>
@@ -29,18 +27,10 @@ static MagdaChatWindow *g_chatWindow = nullptr;
 MagdaImGuiChat *g_imguiChat = nullptr;
 // Flag for using ImGui chat vs SWELL chat
 static bool g_useImGuiChat = false;
-// Global login window instance (SWELL fallback)
-static MagdaLoginWindow *g_loginWindow = nullptr;
 // Global ImGui login window instance
 MagdaImGuiLogin *g_imguiLogin = nullptr;
-// Flag for using ImGui login vs SWELL login
-static bool g_useImGuiLogin = false;
-// Global settings window instance (SWELL fallback)
-static MagdaSettingsWindow *g_settingsWindow = nullptr;
 // Global ImGui settings window instance
 MagdaImGuiSettings *g_imguiSettings = nullptr;
-// Flag for using ImGui settings vs SWELL settings
-static bool g_useImGuiSettings = false;
 // Global plugin scanner instance
 MagdaPluginScanner *g_pluginScanner = nullptr;
 // Global plugin window instance (SWELL fallback)
@@ -294,31 +284,27 @@ void magdaAction(int command_id, int flag) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening login dialog\n");
     }
-    // Use ImGui login if available, otherwise fall back to SWELL
-    if (g_useImGuiLogin && g_imguiLogin) {
+    if (g_imguiLogin && g_imguiLogin->IsAvailable()) {
       if (!g_imguiLogin->IsVisible()) {
         g_imguiLogin->Show();
       }
     } else {
-      if (!g_loginWindow) {
-        g_loginWindow = new MagdaLoginWindow();
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Login requires ReaImGui extension\n");
       }
-      g_loginWindow->Show();
     }
   } else if (command_id == g_cmdSettings) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening settings dialog\n");
     }
-    // Use ImGui settings if available, otherwise fall back to SWELL
-    if (g_useImGuiSettings && g_imguiSettings) {
+    if (g_imguiSettings && g_imguiSettings->IsAvailable()) {
       if (!g_imguiSettings->IsVisible()) {
         g_imguiSettings->Show();
       }
     } else {
-      if (!g_settingsWindow) {
-        g_settingsWindow = new MagdaSettingsWindow();
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Settings requires ReaImGui extension\n");
       }
-      g_settingsWindow->Show();
     }
   } else if (command_id == g_cmdAbout) {
     if (ShowConsoleMsg) {
@@ -798,14 +784,6 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       delete g_chatWindow;
       g_chatWindow = nullptr;
     }
-    if (g_loginWindow) {
-      delete g_loginWindow;
-      g_loginWindow = nullptr;
-    }
-    if (g_settingsWindow) {
-      delete g_settingsWindow;
-      g_settingsWindow = nullptr;
-    }
     if (g_pluginScanner) {
       delete g_pluginScanner;
       g_pluginScanner = nullptr;
@@ -950,27 +928,29 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     // Initialize ImGui login window
     g_imguiLogin = new MagdaImGuiLogin();
     if (g_imguiLogin->Initialize(rec)) {
-      g_useImGuiLogin = true;
       if (ShowConsoleMsg) {
         ShowConsoleMsg("MAGDA: ImGui login initialized\n");
       }
     } else {
       delete g_imguiLogin;
       g_imguiLogin = nullptr;
-      g_useImGuiLogin = false;
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui login requires ReaImGui extension\n");
+      }
     }
 
     // Initialize ImGui settings window
     g_imguiSettings = new MagdaImGuiSettings();
     if (g_imguiSettings->Initialize(rec)) {
-      g_useImGuiSettings = true;
       if (ShowConsoleMsg) {
         ShowConsoleMsg("MAGDA: ImGui settings initialized\n");
       }
     } else {
       delete g_imguiSettings;
       g_imguiSettings = nullptr;
-      g_useImGuiSettings = false;
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui settings requires ReaImGui extension\n");
+      }
     }
 
     // Initialize drum mapping window (also uses ReaImGui)
