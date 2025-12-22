@@ -411,13 +411,16 @@ void MagdaImGuiLogin::Render() {
   bool open = true;
   if (!m_ImGui_Begin(m_ctx, "MAGDA Login", &open, &flags)) {
     m_ImGui_End(m_ctx);
-    if (!open)
+    if (!open) {
       m_visible = false;
+      m_ctx = nullptr; // Context will be recreated on next Show()
+    }
     return;
   }
 
   if (!open) {
     m_visible = false;
+    m_ctx = nullptr; // Context will be recreated on next Show()
     m_ImGui_End(m_ctx);
     return;
   }
