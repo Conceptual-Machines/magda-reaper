@@ -146,6 +146,12 @@ void MagdaImGuiSettings::LoadSettings() {
   if (maxClipsStr) {
     m_maxClipsPerTrack = atoi(maxClipsStr);
   }
+
+  // Load JSFX include description setting
+  const char *jsfxDescStr = GetExtState("MAGDA", "jsfx_include_description");
+  if (jsfxDescStr) {
+    m_jsfxIncludeDescription = (atoi(jsfxDescStr) != 0);
+  }
 }
 
 void MagdaImGuiSettings::SaveSettings() {
@@ -172,6 +178,10 @@ void MagdaImGuiSettings::SaveSettings() {
   char maxClipsStr[32];
   snprintf(maxClipsStr, sizeof(maxClipsStr), "%d", m_maxClipsPerTrack);
   SetExtState("MAGDA", "state_filter_max_clips", maxClipsStr, true);
+
+  // Save JSFX include description setting
+  SetExtState("MAGDA", "jsfx_include_description",
+              m_jsfxIncludeDescription ? "1" : "0", true);
 }
 
 StateFilterPreferences MagdaImGuiSettings::GetPreferences() {
@@ -208,6 +218,22 @@ StateFilterPreferences MagdaImGuiSettings::GetPreferences() {
   }
 
   return prefs;
+}
+
+bool MagdaImGuiSettings::GetJSFXIncludeDescription() {
+  if (!g_rec)
+    return true; // Default to including description
+
+  const char *(*GetExtState)(const char *section, const char *key) =
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+  if (!GetExtState)
+    return true;
+
+  const char *jsfxDescStr = GetExtState("MAGDA", "jsfx_include_description");
+  if (jsfxDescStr) {
+    return (atoi(jsfxDescStr) != 0);
+  }
+  return true; // Default to including description
 }
 
 void MagdaImGuiSettings::Show() { m_visible = true; }
@@ -367,6 +393,30 @@ void MagdaImGuiSettings::Render() {
   }
   if (m_ImGui_PopItemWidth) {
     m_ImGui_PopItemWidth(m_ctx);
+  }
+
+  if (m_ImGui_Separator)
+    m_ImGui_Separator(m_ctx);
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // JSFX Settings section
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, g_theme.headerText, "JSFX Editor");
+  } else {
+    m_ImGui_Text(m_ctx, "JSFX Editor");
+  }
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Include description in AI-generated JSFX
+  if (m_ImGui_Checkbox) {
+    m_ImGui_Checkbox(m_ctx, "Include description in AI-generated JSFX",
+                     &m_jsfxIncludeDescription);
+  }
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, COLOR_DIM,
+                        "When enabled, AI explains the generated code");
   }
 
   if (m_ImGui_Separator)

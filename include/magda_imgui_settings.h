@@ -29,6 +29,9 @@ public:
   // Get current preferences (for use by other components)
   static StateFilterPreferences GetPreferences();
 
+  // JSFX settings
+  static bool GetJSFXIncludeDescription();
+
 private:
   // ReaImGui function pointers
   void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
@@ -72,6 +75,9 @@ private:
   int m_filterModeIndex = 0;
   bool m_includeEmptyTracks = true;
   int m_maxClipsPerTrack = 0;
+
+  // JSFX settings
+  bool m_jsfxIncludeDescription = true;
 
   // Internal methods
   void LoadSettings();

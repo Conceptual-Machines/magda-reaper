@@ -2,6 +2,7 @@
 #include "../WDL/WDL/jsonparse.h"
 #include "magda_api_client.h"
 #include "magda_imgui_login.h"
+#include "magda_imgui_settings.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -1178,7 +1179,12 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
   }
   requestJson.Append("\",\"filename\":\"");
   requestJson.Append(m_currentFileName.c_str());
-  requestJson.Append("\"}");
+
+  // Add include_description setting
+  bool includeDesc = MagdaImGuiSettings::GetJSFXIncludeDescription();
+  requestJson.Append("\",\"include_description\":");
+  requestJson.Append(includeDesc ? "true" : "false");
+  requestJson.Append("}");
 
   // Make API call in background thread
   std::string requestStr = requestJson.Get();
