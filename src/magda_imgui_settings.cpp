@@ -41,7 +41,9 @@ struct ThemeColors {
   int buttonHover = THEME_RGBA(0x58, 0x58, 0x58);
   int buttonActive = THEME_RGBA(0x38, 0x38, 0x38);
   int border = THEME_RGBA(0x50, 0x50, 0x50);
-  int accent = THEME_RGBA(0x00, 0xD4, 0xE0);
+  int accent = THEME_RGBA(0x3D, 0x5A, 0xFE);       // Electric blue
+  int accentHover = THEME_RGBA(0x53, 0x6D, 0xFE);  // Lighter on hover
+  int accentActive = THEME_RGBA(0x2A, 0x45, 0xD0); // Darker on press
 };
 static ThemeColors g_theme;
 
@@ -359,10 +361,8 @@ void MagdaImGuiSettings::Render() {
   // Save button - accent colored
   if (m_ImGui_PushStyleColor) {
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.accent);
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered,
-                           THEME_RGBA(0x20, 0xF0, 0xFF));
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive,
-                           THEME_RGBA(0x00, 0xA0, 0xB0));
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered, g_theme.accentHover);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.accentActive);
   }
 
   if (m_ImGui_Button(m_ctx, "Save", nullptr, nullptr)) {

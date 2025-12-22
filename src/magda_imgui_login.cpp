@@ -51,14 +51,16 @@ struct ThemeColors {
   int buttonHover = THEME_RGBA(0x58, 0x58, 0x58); // Lighter on hover
   int buttonActive = THEME_RGBA(0x38, 0x38, 0x38);
   int border = THEME_RGBA(0x50, 0x50, 0x50);
-  int accent = THEME_RGBA(0x00, 0xD4, 0xE0);      // Electric cyan
+  int accent = THEME_RGBA(0x3D, 0x5A, 0xFE);      // Electric blue
+  int accentHover = THEME_RGBA(0x53, 0x6D, 0xFE); // Lighter on hover
+  int accentActive = THEME_RGBA(0x2A, 0x45, 0xD0); // Darker on press
 };
 static ThemeColors g_theme;
 
 static const int COLOR_SUCCESS = THEME_RGBA(0x88, 0xFF, 0x88);
 static const int COLOR_ERROR = THEME_RGBA(0xFF, 0x66, 0x66);
 static const int COLOR_WARNING = THEME_RGBA(0xFF, 0xCC, 0x66);
-static const int COLOR_INFO = THEME_RGBA(0x00, 0xD4, 0xE0);  // Electric cyan
+static const int COLOR_INFO = THEME_RGBA(0x6D, 0x8A, 0xFE);  // Lighter electric blue for text
 static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
 // Default API URL for local development
@@ -570,10 +572,8 @@ void MagdaImGuiLogin::RenderAPISection() {
   // Use accent color for the check button
   if (m_ImGui_PushStyleColor) {
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.accent);
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered,
-                           THEME_RGBA(0x20, 0xF0, 0xFF));
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive,
-                           THEME_RGBA(0x00, 0xA0, 0xB0));
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered, g_theme.accentHover);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.accentActive);
   }
 
   if (m_ImGui_Button(m_ctx, m_checkingHealth ? "Checking..." : "Connect",
