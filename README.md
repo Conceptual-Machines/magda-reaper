@@ -1,6 +1,6 @@
 # MAGDA REAPER
 
-Native REAPER extension for MAGDA (Musical AI Digital Assistant) - AI-powered DAW control via natural language commands.
+Native REAPER extension for **MAGDA** (**M**ulti-**A**gent **G**enerative **D**AW **A**utomation) - AI-powered DAW control via natural language commands.
 
 ## Overview
 
@@ -8,17 +8,21 @@ MAGDA REAPER is a native C++ extension for REAPER that enables natural language 
 
 ## Features
 
-- Natural language commands to control REAPER
-- Track creation and management
-- Plugin management and scanning
-- Chat interface for commands
-- Context-aware state management
-- Plugin autocomplete (coming soon)
-- Sample browser (coming soon)
+- 🎹 **Natural Language DAW Control** - Create tracks, add effects, manage clips via plain English
+- 🎸 **JSFX Generation** - AI-assisted audio effect creation
+- 🥁 **Drum Pattern Generation** - Intelligent drum programming
+- 🎚️ **Mix Analysis** - AI-powered mixing suggestions
+- 🔌 **Plugin Management** - Scan and manage plugins with aliases
+- 💬 **Chat Interface** - Modern ImGui-based chat UI
 
-## Building
+## Requirements
 
-### Prerequisites
+### Runtime Dependencies
+
+- **REAPER** 6.0+ (64-bit recommended)
+- **ReaImGui** extension (required for UI) - Install via [ReaPack](https://reapack.com/)
+
+### Build Prerequisites
 
 - REAPER SDK (from GitHub: https://github.com/justinfrankel/reaper-sdk)
 - CMake 3.22+
@@ -98,17 +102,33 @@ magda-reaper/
 This extension integrates with the MAGDA multi-agent system:
 
 - **DSL Parser**: Parses MAGDA DSL code (from `magda-dsl` repository)
-- **API Client**: Communicates with `aideas-api` backend
-- **Action Executor**: Executes REAPER actions
-- **State Manager**: Tracks REAPER project state
-- **Plugin Scanner**: Scans installed plugins
+- **API Client**: Communicates with `magda-api` backend
+- **Action Executor**: Executes REAPER actions from DSL commands
+- **State Manager**: Tracks REAPER project state for AI context
+- **Plugin Scanner**: Scans installed plugins for AI awareness
+- **ReaImGui UI**: Modern immediate-mode GUI for all windows
 
 ## Dependencies
 
-- **magda-dsl**: DSL parser (C++ implementation)
-- **aideas-api**: Backend API service (uses `magda-agents-go` internally)
+### Build Dependencies
+
 - **REAPER SDK**: REAPER plugin API
-- **WDL**: REAPER's utility library
+- **WDL**: REAPER's utility library (included as submodule)
+- **magda-dsl**: DSL parser (C++ implementation, included)
+
+### Runtime Dependencies
+
+- **ReaImGui**: Required for UI - install via ReaPack
+- **magda-api**: Backend API service (local or hosted)
+
+## Installing ReaImGui
+
+ReaImGui is required for MAGDA's user interface. Install it via ReaPack:
+
+1. Install [ReaPack](https://reapack.com/) if you haven't already
+2. In REAPER, go to **Extensions → ReaPack → Browse packages**
+3. Search for "ReaImGui" and install it
+4. Restart REAPER
 
 ## License
 
@@ -116,8 +136,5 @@ AGPL v3 - See [LICENSE](LICENSE) file for details.
 
 ## Related Repositories
 
+- [magda-api](https://github.com/Conceptual-Machines/magda-api) - Backend API service (stateless Go API with agents)
 - [magda-dsl](https://github.com/Conceptual-Machines/magda-dsl) - DSL specification and parsers
-- [magda-agents](https://github.com/Conceptual-Machines/magda-agents) - Agent framework (umbrella repo)
-  - [magda-agents-go](https://github.com/Conceptual-Machines/magda-agents-go) - Go implementation
-  - [magda-agents-python](https://github.com/Conceptual-Machines/magda-agents-python) - Python implementation
-- [aideas-api](https://github.com/Conceptual-Machines/aideas-api) - Backend API service (uses magda-agents-go)

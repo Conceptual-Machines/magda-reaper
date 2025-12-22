@@ -42,6 +42,14 @@ public:
   bool SendQuestionStream(const char *question, StreamActionCallback callback,
                           void *user_data, WDL_FastString &error_msg);
 
+  // Generic POST request with SSE streaming support
+  // endpoint should include leading slash, e.g. "/api/v1/jsfx/generate/stream"
+  // json_data is the POST body
+  // timeout_seconds optional (defaults to 60s)
+  bool SendPOSTStream(const char *endpoint, const char *json_data,
+                      StreamActionCallback callback, void *user_data,
+                      WDL_FastString &error_msg, int timeout_seconds = 60);
+
   // Send login request to backend
   // Returns true on success, false on error
   // jwt_token_out contains the JWT token on success

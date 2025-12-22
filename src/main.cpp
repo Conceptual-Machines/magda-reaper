@@ -5,14 +5,15 @@
 #include "magda_drum_mapping_window.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_chat.h"
+#include "magda_imgui_login.h"
 #include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
-#include "magda_login_window.h"
+#include "magda_imgui_settings.h"
+#include "magda_jsfx_editor.h"
 #include "magda_param_mapping.h"
 #include "magda_param_mapping_window.h"
 #include "magda_plugin_scanner.h"
 #include "magda_plugin_window.h"
-#include "magda_settings_window.h"
 #include "reaper_plugin.h"
 // SWELL is already included by reaper_plugin.h
 #include <thread>
@@ -27,10 +28,10 @@ static MagdaChatWindow *g_chatWindow = nullptr;
 MagdaImGuiChat *g_imguiChat = nullptr;
 // Flag for using ImGui chat vs SWELL chat
 static bool g_useImGuiChat = false;
-// Global login window instance
-static MagdaLoginWindow *g_loginWindow = nullptr;
-// Global settings window instance
-static MagdaSettingsWindow *g_settingsWindow = nullptr;
+// Global ImGui login window instance
+MagdaImGuiLogin *g_imguiLogin = nullptr;
+// Global ImGui settings window instance
+MagdaImGuiSettings *g_imguiSettings = nullptr;
 // Global plugin scanner instance
 MagdaPluginScanner *g_pluginScanner = nullptr;
 // Global plugin window instance (SWELL fallback)
@@ -39,6 +40,8 @@ MagdaPluginWindow *g_pluginWindow = nullptr;
 MagdaImGuiPluginWindow *g_imguiPluginWindow = nullptr;
 // Global ImGui mix analysis dialog instance
 MagdaImGuiMixAnalysisDialog *g_imguiMixAnalysisDialog = nullptr;
+// Global JSFX editor instance
+MagdaJSFXEditor *g_jsfxEditor = nullptr;
 // Global param mapping manager instance
 MagdaParamMappingWindow *g_paramMappingWindow = nullptr;
 // Global drum mapping manager instance (defined in magda_drum_mapping.cpp)
@@ -59,6 +62,14 @@ static void commandQueueTimerCallback() {
 static void imguiTimerCallback() {
   if (g_imguiChat && g_imguiChat->IsVisible()) {
     g_imguiChat->Render();
+  }
+  // Render ImGui login window if visible
+  if (g_imguiLogin && g_imguiLogin->IsVisible()) {
+    g_imguiLogin->Render();
+  }
+  // Render ImGui settings window if visible
+  if (g_imguiSettings && g_imguiSettings->IsVisible()) {
+    g_imguiSettings->Render();
   }
   // Also render ImGui plugin window if visible
   if (g_imguiPluginWindow && g_imguiPluginWindow->IsVisible()) {
@@ -132,6 +143,10 @@ static void imguiTimerCallback() {
   if (g_paramMappingWindow && g_paramMappingWindow->IsVisible()) {
     g_paramMappingWindow->Render();
   }
+  // Render JSFX editor if visible
+  if (g_jsfxEditor && g_jsfxEditor->IsVisible()) {
+    g_jsfxEditor->Render();
+  }
   // Also render drum mapping window if visible
   if (g_drumMappingWindow && g_drumMappingWindow->IsVisible()) {
     g_drumMappingWindow->Render();
@@ -151,6 +166,7 @@ static int g_cmdAbout = 0;
 static int g_cmdScanPlugins = 0;
 static int g_cmdAnalyzeTrack = 0;
 static int g_cmdTestExecute = 0;
+static int g_cmdJSFXEditor = 0;
 
 // Macros for code compatibility
 #define MAGDA_MENU_CMD_ID g_cmdMenuID
@@ -162,6 +178,7 @@ static int g_cmdTestExecute = 0;
 #define MAGDA_CMD_ANALYZE_TRACK g_cmdAnalyzeTrack
 #define MAGDA_CMD_MIX_ANALYZE g_cmdMixAnalyze
 #define MAGDA_CMD_TEST_EXECUTE_ACTION g_cmdTestExecute
+#define MAGDA_CMD_JSFX_EDITOR g_cmdJSFXEditor
 
 // Helper function to perform DSP analysis and output results
 static void performDSPAnalysis(int trackIndex, const char *trackName,
@@ -276,18 +293,28 @@ void magdaAction(int command_id, int flag) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening login dialog\n");
     }
-    if (!g_loginWindow) {
-      g_loginWindow = new MagdaLoginWindow();
+    if (g_imguiLogin && g_imguiLogin->IsAvailable()) {
+      if (!g_imguiLogin->IsVisible()) {
+        g_imguiLogin->Show();
+      }
+    } else {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Login requires ReaImGui extension\n");
+      }
     }
-    g_loginWindow->Show();
   } else if (command_id == g_cmdSettings) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening settings dialog\n");
     }
-    if (!g_settingsWindow) {
-      g_settingsWindow = new MagdaSettingsWindow();
+    if (g_imguiSettings && g_imguiSettings->IsAvailable()) {
+      if (!g_imguiSettings->IsVisible()) {
+        g_imguiSettings->Show();
+      }
+    } else {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Settings requires ReaImGui extension\n");
+      }
     }
-    g_settingsWindow->Show();
   } else if (command_id == g_cmdAbout) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: About - TODO: Show about dialog\n");
@@ -445,13 +472,13 @@ void magdaAction(int command_id, int flag) {
       if (g_imguiChat && g_imguiChat->IsAvailable()) {
         // Try to guess track type from selected track name
         std::string prefill = "@mix:";
-        
+
         // Get selected track name for smart suggestion
         MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
             (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetSelectedTrack");
         bool (*GetTrackName)(MediaTrack *, char *, int) =
             (bool (*)(MediaTrack *, char *, int))g_rec->GetFunc("GetTrackName");
-        
+
         if (GetSelectedTrack && GetTrackName) {
           MediaTrack *track = GetSelectedTrack(nullptr, 0);
           if (track) {
@@ -460,8 +487,8 @@ void magdaAction(int command_id, int flag) {
               // Simple keyword detection (could be improved later)
               std::string lowerName = trackName;
               for (auto &c : lowerName) c = tolower(c);
-              
-              if (lowerName.find("drum") != std::string::npos || 
+
+              if (lowerName.find("drum") != std::string::npos ||
                   lowerName.find("kick") != std::string::npos ||
                   lowerName.find("snare") != std::string::npos ||
                   lowerName.find("hat") != std::string::npos) {
@@ -487,13 +514,25 @@ void magdaAction(int command_id, int flag) {
             }
           }
         }
-        
+
         g_imguiChat->ShowWithInput(prefill.c_str());
       } else {
         if (ShowConsoleMsg) {
           ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");
         }
       }
+    }
+  } else if (command_id == g_cmdJSFXEditor) {
+    // Open JSFX Editor
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Opening JSFX Editor...\n");
+    }
+    if (g_jsfxEditor && g_jsfxEditor->IsAvailable()) {
+      g_jsfxEditor->Show();
+    } else if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: JSFX Editor not available (ReaImGui required)\n");
     }
   } else if (command_id == g_cmdTestExecute) {
     // Headless/test mode: Execute MAGDA action from JSON stored in project
@@ -563,7 +602,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   (void)val2;
   (void)relmode;
   (void)hwnd; // Suppress unused warnings
-  
+
   // Only handle if IDs are allocated (non-zero) and command matches
   if ((g_cmdMenuID != 0 && command == g_cmdMenuID) ||
       (g_cmdOpen != 0 && command == g_cmdOpen) ||
@@ -573,6 +612,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
       (g_cmdScanPlugins != 0 && command == g_cmdScanPlugins) ||
       (g_cmdAnalyzeTrack != 0 && command == g_cmdAnalyzeTrack) ||
       (g_cmdMixAnalyze != 0 && command == g_cmdMixAnalyze) ||
+      (g_cmdJSFXEditor != 0 && command == g_cmdJSFXEditor) ||
       (g_cmdTestExecute != 0 && command == g_cmdTestExecute)) {
     magdaAction(command, 0);
     return true; // handled
@@ -651,9 +691,19 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
 
-    // "Open MAGDA" item
-    subMi.dwTypeData = (char *)"Open MAGDA";
+    // "MAGDA Chat" item (main chat window)
+    subMi.dwTypeData = (char *)"MAGDA Chat";
     subMi.wID = MAGDA_CMD_OPEN;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "JSFX Editor" item
+    subMi.dwTypeData = (char *)"JSFX Editor";
+    subMi.wID = MAGDA_CMD_JSFX_EDITOR;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "Plugins" item (opens plugin alias window)
+    subMi.dwTypeData = (char *)"Plugins...";
+    subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
     // Separator
@@ -669,35 +719,22 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.wID = MAGDA_CMD_LOGIN;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // Separator
-    subMi.fMask = MIIM_TYPE;
-    subMi.fType = MFT_SEPARATOR;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
     // "Settings" item
-    subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
-    subMi.fType = MFT_STRING;
-    subMi.fState = MFS_UNCHECKED;
     subMi.dwTypeData = (char *)"Settings...";
     subMi.wID = MAGDA_CMD_SETTINGS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "About" item
-    subMi.dwTypeData = (char *)"About MAGDA...";
-    subMi.wID = MAGDA_CMD_ABOUT;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
     // Separator
     subMi.fMask = MIIM_TYPE;
     subMi.fType = MFT_SEPARATOR;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "Plugins" item (opens plugin alias window)
+    // "About" item
     subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
-    subMi.dwTypeData = (char *)"Plugins...";
-    subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
+    subMi.dwTypeData = (char *)"About MAGDA...";
+    subMi.wID = MAGDA_CMD_ABOUT;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
     // Note: Mix Analysis removed from menu - use @mix: in chat instead
@@ -750,6 +787,14 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       delete g_imguiChat;
       g_imguiChat = nullptr;
     }
+    if (g_imguiLogin) {
+      delete g_imguiLogin;
+      g_imguiLogin = nullptr;
+    }
+    if (g_imguiSettings) {
+      delete g_imguiSettings;
+      g_imguiSettings = nullptr;
+    }
     if (g_imguiMixAnalysisDialog) {
       delete g_imguiMixAnalysisDialog;
       g_imguiMixAnalysisDialog = nullptr;
@@ -757,14 +802,6 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     if (g_chatWindow) {
       delete g_chatWindow;
       g_chatWindow = nullptr;
-    }
-    if (g_loginWindow) {
-      delete g_loginWindow;
-      g_loginWindow = nullptr;
-    }
-    if (g_settingsWindow) {
-      delete g_settingsWindow;
-      g_settingsWindow = nullptr;
     }
     if (g_pluginScanner) {
       delete g_pluginScanner;
@@ -802,6 +839,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   g_cmdScanPlugins = rec->Register("command_id", (void *)"MAGDA_ScanPlugins");
   g_cmdAnalyzeTrack = rec->Register("command_id", (void *)"MAGDA_AnalyzeTrack");
   g_cmdMixAnalyze = rec->Register("command_id", (void *)"MAGDA_MixAnalyze");
+  g_cmdJSFXEditor = rec->Register("command_id", (void *)"MAGDA_JSFXEditor");
   g_cmdTestExecute = rec->Register("command_id", (void *)"MAGDA_TestExecute");
 
   if (ShowConsoleMsg) {
@@ -826,6 +864,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                                             "MAGDA: Analyze Selected Track"};
   gaccel_register_t gaccel_mix_analyze = {{0, 0, (unsigned short)g_cmdMixAnalyze},
                                           "MAGDA: Mix Analysis"};
+  gaccel_register_t gaccel_jsfx_editor = {{0, 0, (unsigned short)g_cmdJSFXEditor},
+                                          "MAGDA: JSFX Editor"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
 
@@ -862,6 +902,11 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   if (rec->Register("gaccel", &gaccel_mix_analyze)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Mix Analysis' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_jsfx_editor)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'JSFX Editor' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_test_execute)) {
@@ -907,6 +952,34 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       ShowConsoleMsg("MAGDA: ImGui chat initialized (ReaImGui available)\n");
     }
 
+    // Initialize ImGui login window
+    g_imguiLogin = new MagdaImGuiLogin();
+    if (g_imguiLogin->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui login initialized\n");
+      }
+    } else {
+      delete g_imguiLogin;
+      g_imguiLogin = nullptr;
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui login requires ReaImGui extension\n");
+      }
+    }
+
+    // Initialize ImGui settings window
+    g_imguiSettings = new MagdaImGuiSettings();
+    if (g_imguiSettings->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui settings initialized\n");
+      }
+    } else {
+      delete g_imguiSettings;
+      g_imguiSettings = nullptr;
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui settings requires ReaImGui extension\n");
+      }
+    }
+
     // Initialize drum mapping window (also uses ReaImGui)
     g_drumMappingManager = new DrumMappingManager();
     g_drumMappingWindow = new MagdaDrumMappingWindow();
@@ -943,6 +1016,17 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     } else {
       delete g_imguiMixAnalysisDialog;
       g_imguiMixAnalysisDialog = nullptr;
+    }
+
+    // Initialize JSFX Editor
+    g_jsfxEditor = new MagdaJSFXEditor();
+    if (g_jsfxEditor->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: JSFX Editor initialized\n");
+      }
+    } else {
+      delete g_jsfxEditor;
+      g_jsfxEditor = nullptr;
     }
   } else {
     // ReaImGui not available, fall back to SWELL chat

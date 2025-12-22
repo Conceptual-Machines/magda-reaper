@@ -1,7 +1,7 @@
 #include "magda_auth.h"
 #include "magda_api_client.h"
 #include "magda_env.h"
-#include "magda_settings_window.h"
+#include "magda_imgui_login.h"
 #include "reaper_plugin.h"
 #include <cstring>
 
@@ -181,7 +181,7 @@ void *LoginThreadProc(void *param)
   static MagdaHTTPClient httpClient;
 
   // Set backend URL from settings (will check settings, then env, then default)
-  const char *backend_url = MagdaSettingsWindow::GetBackendURL();
+  const char *backend_url = MagdaImGuiLogin::GetBackendURL();
   if (backend_url && strlen(backend_url) > 0) {
     httpClient.SetBackendURL(backend_url);
   }

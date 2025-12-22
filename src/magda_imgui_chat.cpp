@@ -3,9 +3,9 @@
 #include "magda_actions.h"
 #include "magda_api_client.h"
 #include "magda_bounce_workflow.h"
-#include "magda_login_window.h"
+#include "magda_imgui_login.h"
 #include "magda_plugin_scanner.h"
-#include "magda_settings_window.h"
+#include "magda_imgui_settings.h"
 #include "magda_state.h"
 #include <algorithm>
 #include <cstring>
@@ -660,16 +660,16 @@ void MagdaImGuiChat::Render() {
       if (!m_streamingBuffer.empty()) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       }
-      
+
       // Show Yes/No buttons for pending mix actions
       if (m_hasPendingMixActions) {
         m_ImGui_Separator(m_ctx);
         m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
         m_ImGui_Dummy(m_ctx, 0, 5);
-        
+
         double btnW = 80;
         double btnH = 0;
-        
+
         // Green "Yes" button
         m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
         if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
@@ -687,9 +687,9 @@ void MagdaImGuiChat::Render() {
           m_pendingMixActionsJson.clear();
         }
         m_ImGui_PopStyleColor(m_ctx, nullptr);
-        
+
         m_ImGui_SameLine(m_ctx, &zero, &zero);
-        
+
         // Red "No" button
         m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
         if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
@@ -698,10 +698,10 @@ void MagdaImGuiChat::Render() {
           m_pendingMixActionsJson.clear();
         }
         m_ImGui_PopStyleColor(m_ctx, nullptr);
-        
+
         m_ImGui_Separator(m_ctx);
       }
-      
+
       // Show loading spinner while busy
       if (m_busy) {
         // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
@@ -912,11 +912,11 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_Separator(m_ctx);
       m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
       m_ImGui_Dummy(m_ctx, 0, 5);
-      
+
       double btnW = 80;
       double btnH = 0;
       double spacing = 10;
-      
+
       // Green "Yes" button
       m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
       if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
@@ -933,9 +933,9 @@ void MagdaImGuiChat::RenderResponseColumn() {
         m_pendingMixActionsJson.clear();
       }
       m_ImGui_PopStyleColor(m_ctx, nullptr);
-      
+
       m_ImGui_SameLine(m_ctx, nullptr, &spacing);
-      
+
       // Red "No" button
       m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
       if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
@@ -944,7 +944,7 @@ void MagdaImGuiChat::RenderResponseColumn() {
         m_pendingMixActionsJson.clear();
       }
       m_ImGui_PopStyleColor(m_ctx, nullptr);
-      
+
       m_ImGui_Separator(m_ctx);
     }
 
@@ -1268,7 +1268,7 @@ void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
     m_ImGui_TextWrapped(m_ctx, content.c_str());
     return;
   }
-  
+
   // Single line - parse and render with @mention highlighting
   size_t pos = 0;
   size_t len = content.length();
@@ -1336,13 +1336,13 @@ void MagdaImGuiChat::DetectAtTrigger() {
   }
 
   UpdateAutocompleteSuggestions();
-  
+
   // Count selectable items (exclude separators)
   int selectableCount = 0;
   for (const auto &s : m_suggestions) {
     if (s.plugin_type != "separator") selectableCount++;
   }
-  
+
   m_showAutocomplete = selectableCount > 0;
   m_autocompleteIndex = 0;
 }
@@ -1571,13 +1571,13 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   SetAPIStatus("Sending...", 0xFFFF66FF); // Yellow
 
   // Set backend URL from settings
-  const char *backendUrl = MagdaSettingsWindow::GetBackendURL();
+  const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
   if (backendUrl && backendUrl[0]) {
     s_httpClient.SetBackendURL(backendUrl);
   }
 
   // Set JWT token if available
-  const char *token = MagdaLoginWindow::GetStoredToken();
+  const char *token = MagdaImGuiLogin::GetStoredToken();
   if (token && token[0]) {
     s_httpClient.SetJWTToken(token);
   }
@@ -1667,17 +1667,17 @@ void MagdaImGuiChat::ProcessAsyncResult() {
     MixAnalysisResult mixResult;
     if (MagdaBounceWorkflow::GetPendingResult(mixResult)) {
       MagdaBounceWorkflow::ClearPendingResult();
-      
+
       if (mixResult.success) {
         // Add the response text
         AddAssistantMessage(mixResult.responseText);
-        
+
         // Store pending actions if any
         if (!mixResult.actionsJson.empty() && mixResult.actionsJson != "[]") {
           m_hasPendingMixActions = true;
           m_pendingMixActionsJson = mixResult.actionsJson;
         }
-        
+
         SetAPIStatus("Connected", 0x88FF88FF); // Green
       } else {
         std::string errorStr = "Mix analysis error: ";

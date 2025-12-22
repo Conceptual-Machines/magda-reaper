@@ -8,7 +8,7 @@
 #include "magda_actions.h"
 #include "magda_auth.h"
 #include "magda_env.h"
-#include "magda_settings_window.h"
+#include "magda_imgui_login.h"
 #include "magda_state.h"
 #include "reaper_plugin.h"
 #include <cstring>
@@ -30,7 +30,7 @@ MagdaHTTPClient::MagdaHTTPClient() : m_http_get(nullptr), m_dns(nullptr) {
   m_dns = new JNL_AsyncDNS;
 
   // Check for backend URL from settings first, then environment variable
-  const char *backend_url = MagdaSettingsWindow::GetBackendURL();
+  const char *backend_url = MagdaImGuiLogin::GetBackendURL();
   if (backend_url && strlen(backend_url) > 0) {
     m_backend_url.Set(backend_url);
   } else {
@@ -1282,7 +1282,7 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
                   }
                 }
               } else if (strcmp(event_type, "done") == 0) {
-                // Control event: done
+                // Control event: done - MUST call callback so UI can update
                 if (g_rec) {
                   void (*ShowConsoleMsg)(const char *msg) =
                       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
@@ -1290,15 +1290,30 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
                     ShowConsoleMsg("MAGDA: Control event: done\n");
                   }
                 }
+                // Call user callback with full JSON so it can process the done event
+                if (data->callback) {
+                  data->callback(json_data, data->user_data);
+                }
                 data->success = true;
+              } else if (strcmp(event_type, "chunk") == 0 ||
+                         strcmp(event_type, "line") == 0 ||
+                         strcmp(event_type, "start") == 0) {
+                // Streaming events - forward to callback for processing
+                if (data->callback) {
+                  data->callback(json_data, data->user_data);
+                }
               } else if (strcmp(event_type, "error") == 0) {
-                // Control event: error
+                // Control event: error - call callback so UI can show error
                 if (g_rec) {
                   void (*ShowConsoleMsg)(const char *msg) =
                       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
                   if (ShowConsoleMsg) {
                     ShowConsoleMsg("MAGDA: Control event: error\n");
                   }
+                }
+                // Call user callback with full JSON
+                if (data->callback) {
+                  data->callback(json_data, data->user_data);
                 }
                 wdl_json_element *msg_elem = root->get_item_by_name("message");
                 if (msg_elem && msg_elem->m_value_string) {
@@ -1367,44 +1382,22 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
 }
 #endif
 
-bool MagdaHTTPClient::SendQuestionStream(const char *question,
-                                         StreamActionCallback callback,
-                                         void *user_data,
-                                         WDL_FastString &error_msg) {
-  if (!question || !question[0]) {
-    error_msg.Set("Empty question");
-    return false;
-  }
-
-  if (!callback) {
-    error_msg.Set("Callback required for streaming");
-    return false;
-  }
-
-  // Build request JSON
-  char *request_json = BuildRequestJSON(question);
-  if (!request_json) {
-    error_msg.Set("Failed to build request JSON");
-    return false;
-  }
-
-  int request_json_len = (int)strlen(request_json);
-
-  // Build URL - use non-streaming endpoint (has CFG support for DSL generation)
-  WDL_FastString url;
-  url.Set(m_backend_url.Get());
-  url.Append("/api/v1/chat"); // Use non-streaming endpoint with CFG
-
-  // Use platform-specific HTTPS implementation for streaming
-  const char *auth_token =
-      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
-
+// Shared SSE POST helper used by streaming endpoints
+static bool SendSSEPostRequest(const char *url, const char *post_data,
+                               int post_data_len, const char *auth_token,
+                               MagdaHTTPClient::StreamActionCallback callback,
+                               void *user_data, WDL_FastString &error_msg,
+                               int timeout_seconds) {
 #ifdef _WIN32
   // Windows: WinHTTP streaming implementation
   HINTERNET hSession = nullptr;
   HINTERNET hConnect = nullptr;
   HINTERNET hRequest = nullptr;
   bool success = false;
+
+  if (timeout_seconds <= 0) {
+    timeout_seconds = 60;
+  }
 
   // Parse URL
   URL_COMPONENTSA urlComp;
@@ -1421,9 +1414,8 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   urlComp.lpszHostName = hostname;
   urlComp.lpszUrlPath = path;
 
-  if (!InternetCrackUrlA(url.Get(), (DWORD)url.GetLength(), 0, &urlComp)) {
+  if (!InternetCrackUrlA(url, (DWORD)strlen(url), 0, &urlComp)) {
     error_msg.Set("Failed to parse URL");
-    free(request_json);
     return false;
   }
 
@@ -1433,9 +1425,12 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
                          WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
   if (!hSession) {
     error_msg.Set("Failed to initialize WinHTTP");
-    free(request_json);
     return false;
   }
+
+  // Set timeout (in milliseconds)
+  DWORD timeout_ms = (DWORD)(timeout_seconds * 1000);
+  WinHttpSetTimeouts(hSession, 30000, 30000, timeout_ms, timeout_ms);
 
   // Connect to server
   int port = urlComp.nScheme == INTERNET_SCHEME_HTTPS
@@ -1455,7 +1450,6 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   if (!hConnect) {
     error_msg.Set("Failed to connect to server");
     WinHttpCloseHandle(hSession);
-    free(request_json);
     return false;
   }
 
@@ -1474,9 +1468,11 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
     error_msg.Set("Failed to create request");
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
-    free(request_json);
     return false;
   }
+
+  // Set timeout (in milliseconds)
+  WinHttpSetTimeouts(hSession, 30000, 30000, timeout_ms, timeout_ms);
 
   // Set headers
   if (auth_token && strlen(auth_token) > 0) {
@@ -1499,13 +1495,11 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
 
   // Send request
   if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                          (LPVOID)request_json, request_json_len,
-                          request_json_len, 0)) {
+                          (LPVOID)post_data, post_data_len, post_data_len, 0)) {
     error_msg.Set("Failed to send request");
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
-    free(request_json);
     return false;
   }
 
@@ -1515,7 +1509,6 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
-    free(request_json);
     return false;
   }
 
@@ -1566,7 +1559,6 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
-    free(request_json);
     return false;
   }
 
@@ -1643,7 +1635,6 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   WinHttpCloseHandle(hRequest);
   WinHttpCloseHandle(hConnect);
   WinHttpCloseHandle(hSession);
-  free(request_json);
   return success;
 
 #else
@@ -1651,8 +1642,11 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   CURL *curl = curl_easy_init();
   if (!curl) {
     error_msg.Set("Failed to initialize curl");
-    free(request_json);
     return false;
+  }
+
+  if (timeout_seconds <= 0) {
+    timeout_seconds = 60;
   }
 
   CurlStreamData stream_data;
@@ -1662,15 +1656,16 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   stream_data.success = false;
   stream_data.line_pos = 0;
   stream_data.line_buffer[0] = '\0';
+  stream_data.accumulated_data.Set("");
 
-  curl_easy_setopt(curl, CURLOPT_URL, url.Get());
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request_json);
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, request_json_len);
+  curl_easy_setopt(curl, CURLOPT_URL, url);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post_data_len);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_stream_write_callback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream_data);
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout_seconds);
   curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
 
   struct curl_slist *headers = nullptr;
@@ -1774,22 +1769,88 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
 
       curl_slist_free_all(headers);
       curl_easy_cleanup(curl);
-      free(request_json);
       return false;
     }
   } else {
     error_msg.Set(curl_easy_strerror(res));
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    free(request_json);
     return false;
   }
 
   curl_slist_free_all(headers);
   curl_easy_cleanup(curl);
-  free(request_json);
   return stream_data.success;
 #endif
+}
+
+bool MagdaHTTPClient::SendQuestionStream(const char *question,
+                                         StreamActionCallback callback,
+                                         void *user_data,
+                                         WDL_FastString &error_msg) {
+  if (!question || !question[0]) {
+    error_msg.Set("Empty question");
+    return false;
+  }
+
+  if (!callback) {
+    error_msg.Set("Callback required for streaming");
+    return false;
+  }
+
+  // Build request JSON
+  char *request_json = BuildRequestJSON(question);
+  if (!request_json) {
+    error_msg.Set("Failed to build request JSON");
+    return false;
+  }
+
+  int request_json_len = (int)strlen(request_json);
+
+  // Build URL - use non-streaming endpoint (has CFG support for DSL generation)
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append("/api/v1/chat"); // Use non-streaming endpoint with CFG
+
+  const char *auth_token =
+      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+
+  bool success =
+      SendSSEPostRequest(url.Get(), request_json, request_json_len, auth_token,
+                         callback, user_data, error_msg, 60);
+  free(request_json);
+  return success;
+}
+
+bool MagdaHTTPClient::SendPOSTStream(const char *endpoint,
+                                     const char *json_data,
+                                     StreamActionCallback callback,
+                                     void *user_data,
+                                     WDL_FastString &error_msg,
+                                     int timeout_seconds) {
+  if (!endpoint || !endpoint[0]) {
+    error_msg.Set("Endpoint required for streaming");
+    return false;
+  }
+  if (!json_data) {
+    error_msg.Set("JSON data required for streaming");
+    return false;
+  }
+  if (!callback) {
+    error_msg.Set("Callback required for streaming");
+    return false;
+  }
+
+  WDL_FastString url;
+  url.Set(m_backend_url.Get());
+  url.Append(endpoint);
+
+  const char *auth_token =
+      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+
+  return SendSSEPostRequest(url.Get(), json_data, (int)strlen(json_data),
+                            auth_token, callback, user_data, error_msg,
+                            timeout_seconds > 0 ? timeout_seconds : 60);
 }
 
 bool MagdaHTTPClient::CheckHealth(WDL_FastString &error_msg,

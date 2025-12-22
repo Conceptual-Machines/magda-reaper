@@ -1,8 +1,7 @@
 #include "magda_bounce_workflow.h"
 #include "magda_api_client.h"
 #include "magda_dsp_analyzer.h"
-#include "magda_login_window.h"
-#include "magda_settings_window.h"
+#include "magda_imgui_login.h"
 #include "reaper_plugin.h"
 #include <chrono>
 #include <condition_variable>
@@ -81,7 +80,7 @@ static void StoreResult(bool success, const std::string &responseText, const std
   s_result.success = success;
   s_result.responseText = responseText;
   s_result.actionsJson = actionsJson;
-  
+
   // Call callback if set
   if (s_resultCallback) {
     s_resultCallback(success, responseText);
@@ -561,13 +560,13 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   }
 
   // Set backend URL from settings
-  const char *backendUrl = MagdaSettingsWindow::GetBackendURL();
+  const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
   if (backendUrl && backendUrl[0]) {
     s_httpClient.SetBackendURL(backendUrl);
   }
 
   // Set JWT token if available
-  const char *token = MagdaLoginWindow::GetStoredToken();
+  const char *token = MagdaImGuiLogin::GetStoredToken();
   if (token && token[0]) {
     s_httpClient.SetJWTToken(token);
   }
@@ -575,14 +574,14 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   // Build request JSON for /api/v1/mix/analyze endpoint
   // Format: { "mode": "single_track", "analysis_data": {...}, "context": {...}, "user_request": "..." }
   WDL_FastString requestJson;
-  
+
   requestJson.Append("{\"mode\":\"single_track\",");
-  
+
   // Add analysis data
   requestJson.Append("\"analysis_data\":");
   requestJson.Append(analysisJson);
   requestJson.Append(",");
-  
+
   // Add context
   requestJson.Append("\"context\":{");
   requestJson.Append("\"track_index\":");
@@ -614,7 +613,7 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     requestJson.Append(fxJson);
   }
   requestJson.Append("}"); // close context
-  
+
   // Add user request
   if (userRequest && userRequest[0]) {
     requestJson.Append(",\"user_request\":\"");
@@ -627,7 +626,7 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     }
     requestJson.Append("\"");
   }
-  
+
   requestJson.Append("}"); // close request
 
   // Send POST request to /api/v1/mix/analyze endpoint
@@ -680,7 +679,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
 
   bool processedAny = false;
-  
+
   // Collect new commands to add after the loop (to avoid iterator invalidation)
   std::vector<ReaperCommand> commandsToAdd;
 
@@ -856,11 +855,11 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
         void (*SetActiveTake)(MediaItem_Take *) =
             (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
-        
+
         if (CountTakes && GetTake && SetActiveTake) {
           int takeCount = CountTakes(item);
           int takeToDelete = cmd.takeIndex;
-          
+
           if (takeCount > 1 && takeToDelete < takeCount) {
             // Select only this item for the delete action
             bool (*SetMediaItemSelected)(MediaItem *, bool) =
@@ -875,17 +874,17 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               }
               SetMediaItemSelected(item, true);
             }
-            
+
             // The rendered take is currently active (REAPER made it active after render)
             // Delete the active take
             Main_OnCommand(40129, 0);  // Take: Delete active take from items
-            
+
             // Set the original take (index 0) as active so user sees original
             MediaItem_Take* originalTake = GetTake(item, 0);
             if (originalTake) {
               SetActiveTake(originalTake);
             }
-            
+
             if (UpdateArrange) {
               UpdateArrange();
             }
@@ -907,7 +906,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       // Check if rendered file is ready (size has stabilized)
       MediaItem* dspItem = (MediaItem*)cmd.itemPtr;
       bool fileReady = false;
-      
+
       if (dspItem) {
         MediaItem_Take *(*GetActiveTake)(MediaItem *) =
             (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
@@ -915,7 +914,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             (PCM_source * (*)(MediaItem_Take *)) g_rec->GetFunc("GetMediaItemTake_Source");
         void (*GetMediaSourceFileName)(PCM_source *, char *, int) =
             (void (*)(PCM_source *, char *, int))g_rec->GetFunc("GetMediaSourceFileName");
-        
+
         if (GetActiveTake && GetMediaItemTake_Source && GetMediaSourceFileName) {
           MediaItem_Take* activeTake = GetActiveTake(dspItem);
           if (activeTake) {
@@ -923,21 +922,21 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             if (src) {
               char filename[512] = {0};
               GetMediaSourceFileName(src, filename, sizeof(filename));
-              
+
               if (filename[0]) {
                 FILE* f = fopen(filename, "rb");
                 if (f) {
                   fseek(f, 0, SEEK_END);
                   long currentSize = ftell(f);
                   fclose(f);
-                  
+
                   if (currentSize > 0 && currentSize == cmd.lastFileSize) {
                     cmd.stableCount++;
                     if (cmd.stableCount >= 3) {
                       fileReady = true;
                       if (ShowConsoleMsg) {
                         char msg[256];
-                        snprintf(msg, sizeof(msg), "MAGDA: File ready (%ld bytes, stable for %d ticks)\n", 
+                        snprintf(msg, sizeof(msg), "MAGDA: File ready (%ld bytes, stable for %d ticks)\n",
                                  currentSize, cmd.stableCount);
                         ShowConsoleMsg(msg);
                       }
@@ -952,20 +951,20 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
           }
         }
       }
-      
+
       // If file not ready, defer (up to max attempts)
       if (!fileReady && cmd.deferCount > 0) {
         cmd.deferCount--;
         ++it;
         continue;  // Skip this command for now, process on next tick
       }
-      
+
       if (!fileReady) {
         if (ShowConsoleMsg) {
           ShowConsoleMsg("MAGDA: Warning - proceeding with DSP despite file not stabilizing\n");
         }
       }
-      
+
       // Read audio samples on main thread (audio accessor requires main thread)
       // Then do DSP analysis + API call on background thread
       if (ShowConsoleMsg) {
@@ -976,9 +975,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       DSPAnalysisConfig dspConfig;
       dspConfig.fftSize = 4096;
       dspConfig.analyzeFullItem = true;
-      
+
       RawAudioData audioData = MagdaDSPAnalyzer::ReadTrackSamples(cmd.trackIndex, dspConfig);
-      
+
       if (!audioData.valid || audioData.samples.empty()) {
         if (ShowConsoleMsg) {
           ShowConsoleMsg("MAGDA: Failed to read audio samples\n");
@@ -994,7 +993,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       } else {
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA: Read %zu samples, starting background analysis...\n", 
+          snprintf(msg, sizeof(msg), "MAGDA: Read %zu samples, starting background analysis...\n",
                    audioData.samples.size());
           ShowConsoleMsg(msg);
         }
@@ -1030,9 +1029,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
           if (ShowConsoleMsg) {
             ShowConsoleMsg("MAGDA: Running DSP analysis on background thread...\n");
           }
-          
+
           DSPAnalysisResult analysisResult = MagdaDSPAnalyzer::AnalyzeSamples(audioData, dspConfig);
-          
+
           if (!analysisResult.success) {
             if (ShowConsoleMsg) {
               char msg[512];
@@ -1045,7 +1044,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             // Convert to JSON
             WDL_FastString analysisJson;
             MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
-            
+
             // Send to mix API
             WDL_FastString responseJson, error_msg;
             if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(),
@@ -1065,12 +1064,12 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                 ShowConsoleMsg(
                     "MAGDA: Mix analysis workflow completed successfully!\n");
               }
-              
+
               // Parse response JSON and store result
               std::string fullJson = responseJson.Get();
               std::string responseText;
               std::string actionsJson;
-              
+
               // Extract "response" field
               size_t respPos = fullJson.find("\"response\"");
               if (respPos != std::string::npos) {
@@ -1098,18 +1097,18 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                   }
                 }
               }
-              
+
               // Extract "actions" field
               char *extracted = MagdaHTTPClient::ExtractActionsJSON(fullJson.c_str(), (int)fullJson.length());
               if (extracted) {
                 actionsJson = extracted;
                 free(extracted);
               }
-              
+
               if (responseText.empty()) {
                 responseText = "Mix analysis completed.";
               }
-              
+
               StoreResult(true, responseText, actionsJson);
             }
           }
