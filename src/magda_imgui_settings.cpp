@@ -342,8 +342,8 @@ void MagdaImGuiSettings::Render() {
     m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
   }
 
-  if (m_ImGui_PushItemWidth && availW > 150) {
-    m_ImGui_PushItemWidth(m_ctx, availW - 20);
+  if (m_ImGui_PushItemWidth) {
+    m_ImGui_PushItemWidth(m_ctx, 220); // Smaller fixed width for dropdown
   }
 
   // Filter mode dropdown using BeginCombo/EndCombo
@@ -352,7 +352,8 @@ void MagdaImGuiSettings::Render() {
           ? FILTER_MODE_NAMES[m_filterModeIndex]
           : "Unknown";
 
-  if (m_ImGui_BeginCombo(m_ctx, "Filter Mode", currentModeName, nullptr)) {
+  // Use ## to hide label (it's explained by the section header)
+  if (m_ImGui_BeginCombo(m_ctx, "##filter_mode", currentModeName, nullptr)) {
     for (int i = 0; i < FILTER_MODE_COUNT; i++) {
       bool isSelected = (m_filterModeIndex == i);
       if (m_ImGui_Selectable(m_ctx, FILTER_MODE_NAMES[i], &isSelected, nullptr,
