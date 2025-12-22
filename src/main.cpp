@@ -9,6 +9,7 @@
 #include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
 #include "magda_imgui_settings.h"
+#include "magda_jsfx_editor.h"
 #include "magda_param_mapping.h"
 #include "magda_param_mapping_window.h"
 #include "magda_plugin_scanner.h"
@@ -39,6 +40,8 @@ MagdaPluginWindow *g_pluginWindow = nullptr;
 MagdaImGuiPluginWindow *g_imguiPluginWindow = nullptr;
 // Global ImGui mix analysis dialog instance
 MagdaImGuiMixAnalysisDialog *g_imguiMixAnalysisDialog = nullptr;
+// Global JSFX editor instance
+MagdaJSFXEditor *g_jsfxEditor = nullptr;
 // Global param mapping manager instance
 MagdaParamMappingWindow *g_paramMappingWindow = nullptr;
 // Global drum mapping manager instance (defined in magda_drum_mapping.cpp)
@@ -140,6 +143,10 @@ static void imguiTimerCallback() {
   if (g_paramMappingWindow && g_paramMappingWindow->IsVisible()) {
     g_paramMappingWindow->Render();
   }
+  // Render JSFX editor if visible
+  if (g_jsfxEditor && g_jsfxEditor->IsVisible()) {
+    g_jsfxEditor->Render();
+  }
   // Also render drum mapping window if visible
   if (g_drumMappingWindow && g_drumMappingWindow->IsVisible()) {
     g_drumMappingWindow->Render();
@@ -159,6 +166,7 @@ static int g_cmdAbout = 0;
 static int g_cmdScanPlugins = 0;
 static int g_cmdAnalyzeTrack = 0;
 static int g_cmdTestExecute = 0;
+static int g_cmdJSFXEditor = 0;
 
 // Macros for code compatibility
 #define MAGDA_MENU_CMD_ID g_cmdMenuID
@@ -170,6 +178,7 @@ static int g_cmdTestExecute = 0;
 #define MAGDA_CMD_ANALYZE_TRACK g_cmdAnalyzeTrack
 #define MAGDA_CMD_MIX_ANALYZE g_cmdMixAnalyze
 #define MAGDA_CMD_TEST_EXECUTE_ACTION g_cmdTestExecute
+#define MAGDA_CMD_JSFX_EDITOR g_cmdJSFXEditor
 
 // Helper function to perform DSP analysis and output results
 static void performDSPAnalysis(int trackIndex, const char *trackName,
@@ -513,6 +522,18 @@ void magdaAction(int command_id, int flag) {
         }
       }
     }
+  } else if (command_id == g_cmdJSFXEditor) {
+    // Open JSFX Editor
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Opening JSFX Editor...\n");
+    }
+    if (g_jsfxEditor && g_jsfxEditor->IsAvailable()) {
+      g_jsfxEditor->Show();
+    } else if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: JSFX Editor not available (ReaImGui required)\n");
+    }
   } else if (command_id == g_cmdTestExecute) {
     // Headless/test mode: Execute MAGDA action from JSON stored in project
     // state This allows Lua scripts to execute MAGDA commands by setting
@@ -591,6 +612,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
       (g_cmdScanPlugins != 0 && command == g_cmdScanPlugins) ||
       (g_cmdAnalyzeTrack != 0 && command == g_cmdAnalyzeTrack) ||
       (g_cmdMixAnalyze != 0 && command == g_cmdMixAnalyze) ||
+      (g_cmdJSFXEditor != 0 && command == g_cmdJSFXEditor) ||
       (g_cmdTestExecute != 0 && command == g_cmdTestExecute)) {
     magdaAction(command, 0);
     return true; // handled
@@ -669,9 +691,19 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
 
-    // "Open MAGDA" item
-    subMi.dwTypeData = (char *)"Open MAGDA";
+    // "MAGDA Chat" item (main chat window)
+    subMi.dwTypeData = (char *)"MAGDA Chat";
     subMi.wID = MAGDA_CMD_OPEN;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "JSFX Editor" item
+    subMi.dwTypeData = (char *)"JSFX Editor";
+    subMi.wID = MAGDA_CMD_JSFX_EDITOR;
+    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
+
+    // "Plugins" item (opens plugin alias window)
+    subMi.dwTypeData = (char *)"Plugins...";
+    subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
     // Separator
@@ -687,35 +719,22 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.wID = MAGDA_CMD_LOGIN;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // Separator
-    subMi.fMask = MIIM_TYPE;
-    subMi.fType = MFT_SEPARATOR;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
     // "Settings" item
-    subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
-    subMi.fType = MFT_STRING;
-    subMi.fState = MFS_UNCHECKED;
     subMi.dwTypeData = (char *)"Settings...";
     subMi.wID = MAGDA_CMD_SETTINGS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "About" item
-    subMi.dwTypeData = (char *)"About MAGDA...";
-    subMi.wID = MAGDA_CMD_ABOUT;
-    InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
-
     // Separator
     subMi.fMask = MIIM_TYPE;
     subMi.fType = MFT_SEPARATOR;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "Plugins" item (opens plugin alias window)
+    // "About" item
     subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
-    subMi.dwTypeData = (char *)"Plugins...";
-    subMi.wID = MAGDA_CMD_SCAN_PLUGINS;
+    subMi.dwTypeData = (char *)"About MAGDA...";
+    subMi.wID = MAGDA_CMD_ABOUT;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
     // Note: Mix Analysis removed from menu - use @mix: in chat instead
@@ -820,6 +839,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   g_cmdScanPlugins = rec->Register("command_id", (void *)"MAGDA_ScanPlugins");
   g_cmdAnalyzeTrack = rec->Register("command_id", (void *)"MAGDA_AnalyzeTrack");
   g_cmdMixAnalyze = rec->Register("command_id", (void *)"MAGDA_MixAnalyze");
+  g_cmdJSFXEditor = rec->Register("command_id", (void *)"MAGDA_JSFXEditor");
   g_cmdTestExecute = rec->Register("command_id", (void *)"MAGDA_TestExecute");
 
   if (ShowConsoleMsg) {
@@ -844,6 +864,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                                             "MAGDA: Analyze Selected Track"};
   gaccel_register_t gaccel_mix_analyze = {{0, 0, (unsigned short)g_cmdMixAnalyze},
                                           "MAGDA: Mix Analysis"};
+  gaccel_register_t gaccel_jsfx_editor = {{0, 0, (unsigned short)g_cmdJSFXEditor},
+                                          "MAGDA: JSFX Editor"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
 
@@ -880,6 +902,11 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   if (rec->Register("gaccel", &gaccel_mix_analyze)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Mix Analysis' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_jsfx_editor)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'JSFX Editor' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_test_execute)) {
@@ -989,6 +1016,17 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     } else {
       delete g_imguiMixAnalysisDialog;
       g_imguiMixAnalysisDialog = nullptr;
+    }
+
+    // Initialize JSFX Editor
+    g_jsfxEditor = new MagdaJSFXEditor();
+    if (g_jsfxEditor->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: JSFX Editor initialized\n");
+      }
+    } else {
+      delete g_jsfxEditor;
+      g_jsfxEditor = nullptr;
     }
   } else {
     // ReaImGui not available, fall back to SWELL chat
