@@ -49,12 +49,12 @@ static ThemeColors g_theme;
 
 static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
-// Filter mode names for combo box (null-separated, double-null terminated)
-static const char *FILTER_MODE_ITEMS =
-    "All tracks and clips\0"
-    "Selected tracks only\0"
-    "Selected tracks + selected clips\0"
-    "Selected clips only\0\0";
+// Filter mode names for combo box
+static const char *FILTER_MODE_NAMES[] = {"All tracks and clips",
+                                          "Selected tracks only",
+                                          "Selected tracks + selected clips",
+                                          "Selected clips only"};
+static const int FILTER_MODE_COUNT = 4;
 
 MagdaImGuiSettings::MagdaImGuiSettings() { LoadSettings(); }
 
@@ -84,9 +84,13 @@ bool MagdaImGuiSettings::Initialize(reaper_plugin_info_t *rec) {
   m_ImGui_Spacing = (void (*)(void *))rec->GetFunc("ImGui_Spacing");
   m_ImGui_Checkbox =
       (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
-  m_ImGui_Combo =
-      (bool (*)(void *, const char *, int *, const char *, int *))rec->GetFunc(
-          "ImGui_Combo");
+  m_ImGui_BeginCombo =
+      (bool (*)(void *, const char *, const char *, int *))rec->GetFunc(
+          "ImGui_BeginCombo");
+  m_ImGui_EndCombo = (void (*)(void *))rec->GetFunc("ImGui_EndCombo");
+  m_ImGui_Selectable =
+      (bool (*)(void *, const char *, bool *, int *, double *,
+                double *))rec->GetFunc("ImGui_Selectable");
   m_ImGui_InputInt = (bool (*)(void *, const char *, int *, int *, int *,
                                int *))rec->GetFunc("ImGui_InputInt");
   m_ImGui_PushItemWidth =
@@ -107,7 +111,7 @@ bool MagdaImGuiSettings::Initialize(reaper_plugin_info_t *rec) {
   // Check if essential functions are available
   m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
                 m_ImGui_Text && m_ImGui_Button && m_ImGui_Checkbox &&
-                m_ImGui_Combo;
+                m_ImGui_BeginCombo && m_ImGui_EndCombo && m_ImGui_Selectable;
 
   return m_available;
 }
@@ -316,9 +320,21 @@ void MagdaImGuiSettings::Render() {
     m_ImGui_PushItemWidth(m_ctx, availW - 20);
   }
 
-  if (m_ImGui_Combo) {
-    m_ImGui_Combo(m_ctx, "Filter Mode", &m_filterModeIndex, FILTER_MODE_ITEMS,
-                  nullptr);
+  // Filter mode dropdown using BeginCombo/EndCombo
+  const char *currentModeName =
+      (m_filterModeIndex >= 0 && m_filterModeIndex < FILTER_MODE_COUNT)
+          ? FILTER_MODE_NAMES[m_filterModeIndex]
+          : "Unknown";
+
+  if (m_ImGui_BeginCombo(m_ctx, "Filter Mode", currentModeName, nullptr)) {
+    for (int i = 0; i < FILTER_MODE_COUNT; i++) {
+      bool isSelected = (m_filterModeIndex == i);
+      if (m_ImGui_Selectable(m_ctx, FILTER_MODE_NAMES[i], &isSelected, nullptr,
+                             nullptr, nullptr)) {
+        m_filterModeIndex = i;
+      }
+    }
+    m_ImGui_EndCombo(m_ctx);
   }
 
   if (m_ImGui_PopItemWidth) {

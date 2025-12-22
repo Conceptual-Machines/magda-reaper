@@ -46,9 +46,12 @@ private:
   void (*m_ImGui_Separator)(void *ctx);
   void (*m_ImGui_Spacing)(void *ctx);
   bool (*m_ImGui_Checkbox)(void *ctx, const char *label, bool *v);
-  bool (*m_ImGui_Combo)(void *ctx, const char *label, int *current_item,
-                        const char *items_separated_by_zeros,
-                        int *height_in_itemsInOptional);
+  bool (*m_ImGui_BeginCombo)(void *ctx, const char *label,
+                             const char *preview_value, int *flagsInOptional);
+  void (*m_ImGui_EndCombo)(void *ctx);
+  bool (*m_ImGui_Selectable)(void *ctx, const char *label, bool *p_selectedInOut,
+                             int *flagsInOptional, double *size_wInOptional,
+                             double *size_hInOptional);
   bool (*m_ImGui_InputInt)(void *ctx, const char *label, int *v,
                            int *stepInOptional, int *step_fastInOptional,
                            int *flagsInOptional);
