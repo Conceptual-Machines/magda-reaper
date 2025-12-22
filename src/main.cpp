@@ -5,6 +5,7 @@
 #include "magda_drum_mapping_window.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_chat.h"
+#include "magda_imgui_login.h"
 #include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
 #include "magda_login_window.h"
@@ -27,8 +28,12 @@ static MagdaChatWindow *g_chatWindow = nullptr;
 MagdaImGuiChat *g_imguiChat = nullptr;
 // Flag for using ImGui chat vs SWELL chat
 static bool g_useImGuiChat = false;
-// Global login window instance
+// Global login window instance (SWELL fallback)
 static MagdaLoginWindow *g_loginWindow = nullptr;
+// Global ImGui login window instance
+MagdaImGuiLogin *g_imguiLogin = nullptr;
+// Flag for using ImGui login vs SWELL login
+static bool g_useImGuiLogin = false;
 // Global settings window instance
 static MagdaSettingsWindow *g_settingsWindow = nullptr;
 // Global plugin scanner instance
@@ -59,6 +64,10 @@ static void commandQueueTimerCallback() {
 static void imguiTimerCallback() {
   if (g_imguiChat && g_imguiChat->IsVisible()) {
     g_imguiChat->Render();
+  }
+  // Render ImGui login window if visible
+  if (g_imguiLogin && g_imguiLogin->IsVisible()) {
+    g_imguiLogin->Render();
   }
   // Also render ImGui plugin window if visible
   if (g_imguiPluginWindow && g_imguiPluginWindow->IsVisible()) {
@@ -276,10 +285,17 @@ void magdaAction(int command_id, int flag) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening login dialog\n");
     }
-    if (!g_loginWindow) {
-      g_loginWindow = new MagdaLoginWindow();
+    // Use ImGui login if available, otherwise fall back to SWELL
+    if (g_useImGuiLogin && g_imguiLogin) {
+      if (!g_imguiLogin->IsVisible()) {
+        g_imguiLogin->Show();
+      }
+    } else {
+      if (!g_loginWindow) {
+        g_loginWindow = new MagdaLoginWindow();
+      }
+      g_loginWindow->Show();
     }
-    g_loginWindow->Show();
   } else if (command_id == g_cmdSettings) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening settings dialog\n");
@@ -445,13 +461,13 @@ void magdaAction(int command_id, int flag) {
       if (g_imguiChat && g_imguiChat->IsAvailable()) {
         // Try to guess track type from selected track name
         std::string prefill = "@mix:";
-        
+
         // Get selected track name for smart suggestion
         MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
             (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetSelectedTrack");
         bool (*GetTrackName)(MediaTrack *, char *, int) =
             (bool (*)(MediaTrack *, char *, int))g_rec->GetFunc("GetTrackName");
-        
+
         if (GetSelectedTrack && GetTrackName) {
           MediaTrack *track = GetSelectedTrack(nullptr, 0);
           if (track) {
@@ -460,8 +476,8 @@ void magdaAction(int command_id, int flag) {
               // Simple keyword detection (could be improved later)
               std::string lowerName = trackName;
               for (auto &c : lowerName) c = tolower(c);
-              
-              if (lowerName.find("drum") != std::string::npos || 
+
+              if (lowerName.find("drum") != std::string::npos ||
                   lowerName.find("kick") != std::string::npos ||
                   lowerName.find("snare") != std::string::npos ||
                   lowerName.find("hat") != std::string::npos) {
@@ -487,7 +503,7 @@ void magdaAction(int command_id, int flag) {
             }
           }
         }
-        
+
         g_imguiChat->ShowWithInput(prefill.c_str());
       } else {
         if (ShowConsoleMsg) {
@@ -563,7 +579,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   (void)val2;
   (void)relmode;
   (void)hwnd; // Suppress unused warnings
-  
+
   // Only handle if IDs are allocated (non-zero) and command matches
   if ((g_cmdMenuID != 0 && command == g_cmdMenuID) ||
       (g_cmdOpen != 0 && command == g_cmdOpen) ||
@@ -750,6 +766,10 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       delete g_imguiChat;
       g_imguiChat = nullptr;
     }
+    if (g_imguiLogin) {
+      delete g_imguiLogin;
+      g_imguiLogin = nullptr;
+    }
     if (g_imguiMixAnalysisDialog) {
       delete g_imguiMixAnalysisDialog;
       g_imguiMixAnalysisDialog = nullptr;
@@ -905,6 +925,19 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     rec->Register("timer", (void *)commandQueueTimerCallback);
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: ImGui chat initialized (ReaImGui available)\n");
+    }
+
+    // Initialize ImGui login window
+    g_imguiLogin = new MagdaImGuiLogin();
+    if (g_imguiLogin->Initialize(rec)) {
+      g_useImGuiLogin = true;
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui login initialized\n");
+      }
+    } else {
+      delete g_imguiLogin;
+      g_imguiLogin = nullptr;
+      g_useImGuiLogin = false;
     }
 
     // Initialize drum mapping window (also uses ReaImGui)
