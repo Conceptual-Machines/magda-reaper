@@ -769,20 +769,6 @@ void MagdaJSFXEditor::RenderEditorPanel() {
   m_ImGui_TextColored(m_ctx, g_theme.headerText, header.c_str());
   m_ImGui_Separator(m_ctx);
 
-  // Description field
-  m_ImGui_TextColored(m_ctx, g_theme.dimText, "Description:");
-  m_ImGui_SameLine(m_ctx, nullptr, nullptr);
-
-  double descW = -1; // Fill remaining width
-  int descFlags = 0;
-  if (m_ImGui_InputText(m_ctx, "##jsfx_desc", m_descriptionBuffer,
-                        sizeof(m_descriptionBuffer), &descFlags, nullptr)) {
-    UpdateDescriptionInCode();
-    m_modified = true;
-  }
-
-  m_ImGui_Dummy(m_ctx, 0, 5); // Spacing before code editor
-
   // Code editor
   double editorW = -1; // Fill width
   double editorH = -1; // Fill height
@@ -968,24 +954,68 @@ void MagdaJSFXEditor::RenderChatPanel() {
   }
   m_ImGui_EndChild(m_ctx);  // End ##chat_history
 
-  // Chat input
+  // Chat input section
   m_ImGui_Separator(m_ctx);
 
-  double inputW = -60; // Leave room for Send button
-  int inputFlags = 0;
-  m_ImGui_InputText(m_ctx, "##chat_input", m_chatInput, sizeof(m_chatInput),
-                    &inputFlags, nullptr);
+  // Small top padding
+  m_ImGui_Dummy(m_ctx, 0, 4);
 
+  // Get available width
+  double availW = 0, availH = 0;
+  m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
+
+  // Multiline input - full width minus button space
+  double inputW = availW - 55;
+  double inputH = 38;  // Smaller height
+  int inputFlags = 0;
+
+  // Dark input background
+  int (*Col_FrameBg)() = (int (*)())m_rec->GetFunc("ImGui_Col_FrameBg");
+  if (Col_FrameBg) {
+    m_ImGui_PushStyleColor(m_ctx, Col_FrameBg(), 0x1E1E1EFF);  // Very dark
+  }
+
+  m_ImGui_InputTextMultiline(m_ctx, "##chat_input", m_chatInput,
+                              sizeof(m_chatInput), &inputW, &inputH,
+                              &inputFlags, nullptr);
+
+  if (Col_FrameBg) {
+    int n = 1;
+    m_ImGui_PopStyleColor(m_ctx, &n);
+  }
+
+  // Send button next to input
   double zero = 0;
-  double spacing = 5;
+  double spacing = 6;
   m_ImGui_SameLine(m_ctx, &zero, &spacing);
 
-  if (m_ImGui_Button(m_ctx, "Send", nullptr, nullptr)) {
+  // Dark grey button
+  int (*Col_Button)() = (int (*)())m_rec->GetFunc("ImGui_Col_Button");
+  int (*Col_ButtonHovered)() = (int (*)())m_rec->GetFunc("ImGui_Col_ButtonHovered");
+  int (*Col_ButtonActive)() = (int (*)())m_rec->GetFunc("ImGui_Col_ButtonActive");
+  int btnStyleCount = 0;
+  if (Col_Button && Col_ButtonHovered && Col_ButtonActive) {
+    m_ImGui_PushStyleColor(m_ctx, Col_Button(), 0x484848FF);        // Dark grey
+    m_ImGui_PushStyleColor(m_ctx, Col_ButtonHovered(), 0x585858FF); // Lighter on hover
+    m_ImGui_PushStyleColor(m_ctx, Col_ButtonActive(), 0x383838FF);  // Darker on press
+    btnStyleCount = 3;
+  }
+
+  double buttonW = 42;
+  double buttonH = 38;
+  if (m_ImGui_Button(m_ctx, ">>", &buttonW, &buttonH)) {
     if (strlen(m_chatInput) > 0 && !m_waitingForAI) {
       SendToAI(m_chatInput);
       m_chatInput[0] = '\0';
     }
   }
+
+  if (btnStyleCount > 0) {
+    m_ImGui_PopStyleColor(m_ctx, &btnStyleCount);
+  }
+
+  // Bottom padding
+  m_ImGui_Dummy(m_ctx, 0, 4);
 }
 
 void MagdaJSFXEditor::RenderToolbar() {
