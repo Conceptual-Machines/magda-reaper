@@ -28,10 +28,13 @@ namespace ImGuiCol {
 constexpr int Text = 0;
 constexpr int WindowBg = 2;
 constexpr int ChildBg = 3;
+constexpr int Border = 5;
 constexpr int FrameBg = 7;
 constexpr int FrameBgHovered = 8;
 constexpr int FrameBgActive = 9;
-constexpr int Border = 5;
+constexpr int TitleBg = 10;
+constexpr int TitleBgActive = 11;
+constexpr int TitleBgCollapsed = 12;
 constexpr int Button = 21;
 constexpr int ButtonHovered = 22;
 constexpr int ButtonActive = 23;
@@ -54,6 +57,9 @@ struct ThemeColors {
   int accent = THEME_RGBA(0x3D, 0x5A, 0xFE);      // Electric blue
   int accentHover = THEME_RGBA(0x53, 0x6D, 0xFE); // Lighter on hover
   int accentActive = THEME_RGBA(0x2A, 0x45, 0xD0); // Darker on press
+  // Title bar - dark grey to match window
+  int titleBg = THEME_RGBA(0x2D, 0x2D, 0x2D);        // Inactive title
+  int titleBgActive = THEME_RGBA(0x3C, 0x3C, 0x3C);  // Active title
 };
 static ThemeColors g_theme;
 
@@ -445,6 +451,13 @@ void MagdaImGuiLogin::Render() {
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.buttonActive);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Border, g_theme.border);
+    styleColorCount++;
+    // Title bar colors
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBg, g_theme.titleBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive, g_theme.titleBgActive);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgCollapsed, g_theme.titleBg);
     styleColorCount++;
   }
 
