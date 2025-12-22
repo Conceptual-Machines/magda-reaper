@@ -368,6 +368,9 @@ void MagdaJSFXEditor::OpenFile(const std::string &path) {
       (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;
   m_modified = false;
 
+  // Extract description from code
+  ExtractDescriptionFromCode();
+
   void (*ShowConsoleMsg)(const char *) =
       (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
@@ -414,6 +417,8 @@ void MagdaJSFXEditor::RefreshFXBrowser() {
 
 void MagdaJSFXEditor::NewFile() {
   memset(m_editorBuffer, 0, sizeof(m_editorBuffer));
+  memset(m_descriptionBuffer, 0, sizeof(m_descriptionBuffer));
+  strncpy(m_descriptionBuffer, "My Effect", sizeof(m_descriptionBuffer) - 1);
   m_currentFilePath = "";
   m_currentFileName = "untitled.jsfx";
   m_modified = false;
@@ -435,6 +440,66 @@ spl1 *= gain;
 )";
 
   strncpy(m_editorBuffer, template_code, sizeof(m_editorBuffer) - 1);
+}
+
+void MagdaJSFXEditor::ExtractDescriptionFromCode() {
+  // Find desc: line and extract description
+  memset(m_descriptionBuffer, 0, sizeof(m_descriptionBuffer));
+
+  const char *code = m_editorBuffer;
+  const char *descLine = strstr(code, "desc:");
+  if (descLine) {
+    // Find end of line
+    const char *endOfLine = strchr(descLine, '\n');
+    if (!endOfLine)
+      endOfLine = descLine + strlen(descLine);
+
+    // Extract the description part after "desc:"
+    const char *descStart = descLine + 5; // Skip "desc:"
+    size_t len = endOfLine - descStart;
+    if (len > sizeof(m_descriptionBuffer) - 1)
+      len = sizeof(m_descriptionBuffer) - 1;
+
+    strncpy(m_descriptionBuffer, descStart, len);
+    m_descriptionBuffer[len] = '\0';
+
+    // Trim leading/trailing whitespace
+    char *start = m_descriptionBuffer;
+    while (*start == ' ' || *start == '\t')
+      start++;
+    if (start != m_descriptionBuffer)
+      memmove(m_descriptionBuffer, start, strlen(start) + 1);
+
+    char *end = m_descriptionBuffer + strlen(m_descriptionBuffer) - 1;
+    while (end > m_descriptionBuffer && (*end == ' ' || *end == '\t' || *end == '\r'))
+      *end-- = '\0';
+  } else {
+    strncpy(m_descriptionBuffer, "Untitled Effect", sizeof(m_descriptionBuffer) - 1);
+  }
+}
+
+void MagdaJSFXEditor::UpdateDescriptionInCode() {
+  // Find and replace the desc: line in the editor buffer
+  std::string code(m_editorBuffer);
+  size_t descPos = code.find("desc:");
+  if (descPos != std::string::npos) {
+    // Find end of the desc line
+    size_t endOfLine = code.find('\n', descPos);
+    if (endOfLine == std::string::npos)
+      endOfLine = code.length();
+
+    // Replace the desc line
+    std::string newDescLine = "desc:" + std::string(m_descriptionBuffer);
+    code.replace(descPos, endOfLine - descPos, newDescLine);
+
+    strncpy(m_editorBuffer, code.c_str(), sizeof(m_editorBuffer) - 1);
+    m_editorBuffer[sizeof(m_editorBuffer) - 1] = '\0';
+  } else {
+    // No desc: line found, add one at the beginning
+    std::string newCode = "desc:" + std::string(m_descriptionBuffer) + "\n" + code;
+    strncpy(m_editorBuffer, newCode.c_str(), sizeof(m_editorBuffer) - 1);
+    m_editorBuffer[sizeof(m_editorBuffer) - 1] = '\0';
+  }
 }
 
 void MagdaJSFXEditor::Show() {
@@ -702,6 +767,20 @@ void MagdaJSFXEditor::RenderEditorPanel() {
   }
   m_ImGui_TextColored(m_ctx, g_theme.headerText, header.c_str());
   m_ImGui_Separator(m_ctx);
+
+  // Description field
+  m_ImGui_TextColored(m_ctx, g_theme.dimText, "Description:");
+  m_ImGui_SameLine(m_ctx, nullptr, nullptr);
+
+  double descW = -1; // Fill remaining width
+  int descFlags = 0;
+  if (m_ImGui_InputText(m_ctx, "##jsfx_desc", m_descriptionBuffer,
+                        sizeof(m_descriptionBuffer), &descFlags, nullptr)) {
+    UpdateDescriptionInCode();
+    m_modified = true;
+  }
+
+  m_ImGui_Dummy(m_ctx, 0, 5); // Spacing before code editor
 
   // Code editor
   double editorW = -1; // Fill width
@@ -1256,6 +1335,9 @@ void MagdaJSFXEditor::ApplyCodeBlock(const std::string &code) {
   strncpy(m_editorBuffer, code.c_str(), sizeof(m_editorBuffer) - 1);
   m_editorBuffer[sizeof(m_editorBuffer) - 1] = '\0';
   m_modified = true;
+
+  // Extract description from the generated code
+  ExtractDescriptionFromCode();
 
   // Auto-save if we have a file path
   if (!m_currentFilePath.empty()) {

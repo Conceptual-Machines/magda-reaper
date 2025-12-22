@@ -72,6 +72,8 @@ private:
   // Editor helpers
   void InsertText(const std::string &text);
   int GetLineCount();
+  void ExtractDescriptionFromCode();
+  void UpdateDescriptionInCode();
 
   // State
   bool m_available = false;
@@ -90,6 +92,7 @@ private:
   std::string m_currentFilePath;
   std::string m_currentFileName;
   char m_editorBuffer[65536];  // 64KB buffer for code
+  char m_descriptionBuffer[256];  // JSFX desc: field
   bool m_modified = false;
 
   // Chat
