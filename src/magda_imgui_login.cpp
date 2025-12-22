@@ -420,8 +420,8 @@ void MagdaImGuiLogin::Render() {
 
   if (!open) {
     m_visible = false;
-    m_ctx = nullptr; // Context will be recreated on next Show()
     m_ImGui_End(m_ctx);
+    m_ctx = nullptr; // Context will be recreated on next Show()
     return;
   }
 
