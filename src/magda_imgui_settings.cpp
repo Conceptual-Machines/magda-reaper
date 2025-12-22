@@ -1,0 +1,301 @@
+#include "magda_imgui_settings.h"
+#include <cstdlib>
+#include <cstring>
+
+// g_rec is needed for REAPER API access
+extern reaper_plugin_info_t *g_rec;
+
+// ReaImGui constants
+namespace ImGuiCond {
+constexpr int FirstUseEver = 1 << 2;
+} // namespace ImGuiCond
+
+namespace ImGuiWindowFlags {
+constexpr int NoCollapse = 1 << 5;
+} // namespace ImGuiWindowFlags
+
+// Theme colors
+#define THEME_RGBA(r, g, b) (((r) << 24) | ((g) << 16) | ((b) << 8) | 0xFF)
+static const int COLOR_DIM = THEME_RGBA(0x90, 0x90, 0x90);
+
+// Filter mode names for combo box (null-separated, double-null terminated)
+static const char *FILTER_MODE_ITEMS =
+    "All tracks and clips\0"
+    "Selected tracks only\0"
+    "Selected tracks + selected clips\0"
+    "Selected clips only\0\0";
+
+MagdaImGuiSettings::MagdaImGuiSettings() { LoadSettings(); }
+
+MagdaImGuiSettings::~MagdaImGuiSettings() {}
+
+bool MagdaImGuiSettings::Initialize(reaper_plugin_info_t *rec) {
+  if (!rec)
+    return false;
+
+  // Load ReaImGui function pointers
+  m_ImGui_CreateContext =
+      (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
+  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc(
+      "ImGui_Begin");
+  m_ImGui_End = (void (*)(void *))rec->GetFunc("ImGui_End");
+  m_ImGui_SetNextWindowSize =
+      (void (*)(void *, double, double, int *))rec->GetFunc(
+          "ImGui_SetNextWindowSize");
+  m_ImGui_Text = (void (*)(void *, const char *))rec->GetFunc("ImGui_Text");
+  m_ImGui_TextColored =
+      (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
+  m_ImGui_Button = (bool (*)(void *, const char *, double *, double *))
+                       rec->GetFunc("ImGui_Button");
+  m_ImGui_SameLine =
+      (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
+  m_ImGui_Separator = (void (*)(void *))rec->GetFunc("ImGui_Separator");
+  m_ImGui_Spacing = (void (*)(void *))rec->GetFunc("ImGui_Spacing");
+  m_ImGui_Checkbox =
+      (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
+  m_ImGui_Combo =
+      (bool (*)(void *, const char *, int *, const char *, int *))rec->GetFunc(
+          "ImGui_Combo");
+  m_ImGui_InputInt = (bool (*)(void *, const char *, int *, int *, int *,
+                               int *))rec->GetFunc("ImGui_InputInt");
+  m_ImGui_PushItemWidth =
+      (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
+  m_ImGui_PopItemWidth = (void (*)(void *))rec->GetFunc("ImGui_PopItemWidth");
+  m_ImGui_GetContentRegionAvail =
+      (void (*)(void *, double *, double *))rec->GetFunc(
+          "ImGui_GetContentRegionAvail");
+  m_ImGui_IsWindowAppearing =
+      (bool (*)(void *))rec->GetFunc("ImGui_IsWindowAppearing");
+  m_ImGui_SetKeyboardFocusHere =
+      (void (*)(void *, int *))rec->GetFunc("ImGui_SetKeyboardFocusHere");
+
+  // Check if essential functions are available
+  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
+                m_ImGui_Text && m_ImGui_Button && m_ImGui_Checkbox &&
+                m_ImGui_Combo;
+
+  return m_available;
+}
+
+void MagdaImGuiSettings::LoadSettings() {
+  if (!g_rec)
+    return;
+
+  const char *(*GetExtState)(const char *section, const char *key) =
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+  if (!GetExtState)
+    return;
+
+  // Load filter mode
+  const char *modeStr = GetExtState("MAGDA", "state_filter_mode");
+  if (modeStr) {
+    int mode = atoi(modeStr);
+    if (mode >= 0 && mode <= 3) {
+      m_filterModeIndex = mode;
+    }
+  }
+
+  // Load include empty tracks
+  const char *includeEmptyStr =
+      GetExtState("MAGDA", "state_filter_include_empty");
+  if (includeEmptyStr) {
+    m_includeEmptyTracks = (atoi(includeEmptyStr) != 0);
+  }
+
+  // Load max clips per track
+  const char *maxClipsStr = GetExtState("MAGDA", "state_filter_max_clips");
+  if (maxClipsStr) {
+    m_maxClipsPerTrack = atoi(maxClipsStr);
+  }
+}
+
+void MagdaImGuiSettings::SaveSettings() {
+  if (!g_rec)
+    return;
+
+  void (*SetExtState)(const char *section, const char *key, const char *value,
+                      bool persist) =
+      (void (*)(const char *, const char *, const char *,
+                bool))g_rec->GetFunc("SetExtState");
+  if (!SetExtState)
+    return;
+
+  // Save filter mode
+  char modeStr[32];
+  snprintf(modeStr, sizeof(modeStr), "%d", m_filterModeIndex);
+  SetExtState("MAGDA", "state_filter_mode", modeStr, true);
+
+  // Save include empty tracks
+  SetExtState("MAGDA", "state_filter_include_empty",
+              m_includeEmptyTracks ? "1" : "0", true);
+
+  // Save max clips per track
+  char maxClipsStr[32];
+  snprintf(maxClipsStr, sizeof(maxClipsStr), "%d", m_maxClipsPerTrack);
+  SetExtState("MAGDA", "state_filter_max_clips", maxClipsStr, true);
+}
+
+StateFilterPreferences MagdaImGuiSettings::GetPreferences() {
+  StateFilterPreferences prefs;
+
+  if (!g_rec)
+    return prefs;
+
+  const char *(*GetExtState)(const char *section, const char *key) =
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+  if (!GetExtState)
+    return prefs;
+
+  // Load filter mode
+  const char *modeStr = GetExtState("MAGDA", "state_filter_mode");
+  if (modeStr) {
+    int mode = atoi(modeStr);
+    if (mode >= 0 && mode <= 3) {
+      prefs.mode = static_cast<StateFilterMode>(mode);
+    }
+  }
+
+  // Load include empty tracks
+  const char *includeEmptyStr =
+      GetExtState("MAGDA", "state_filter_include_empty");
+  if (includeEmptyStr) {
+    prefs.includeEmptyTracks = (atoi(includeEmptyStr) != 0);
+  }
+
+  // Load max clips per track
+  const char *maxClipsStr = GetExtState("MAGDA", "state_filter_max_clips");
+  if (maxClipsStr) {
+    prefs.maxClipsPerTrack = atoi(maxClipsStr);
+  }
+
+  return prefs;
+}
+
+void MagdaImGuiSettings::Show() { m_visible = true; }
+
+void MagdaImGuiSettings::Hide() { m_visible = false; }
+
+void MagdaImGuiSettings::Toggle() {
+  if (m_visible) {
+    Hide();
+  } else {
+    Show();
+  }
+}
+
+void MagdaImGuiSettings::OnSave() {
+  SaveSettings();
+  Hide();
+}
+
+void MagdaImGuiSettings::Render() {
+  if (!m_available || !m_visible)
+    return;
+
+  // Create context if needed
+  if (!m_ctx) {
+    m_ctx = m_ImGui_CreateContext("MAGDA Settings", nullptr);
+    if (!m_ctx)
+      return;
+  }
+
+  // Set window size
+  int cond = ImGuiCond::FirstUseEver;
+  m_ImGui_SetNextWindowSize(m_ctx, 450, 250, &cond);
+
+  // Begin window
+  int flags = ImGuiWindowFlags::NoCollapse;
+  bool open = true;
+  if (!m_ImGui_Begin(m_ctx, "MAGDA Settings", &open, &flags)) {
+    m_ImGui_End(m_ctx);
+    if (!open)
+      m_visible = false;
+    return;
+  }
+
+  if (!open) {
+    m_visible = false;
+    m_ImGui_End(m_ctx);
+    return;
+  }
+
+  // State filtering section
+  m_ImGui_Text(m_ctx, "State Filtering (reduces token usage)");
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Help text
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, COLOR_DIM,
+                        "Control what REAPER state is sent to the API");
+  }
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Filter mode combo
+  double availW = 0, availH = 0;
+  if (m_ImGui_GetContentRegionAvail) {
+    m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
+  }
+
+  if (m_ImGui_PushItemWidth && availW > 150) {
+    m_ImGui_PushItemWidth(m_ctx, availW - 20);
+  }
+
+  if (m_ImGui_Combo) {
+    m_ImGui_Combo(m_ctx, "Filter Mode", &m_filterModeIndex, FILTER_MODE_ITEMS,
+                  nullptr);
+  }
+
+  if (m_ImGui_PopItemWidth) {
+    m_ImGui_PopItemWidth(m_ctx);
+  }
+
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Include empty tracks checkbox
+  if (m_ImGui_Checkbox) {
+    m_ImGui_Checkbox(m_ctx, "Include empty tracks", &m_includeEmptyTracks);
+  }
+
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Max clips per track input
+  m_ImGui_Text(m_ctx, "Max clips per track (0 = unlimited):");
+  if (m_ImGui_PushItemWidth) {
+    m_ImGui_PushItemWidth(m_ctx, 100);
+  }
+  if (m_ImGui_InputInt) {
+    int step = 1;
+    int stepFast = 10;
+    m_ImGui_InputInt(m_ctx, "##maxclips", &m_maxClipsPerTrack, &step, &stepFast,
+                     nullptr);
+    if (m_maxClipsPerTrack < 0)
+      m_maxClipsPerTrack = 0;
+  }
+  if (m_ImGui_PopItemWidth) {
+    m_ImGui_PopItemWidth(m_ctx);
+  }
+
+  if (m_ImGui_Separator)
+    m_ImGui_Separator(m_ctx);
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Save button
+  if (m_ImGui_Button(m_ctx, "Save", nullptr, nullptr)) {
+    OnSave();
+  }
+
+  if (m_ImGui_SameLine)
+    m_ImGui_SameLine(m_ctx, nullptr, nullptr);
+
+  if (m_ImGui_Button(m_ctx, "Cancel", nullptr, nullptr)) {
+    LoadSettings(); // Revert changes
+    Hide();
+  }
+
+  m_ImGui_End(m_ctx);
+}

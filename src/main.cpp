@@ -8,6 +8,7 @@
 #include "magda_imgui_login.h"
 #include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
+#include "magda_imgui_settings.h"
 #include "magda_login_window.h"
 #include "magda_param_mapping.h"
 #include "magda_param_mapping_window.h"
@@ -34,8 +35,12 @@ static MagdaLoginWindow *g_loginWindow = nullptr;
 MagdaImGuiLogin *g_imguiLogin = nullptr;
 // Flag for using ImGui login vs SWELL login
 static bool g_useImGuiLogin = false;
-// Global settings window instance
+// Global settings window instance (SWELL fallback)
 static MagdaSettingsWindow *g_settingsWindow = nullptr;
+// Global ImGui settings window instance
+MagdaImGuiSettings *g_imguiSettings = nullptr;
+// Flag for using ImGui settings vs SWELL settings
+static bool g_useImGuiSettings = false;
 // Global plugin scanner instance
 MagdaPluginScanner *g_pluginScanner = nullptr;
 // Global plugin window instance (SWELL fallback)
@@ -68,6 +73,10 @@ static void imguiTimerCallback() {
   // Render ImGui login window if visible
   if (g_imguiLogin && g_imguiLogin->IsVisible()) {
     g_imguiLogin->Render();
+  }
+  // Render ImGui settings window if visible
+  if (g_imguiSettings && g_imguiSettings->IsVisible()) {
+    g_imguiSettings->Render();
   }
   // Also render ImGui plugin window if visible
   if (g_imguiPluginWindow && g_imguiPluginWindow->IsVisible()) {
@@ -300,10 +309,17 @@ void magdaAction(int command_id, int flag) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening settings dialog\n");
     }
-    if (!g_settingsWindow) {
-      g_settingsWindow = new MagdaSettingsWindow();
+    // Use ImGui settings if available, otherwise fall back to SWELL
+    if (g_useImGuiSettings && g_imguiSettings) {
+      if (!g_imguiSettings->IsVisible()) {
+        g_imguiSettings->Show();
+      }
+    } else {
+      if (!g_settingsWindow) {
+        g_settingsWindow = new MagdaSettingsWindow();
+      }
+      g_settingsWindow->Show();
     }
-    g_settingsWindow->Show();
   } else if (command_id == g_cmdAbout) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: About - TODO: Show about dialog\n");
@@ -770,6 +786,10 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       delete g_imguiLogin;
       g_imguiLogin = nullptr;
     }
+    if (g_imguiSettings) {
+      delete g_imguiSettings;
+      g_imguiSettings = nullptr;
+    }
     if (g_imguiMixAnalysisDialog) {
       delete g_imguiMixAnalysisDialog;
       g_imguiMixAnalysisDialog = nullptr;
@@ -938,6 +958,19 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       delete g_imguiLogin;
       g_imguiLogin = nullptr;
       g_useImGuiLogin = false;
+    }
+
+    // Initialize ImGui settings window
+    g_imguiSettings = new MagdaImGuiSettings();
+    if (g_imguiSettings->Initialize(rec)) {
+      g_useImGuiSettings = true;
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui settings initialized\n");
+      }
+    } else {
+      delete g_imguiSettings;
+      g_imguiSettings = nullptr;
+      g_useImGuiSettings = false;
     }
 
     // Initialize drum mapping window (also uses ReaImGui)

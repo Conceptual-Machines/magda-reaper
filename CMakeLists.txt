@@ -59,6 +59,7 @@ set(SOURCES
     src/magda_bounce_workflow.cpp
     src/magda_imgui_mix_analysis_dialog.cpp
     src/magda_imgui_login.cpp
+    src/magda_imgui_settings.cpp
     # WDL networking implementation
     WDL/WDL/jnetlib/httpget.cpp
     WDL/WDL/jnetlib/connection.cpp
