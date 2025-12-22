@@ -57,6 +57,8 @@ private:
   void (*m_ImGui_GetContentRegionAvail)(void *ctx, double *wOut, double *hOut);
   bool (*m_ImGui_IsWindowAppearing)(void *ctx);
   void (*m_ImGui_SetKeyboardFocusHere)(void *ctx, int *offsetInOptional);
+  void (*m_ImGui_PushStyleColor)(void *ctx, int idx, int col_rgba);
+  void (*m_ImGui_PopStyleColor)(void *ctx, int *countInOptional);
 
   // State
   bool m_available = false;

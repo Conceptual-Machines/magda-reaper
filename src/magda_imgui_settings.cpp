@@ -14,9 +14,38 @@ namespace ImGuiWindowFlags {
 constexpr int NoCollapse = 1 << 5;
 } // namespace ImGuiWindowFlags
 
-// Theme colors
+namespace ImGuiCol {
+constexpr int Text = 0;
+constexpr int WindowBg = 2;
+constexpr int ChildBg = 3;
+constexpr int FrameBg = 7;
+constexpr int FrameBgHovered = 8;
+constexpr int FrameBgActive = 9;
+constexpr int Border = 5;
+constexpr int Button = 21;
+constexpr int ButtonHovered = 22;
+constexpr int ButtonActive = 23;
+} // namespace ImGuiCol
+
+// Theme colors - format is 0xRRGGBBAA (matches chat/login windows)
 #define THEME_RGBA(r, g, b) (((r) << 24) | ((g) << 16) | ((b) << 8) | 0xFF)
-static const int COLOR_DIM = THEME_RGBA(0x90, 0x90, 0x90);
+
+struct ThemeColors {
+  int windowBg = THEME_RGBA(0x3C, 0x3C, 0x3C);
+  int childBg = THEME_RGBA(0x2D, 0x2D, 0x2D);
+  int inputBg = THEME_RGBA(0x1E, 0x1E, 0x1E);
+  int headerText = THEME_RGBA(0xF0, 0xF0, 0xF0);
+  int normalText = THEME_RGBA(0xD0, 0xD0, 0xD0);
+  int dimText = THEME_RGBA(0x80, 0x80, 0x80);
+  int buttonBg = THEME_RGBA(0x48, 0x48, 0x48);
+  int buttonHover = THEME_RGBA(0x58, 0x58, 0x58);
+  int buttonActive = THEME_RGBA(0x38, 0x38, 0x38);
+  int border = THEME_RGBA(0x50, 0x50, 0x50);
+  int accent = THEME_RGBA(0x00, 0xD4, 0xE0);
+};
+static ThemeColors g_theme;
+
+static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
 // Filter mode names for combo box (null-separated, double-null terminated)
 static const char *FILTER_MODE_ITEMS =
@@ -68,6 +97,10 @@ bool MagdaImGuiSettings::Initialize(reaper_plugin_info_t *rec) {
       (bool (*)(void *))rec->GetFunc("ImGui_IsWindowAppearing");
   m_ImGui_SetKeyboardFocusHere =
       (void (*)(void *, int *))rec->GetFunc("ImGui_SetKeyboardFocusHere");
+  m_ImGui_PushStyleColor =
+      (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
+  m_ImGui_PopStyleColor =
+      (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
 
   // Check if essential functions are available
   m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
@@ -199,18 +232,46 @@ void MagdaImGuiSettings::Render() {
       return;
   }
 
+  // Apply theme colors
+  int styleColorCount = 0;
+  if (m_ImGui_PushStyleColor) {
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::WindowBg, g_theme.windowBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.childBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Text, g_theme.normalText);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, g_theme.inputBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered, g_theme.buttonHover);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgActive, g_theme.buttonBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.buttonBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered, g_theme.buttonHover);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.buttonActive);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Border, g_theme.border);
+    styleColorCount++;
+  }
+
   // Set window size
   int cond = ImGuiCond::FirstUseEver;
-  m_ImGui_SetNextWindowSize(m_ctx, 450, 250, &cond);
+  m_ImGui_SetNextWindowSize(m_ctx, 450, 280, &cond);
 
   // Begin window
   int flags = ImGuiWindowFlags::NoCollapse;
   bool open = true;
   if (!m_ImGui_Begin(m_ctx, "MAGDA Settings", &open, &flags)) {
     m_ImGui_End(m_ctx);
+    if (m_ImGui_PopStyleColor) {
+      m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
+    }
     if (!open) {
       m_visible = false;
-      m_ctx = nullptr; // Context will be recreated on next Show()
+      m_ctx = nullptr;
     }
     return;
   }
@@ -218,12 +279,20 @@ void MagdaImGuiSettings::Render() {
   if (!open) {
     m_visible = false;
     m_ImGui_End(m_ctx);
-    m_ctx = nullptr; // Context will be recreated on next Show()
+    if (m_ImGui_PopStyleColor) {
+      int count = 10;
+      m_ImGui_PopStyleColor(m_ctx, &count);
+    }
+    m_ctx = nullptr;
     return;
   }
 
   // State filtering section
-  m_ImGui_Text(m_ctx, "State Filtering (reduces token usage)");
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, g_theme.headerText, "State Filtering");
+  } else {
+    m_ImGui_Text(m_ctx, "State Filtering");
+  }
   if (m_ImGui_Spacing)
     m_ImGui_Spacing(m_ctx);
 
@@ -287,9 +356,22 @@ void MagdaImGuiSettings::Render() {
   if (m_ImGui_Spacing)
     m_ImGui_Spacing(m_ctx);
 
-  // Save button
+  // Save button - accent colored
+  if (m_ImGui_PushStyleColor) {
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.accent);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered,
+                           THEME_RGBA(0x20, 0xF0, 0xFF));
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive,
+                           THEME_RGBA(0x00, 0xA0, 0xB0));
+  }
+
   if (m_ImGui_Button(m_ctx, "Save", nullptr, nullptr)) {
     OnSave();
+  }
+
+  if (m_ImGui_PopStyleColor) {
+    int n = 3;
+    m_ImGui_PopStyleColor(m_ctx, &n);
   }
 
   if (m_ImGui_SameLine)
@@ -301,4 +383,10 @@ void MagdaImGuiSettings::Render() {
   }
 
   m_ImGui_End(m_ctx);
+
+  // Pop window style colors
+  if (m_ImGui_PopStyleColor) {
+    int count = 10;
+    m_ImGui_PopStyleColor(m_ctx, &count);
+  }
 }

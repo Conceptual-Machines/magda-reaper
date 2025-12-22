@@ -27,20 +27,39 @@ constexpr int Password = 1 << 15;
 namespace ImGuiCol {
 constexpr int Text = 0;
 constexpr int WindowBg = 2;
+constexpr int ChildBg = 3;
 constexpr int FrameBg = 7;
+constexpr int FrameBgHovered = 8;
+constexpr int FrameBgActive = 9;
+constexpr int Border = 5;
 constexpr int Button = 21;
 constexpr int ButtonHovered = 22;
 constexpr int ButtonActive = 23;
 } // namespace ImGuiCol
 
-// Theme colors - format is 0xRRGGBBAA
+// Theme colors - format is 0xRRGGBBAA (matches chat/JSFX editor)
 #define THEME_RGBA(r, g, b) (((r) << 24) | ((g) << 16) | ((b) << 8) | 0xFF)
+
+struct ThemeColors {
+  int windowBg = THEME_RGBA(0x3C, 0x3C, 0x3C);    // Dark grey
+  int childBg = THEME_RGBA(0x2D, 0x2D, 0x2D);     // Slightly darker panels
+  int inputBg = THEME_RGBA(0x1E, 0x1E, 0x1E);     // Dark input
+  int headerText = THEME_RGBA(0xF0, 0xF0, 0xF0);  // Bright white headers
+  int normalText = THEME_RGBA(0xD0, 0xD0, 0xD0);  // Light grey text
+  int dimText = THEME_RGBA(0x80, 0x80, 0x80);     // Dimmed grey
+  int buttonBg = THEME_RGBA(0x48, 0x48, 0x48);    // Grey button
+  int buttonHover = THEME_RGBA(0x58, 0x58, 0x58); // Lighter on hover
+  int buttonActive = THEME_RGBA(0x38, 0x38, 0x38);
+  int border = THEME_RGBA(0x50, 0x50, 0x50);
+  int accent = THEME_RGBA(0x00, 0xD4, 0xE0);      // Electric cyan
+};
+static ThemeColors g_theme;
 
 static const int COLOR_SUCCESS = THEME_RGBA(0x88, 0xFF, 0x88);
 static const int COLOR_ERROR = THEME_RGBA(0xFF, 0x66, 0x66);
-static const int COLOR_WARNING = THEME_RGBA(0xFF, 0xFF, 0x66);
-static const int COLOR_INFO = THEME_RGBA(0x52, 0x94, 0xE2);
-static const int COLOR_DIM = THEME_RGBA(0x90, 0x90, 0x90);
+static const int COLOR_WARNING = THEME_RGBA(0xFF, 0xCC, 0x66);
+static const int COLOR_INFO = THEME_RGBA(0x00, 0xD4, 0xE0);  // Electric cyan
+static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
 // Default API URL for local development
 static const char *DEFAULT_API_URL = "http://localhost:8080";
@@ -402,18 +421,45 @@ void MagdaImGuiLogin::Render() {
       return;
   }
 
+  // Apply theme colors
+  int styleColorCount = 0;
+  if (m_ImGui_PushStyleColor) {
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::WindowBg, g_theme.windowBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.childBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Text, g_theme.normalText);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, g_theme.inputBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered, g_theme.buttonHover);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgActive, g_theme.buttonBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.buttonBg);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered, g_theme.buttonHover);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.buttonActive);
+    styleColorCount++;
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Border, g_theme.border);
+    styleColorCount++;
+  }
+
   // Set window size
   int cond = ImGuiCond::FirstUseEver;
-  m_ImGui_SetNextWindowSize(m_ctx, 400, 300, &cond);
+  m_ImGui_SetNextWindowSize(m_ctx, 420, 320, &cond);
 
   // Begin window
   int flags = ImGuiWindowFlags::NoCollapse;
   bool open = true;
-  if (!m_ImGui_Begin(m_ctx, "MAGDA Login", &open, &flags)) {
+  if (!m_ImGui_Begin(m_ctx, "MAGDA - API Connection", &open, &flags)) {
     m_ImGui_End(m_ctx);
+    if (m_ImGui_PopStyleColor)
+      m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
     if (!open) {
       m_visible = false;
-      m_ctx = nullptr; // Context will be recreated on next Show()
+      m_ctx = nullptr;
     }
     return;
   }
@@ -421,7 +467,9 @@ void MagdaImGuiLogin::Render() {
   if (!open) {
     m_visible = false;
     m_ImGui_End(m_ctx);
-    m_ctx = nullptr; // Context will be recreated on next Show()
+    if (m_ImGui_PopStyleColor)
+      m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
+    m_ctx = nullptr;
     return;
   }
 
@@ -451,76 +499,121 @@ void MagdaImGuiLogin::Render() {
   RenderStatusSection();
 
   m_ImGui_End(m_ctx);
+
+  // Pop style colors
+  if (m_ImGui_PopStyleColor) {
+    int count = 10; // Match the number of PushStyleColor calls
+    m_ImGui_PopStyleColor(m_ctx, &count);
+  }
 }
 
 void MagdaImGuiLogin::RenderAPISection() {
-  m_ImGui_Text(m_ctx, "API Server");
+  // Header
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, g_theme.headerText, "API Server");
+  } else {
+    m_ImGui_Text(m_ctx, "API Server");
+  }
   if (m_ImGui_Spacing)
     m_ImGui_Spacing(m_ctx);
 
-  // API URL input
+  // Help text
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, COLOR_DIM,
+                        "Enter the MAGDA API URL (local or hosted):");
+  }
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // API URL input - full width
   double availW = 0, availH = 0;
   if (m_ImGui_GetContentRegionAvail) {
     m_ImGui_GetContentRegionAvail(m_ctx, &availW, &availH);
   }
 
   if (m_ImGui_PushItemWidth && availW > 100) {
-    m_ImGui_PushItemWidth(m_ctx, availW - 80);
+    m_ImGui_PushItemWidth(m_ctx, availW - 10);
   }
 
   int flags = 0;
+  bool urlChanged = false;
   if (m_ImGui_InputTextWithHint) {
-    m_ImGui_InputTextWithHint(m_ctx, "##apiurl", "http://localhost:8080",
-                              m_apiUrlBuffer, sizeof(m_apiUrlBuffer), &flags,
-                              nullptr);
+    urlChanged = m_ImGui_InputTextWithHint(m_ctx, "##apiurl",
+                                           "http://localhost:8080",
+                                           m_apiUrlBuffer,
+                                           sizeof(m_apiUrlBuffer), &flags,
+                                           nullptr);
   } else {
-    m_ImGui_InputText(m_ctx, "##apiurl", m_apiUrlBuffer, sizeof(m_apiUrlBuffer),
-                      &flags, nullptr);
+    urlChanged = m_ImGui_InputText(m_ctx, "##apiurl", m_apiUrlBuffer,
+                                   sizeof(m_apiUrlBuffer), &flags, nullptr);
   }
 
   if (m_ImGui_PopItemWidth) {
     m_ImGui_PopItemWidth(m_ctx);
   }
 
-  if (m_ImGui_SameLine)
-    m_ImGui_SameLine(m_ctx, nullptr, nullptr);
+  // URL changed - reset auth mode so user knows to check again
+  if (urlChanged) {
+    m_authMode = AuthMode::Unknown;
+  }
 
-  // Connect button
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Connect button - accent colored
   bool checkDisabled = m_asyncPending;
   if (checkDisabled && m_ImGui_BeginDisabled) {
     bool disabled = true;
     m_ImGui_BeginDisabled(m_ctx, &disabled);
   }
 
-  if (m_ImGui_Button(m_ctx, m_checkingHealth ? "..." : "Check", nullptr,
-                     nullptr)) {
+  // Use accent color for the check button
+  if (m_ImGui_PushStyleColor) {
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, g_theme.accent);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonHovered,
+                           THEME_RGBA(0x20, 0xF0, 0xFF));
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive,
+                           THEME_RGBA(0x00, 0xA0, 0xB0));
+  }
+
+  if (m_ImGui_Button(m_ctx, m_checkingHealth ? "Checking..." : "Connect",
+                     nullptr, nullptr)) {
     SaveSettings();
     StartHealthCheck();
+  }
+
+  if (m_ImGui_PopStyleColor) {
+    int n = 3;
+    m_ImGui_PopStyleColor(m_ctx, &n);
   }
 
   if (checkDisabled && m_ImGui_EndDisabled) {
     m_ImGui_EndDisabled(m_ctx);
   }
 
-  // Show auth mode info
+  // Show connection status
   if (m_ImGui_Spacing)
     m_ImGui_Spacing(m_ctx);
 
   if (m_authMode == AuthMode::None) {
     if (m_ImGui_TextColored) {
-      m_ImGui_TextColored(m_ctx, COLOR_SUCCESS, "✓ Local mode (no auth)");
+      m_ImGui_TextColored(m_ctx, COLOR_SUCCESS,
+                          "Connected - Local mode (no authentication needed)");
     }
   } else if (m_authMode == AuthMode::Gateway) {
     if (m_ImGui_TextColored) {
-      m_ImGui_TextColored(m_ctx, COLOR_INFO, "🔒 Hosted mode (auth required)");
+      m_ImGui_TextColored(m_ctx, COLOR_INFO,
+                          "Connected - Hosted mode (login below)");
     }
   } else if (m_authMode == AuthMode::Error) {
     if (m_ImGui_TextColored) {
-      m_ImGui_TextColored(m_ctx, COLOR_ERROR, "✗ Connection failed");
+      m_ImGui_TextColored(m_ctx, COLOR_ERROR,
+                          "Connection failed - check URL and try again");
     }
   } else {
     if (m_ImGui_TextColored) {
-      m_ImGui_TextColored(m_ctx, COLOR_DIM, "Click 'Check' to test connection");
+      m_ImGui_TextColored(m_ctx, COLOR_DIM,
+                          "Click 'Connect' to test the API connection");
     }
   }
 }
