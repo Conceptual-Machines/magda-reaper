@@ -771,9 +771,51 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   }
 
   if (!target_item) {
+    // Log what we were looking for
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      if (position_str) {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - Clip not found at position %s on track %d\n",
+                 position_str, track_index);
+      } else if (bar_str) {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - Clip not found at bar %s on track %d\n",
+                 bar_str, track_index);
+      } else if (clip_str) {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - Clip not found at index %s on track %d\n",
+                 clip_str, track_index);
+      } else {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - No clip identifier provided for track %d\n",
+                 track_index);
+      }
+      ShowConsoleMsg(log_msg);
+    }
+    
     error_msg.Set("Clip not found: specify 'clip' (index), 'position' "
                   "(seconds), or 'bar' (bar number)");
     return false;
+  }
+  
+  // Log successful clip identification
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  if (ShowConsoleMsg) {
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
+        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+    if (GetMediaItemInfo_Value) {
+      double item_pos = GetMediaItemInfo_Value(target_item, "D_POSITION");
+      double item_len = GetMediaItemInfo_Value(target_item, "D_LENGTH");
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: Found clip at position %.6f, length %.6f on track %d\n",
+               item_pos, item_len, track_index);
+      ShowConsoleMsg(log_msg);
+    }
   }
 
   // Set properties using REAPER API
@@ -792,12 +834,93 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
   // Set name if provided
-  if (name && name[0] && GetSetMediaItemInfo_String) {
-    // GetSetMediaItemInfo_String requires a buffer - we need to copy the name
-    char name_buffer[512];
-    strncpy(name_buffer, name, sizeof(name_buffer) - 1);
-    name_buffer[sizeof(name_buffer) - 1] = '\0';
-    GetSetMediaItemInfo_String(target_item, "P_NAME", name_buffer, true);
+  // IMPORTANT: MediaItems don't have names directly - only MediaItem_Takes do!
+  // We need to get the active take and set its name
+  if (name && name[0]) {
+    MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+        (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *, char *,
+                                           int) =
+        (bool (*)(MediaItem_Take *, const char *, char *,
+                  int))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+    int (*CountTakes)(MediaItem *) =
+        (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+    MediaItem_Take *(*GetTake)(MediaItem *, int) =
+        (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
+    void (*SetActiveTake)(MediaItem_Take *) =
+        (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
+
+    if (GetActiveTake && GetSetMediaItemTakeInfo_String) {
+      // Get the active take (or first take if no active take)
+      MediaItem_Take *activeTake = GetActiveTake(target_item);
+      if (!activeTake && CountTakes && GetTake && SetActiveTake) {
+        // No active take, get the first take and make it active
+        int takeCount = CountTakes(target_item);
+        if (takeCount > 0) {
+          MediaItem_Take *firstTake = GetTake(target_item, 0);
+          if (firstTake) {
+            SetActiveTake(firstTake);
+            activeTake = firstTake;
+          }
+        }
+      }
+
+      if (activeTake) {
+        // GetSetMediaItemTakeInfo_String requires a buffer - copy the name
+        char name_buffer[512];
+        strncpy(name_buffer, name, sizeof(name_buffer) - 1);
+        name_buffer[sizeof(name_buffer) - 1] = '\0';
+
+        // Log the rename operation for debugging
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+              (double (*)(MediaItem *, const char *))g_rec->GetFunc(
+                  "GetMediaItemInfo_Value");
+          double item_pos = GetMediaItemInfo_Value
+                                ? GetMediaItemInfo_Value(target_item, "D_POSITION")
+                                : -1.0;
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Setting clip name at position %.6f to '%s' (via take)\n",
+                   item_pos, name_buffer);
+          ShowConsoleMsg(log_msg);
+        }
+
+        bool result = GetSetMediaItemTakeInfo_String(activeTake, "P_NAME",
+                                                     name_buffer, true);
+
+        // Log result
+        void (*ShowConsoleMsg2)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg2) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: GetSetMediaItemTakeInfo_String returned: %s\n",
+                   result ? "true" : "false");
+          ShowConsoleMsg2(log_msg);
+
+          // Verify it was set by reading it back
+          char verify_buffer[512] = {0};
+          if (GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", verify_buffer,
+                                             false)) {
+            char verify_msg[256];
+            snprintf(verify_msg, sizeof(verify_msg),
+                     "MAGDA: Verified clip name is now: '%s'\n", verify_buffer);
+            ShowConsoleMsg2(verify_msg);
+          }
+        }
+      } else {
+        // No take available - create one if possible
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: WARNING - Clip has no takes, cannot set name\n");
+        }
+      }
+    }
   }
 
   // Set color if provided (REAPER uses integer color values)
