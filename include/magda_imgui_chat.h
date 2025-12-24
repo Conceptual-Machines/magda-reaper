@@ -202,6 +202,7 @@ private:
   std::string m_asyncResponseJson;
   std::string m_asyncErrorMsg;
   std::string m_pendingQuestion; // Question being processed
+  std::vector<std::string> m_streamingActions; // Actions queued from stream (executed on main thread)
 
   // Internal methods
   void ProcessAsyncResult();
