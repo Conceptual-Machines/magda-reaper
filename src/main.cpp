@@ -155,7 +155,8 @@ static void imguiTimerCallback() {
 
 // Command IDs - dynamically allocated to avoid conflicts with REAPER built-ins
 // These are set in the entry point via rec->Register("command_id", ...)
-int g_cmdMixAnalyze = 0;  // Exported for use by other files via extern
+int g_cmdMixAnalyze = 0;    // Exported for use by other files via extern
+int g_cmdMasterAnalyze = 0; // Exported for use by other files via extern
 
 // Internal command IDs (still using high numbers to avoid conflicts)
 static int g_cmdMenuID = 0;
@@ -177,6 +178,7 @@ static int g_cmdJSFXEditor = 0;
 #define MAGDA_CMD_SCAN_PLUGINS g_cmdScanPlugins
 #define MAGDA_CMD_ANALYZE_TRACK g_cmdAnalyzeTrack
 #define MAGDA_CMD_MIX_ANALYZE g_cmdMixAnalyze
+#define MAGDA_CMD_MASTER_ANALYZE g_cmdMasterAnalyze
 #define MAGDA_CMD_TEST_EXECUTE_ACTION g_cmdTestExecute
 #define MAGDA_CMD_JSFX_EDITOR g_cmdJSFXEditor
 
@@ -475,7 +477,8 @@ void magdaAction(int command_id, int flag) {
 
         // Get selected track name for smart suggestion
         MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
-            (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetSelectedTrack");
+            (MediaTrack * (*)(ReaProject *, int))
+                g_rec->GetFunc("GetSelectedTrack");
         bool (*GetTrackName)(MediaTrack *, char *, int) =
             (bool (*)(MediaTrack *, char *, int))g_rec->GetFunc("GetTrackName");
 
@@ -483,10 +486,12 @@ void magdaAction(int command_id, int flag) {
           MediaTrack *track = GetSelectedTrack(nullptr, 0);
           if (track) {
             char trackName[256] = {0};
-            if (GetTrackName(track, trackName, sizeof(trackName)) && trackName[0]) {
+            if (GetTrackName(track, trackName, sizeof(trackName)) &&
+                trackName[0]) {
               // Simple keyword detection (could be improved later)
               std::string lowerName = trackName;
-              for (auto &c : lowerName) c = tolower(c);
+              for (auto &c : lowerName)
+                c = tolower(c);
 
               if (lowerName.find("drum") != std::string::npos ||
                   lowerName.find("kick") != std::string::npos ||
@@ -516,6 +521,24 @@ void magdaAction(int command_id, int flag) {
         }
 
         g_imguiChat->ShowWithInput(prefill.c_str());
+      } else {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");
+        }
+      }
+    }
+  } else if (command_id == g_cmdMasterAnalyze) {
+    // Master analysis: open chat with @master: prefilled
+    {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Opening chat for master analysis...\n");
+      }
+
+      if (g_imguiChat && g_imguiChat->IsAvailable()) {
+        g_imguiChat->ShowWithInput("@master:");
       } else {
         if (ShowConsoleMsg) {
           ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");
@@ -612,6 +635,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
       (g_cmdScanPlugins != 0 && command == g_cmdScanPlugins) ||
       (g_cmdAnalyzeTrack != 0 && command == g_cmdAnalyzeTrack) ||
       (g_cmdMixAnalyze != 0 && command == g_cmdMixAnalyze) ||
+      (g_cmdMasterAnalyze != 0 && command == g_cmdMasterAnalyze) ||
       (g_cmdJSFXEditor != 0 && command == g_cmdJSFXEditor) ||
       (g_cmdTestExecute != 0 && command == g_cmdTestExecute)) {
     magdaAction(command, 0);
@@ -830,7 +854,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     ShowConsoleMsg("MAGDA: Testing console output...\n");
   }
 
-  // Allocate unique command IDs dynamically to avoid conflicts with REAPER built-ins
+  // Allocate unique command IDs dynamically to avoid conflicts with REAPER
+  // built-ins
   g_cmdMenuID = rec->Register("command_id", (void *)"MAGDA_Menu");
   g_cmdOpen = rec->Register("command_id", (void *)"MAGDA_Open");
   g_cmdLogin = rec->Register("command_id", (void *)"MAGDA_Login");
@@ -839,6 +864,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   g_cmdScanPlugins = rec->Register("command_id", (void *)"MAGDA_ScanPlugins");
   g_cmdAnalyzeTrack = rec->Register("command_id", (void *)"MAGDA_AnalyzeTrack");
   g_cmdMixAnalyze = rec->Register("command_id", (void *)"MAGDA_MixAnalyze");
+  g_cmdMasterAnalyze =
+      rec->Register("command_id", (void *)"MAGDA_MasterAnalyze");
   g_cmdJSFXEditor = rec->Register("command_id", (void *)"MAGDA_JSFXEditor");
   g_cmdTestExecute = rec->Register("command_id", (void *)"MAGDA_TestExecute");
 
@@ -846,26 +873,34 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     char msg[512];
     snprintf(msg, sizeof(msg),
              "MAGDA: Allocated command IDs: Open=%d, Login=%d, Settings=%d, "
-             "About=%d, Plugins=%d, Analyze=%d, MixAnalyze=%d, Test=%d\n",
+             "About=%d, Plugins=%d, Analyze=%d, MixAnalyze=%d, "
+             "MasterAnalyze=%d, Test=%d\n",
              g_cmdOpen, g_cmdLogin, g_cmdSettings, g_cmdAbout, g_cmdScanPlugins,
-             g_cmdAnalyzeTrack, g_cmdMixAnalyze, g_cmdTestExecute);
+             g_cmdAnalyzeTrack, g_cmdMixAnalyze, g_cmdMasterAnalyze,
+             g_cmdTestExecute);
     ShowConsoleMsg(msg);
   }
 
   // Register actions for all menu items (using dynamically allocated IDs)
-  gaccel_register_t gaccel_open = {{0, 0, (unsigned short)g_cmdOpen}, "MAGDA: Open MAGDA"};
-  gaccel_register_t gaccel_login = {{0, 0, (unsigned short)g_cmdLogin}, "MAGDA: Login"};
+  gaccel_register_t gaccel_open = {{0, 0, (unsigned short)g_cmdOpen},
+                                   "MAGDA: Open MAGDA"};
+  gaccel_register_t gaccel_login = {{0, 0, (unsigned short)g_cmdLogin},
+                                    "MAGDA: Login"};
   gaccel_register_t gaccel_settings = {{0, 0, (unsigned short)g_cmdSettings},
                                        "MAGDA: Settings"};
-  gaccel_register_t gaccel_about = {{0, 0, (unsigned short)g_cmdAbout}, "MAGDA: About"};
-  gaccel_register_t gaccel_scan_plugins = {{0, 0, (unsigned short)g_cmdScanPlugins},
-                                           "MAGDA: Plugins"};
-  gaccel_register_t gaccel_analyze_track = {{0, 0, (unsigned short)g_cmdAnalyzeTrack},
-                                            "MAGDA: Analyze Selected Track"};
-  gaccel_register_t gaccel_mix_analyze = {{0, 0, (unsigned short)g_cmdMixAnalyze},
-                                          "MAGDA: Mix Analysis"};
-  gaccel_register_t gaccel_jsfx_editor = {{0, 0, (unsigned short)g_cmdJSFXEditor},
-                                          "MAGDA: JSFX Editor"};
+  gaccel_register_t gaccel_about = {{0, 0, (unsigned short)g_cmdAbout},
+                                    "MAGDA: About"};
+  gaccel_register_t gaccel_scan_plugins = {
+      {0, 0, (unsigned short)g_cmdScanPlugins}, "MAGDA: Plugins"};
+  gaccel_register_t gaccel_analyze_track = {
+      {0, 0, (unsigned short)g_cmdAnalyzeTrack},
+      "MAGDA: Analyze Selected Track"};
+  gaccel_register_t gaccel_mix_analyze = {
+      {0, 0, (unsigned short)g_cmdMixAnalyze}, "MAGDA: Mix Analysis"};
+  gaccel_register_t gaccel_master_analyze = {
+      {0, 0, (unsigned short)g_cmdMasterAnalyze}, "MAGDA: Master Analysis"};
+  gaccel_register_t gaccel_jsfx_editor = {
+      {0, 0, (unsigned short)g_cmdJSFXEditor}, "MAGDA: JSFX Editor"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
 
@@ -902,6 +937,11 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   if (rec->Register("gaccel", &gaccel_mix_analyze)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Mix Analysis' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_master_analyze)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'Master Analysis' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_jsfx_editor)) {

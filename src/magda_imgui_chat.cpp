@@ -4,8 +4,8 @@
 #include "magda_api_client.h"
 #include "magda_bounce_workflow.h"
 #include "magda_imgui_login.h"
-#include "magda_plugin_scanner.h"
 #include "magda_imgui_settings.h"
+#include "magda_plugin_scanner.h"
 #include "magda_state.h"
 #include <algorithm>
 #include <cstring>
@@ -22,6 +22,7 @@ extern void magdaAction(int command_id, int flag);
 
 // Command ID for mix analysis (defined in main.cpp, dynamically allocated)
 extern int g_cmdMixAnalyze;
+extern int g_cmdMasterAnalyze;
 
 // ReaImGui constants
 namespace ImGuiCond {
@@ -539,7 +540,8 @@ void MagdaImGuiChat::Render() {
       // Count selectable items (exclude separators)
       int selectableCount = 0;
       for (const auto &s : m_suggestions) {
-        if (s.plugin_type != "separator") selectableCount++;
+        if (s.plugin_type != "separator")
+          selectableCount++;
       }
 
       if (selectableCount > 0) {
@@ -586,7 +588,8 @@ void MagdaImGuiChat::Render() {
     double zero = 0;
     m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    // Hide Send button when autocomplete is showing to prevent accidental clicks
+    // Hide Send button when autocomplete is showing to prevent accidental
+    // clicks
     if (!m_showAutocomplete) {
       if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
         if (!m_busy && strlen(m_inputBuffer) > 0) {
@@ -628,7 +631,7 @@ void MagdaImGuiChat::Render() {
     double col1W = totalW * 0.25; // Request (narrower)
     double col2W = totalW * 0.50; // Response (wider)
     double col3W = totalW * 0.25; // Controls (narrower)
-    double paneH = -30;  // Leave room for footer
+    double paneH = -30;           // Leave room for footer
 
     // Column 1: REQUEST (user messages)
     if (m_ImGui_BeginChild(m_ctx, "##request", &col1W, &paneH, &borderFlags,
@@ -750,16 +753,9 @@ void MagdaImGuiChat::Render() {
         magdaAction(g_cmdMixAnalyze, 0);
       }
       if (m_ImGui_Button(m_ctx, "Master Analysis", nullptr, nullptr)) {
-        if (m_onSend)
-          m_onSend("Analyze the master bus and suggest mastering adjustments");
-      }
-      if (m_ImGui_Button(m_ctx, "Gain Staging", nullptr, nullptr)) {
-        if (m_onSend)
-          m_onSend("Check gain staging across all tracks");
-      }
-      if (m_ImGui_Button(m_ctx, "Housekeeping", nullptr, nullptr)) {
-        if (m_onSend)
-          m_onSend("Clean up and organize this project");
+        // Trigger master analysis workflow (bounce master/analyze/send to
+        // agent)
+        magdaAction(g_cmdMasterAnalyze, 0);
       }
     }
     m_ImGui_EndChild(m_ctx);
@@ -806,9 +802,9 @@ void MagdaImGuiChat::RenderMainContent() {
   if (m_ImGui_BeginTable(m_ctx, "##main_layout", 3, &tableFlags, &outerSizeW,
                          &outerSizeH, &innerWidth)) {
     int stretchFlags = ImGuiTableColumnFlags::WidthStretch;
-    double col1Weight = 0.5;  // Request (narrower)
-    double col2Weight = 1.0;  // Response (wider)
-    double col3Weight = 0.5;  // Controls (narrower)
+    double col1Weight = 0.5; // Request (narrower)
+    double col2Weight = 1.0; // Response (wider)
+    double col3Weight = 0.5; // Controls (narrower)
     m_ImGui_TableSetupColumn(m_ctx, "REQUEST", &stretchFlags, &col1Weight,
                              nullptr);
     m_ImGui_TableSetupColumn(m_ctx, "RESPONSE", &stretchFlags, &col2Weight,
@@ -999,25 +995,8 @@ void MagdaImGuiChat::RenderControlsColumn() {
   m_ImGui_Dummy(m_ctx, 0, 3);
 
   if (m_ImGui_Button(m_ctx, "Master Analysis", &btnWidth, &btnHeight)) {
-    if (m_onSend) {
-      m_onSend("Analyze the master bus and suggest mastering adjustments");
-    }
-  }
-
-  m_ImGui_Dummy(m_ctx, 0, 3);
-
-  if (m_ImGui_Button(m_ctx, "Gain Staging", &btnWidth, &btnHeight)) {
-    if (m_onSend) {
-      m_onSend("Check gain staging across all tracks");
-    }
-  }
-
-  m_ImGui_Dummy(m_ctx, 0, 3);
-
-  if (m_ImGui_Button(m_ctx, "Housekeeping", &btnWidth, &btnHeight)) {
-    if (m_onSend) {
-      m_onSend("Clean up and organize this project");
-    }
+    // Trigger master analysis workflow (bounce master/analyze/send to agent)
+    magdaAction(g_cmdMasterAnalyze, 0);
   }
 
   m_ImGui_Separator(m_ctx);
@@ -1095,7 +1074,8 @@ void MagdaImGuiChat::RenderInputArea() {
     // Count selectable items (exclude separators)
     int selectableCount = 0;
     for (const auto &s : m_suggestions) {
-      if (s.plugin_type != "separator") selectableCount++;
+      if (s.plugin_type != "separator")
+        selectableCount++;
     }
 
     if (selectableCount > 0) {
@@ -1340,7 +1320,8 @@ void MagdaImGuiChat::DetectAtTrigger() {
   // Count selectable items (exclude separators)
   int selectableCount = 0;
   for (const auto &s : m_suggestions) {
-    if (s.plugin_type != "separator") selectableCount++;
+    if (s.plugin_type != "separator")
+      selectableCount++;
   }
 
   m_showAutocomplete = selectableCount > 0;
@@ -1460,34 +1441,125 @@ void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
   m_atPosition = std::string::npos;
 }
 
-// Check if message is a @mix: command and handle it
+// Check if message is a @mix: or @master: command and handle it
 // Returns true if handled (should not be sent to regular API)
 bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
+  // Check for @master: prefix first (master bus analysis)
+  size_t masterPos = msg.find("@master:");
+  if (masterPos != std::string::npos) {
+    // Extract query after @master:
+    std::string afterMaster = msg.substr(masterPos + 8); // After "@master:"
+
+    // Trim leading spaces from query
+    size_t queryStart = afterMaster.find_first_not_of(" ");
+    std::string userQuery;
+    if (queryStart != std::string::npos) {
+      userQuery = afterMaster.substr(queryStart);
+    }
+
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char logMsg[512];
+      snprintf(logMsg, sizeof(logMsg), "MAGDA: Master analysis - query: '%s'\n",
+               userQuery.c_str());
+      ShowConsoleMsg(logMsg);
+    }
+
+    // Clear any pending result from previous run
+    MagdaBounceWorkflow::ClearPendingResult();
+
+    // Execute the master analysis workflow
+    WDL_FastString error_msg;
+    bool success = MagdaBounceWorkflow::ExecuteMasterWorkflow(userQuery.c_str(),
+                                                              error_msg);
+
+    if (!success) {
+      std::string errorStr = "Master analysis failed: ";
+      errorStr += error_msg.Get();
+      AddAssistantMessage(errorStr);
+    } else {
+      // Set busy state to show spinner
+      m_busy = true;
+      m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+      SetAPIStatus("Analyzing master...", 0xFFFF66FF); // Yellow
+    }
+
+    return true;
+  }
+
   // Check for @mix: prefix
   size_t mixPos = msg.find("@mix:");
   if (mixPos == std::string::npos) {
     return false;
   }
 
-  // Extract track type and query
+  // Extract command after @mix:
   std::string afterMix = msg.substr(mixPos + 5); // After "@mix:"
+  
+  // Trim leading spaces
+  size_t cmdStart = afterMix.find_first_not_of(" ");
+  if (cmdStart == std::string::npos) {
+    AddAssistantMessage("Error: Please specify a track type or comparison after @mix: (e.g., @mix:synth make it brighter or @mix:compare drums bass)");
+    return true;
+  }
+  afterMix = afterMix.substr(cmdStart);
 
-  // Find the track type (next word)
-  size_t typeStart = afterMix.find_first_not_of(" ");
-  if (typeStart == std::string::npos) {
-    AddAssistantMessage("Error: Please specify a track type after @mix: (e.g., @mix:synth make it brighter)");
+  // Check for "compare" keyword for multi-track comparison
+  std::string lowerCmd = afterMix;
+  std::transform(lowerCmd.begin(), lowerCmd.end(), lowerCmd.begin(), ::tolower);
+  
+  if (lowerCmd.compare(0, 8, "compare ") == 0) {
+    // Multi-track comparison mode
+    std::string compareArgs = afterMix.substr(8); // After "compare "
+    size_t argsStart = compareArgs.find_first_not_of(" ");
+    if (argsStart != std::string::npos) {
+      compareArgs = compareArgs.substr(argsStart);
+    }
+
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char logMsg[512];
+      snprintf(logMsg, sizeof(logMsg),
+               "MAGDA: Multi-track comparison - args: '%s'\n",
+               compareArgs.c_str());
+      ShowConsoleMsg(logMsg);
+    }
+
+    // Clear any pending result from previous run
+    MagdaBounceWorkflow::ClearPendingResult();
+
+    // Execute the multi-track comparison workflow
+    WDL_FastString error_msg;
+    bool success = MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(
+        compareArgs.c_str(), error_msg);
+
+    if (!success) {
+      std::string errorStr = "Multi-track comparison failed: ";
+      errorStr += error_msg.Get();
+      AddAssistantMessage(errorStr);
+    } else {
+      // Set busy state to show spinner
+      m_busy = true;
+      m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+      SetAPIStatus("Comparing tracks...", 0xFFFF66FF); // Yellow
+    }
+
     return true;
   }
 
-  size_t typeEnd = afterMix.find(' ', typeStart);
+  // Single-track mode (original behavior)
+  // Find the track type (next word)
+  size_t typeEnd = afterMix.find(' ');
   std::string trackType;
   std::string userQuery;
 
   if (typeEnd == std::string::npos) {
-    trackType = afterMix.substr(typeStart);
+    trackType = afterMix;
     userQuery = "";
   } else {
-    trackType = afterMix.substr(typeStart, typeEnd - typeStart);
+    trackType = afterMix.substr(0, typeEnd);
     userQuery = afterMix.substr(typeEnd + 1);
     // Trim leading spaces from query
     size_t queryStart = userQuery.find_first_not_of(" ");
