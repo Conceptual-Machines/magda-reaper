@@ -1437,6 +1437,11 @@ std::string MagdaPluginScanner::ResolveAlias(const char *alias) const {
     alias_str = alias_str.substr(1);
   }
 
+  // Strip "plugin:" prefix if present (autocomplete adds this for display)
+  if (alias_str.compare(0, 7, "plugin:") == 0) {
+    alias_str = alias_str.substr(7);
+  }
+
   // Also strip trailing whitespace
   while (!alias_str.empty() &&
          (alias_str.back() == ' ' || alias_str.back() == '\t')) {
