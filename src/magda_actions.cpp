@@ -529,10 +529,11 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
     return nullptr;
   }
 
-  // Find clip at or near the target position (within 0.1 seconds tolerance)
+  // Find clip at or near the target position (within tolerance)
+  // Use smaller tolerance for more precise matching (0.01 seconds = 10ms)
   int total_items = CountMediaItems(nullptr);
   MediaItem *best_match = nullptr;
-  double best_distance = 1.0; // 1 second tolerance
+  double best_distance = 0.01; // 10ms tolerance for precise matching
 
   for (int i = 0; i < total_items; i++) {
     MediaItem *item = GetMediaItem(nullptr, i);
@@ -549,6 +550,20 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
         best_match = item;
         best_distance = distance;
       }
+    }
+  }
+
+  // Log if clip not found for debugging
+  if (!best_match) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char msg[256];
+      snprintf(msg, sizeof(msg),
+               "MAGDA: FindClipByPosition: No clip found at position %.6f on "
+               "track (tolerance: 0.01s)\n",
+               target_position);
+      ShowConsoleMsg(msg);
     }
   }
 
