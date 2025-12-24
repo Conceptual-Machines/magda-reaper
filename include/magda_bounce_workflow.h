@@ -3,8 +3,8 @@
 #include "../WDL/WDL/wdlstring.h"
 #include "reaper_plugin.h"
 #include <functional>
-#include <string>
 #include <mutex>
+#include <string>
 
 // Forward declarations
 class MediaTrack;
@@ -19,12 +19,13 @@ enum BounceMode {
 // Result structure for mix analysis
 struct MixAnalysisResult {
   bool success = false;
-  std::string responseText;  // Human-readable explanation
-  std::string actionsJson;   // JSON actions to execute
+  std::string responseText; // Human-readable explanation
+  std::string actionsJson;  // JSON actions to execute
 };
 
 // Result callback type for mix analysis
-using MixAnalysisCallback = std::function<void(bool success, const std::string &result)>;
+using MixAnalysisCallback =
+    std::function<void(bool success, const std::string &result)>;
 
 // Mix analysis bounce workflow
 // Workflow structure:
@@ -39,7 +40,7 @@ using MixAnalysisCallback = std::function<void(bool success, const std::string &
 // thread.
 class MagdaBounceWorkflow {
 public:
-  // Execute the full workflow:
+  // Execute the full workflow for a selected track:
   // 1. Prepare track (copy, hide, select item) - synchronous
   // 2. Queue render command (executed later on main thread)
   // 3. After render, start async thread for DSP analysis + API call
@@ -48,6 +49,11 @@ public:
   static bool ExecuteWorkflow(BounceMode bounceMode, const char *trackType,
                               const char *userRequest,
                               WDL_FastString &error_msg);
+
+  // Execute master analysis workflow (bounce master bus output)
+  // Similar to ExecuteWorkflow but bounces the master track output instead
+  static bool ExecuteMasterWorkflow(const char *userRequest,
+                                    WDL_FastString &error_msg);
 
   // Set callback for when mix analysis completes
   static void SetResultCallback(MixAnalysisCallback callback);
