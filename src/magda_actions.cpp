@@ -778,13 +778,18 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
 
   // Set name if provided
   if (name && name[0] && GetSetMediaItemInfo_String) {
-    GetSetMediaItemInfo_String(target_item, "P_NAME", (char *)name, true);
+    // GetSetMediaItemInfo_String requires a buffer - we need to copy the name
+    char name_buffer[512];
+    strncpy(name_buffer, name, sizeof(name_buffer) - 1);
+    name_buffer[sizeof(name_buffer) - 1] = '\0';
+    GetSetMediaItemInfo_String(target_item, "P_NAME", name_buffer, true);
   }
 
   // Set color if provided (REAPER uses integer color values)
   if (color && color[0] && GetSetMediaItemInfo) {
     // Parse hex color like "#ff0000" to integer
     // REAPER uses BGR format: 0xBBGGRR
+    int color_val = 0;
     if (color[0] == '#') {
       unsigned int hex_color = 0;
       if (strlen(color) >= 7) {
@@ -794,9 +799,25 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
         unsigned int g = (hex_color >> 8) & 0xFF;
         unsigned int b = hex_color & 0xFF;
         unsigned int bgr = (b << 16) | (g << 8) | r;
-        int color_val = (int)bgr;
-        GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &color_val, nullptr);
+        color_val = (int)bgr;
       }
+    } else {
+      // Try to parse as hex without #
+      unsigned int hex_color = 0;
+      if (sscanf(color, "%x", &hex_color) == 1) {
+        unsigned int r = (hex_color >> 16) & 0xFF;
+        unsigned int g = (hex_color >> 8) & 0xFF;
+        unsigned int b = hex_color & 0xFF;
+        unsigned int bgr = (b << 16) | (g << 8) | r;
+        color_val = (int)bgr;
+      }
+    }
+
+    if (color_val != 0) {
+      // Set flag bit 0x1000000 to enable custom color (same as tracks)
+      int color_with_flag = color_val | 0x1000000;
+      GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &color_with_flag,
+                          nullptr);
     }
   }
 
@@ -1483,15 +1504,43 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
         if (result_count > 0)
           result.Append(",");
 
+        // Log action execution for debugging
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg && action_type) {
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n",
+                   action_type);
+          ShowConsoleMsg(log_msg);
+        }
+
         WDL_FastString action_result, action_error;
         if (ExecuteAction(item, action_result, action_error)) {
           result.Append(action_result.Get());
+
+          // Log success
+          if (ShowConsoleMsg && action_type) {
+            char log_msg[512];
+            snprintf(log_msg, sizeof(log_msg),
+                     "MAGDA: Action '%s' succeeded: %s\n", action_type,
+                     action_result.Get());
+            ShowConsoleMsg(log_msg);
+          }
         } else {
           result.Append("{\"error\":");
           result.Append("\"");
           result.Append(action_error.Get());
           result.Append("\"}");
           success = false;
+
+          // Log error
+          if (ShowConsoleMsg && action_type) {
+            char log_msg[512];
+            snprintf(log_msg, sizeof(log_msg),
+                     "MAGDA: Action '%s' failed: %s\n", action_type,
+                     action_error.Get());
+            ShowConsoleMsg(log_msg);
+          }
         }
         result_count++;
       }
@@ -1530,15 +1579,43 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
     }
   } else if (root->is_object()) {
     // Single action
+    const char *action_type = root->get_string_by_name("action");
+
+    // Log action execution for debugging
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg && action_type) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n",
+               action_type);
+      ShowConsoleMsg(log_msg);
+    }
+
     WDL_FastString action_result, action_error;
     if (ExecuteAction(root, action_result, action_error)) {
       result.Append(action_result.Get());
+
+      // Log success
+      if (ShowConsoleMsg && action_type) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' succeeded: %s\n",
+                 action_type, action_result.Get());
+        ShowConsoleMsg(log_msg);
+      }
     } else {
       result.Append("{\"error\":");
       result.Append("\"");
       result.Append(action_error.Get());
       result.Append("\"}");
       success = false;
+
+      // Log error
+      if (ShowConsoleMsg && action_type) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' failed: %s\n",
+                 action_type, action_error.Get());
+        ShowConsoleMsg(log_msg);
+      }
     }
   } else {
     error_msg.Set("JSON must be an object or array");
