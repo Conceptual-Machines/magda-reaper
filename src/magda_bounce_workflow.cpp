@@ -26,7 +26,8 @@ enum ReaperCommandType {
   CMD_RENDER_ITEM = 0,
   CMD_DELETE_TRACK = 1,
   CMD_DELETE_TAKE = 2,
-  CMD_DSP_ANALYZE = 3
+  CMD_DSP_ANALYZE = 3,
+  CMD_MULTI_TRACK_COMPARE = 4
 };
 
 struct ReaperCommand {
@@ -577,6 +578,243 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
 
   if (ShowConsoleMsg) {
     ShowConsoleMsg("MAGDA: Master analysis queued for processing\n");
+  }
+
+  return true;
+}
+
+bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
+                                                    WDL_FastString &error_msg) {
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Starting multi-track comparison workflow...\n");
+  }
+
+  if (!compareArgs || !compareArgs[0]) {
+    error_msg.Set("No comparison arguments provided");
+    return false;
+  }
+
+  // Get required functions
+  int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
+  MediaTrack *(*GetTrack)(ReaProject *, int) =
+      (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+  bool (*IsTrackSelected)(MediaTrack *) =
+      (bool (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
+  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *,
+                                             bool *) =
+      (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo_String");
+
+  if (!GetNumTracks || !GetTrack || !IsTrackSelected) {
+    error_msg.Set("Required REAPER functions not available");
+    return false;
+  }
+
+  // Parse track identifiers from compareArgs
+  // Format examples:
+  // - "selected" - compare all selected tracks
+  // - "track 1 and track 2" - compare tracks by index
+  // - "drums bass" - compare tracks by name (partial match)
+  std::vector<int> trackIndices;
+
+  std::string args(compareArgs);
+  std::transform(args.begin(), args.end(), args.begin(), ::tolower);
+
+  // Check for "selected" keyword
+  if (args.find("selected") != std::string::npos) {
+    // Get all selected tracks
+    int numTracks = GetNumTracks();
+    for (int i = 0; i < numTracks; i++) {
+      MediaTrack *track = GetTrack(nullptr, i);
+      if (track && IsTrackSelected(track)) {
+        trackIndices.push_back(i);
+      }
+    }
+
+    if (trackIndices.empty()) {
+      error_msg.Set("No tracks selected. Please select at least two tracks to compare.");
+      return false;
+    }
+
+    if (trackIndices.size() < 2) {
+      error_msg.Set("Please select at least two tracks to compare.");
+      return false;
+    }
+  } else {
+    // Parse track names or indices from args
+    // Try to match track names first
+    std::vector<std::string> trackIdentifiers;
+    std::string current;
+    for (char c : args) {
+      if (c == ' ' || c == ',' || c == '&' || 
+          (args.find(" and ") != std::string::npos && 
+           current.find("and") != std::string::npos)) {
+        if (!current.empty()) {
+          // Remove "and" keyword
+          if (current != "and") {
+            trackIdentifiers.push_back(current);
+          }
+          current.clear();
+        }
+      } else {
+        current += c;
+      }
+    }
+    if (!current.empty() && current != "and") {
+      trackIdentifiers.push_back(current);
+    }
+
+    // Also try to extract track numbers (e.g., "track 1", "1", etc.)
+    for (const std::string &ident : trackIdentifiers) {
+      // Try to find track by number
+      char *endPtr;
+      long trackNum = strtol(ident.c_str(), &endPtr, 10);
+      if (*endPtr == '\0' && trackNum >= 0) {
+        // It's a number - use as track index
+        int idx = (int)trackNum;
+        int numTracks = GetNumTracks();
+        if (idx < numTracks) {
+          if (std::find(trackIndices.begin(), trackIndices.end(), idx) == trackIndices.end()) {
+            trackIndices.push_back(idx);
+          }
+        }
+      } else {
+        // Try to find track by name (partial match)
+        int numTracks = GetNumTracks();
+        for (int i = 0; i < numTracks; i++) {
+          MediaTrack *track = GetTrack(nullptr, i);
+          if (track && GetSetMediaTrackInfo_String) {
+            char trackName[256] = {0};
+            bool setValue = false;
+            GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", trackName, &setValue);
+            if (trackName[0]) {
+              std::string name(trackName);
+              std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+              if (name.find(ident) != std::string::npos ||
+                  ident.find(name) != std::string::npos) {
+                if (std::find(trackIndices.begin(), trackIndices.end(), i) == trackIndices.end()) {
+                  trackIndices.push_back(i);
+                  break; // Match first track with this name
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (trackIndices.empty()) {
+      error_msg.Set("No tracks found matching the provided identifiers. Try: '@mix:compare selected' or specify track names/indices.");
+      return false;
+    }
+
+    if (trackIndices.size() < 2) {
+      error_msg.Set("Please specify at least two tracks to compare (e.g., '@mix:compare track1 and track2' or '@mix:compare selected').");
+      return false;
+    }
+  }
+
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA: Comparing %zu tracks...\n",
+             trackIndices.size());
+    ShowConsoleMsg(msg);
+  }
+
+  // For now, we'll queue each track for analysis sequentially
+  // TODO: Could optimize to do parallel analysis in the future
+  // Store track indices for sequential processing
+  // This is a simplified implementation - in practice, you'd want to
+  // queue all tracks and process them together
+  
+  // For MVP, let's analyze tracks one by one and collect results
+  // We'll store the analysis results and send them all together at the end
+  // This requires modifying the workflow to support collecting multiple results
+  
+  // For now, let's just analyze the first two tracks and send them together
+  // as a proof of concept
+  if (trackIndices.size() > 2) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Warning - comparing first 2 tracks (full multi-track support coming soon)\n");
+    }
+    trackIndices.resize(2);
+  }
+
+  // For MVP, queue the first track for analysis with a note that it's a comparison
+  // Future: Implement full multi-track analysis that collects all results and sends together
+  // For now, we'll analyze tracks sequentially and the user can compare them
+  // or we can enhance the backend to accept multiple tracks in one request
+  
+  if (trackIndices.size() > 2 && ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Comparing first 2 tracks (analyzing sequentially)\n");
+  }
+
+  // Queue each track for analysis - they'll be processed sequentially
+  // TODO: Enhance to collect all results and send in one multi_track API call
+  for (size_t i = 0; i < trackIndices.size() && i < 2; i++) {
+    int trackIdx = trackIndices[i];
+    MediaTrack *track = GetTrack(nullptr, trackIdx);
+    if (!track) {
+      continue;
+    }
+
+    // Get track name
+    char trackName[256] = "Track";
+    if (GetSetMediaTrackInfo_String) {
+      char name[256] = {0};
+      bool setValue = false;
+      GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", name, &setValue);
+      if (name[0]) {
+        strncpy(trackName, name, sizeof(trackName) - 1);
+        trackName[sizeof(trackName) - 1] = '\0';
+      }
+    }
+
+    // Queue render command for this track
+    {
+      std::lock_guard<std::mutex> lock(s_commandQueueMutex);
+      ReaperCommand cmd;
+      cmd.type = CMD_RENDER_ITEM;
+      cmd.trackIndex = trackIdx;
+      cmd.itemIndex = 0;
+      cmd.completed = false;
+      cmd.startAsyncAfterRender = true;
+      cmd.selectedTrackIndex = trackIdx;
+      strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
+      cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
+      strncpy(cmd.trackType, i == 0 ? "compare_track1" : "compare_track2", 
+              sizeof(cmd.trackType) - 1);
+      cmd.trackType[sizeof(cmd.trackType) - 1] = '\0';
+      // Add note that this is a comparison
+      std::string userReq = "Compare this track with ";
+      if (trackIndices.size() > 1) {
+        MediaTrack *otherTrack = GetTrack(nullptr, trackIndices[1 - i]);
+        if (otherTrack && GetSetMediaTrackInfo_String) {
+          char otherName[256] = {0};
+          bool setValue = false;
+          GetSetMediaTrackInfo_String((INT_PTR)otherTrack, "P_NAME", otherName, &setValue);
+          if (otherName[0]) {
+            userReq += otherName;
+          } else {
+            userReq += "track ";
+            userReq += std::to_string(trackIndices[1 - i]);
+          }
+        }
+      }
+      strncpy(cmd.userRequest, userReq.c_str(), sizeof(cmd.userRequest) - 1);
+      cmd.userRequest[sizeof(cmd.userRequest) - 1] = '\0';
+      s_reaperCommandQueue.push_back(cmd);
+    }
+
+    if (ShowConsoleMsg) {
+      char msg[256];
+      snprintf(msg, sizeof(msg), "MAGDA: Queued track %d (%s) for comparison\n",
+               trackIdx, trackName);
+      ShowConsoleMsg(msg);
+    }
   }
 
   return true;

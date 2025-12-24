@@ -1494,26 +1494,72 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
     return false;
   }
 
-  // Extract track type and query
+  // Extract command after @mix:
   std::string afterMix = msg.substr(mixPos + 5); // After "@mix:"
+  
+  // Trim leading spaces
+  size_t cmdStart = afterMix.find_first_not_of(" ");
+  if (cmdStart == std::string::npos) {
+    AddAssistantMessage("Error: Please specify a track type or comparison after @mix: (e.g., @mix:synth make it brighter or @mix:compare drums bass)");
+    return true;
+  }
+  afterMix = afterMix.substr(cmdStart);
 
-  // Find the track type (next word)
-  size_t typeStart = afterMix.find_first_not_of(" ");
-  if (typeStart == std::string::npos) {
-    AddAssistantMessage("Error: Please specify a track type after @mix: (e.g., "
-                        "@mix:synth make it brighter)");
+  // Check for "compare" keyword for multi-track comparison
+  std::string lowerCmd = afterMix;
+  std::transform(lowerCmd.begin(), lowerCmd.end(), lowerCmd.begin(), ::tolower);
+  
+  if (lowerCmd.compare(0, 8, "compare ") == 0) {
+    // Multi-track comparison mode
+    std::string compareArgs = afterMix.substr(8); // After "compare "
+    size_t argsStart = compareArgs.find_first_not_of(" ");
+    if (argsStart != std::string::npos) {
+      compareArgs = compareArgs.substr(argsStart);
+    }
+
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char logMsg[512];
+      snprintf(logMsg, sizeof(logMsg),
+               "MAGDA: Multi-track comparison - args: '%s'\n",
+               compareArgs.c_str());
+      ShowConsoleMsg(logMsg);
+    }
+
+    // Clear any pending result from previous run
+    MagdaBounceWorkflow::ClearPendingResult();
+
+    // Execute the multi-track comparison workflow
+    WDL_FastString error_msg;
+    bool success = MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(
+        compareArgs.c_str(), error_msg);
+
+    if (!success) {
+      std::string errorStr = "Multi-track comparison failed: ";
+      errorStr += error_msg.Get();
+      AddAssistantMessage(errorStr);
+    } else {
+      // Set busy state to show spinner
+      m_busy = true;
+      m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+      SetAPIStatus("Comparing tracks...", 0xFFFF66FF); // Yellow
+    }
+
     return true;
   }
 
-  size_t typeEnd = afterMix.find(' ', typeStart);
+  // Single-track mode (original behavior)
+  // Find the track type (next word)
+  size_t typeEnd = afterMix.find(' ');
   std::string trackType;
   std::string userQuery;
 
   if (typeEnd == std::string::npos) {
-    trackType = afterMix.substr(typeStart);
+    trackType = afterMix;
     userQuery = "";
   } else {
-    trackType = afterMix.substr(typeStart, typeEnd - typeStart);
+    trackType = afterMix.substr(0, typeEnd);
     userQuery = afterMix.substr(typeEnd + 1);
     // Trim leading spaces from query
     size_t queryStart = userQuery.find_first_not_of(" ");

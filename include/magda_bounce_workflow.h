@@ -55,6 +55,12 @@ public:
   static bool ExecuteMasterWorkflow(const char *userRequest,
                                     WDL_FastString &error_msg);
 
+  // Execute multi-track comparison workflow
+  // Parses track identifiers from compareArgs (e.g., "track1 and track2" or "selected")
+  // Analyzes multiple tracks and sends them together for comparison
+  static bool ExecuteMultiTrackWorkflow(const char *compareArgs,
+                                        WDL_FastString &error_msg);
+
   // Set callback for when mix analysis completes
   static void SetResultCallback(MixAnalysisCallback callback);
 
