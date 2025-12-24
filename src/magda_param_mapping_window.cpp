@@ -8,21 +8,21 @@ extern reaper_plugin_info_t *g_rec;
 
 // Generate a smart alias from a parameter name
 // "Filter Cutoff Hz" -> "filter_cutoff_hz"
-// "Osc1Vol" -> "osc1_vol"  
+// "Osc1Vol" -> "osc1_vol"
 // "LFO Rate" -> "lfo_rate"
 static std::string GenerateSmartAlias(const std::string &paramName) {
   std::string result;
   bool lastWasUnderscore = false;
   bool lastWasLower = false;
-  
+
   for (size_t i = 0; i < paramName.length(); i++) {
     char c = paramName[i];
-    
+
     // Skip special characters except numbers
     if (!std::isalnum(c) && c != ' ' && c != '_' && c != '-') {
       continue;
     }
-    
+
     // Convert spaces, dashes to underscores
     if (c == ' ' || c == '-' || c == '_') {
       if (!lastWasUnderscore && !result.empty()) {
@@ -32,28 +32,29 @@ static std::string GenerateSmartAlias(const std::string &paramName) {
       lastWasLower = false;
       continue;
     }
-    
-    // Handle camelCase: insert underscore before uppercase if previous was lowercase
+
+    // Handle camelCase: insert underscore before uppercase if previous was
+    // lowercase
     if (std::isupper(c) && lastWasLower && !lastWasUnderscore) {
       result += '_';
     }
-    
+
     // Convert to lowercase
     result += (char)std::tolower(c);
     lastWasUnderscore = false;
     lastWasLower = std::islower(c) || std::isdigit(c);
   }
-  
+
   // Remove trailing underscores
   while (!result.empty() && result.back() == '_') {
     result.pop_back();
   }
-  
+
   // Remove leading underscores
   while (!result.empty() && result.front() == '_') {
     result.erase(0, 1);
   }
-  
+
   return result;
 }
 
@@ -187,7 +188,9 @@ void MagdaParamMappingWindow::LoadPluginParams() {
 
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA: Loaded %d parameters from existing track\n", (int)m_params.size());
+          snprintf(msg, sizeof(msg),
+                   "MAGDA: Loaded %d parameters from existing track\n",
+                   (int)m_params.size());
           ShowConsoleMsg(msg);
         }
         return;
@@ -195,9 +198,11 @@ void MagdaParamMappingWindow::LoadPluginParams() {
     }
   }
 
-  // Plugin not found - create a temporary hidden track, add the plugin, read params, then delete
+  // Plugin not found - create a temporary hidden track, add the plugin, read
+  // params, then delete
   if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Plugin not on any track, creating temp track to scan parameters...\n");
+    ShowConsoleMsg("MAGDA: Plugin not on any track, creating temp track to "
+                   "scan parameters...\n");
   }
 
   // Get additional API functions for track creation
@@ -206,9 +211,11 @@ void MagdaParamMappingWindow::LoadPluginParams() {
   bool (*DeleteTrack)(MediaTrack *) =
       (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
   int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc(
+          "TrackFX_AddByName");
   bool (*SetMediaTrackInfo_Value)(MediaTrack *, const char *, double) =
-      (bool (*)(MediaTrack *, const char *, double))g_rec->GetFunc("SetMediaTrackInfo_Value");
+      (bool (*)(MediaTrack *, const char *, double))g_rec->GetFunc(
+          "SetMediaTrackInfo_Value");
   void (*Undo_BeginBlock)() = (void (*)())g_rec->GetFunc("Undo_BeginBlock");
   void (*Undo_EndBlock)(const char *, int) =
       (void (*)(const char *, int))g_rec->GetFunc("Undo_EndBlock");
@@ -221,39 +228,45 @@ void MagdaParamMappingWindow::LoadPluginParams() {
   }
 
   // Begin undo block (so we can cleanly undo if needed)
-  if (Undo_BeginBlock) Undo_BeginBlock();
+  if (Undo_BeginBlock)
+    Undo_BeginBlock();
 
   // Create track at end
   int newTrackIdx = CountTracks(nullptr);
   InsertTrackAtIndex(newTrackIdx, false);
-  
+
   MediaTrack *tempTrack = GetTrack(nullptr, newTrackIdx);
   if (!tempTrack) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Failed to create temp track\n");
     }
-    if (Undo_EndBlock) Undo_EndBlock("MAGDA Param Scan (failed)", -1);
+    if (Undo_EndBlock)
+      Undo_EndBlock("MAGDA Param Scan (failed)", -1);
     return;
   }
 
   // Hide the track (set height to 0 and mute)
   if (SetMediaTrackInfo_Value) {
     SetMediaTrackInfo_Value(tempTrack, "B_MUTE", 1.0);
-    SetMediaTrackInfo_Value(tempTrack, "I_HEIGHTOVERRIDE", 1.0); // Minimum height
+    SetMediaTrackInfo_Value(tempTrack, "I_HEIGHTOVERRIDE",
+                            1.0); // Minimum height
   }
 
   // Add the plugin to the track
   // TrackFX_AddByName: recFX=-1 for normal FX chain, instantiate=true
   int fxIdx = TrackFX_AddByName(tempTrack, m_pluginKey.c_str(), false, -1);
-  
+
   if (fxIdx < 0) {
     if (ShowConsoleMsg) {
       char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA: Failed to add plugin '%s' to temp track\n", m_pluginKey.c_str());
+      snprintf(msg, sizeof(msg),
+               "MAGDA: Failed to add plugin '%s' to temp track\n",
+               m_pluginKey.c_str());
       ShowConsoleMsg(msg);
     }
     DeleteTrack(tempTrack);
-    if (Undo_EndBlock) Undo_EndBlock("MAGDA Param Scan (failed)", -1);
+    if (Undo_EndBlock)
+      Undo_EndBlock("MAGDA Param Scan (failed)", -1);
     return;
   }
 
@@ -272,7 +285,9 @@ void MagdaParamMappingWindow::LoadPluginParams() {
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA: Loaded %d parameters with auto-generated aliases\n", (int)m_params.size());
+    snprintf(msg, sizeof(msg),
+             "MAGDA: Loaded %d parameters with auto-generated aliases\n",
+             (int)m_params.size());
     ShowConsoleMsg(msg);
   }
 
@@ -280,7 +295,8 @@ void MagdaParamMappingWindow::LoadPluginParams() {
   DeleteTrack(tempTrack);
 
   // End undo block - mark as no-op so it doesn't appear in undo history
-  if (Undo_EndBlock) Undo_EndBlock("MAGDA Param Scan", -1);
+  if (Undo_EndBlock)
+    Undo_EndBlock("MAGDA Param Scan", -1);
 }
 
 void MagdaParamMappingWindow::LoadExistingAliases() {

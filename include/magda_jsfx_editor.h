@@ -10,10 +10,10 @@ struct reaper_plugin_info_t;
 struct JSFXChatMessage {
   bool is_user;
   std::string content;
-  std::string description;  // Description of generated code
-  std::string code_block;   // Extracted code from AI response
+  std::string description; // Description of generated code
+  std::string code_block;  // Extracted code from AI response
   bool has_code_block;
-  bool streaming_complete = false;  // True when streaming is done
+  bool streaming_complete = false; // True when streaming is done
 };
 
 // File entry for browser
@@ -21,7 +21,7 @@ struct JSFXFileEntry {
   std::string name;
   std::string full_path;
   bool is_directory;
-  bool is_expanded;  // For directories
+  bool is_expanded; // For directories
   int depth;
 };
 
@@ -91,8 +91,8 @@ private:
   // Editor
   std::string m_currentFilePath;
   std::string m_currentFileName;
-  char m_editorBuffer[65536];  // 64KB buffer for code
-  char m_descriptionBuffer[256];  // JSFX desc: field
+  char m_editorBuffer[65536];    // 64KB buffer for code
+  char m_descriptionBuffer[256]; // JSFX desc: field
   bool m_modified = false;
 
   // Chat
@@ -115,7 +115,8 @@ private:
   bool (*m_ImGui_InputText)(void *, const char *, char *, int, int *,
                             void *) = nullptr;
   bool (*m_ImGui_InputTextMultiline)(void *, const char *, char *, int,
-                                     double *, double *, int *, void *) = nullptr;
+                                     double *, double *, int *,
+                                     void *) = nullptr;
   void (*m_ImGui_Separator)(void *) = nullptr;
   void (*m_ImGui_SameLine)(void *, double *, double *) = nullptr;
   void (*m_ImGui_Dummy)(void *, double, double) = nullptr;
@@ -149,11 +150,13 @@ private:
 
   // Popup/context menu functions
   bool (*m_ImGui_BeginPopupContextItem)(void *, const char *, int *) = nullptr;
-  bool (*m_ImGui_BeginPopupContextWindow)(void *, const char *, int *) = nullptr;
+  bool (*m_ImGui_BeginPopupContextWindow)(void *, const char *,
+                                          int *) = nullptr;
   bool (*m_ImGui_BeginPopup)(void *, const char *, int *) = nullptr;
   void (*m_ImGui_OpenPopup)(void *, const char *, int *) = nullptr;
   void (*m_ImGui_EndPopup)(void *) = nullptr;
-  bool (*m_ImGui_MenuItem)(void *, const char *, const char *, bool *, bool *) = nullptr;
+  bool (*m_ImGui_MenuItem)(void *, const char *, const char *, bool *,
+                           bool *) = nullptr;
   void (*m_ImGui_CloseCurrentPopup)(void *) = nullptr;
 
   // Keyboard input functions
@@ -163,7 +166,7 @@ private:
   reaper_plugin_info_t *m_rec = nullptr;
 
   // Context menu state
-  std::string m_contextMenuTarget;  // File path for context menu actions
+  std::string m_contextMenuTarget; // File path for context menu actions
 };
 
 extern MagdaJSFXEditor *g_jsfxEditor;

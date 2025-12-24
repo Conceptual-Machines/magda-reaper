@@ -105,8 +105,10 @@ MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
   }
 
   // Log which take is active
-  int (*CountTakes)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
-  MediaItem_Take *(*GetTake)(MediaItem *, int) = (MediaItem_Take *(*)(MediaItem *, int))g_rec->GetFunc("GetTake");
+  int (*CountTakes)(MediaItem *) =
+      (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+  MediaItem_Take *(*GetTake)(MediaItem *, int) =
+      (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
   if (CountTakes && GetTake) {
     int numTakes = CountTakes(item);
     int activeTakeIdx = -1;
@@ -117,7 +119,8 @@ MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
       }
     }
     char logBuf[128];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Active take index: %d of %d\n", activeTakeIdx, numTakes);
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Active take index: %d of %d\n",
+             activeTakeIdx, numTakes);
     LogMessage(logBuf);
   }
 
@@ -207,8 +210,9 @@ MagdaDSPAnalyzer::AnalyzeMaster(const DSPAnalysisConfig &config) {
   return result;
 }
 
-RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
-                                                const DSPAnalysisConfig &config) {
+RawAudioData
+MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
+                                   const DSPAnalysisConfig &config) {
   RawAudioData data;
 
   if (!g_rec) {
@@ -256,15 +260,17 @@ RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
     return data;
   }
 
-  if (GetAudioSamples(take, data.samples, data.sampleRate, data.channels, config)) {
+  if (GetAudioSamples(take, data.samples, data.sampleRate, data.channels,
+                      config)) {
     data.valid = true;
   }
 
   return data;
 }
 
-DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
-                                                   const DSPAnalysisConfig &config) {
+DSPAnalysisResult
+MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
+                                 const DSPAnalysisConfig &config) {
   DSPAnalysisResult result;
 
   if (!audioData.valid || audioData.samples.empty()) {
@@ -274,18 +280,18 @@ DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData
 
   result.sampleRate = audioData.sampleRate;
   result.channels = audioData.channels;
-  result.lengthSeconds = (double)audioData.samples.size() / 
+  result.lengthSeconds = (double)audioData.samples.size() /
                          (audioData.sampleRate * audioData.channels);
 
   char logBuf[256];
   snprintf(logBuf, sizeof(logBuf),
            "MAGDA DSP: Analyzing %zu samples, %d Hz, %d ch, %.2f sec\n",
-           audioData.samples.size(), audioData.sampleRate, audioData.channels, 
+           audioData.samples.size(), audioData.sampleRate, audioData.channels,
            result.lengthSeconds);
   LogMessage(logBuf);
 
   if (config.analyzeFrequency) {
-    PerformFFT(audioData.samples, audioData.sampleRate, config.fftSize, 
+    PerformFFT(audioData.samples, audioData.sampleRate, config.fftSize,
                result.fftFrequencies, result.fftMagnitudes);
     CalculateFrequencyBands(result.fftFrequencies, result.fftMagnitudes,
                             result.bands);
@@ -304,7 +310,7 @@ DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData
   }
 
   if (config.analyzeLoudness) {
-    result.loudness = CalculateLoudness(audioData.samples, audioData.sampleRate, 
+    result.loudness = CalculateLoudness(audioData.samples, audioData.sampleRate,
                                         audioData.channels);
   }
 
@@ -317,8 +323,8 @@ DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData
   }
 
   if (config.analyzeTransients) {
-    result.transients = CalculateTransients(audioData.samples, audioData.sampleRate, 
-                                            audioData.channels);
+    result.transients = CalculateTransients(
+        audioData.samples, audioData.sampleRate, audioData.channels);
   }
 
   result.success = true;
@@ -373,27 +379,30 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   // Get source filename
   const char *(*GetMediaSourceFileName)(PCM_source *, char *, int) =
-      (const char *(*)(PCM_source *, char *, int))g_rec->GetFunc("GetMediaSourceFileName");
+      (const char *(*)(PCM_source *, char *, int))g_rec->GetFunc(
+          "GetMediaSourceFileName");
   char filename[512] = {0};
   if (GetMediaSourceFileName) {
     GetMediaSourceFileName(originalSource, filename, sizeof(filename));
     char logBuf[600];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Analyzing file: %s\n", filename[0] ? filename : "(no filename)");
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Analyzing file: %s\n",
+             filename[0] ? filename : "(no filename)");
     LogMessage(logBuf);
   }
 
   // Create a FRESH source from the file and swap it into the take
   // This forces REAPER to fully load the audio data
   PCM_source *(*PCM_Source_CreateFromFile)(const char *) =
-      (PCM_source * (*)(const char *)) g_rec->GetFunc("PCM_Source_CreateFromFile");
-  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) =
-      (bool (*)(MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
+      (PCM_source * (*)(const char *))
+          g_rec->GetFunc("PCM_Source_CreateFromFile");
+  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) = (bool (*)(
+      MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
   void (*PCM_Source_Destroy)(PCM_source *) =
       (void (*)(PCM_source *))g_rec->GetFunc("PCM_Source_Destroy");
-  
+
   PCM_source *freshSource = nullptr;
   bool swappedSource = false;
-  
+
   if (filename[0] && PCM_Source_CreateFromFile && SetMediaItemTake_Source) {
     freshSource = PCM_Source_CreateFromFile(filename);
     if (freshSource) {
@@ -403,7 +412,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
       LogMessage("MAGDA DSP: Swapped in fresh source from file\n");
     }
   }
-  
+
   // Use whichever source is now on the take
   PCM_source *source = GetMediaItemTake_Source(take);
   if (!source) {
@@ -438,7 +447,8 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   {
     char logBuf[256];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Source reports: %.2f sec, %d Hz, %d ch\n", 
+    snprintf(logBuf, sizeof(logBuf),
+             "MAGDA DSP: Source reports: %.2f sec, %d Hz, %d ch\n",
              sourceLength, sampleRate, channels);
     LogMessage(logBuf);
   }
@@ -453,7 +463,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
   // CRITICAL: Force accessor to update after source swap
   void (*AudioAccessorUpdate)(AudioAccessor *) =
       (void (*)(AudioAccessor *))g_rec->GetFunc("AudioAccessorUpdate");
-  
+
   // Always call update after swapping source
   if (AudioAccessorUpdate) {
     AudioAccessorUpdate(accessor);
@@ -466,7 +476,9 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   {
     char logBuf[256];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Accessor reports: start=%.3f, end=%.3f, duration=%.3f sec\n", 
+    snprintf(logBuf, sizeof(logBuf),
+             "MAGDA DSP: Accessor reports: start=%.3f, end=%.3f, duration=%.3f "
+             "sec\n",
              startTime, endTime, duration);
     LogMessage(logBuf);
   }
@@ -494,7 +506,8 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   {
     char logBuf[256];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Requesting %d samples\n", totalSamples);
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Requesting %d samples\n",
+             totalSamples);
     LogMessage(logBuf);
   }
 
@@ -502,15 +515,19 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
   std::vector<double> buffer(totalSamples * channels);
 
   // Read samples
-  // NOTE: Return value is status (0=no audio, 1=success, -1=error), NOT sample count!
-  int status = GetAudioAccessorSamples(
-      accessor, sampleRate, channels, startTime, totalSamples, buffer.data());
+  // NOTE: Return value is status (0=no audio, 1=success, -1=error), NOT sample
+  // count!
+  int status = GetAudioAccessorSamples(accessor, sampleRate, channels,
+                                       startTime, totalSamples, buffer.data());
 
   DestroyAudioAccessor(accessor);
 
   {
     char logBuf[256];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: GetAudioAccessorSamples status=%d (0=no audio, 1=success, -1=error)\n", status);
+    snprintf(logBuf, sizeof(logBuf),
+             "MAGDA DSP: GetAudioAccessorSamples status=%d (0=no audio, "
+             "1=success, -1=error)\n",
+             status);
     LogMessage(logBuf);
   }
 
@@ -519,7 +536,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
     SetMediaItemTake_Source(take, originalSource);
     LogMessage("MAGDA DSP: Restored original source\n");
   }
-  
+
   // Clean up fresh source if we created one
   if (freshSource && PCM_Source_Destroy) {
     PCM_Source_Destroy(freshSource);
@@ -527,19 +544,22 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   if (status != 1) {
     char logBuf[128];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Failed to read samples (status=%d)\n", status);
+    snprintf(logBuf, sizeof(logBuf),
+             "MAGDA DSP: Failed to read samples (status=%d)\n", status);
     LogMessage(logBuf);
     return false;
   }
 
-  // Convert to float - use the REQUESTED sample count since status=1 means success
+  // Convert to float - use the REQUESTED sample count since status=1 means
+  // success
   samples.resize(totalSamples * channels);
   for (int i = 0; i < totalSamples * channels; i++) {
     samples[i] = (float)buffer[i];
   }
 
   char logBuf[128];
-  snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Read %d samples successfully\n", totalSamples);
+  snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Read %d samples successfully\n",
+           totalSamples);
   LogMessage(logBuf);
 
   return true;

@@ -1290,7 +1290,8 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
                     ShowConsoleMsg("MAGDA: Control event: done\n");
                   }
                 }
-                // Call user callback with full JSON so it can process the done event
+                // Call user callback with full JSON so it can process the done
+                // event
                 if (data->callback) {
                   data->callback(json_data, data->user_data);
                 }
@@ -1825,8 +1826,7 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
 bool MagdaHTTPClient::SendPOSTStream(const char *endpoint,
                                      const char *json_data,
                                      StreamActionCallback callback,
-                                     void *user_data,
-                                     WDL_FastString &error_msg,
+                                     void *user_data, WDL_FastString &error_msg,
                                      int timeout_seconds) {
   if (!endpoint || !endpoint[0]) {
     error_msg.Set("Endpoint required for streaming");

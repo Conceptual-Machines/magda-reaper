@@ -54,19 +54,20 @@ struct ThemeColors {
   int buttonHover = THEME_RGBA(0x58, 0x58, 0x58); // Lighter on hover
   int buttonActive = THEME_RGBA(0x38, 0x38, 0x38);
   int border = THEME_RGBA(0x50, 0x50, 0x50);
-  int accent = THEME_RGBA(0x3D, 0x5A, 0xFE);      // Electric blue
-  int accentHover = THEME_RGBA(0x53, 0x6D, 0xFE); // Lighter on hover
+  int accent = THEME_RGBA(0x3D, 0x5A, 0xFE);       // Electric blue
+  int accentHover = THEME_RGBA(0x53, 0x6D, 0xFE);  // Lighter on hover
   int accentActive = THEME_RGBA(0x2A, 0x45, 0xD0); // Darker on press
   // Title bar - dark grey to match window
-  int titleBg = THEME_RGBA(0x2D, 0x2D, 0x2D);        // Inactive title
-  int titleBgActive = THEME_RGBA(0x3C, 0x3C, 0x3C);  // Active title
+  int titleBg = THEME_RGBA(0x2D, 0x2D, 0x2D);       // Inactive title
+  int titleBgActive = THEME_RGBA(0x3C, 0x3C, 0x3C); // Active title
 };
 static ThemeColors g_theme;
 
 static const int COLOR_SUCCESS = THEME_RGBA(0x88, 0xFF, 0x88);
 static const int COLOR_ERROR = THEME_RGBA(0xFF, 0x66, 0x66);
 static const int COLOR_WARNING = THEME_RGBA(0xFF, 0xCC, 0x66);
-static const int COLOR_INFO = THEME_RGBA(0x6D, 0x8A, 0xFE);  // Lighter electric blue for text
+static const int COLOR_INFO =
+    THEME_RGBA(0x6D, 0x8A, 0xFE); // Lighter electric blue for text
 static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
 // Default API URL for local development
@@ -89,31 +90,28 @@ bool MagdaImGuiLogin::Initialize(reaper_plugin_info_t *rec) {
     return false;
 
   // Load ReaImGui function pointers
-  m_ImGui_CreateContext = (void *(*)(const char *, int *))rec->GetFunc(
-      "ImGui_CreateContext");
+  m_ImGui_CreateContext =
+      (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
   m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc(
       "ImGui_Begin");
   m_ImGui_End = (void (*)(void *))rec->GetFunc("ImGui_End");
-  m_ImGui_SetNextWindowSize =
-      (void (*)(void *, double, double, int *))rec->GetFunc(
-          "ImGui_SetNextWindowSize");
+  m_ImGui_SetNextWindowSize = (void (*)(
+      void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
   m_ImGui_Text = (void (*)(void *, const char *))rec->GetFunc("ImGui_Text");
   m_ImGui_TextColored =
       (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
-  m_ImGui_InputText =
-      (bool (*)(void *, const char *, char *, int, int *, void *))rec->GetFunc(
-          "ImGui_InputText");
+  m_ImGui_InputText = (bool (*)(void *, const char *, char *, int, int *,
+                                void *))rec->GetFunc("ImGui_InputText");
   m_ImGui_InputTextWithHint =
       (bool (*)(void *, const char *, const char *, char *, int, int *,
                 void *))rec->GetFunc("ImGui_InputTextWithHint");
-  m_ImGui_Button = (bool (*)(void *, const char *, double *, double *))
-                       rec->GetFunc("ImGui_Button");
+  m_ImGui_Button = (bool (*)(void *, const char *, double *,
+                             double *))rec->GetFunc("ImGui_Button");
   m_ImGui_SameLine =
       (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
   m_ImGui_Separator = (void (*)(void *))rec->GetFunc("ImGui_Separator");
   m_ImGui_Spacing = (void (*)(void *))rec->GetFunc("ImGui_Spacing");
-  m_ImGui_Dummy =
-      (void (*)(void *, double, double))rec->GetFunc("ImGui_Dummy");
+  m_ImGui_Dummy = (void (*)(void *, double, double))rec->GetFunc("ImGui_Dummy");
   m_ImGui_PushStyleColor =
       (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
   m_ImGui_PopStyleColor =
@@ -125,9 +123,8 @@ bool MagdaImGuiLogin::Initialize(reaper_plugin_info_t *rec) {
       (bool (*)(void *))rec->GetFunc("ImGui_IsWindowAppearing");
   m_ImGui_SetKeyboardFocusHere =
       (void (*)(void *, int *))rec->GetFunc("ImGui_SetKeyboardFocusHere");
-  m_ImGui_GetContentRegionAvail =
-      (void (*)(void *, double *, double *))rec->GetFunc(
-          "ImGui_GetContentRegionAvail");
+  m_ImGui_GetContentRegionAvail = (void (*)(
+      void *, double *, double *))rec->GetFunc("ImGui_GetContentRegionAvail");
   m_ImGui_BeginDisabled =
       (bool (*)(void *, bool *))rec->GetFunc("ImGui_BeginDisabled");
   m_ImGui_EndDisabled = (void (*)(void *))rec->GetFunc("ImGui_EndDisabled");
@@ -302,7 +299,8 @@ void MagdaImGuiLogin::StartHealthCheck() {
       m_asyncSuccess = true;
     } else {
       m_asyncAuthMode = AuthMode::Error;
-      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Failed to connect to API";
+      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get()
+                                                 : "Failed to connect to API";
       m_asyncSuccess = false;
     }
 
@@ -351,7 +349,8 @@ void MagdaImGuiLogin::StartLoginRequest() {
       m_asyncSuccess = true;
     } else {
       m_asyncSuccess = false;
-      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Login failed";
+      m_asyncErrorMsg =
+          errorMsg.GetLength() > 0 ? errorMsg.Get() : "Login failed";
     }
 
     m_asyncResultReady = true;
@@ -440,7 +439,8 @@ void MagdaImGuiLogin::Render() {
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, g_theme.inputBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered, g_theme.buttonHover);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered,
+                           g_theme.buttonHover);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgActive, g_theme.buttonBg);
     styleColorCount++;
@@ -455,7 +455,8 @@ void MagdaImGuiLogin::Render() {
     // Title bar colors
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBg, g_theme.titleBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive, g_theme.titleBgActive);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive,
+                           g_theme.titleBgActive);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgCollapsed, g_theme.titleBg);
     styleColorCount++;
@@ -553,11 +554,9 @@ void MagdaImGuiLogin::RenderAPISection() {
   int flags = 0;
   bool urlChanged = false;
   if (m_ImGui_InputTextWithHint) {
-    urlChanged = m_ImGui_InputTextWithHint(m_ctx, "##apiurl",
-                                           "http://localhost:8080",
-                                           m_apiUrlBuffer,
-                                           sizeof(m_apiUrlBuffer), &flags,
-                                           nullptr);
+    urlChanged = m_ImGui_InputTextWithHint(
+        m_ctx, "##apiurl", "http://localhost:8080", m_apiUrlBuffer,
+        sizeof(m_apiUrlBuffer), &flags, nullptr);
   } else {
     urlChanged = m_ImGui_InputText(m_ctx, "##apiurl", m_apiUrlBuffer,
                                    sizeof(m_apiUrlBuffer), &flags, nullptr);
