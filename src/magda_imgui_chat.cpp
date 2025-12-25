@@ -1741,7 +1741,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Set busy state and start spinner animation
   m_busy = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-  SetAPIStatus("Streaming...", 0xFFFF66FF); // Yellow
+  SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
   ClearStreamingBuffer(); // Clear any previous streaming content
 
   // Set backend URL from settings
@@ -2087,8 +2087,8 @@ void MagdaImGuiChat::ProcessAsyncResult() {
     std::lock_guard<std::mutex> lock(m_asyncMutex);
     if (!m_asyncResultReady) {
       // Stream still in progress, but we've executed any queued actions
-      // Update status to show we're streaming
-      SetAPIStatus("Streaming...", 0xFFFF66FF); // Yellow
+      // API is connected and working - don't expose streaming implementation detail
+      SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
       return;
     }
     resultReady = true;
