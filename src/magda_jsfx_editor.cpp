@@ -1248,10 +1248,15 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
     s_jsfxHttpClient.SetBackendURL(backendUrl);
   }
 
-  // Set JWT token if available
-  const char *token = MagdaImGuiLogin::GetStoredToken();
-  if (token && token[0]) {
-    s_jsfxHttpClient.SetJWTToken(token);
+  // Only set JWT token if auth is required (Gateway mode)
+  // Local API (AuthMode::None) doesn't need authentication
+  if (g_imguiLogin && g_imguiLogin->GetAuthMode() == AuthMode::Gateway) {
+    const char *token = MagdaImGuiLogin::GetStoredToken();
+    if (token && token[0]) {
+      s_jsfxHttpClient.SetJWTToken(token);
+    }
+  } else {
+    s_jsfxHttpClient.SetJWTToken(nullptr);
   }
 
   // Build request JSON

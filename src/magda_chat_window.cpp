@@ -466,32 +466,15 @@ void MagdaChatWindow::OnSendMessage() {
     // Call backend API with non-streaming endpoint (uses DSL/CFG)
     static MagdaHTTPClient httpClient;
 
-    // Set JWT token if available
-    const char *token = MagdaImGuiLogin::GetStoredToken();
-    if (token && token[0]) {
-      httpClient.SetJWTToken(token);
-
-      // Log token retrieval for debugging
-      if (g_rec) {
-        void (*ShowConsoleMsg)(const char *msg) =
-            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-        if (ShowConsoleMsg) {
-          char log_msg[256];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Retrieved JWT token (length: %d) from storage\n",
-                   (int)strlen(token));
-          ShowConsoleMsg(log_msg);
-        }
+    // Only set JWT token if auth is required (Gateway mode)
+    // Local API (AuthMode::None) doesn't need authentication
+    if (g_imguiLogin && g_imguiLogin->GetAuthMode() == AuthMode::Gateway) {
+      const char *token = MagdaImGuiLogin::GetStoredToken();
+      if (token && token[0]) {
+        httpClient.SetJWTToken(token);
       }
     } else {
-      // Log missing token
-      if (g_rec) {
-        void (*ShowConsoleMsg)(const char *msg) =
-            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-        if (ShowConsoleMsg) {
-          ShowConsoleMsg("MAGDA: WARNING - No JWT token found in storage\n");
-        }
-      }
+      httpClient.SetJWTToken(nullptr);
     }
 
     WDL_FastString response_json, error_msg;

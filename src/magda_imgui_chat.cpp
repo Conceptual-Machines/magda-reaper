@@ -1750,10 +1750,16 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     s_httpClient.SetBackendURL(backendUrl);
   }
 
-  // Set JWT token if available
-  const char *token = MagdaImGuiLogin::GetStoredToken();
-  if (token && token[0]) {
-    s_httpClient.SetJWTToken(token);
+  // Only set JWT token if auth is required (Gateway mode)
+  // Local API (AuthMode::None) doesn't need authentication
+  if (g_imguiLogin && g_imguiLogin->GetAuthMode() == AuthMode::Gateway) {
+    const char *token = MagdaImGuiLogin::GetStoredToken();
+    if (token && token[0]) {
+      s_httpClient.SetJWTToken(token);
+    }
+  } else {
+    // Clear any existing token for local mode
+    s_httpClient.SetJWTToken(nullptr);
   }
 
   // Build request JSON on main thread (accesses REAPER state)
