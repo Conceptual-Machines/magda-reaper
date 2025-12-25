@@ -101,10 +101,146 @@ struct ThemeColors {
 
 static ThemeColors g_theme;
 
-// Helper function to extract action summary from response JSON
-static std::string ExtractActionSummary(const char *response_json) {
+// Helper function to format a single action as readable text
+static std::string FormatAction(wdl_json_element *action, int index) {
+  if (!action) return "";
+  
+  std::string result;
+  char buf[512];
+  
+  // Get action type
+  wdl_json_element *action_type = action->get_item_by_name("action");
+  if (!action_type || !action_type->m_value_string) {
+    return "";
+  }
+  
+  const char *type = action_type->m_value;
+  std::string actionType = type;
+  
+  // Build action description
+  result += std::to_string(index + 1) + ". ";
+  
+  // Format based on action type
+  if (actionType == "create_track") {
+    const char *name = action->get_string_by_name("name");
+    const char *instrument = action->get_string_by_name("instrument");
+    
+    result += "Create track";
+    if (name && name[0]) {
+      result += " \"" + std::string(name) + "\"";
+    }
+    if (instrument && instrument[0]) {
+      result += " with " + std::string(instrument);
+    }
+  } else if (actionType == "create_clip" || actionType == "create_clip_at_bar") {
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *bar_str = action->get_string_by_name("bar", true);
+    const char *length_str = action->get_string_by_name("length_bars", true);
+    
+    result += "Create clip";
+    if (track_str) {
+      int track = atoi(track_str);
+      snprintf(buf, sizeof(buf), " on track %d", track);
+      result += buf;
+    }
+    if (bar_str) {
+      int bar = atoi(bar_str);
+      snprintf(buf, sizeof(buf), " at bar %d", bar);
+      result += buf;
+    }
+    if (length_str) {
+      int length = atoi(length_str);
+      snprintf(buf, sizeof(buf), " (length: %d bars)", length);
+      result += buf;
+    }
+  } else if (actionType == "set_track" || actionType.find("set_track_") == 0) {
+    result += "Set track properties";
+    const char *track_str = action->get_string_by_name("track", true);
+    if (track_str) {
+      int track = atoi(track_str);
+      snprintf(buf, sizeof(buf), " (track %d)", track);
+      result += buf;
+    }
+  } else if (actionType == "set_clip" || actionType.find("set_clip_") == 0) {
+    result += "Set clip properties";
+    const char *track_str = action->get_string_by_name("track", true);
+    if (track_str) {
+      int track = atoi(track_str);
+      snprintf(buf, sizeof(buf), " (track %d)", track);
+      result += buf;
+    }
+  } else if (actionType == "add_midi") {
+    const char *track_str = action->get_string_by_name("track", true);
+    wdl_json_element *notes_elem = action->get_item_by_name("notes");
+    
+    result += "Add MIDI notes";
+    if (track_str) {
+      int track = atoi(track_str);
+      snprintf(buf, sizeof(buf), " to track %d", track);
+      result += buf;
+    }
+    if (notes_elem && notes_elem->is_array()) {
+      int note_count = 0;
+      int idx = 0;
+      wdl_json_element *note = notes_elem->enum_item(idx);
+      while (note) {
+        note_count++;
+        idx++;
+        note = notes_elem->enum_item(idx);
+      }
+      if (note_count > 0) {
+        snprintf(buf, sizeof(buf), " (%d notes)", note_count);
+        result += buf;
+      }
+    }
+  } else if (actionType == "add_track_fx") {
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *fx = action->get_string_by_name("fx");
+    
+    result += "Add FX";
+    if (fx && fx[0]) {
+      result += " " + std::string(fx);
+    }
+    if (track_str) {
+      int track = atoi(track_str);
+      snprintf(buf, sizeof(buf), " to track %d", track);
+      result += buf;
+    }
+  } else if (actionType == "delete_track") {
+    const char *track_str = action->get_string_by_name("track", true);
+    result += "Delete track";
+    if (track_str) {
+      int track = atoi(track_str);
+      snprintf(buf, sizeof(buf), " %d", track);
+      result += buf;
+    }
+  } else if (actionType == "delete_clip") {
+    const char *track_str = action->get_string_by_name("track", true);
+    const char *clip_str = action->get_string_by_name("clip", true);
+    
+    result += "Delete clip";
+    if (track_str) {
+      int track = atoi(track_str);
+      snprintf(buf, sizeof(buf), " from track %d", track);
+      result += buf;
+    }
+    if (clip_str) {
+      int clip = atoi(clip_str);
+      snprintf(buf, sizeof(buf), ", clip %d", clip);
+      result += buf;
+    }
+  } else {
+    // Generic fallback - just show the action type
+    result += actionType;
+  }
+  
+  return result;
+}
+
+// Helper function to extract and format all actions from response JSON
+static std::string FormatAllActions(const char *response_json) {
   if (!response_json || !response_json[0]) {
-    return "Done";
+    return "Done (no actions)";
   }
 
   wdl_json_parser parser;
@@ -120,38 +256,20 @@ static std::string ExtractActionSummary(const char *response_json) {
     return "Done";
   }
 
-  // Count actions and collect action types
+  std::string result;
   int action_count = 0;
-  std::string action_types;
-  std::vector<std::string> unique_types;
 
   // Iterate through array using enum_item
   int idx = 0;
   wdl_json_element *action = actions->enum_item(idx);
   while (action) {
-    action_count++;
-    wdl_json_element *action_type = action->get_item_by_name("action");
-    if (action_type && action_type->m_value_string) {
-      std::string type = action_type->m_value;
-      // Simplify action names for display
-      if (type.find("create_") == 0) {
-        type = type.substr(7); // Remove "create_" prefix
-      } else if (type.find("set_") == 0) {
-        type = type.substr(4); // Remove "set_" prefix
-      } else if (type.find("add_") == 0) {
-        type = type.substr(4); // Remove "add_" prefix
+    std::string formatted = FormatAction(action, action_count);
+    if (!formatted.empty()) {
+      if (!result.empty()) {
+        result += "\n";
       }
-      // Only add unique types
-      bool found = false;
-      for (const auto &t : unique_types) {
-        if (t == type) {
-          found = true;
-          break;
-        }
-      }
-      if (!found && unique_types.size() < 3) {
-        unique_types.push_back(type);
-      }
+      result += formatted;
+      action_count++;
     }
     idx++;
     action = actions->enum_item(idx);
@@ -161,30 +279,13 @@ static std::string ExtractActionSummary(const char *response_json) {
     return "Done (no actions)";
   }
 
-  // Build summary string
-  std::string summary;
-  if (action_count == 1) {
-    summary = "Completed 1 action";
-  } else {
-    summary = "Completed " + std::to_string(action_count) + " actions";
-  }
+  return result;
+}
 
-  // Add action types if available
-  if (!unique_types.empty()) {
-    summary += " (";
-    for (size_t i = 0; i < unique_types.size(); i++) {
-      if (i > 0)
-        summary += ", ";
-      summary += unique_types[i];
-    }
-    if (unique_types.size() < (size_t)action_count &&
-        (size_t)action_count > unique_types.size()) {
-      summary += "...";
-    }
-    summary += ")";
-  }
-
-  return summary;
+// Helper function to extract action summary from response JSON
+static std::string ExtractActionSummary(const char *response_json) {
+  // Use FormatAllActions to show all actions
+  return FormatAllActions(response_json);
 }
 
 // Legacy color namespace for compatibility
@@ -1720,7 +1821,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   StreamContext *ctx = new StreamContext{this, {}, 0};
 
   // Start streaming request thread
-  m_asyncThread = std::thread([this, requestJsonStr, ctx]() {
+  m_asyncThread = std::thread([requestJsonStr, ctx]() {
     WDL_FastString error_msg;
 
     // Streaming callback - must be capture-less lambda or static function
@@ -1753,13 +1854,42 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
               ctx->allActions.push_back(actionEventJson);
               ctx->actionCount++;
 
-              // Update streaming buffer to show progress
+              // Update streaming buffer to show formatted action
               {
                 std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
-                char progress_msg[256];
-                snprintf(progress_msg, sizeof(progress_msg), 
-                        "Received action %d...\n", ctx->actionCount);
-                ctx->chat->m_streamingBuffer += progress_msg;
+                // Format the action for display
+                wdl_json_parser actionParser;
+                wdl_json_element *actionRoot = actionParser.parse(actionEventJson.c_str(), (int)actionEventJson.length());
+                if (!actionParser.m_err && actionRoot) {
+                  // The event has "type": "action" and "action": {...}
+                  // Extract the actual action object from the "action" field
+                  wdl_json_element *actionObj = actionRoot->get_item_by_name("action");
+                  if (actionObj && actionObj->is_object()) {
+                    // Format the action object
+                    std::string formatted = FormatAction(actionObj, ctx->actionCount - 1);
+                    if (!formatted.empty()) {
+                      ctx->chat->m_streamingBuffer += formatted + "\n";
+                    } else {
+                      // Fallback to progress message
+                      char progress_msg[256];
+                      snprintf(progress_msg, sizeof(progress_msg), 
+                              "Received action %d...\n", ctx->actionCount);
+                      ctx->chat->m_streamingBuffer += progress_msg;
+                    }
+                  } else {
+                    // Fallback to progress message
+                    char progress_msg[256];
+                    snprintf(progress_msg, sizeof(progress_msg), 
+                            "Received action %d...\n", ctx->actionCount);
+                    ctx->chat->m_streamingBuffer += progress_msg;
+                  }
+                } else {
+                  // Fallback to progress message
+                  char progress_msg[256];
+                  snprintf(progress_msg, sizeof(progress_msg), 
+                          "Received action %d...\n", ctx->actionCount);
+                  ctx->chat->m_streamingBuffer += progress_msg;
+                }
               }
             }
           } else if (strcmp(eventType, "done") == 0) {
