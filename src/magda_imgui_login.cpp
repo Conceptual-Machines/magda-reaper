@@ -518,8 +518,7 @@ void MagdaImGuiLogin::Render() {
 
   // Pop style colors
   if (m_ImGui_PopStyleColor) {
-    int count = 10; // Match the number of PushStyleColor calls
-    m_ImGui_PopStyleColor(m_ctx, &count);
+    m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
   }
 }
 

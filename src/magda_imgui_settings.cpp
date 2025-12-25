@@ -325,8 +325,7 @@ void MagdaImGuiSettings::Render() {
     m_visible = false;
     m_ImGui_End(m_ctx);
     if (m_ImGui_PopStyleColor) {
-      int count = 10;
-      m_ImGui_PopStyleColor(m_ctx, &count);
+      m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
     }
     m_ctx = nullptr;
     return;
@@ -466,7 +465,6 @@ void MagdaImGuiSettings::Render() {
 
   // Pop window style colors
   if (m_ImGui_PopStyleColor) {
-    int count = 10;
-    m_ImGui_PopStyleColor(m_ctx, &count);
+    m_ImGui_PopStyleColor(m_ctx, &styleColorCount);
   }
 }
