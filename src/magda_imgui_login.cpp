@@ -70,7 +70,7 @@ static const int COLOR_INFO =
     THEME_RGBA(0x6D, 0x8A, 0xFE); // Lighter electric blue for text
 static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
-// Default API URL for local development
+// Default API URL for local development (Go backend port)
 static const char *DEFAULT_API_URL = "http://localhost:8080";
 
 MagdaImGuiLogin::MagdaImGuiLogin() {
@@ -554,7 +554,7 @@ void MagdaImGuiLogin::RenderAPISection() {
   bool urlChanged = false;
   if (m_ImGui_InputTextWithHint) {
     urlChanged = m_ImGui_InputTextWithHint(
-        m_ctx, "##apiurl", "http://localhost:8080", m_apiUrlBuffer,
+        m_ctx, "##apiurl", "http://localhost:8081", m_apiUrlBuffer,
         sizeof(m_apiUrlBuffer), &flags, nullptr);
   } else {
     urlChanged = m_ImGui_InputText(m_ctx, "##apiurl", m_apiUrlBuffer,
