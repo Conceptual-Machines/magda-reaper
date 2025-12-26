@@ -102,6 +102,7 @@ struct ThemeColors {
 static ThemeColors g_theme;
 
 // Helper function to format a single action as readable text
+// Format action as concise technical output for streaming display
 static std::string FormatAction(wdl_json_element *action, int index) {
   if (!action) return "";
   
@@ -115,123 +116,39 @@ static std::string FormatAction(wdl_json_element *action, int index) {
   }
   
   const char *type = action_type->m_value;
-  std::string actionType = type;
   
-  // Build action description
-  result += std::to_string(index + 1) + ". ";
+  // Format: [N] action_type: key=value, key=value
+  snprintf(buf, sizeof(buf), "[%d] %s:", index + 1, type);
+  result = buf;
   
-  // Format based on action type
-  if (actionType == "create_track") {
-    const char *name = action->get_string_by_name("name");
-    const char *instrument = action->get_string_by_name("instrument");
-    
-    result += "Create track";
-    if (name && name[0]) {
-      result += " \"" + std::string(name) + "\"";
+  // Add key parameters based on what's present
+  bool first = true;
+  
+  // Common parameters to show
+  const char *params[] = {"track", "name", "index", "bar", "length_bars", 
+                          "instrument", "fx", "position", "color", "selected", nullptr};
+  
+  for (int i = 0; params[i]; i++) {
+    const char *val = action->get_string_by_name(params[i], true);
+    if (val && val[0]) {
+      result += first ? " " : ", ";
+      result += params[i];
+      result += "=";
+      result += val;
+      first = false;
     }
-    if (instrument && instrument[0]) {
-      result += " with " + std::string(instrument);
-    }
-  } else if (actionType == "create_clip" || actionType == "create_clip_at_bar") {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *bar_str = action->get_string_by_name("bar", true);
-    const char *length_str = action->get_string_by_name("length_bars", true);
-    
-    result += "Create clip";
-    if (track_str) {
-      int track = atoi(track_str);
-      snprintf(buf, sizeof(buf), " on track %d", track);
+  }
+  
+  // Check for notes array (MIDI)
+  wdl_json_element *notes_elem = action->get_item_by_name("notes");
+  if (notes_elem && notes_elem->is_array()) {
+    int note_count = 0;
+    int idx = 0;
+    while (notes_elem->enum_item(idx)) { note_count++; idx++; }
+    if (note_count > 0) {
+      snprintf(buf, sizeof(buf), "%s notes=%d", first ? " " : ", ", note_count);
       result += buf;
     }
-    if (bar_str) {
-      int bar = atoi(bar_str);
-      snprintf(buf, sizeof(buf), " at bar %d", bar);
-      result += buf;
-    }
-    if (length_str) {
-      int length = atoi(length_str);
-      snprintf(buf, sizeof(buf), " (length: %d bars)", length);
-      result += buf;
-    }
-  } else if (actionType == "set_track" || actionType.find("set_track_") == 0) {
-    result += "Set track properties";
-    const char *track_str = action->get_string_by_name("track", true);
-    if (track_str) {
-      int track = atoi(track_str);
-      snprintf(buf, sizeof(buf), " (track %d)", track);
-      result += buf;
-    }
-  } else if (actionType == "set_clip" || actionType.find("set_clip_") == 0) {
-    result += "Set clip properties";
-    const char *track_str = action->get_string_by_name("track", true);
-    if (track_str) {
-      int track = atoi(track_str);
-      snprintf(buf, sizeof(buf), " (track %d)", track);
-      result += buf;
-    }
-  } else if (actionType == "add_midi") {
-    const char *track_str = action->get_string_by_name("track", true);
-    wdl_json_element *notes_elem = action->get_item_by_name("notes");
-    
-    result += "Add MIDI notes";
-    if (track_str) {
-      int track = atoi(track_str);
-      snprintf(buf, sizeof(buf), " to track %d", track);
-      result += buf;
-    }
-    if (notes_elem && notes_elem->is_array()) {
-      int note_count = 0;
-      int idx = 0;
-      wdl_json_element *note = notes_elem->enum_item(idx);
-      while (note) {
-        note_count++;
-        idx++;
-        note = notes_elem->enum_item(idx);
-      }
-      if (note_count > 0) {
-        snprintf(buf, sizeof(buf), " (%d notes)", note_count);
-        result += buf;
-      }
-    }
-  } else if (actionType == "add_track_fx") {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *fx = action->get_string_by_name("fx");
-    
-    result += "Add FX";
-    if (fx && fx[0]) {
-      result += " " + std::string(fx);
-    }
-    if (track_str) {
-      int track = atoi(track_str);
-      snprintf(buf, sizeof(buf), " to track %d", track);
-      result += buf;
-    }
-  } else if (actionType == "delete_track") {
-    const char *track_str = action->get_string_by_name("track", true);
-    result += "Delete track";
-    if (track_str) {
-      int track = atoi(track_str);
-      snprintf(buf, sizeof(buf), " %d", track);
-      result += buf;
-    }
-  } else if (actionType == "delete_clip") {
-    const char *track_str = action->get_string_by_name("track", true);
-    const char *clip_str = action->get_string_by_name("clip", true);
-    
-    result += "Delete clip";
-    if (track_str) {
-      int track = atoi(track_str);
-      snprintf(buf, sizeof(buf), " from track %d", track);
-      result += buf;
-    }
-    if (clip_str) {
-      int clip = atoi(clip_str);
-      snprintf(buf, sizeof(buf), ", clip %d", clip);
-      result += buf;
-    }
-  } else {
-    // Generic fallback - just show the action type
-    result += actionType;
   }
   
   return result;
@@ -695,6 +612,7 @@ void MagdaImGuiChat::Render() {
       if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
         if (!m_busy && strlen(m_inputBuffer) > 0) {
           std::string msg = m_inputBuffer;
+          m_lastRequest = msg; // Store for repeat functionality
           AddUserMessage(msg);
           m_inputBuffer[0] = '\0';
 
@@ -857,6 +775,55 @@ void MagdaImGuiChat::Render() {
         // Trigger master analysis workflow (bounce master/analyze/send to
         // agent)
         magdaAction(g_cmdMasterAnalyze, 0);
+      }
+      
+      m_ImGui_Separator(m_ctx);
+      m_ImGui_TextColored(m_ctx, g_theme.headerText, "UTILITIES");
+      m_ImGui_Separator(m_ctx);
+      
+      // Repeat last request button
+      bool canRepeat = !m_busy && !m_lastRequest.empty();
+      if (!canRepeat && m_ImGui_PushStyleColor) {
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+      }
+      if (m_ImGui_Button(m_ctx, "Repeat Last", nullptr, nullptr)) {
+        if (canRepeat) {
+          AddUserMessage(m_lastRequest);
+          if (HandleMixCommand(m_lastRequest)) {
+            // Mix command handled
+          } else {
+            StartAsyncRequest(m_lastRequest);
+            if (m_onSend) {
+              m_onSend(m_lastRequest);
+            }
+          }
+        }
+      }
+      if (!canRepeat && m_ImGui_PopStyleColor) {
+        int popCount = 1;
+        m_ImGui_PopStyleColor(m_ctx, &popCount);
+      }
+      
+      // Copy chat button
+      if (m_ImGui_Button(m_ctx, "Copy Chat", nullptr, nullptr)) {
+        std::string chatText;
+        for (const auto &msg : m_history) {
+          chatText += msg.is_user ? "User: " : "Assistant: ";
+          chatText += msg.content + "\n\n";
+        }
+        if (g_rec && !chatText.empty()) {
+          void (*CF_SetClipboard)(const char *) =
+              (void (*)(const char *))g_rec->GetFunc("CF_SetClipboard");
+          if (CF_SetClipboard) {
+            CF_SetClipboard(chatText.c_str());
+          }
+        }
+      }
+      
+      // Clear chat button
+      if (m_ImGui_Button(m_ctx, "Clear Chat", nullptr, nullptr)) {
+        m_history.clear();
+        m_streamingBuffer.clear();
       }
     }
     m_ImGui_EndChild(m_ctx);
@@ -1129,6 +1096,55 @@ void MagdaImGuiChat::RenderControlsColumn() {
 
   m_ImGui_Dummy(m_ctx, 0, 3);
 
+  // Repeat last request button
+  bool canRepeat = !m_busy && !m_lastRequest.empty();
+  if (!canRepeat) {
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+  }
+  if (m_ImGui_Button(m_ctx, "Repeat Last", &btnWidth, &btnHeight)) {
+    if (canRepeat) {
+      AddUserMessage(m_lastRequest);
+      if (HandleMixCommand(m_lastRequest)) {
+        // Mix command handled
+      } else {
+        StartAsyncRequest(m_lastRequest);
+        if (m_onSend) {
+          m_onSend(m_lastRequest);
+        }
+      }
+    }
+  }
+  if (!canRepeat) {
+    int popCount = 1;
+    m_ImGui_PopStyleColor(m_ctx, &popCount);
+  }
+
+  m_ImGui_Dummy(m_ctx, 0, 3);
+
+  // Copy chat to clipboard button
+  if (m_ImGui_Button(m_ctx, "Copy Chat", &btnWidth, &btnHeight)) {
+    // Build chat text
+    std::string chatText;
+    for (const auto &msg : m_history) {
+      if (msg.is_user) {
+        chatText += "User: ";
+      } else {
+        chatText += "Assistant: ";
+      }
+      chatText += msg.content + "\n\n";
+    }
+    // Copy to clipboard using REAPER API
+    if (g_rec && !chatText.empty()) {
+      void (*CF_SetClipboard)(const char *) =
+          (void (*)(const char *))g_rec->GetFunc("CF_SetClipboard");
+      if (CF_SetClipboard) {
+        CF_SetClipboard(chatText.c_str());
+      }
+    }
+  }
+
+  m_ImGui_Dummy(m_ctx, 0, 3);
+
   if (m_ImGui_Button(m_ctx, "Export Chat...", &btnWidth, &btnHeight)) {
     // Export chat to file
     if (g_rec) {
@@ -1256,6 +1272,7 @@ void MagdaImGuiChat::RenderInputArea() {
       submitted) {
     if (canSend) {
       std::string msg = m_inputBuffer;
+      m_lastRequest = msg; // Store for repeat functionality
       // Add to command history
       m_inputHistory.push_back(msg);
       m_inputHistoryIndex = -1;
@@ -1845,13 +1862,26 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
           const char *eventType = type_elem->m_value;
 
           if (strcmp(eventType, "action") == 0) {
-            // Extract action from event - serialize action to JSON string
+            // The API client already extracted the action object from the SSE wrapper
+            // So event_json IS the action object: {"action":"create_track",...}
+            std::string actionEventJson = event_json;
+            
+            // Debug log
+            if (g_rec) {
+              void (*ShowConsoleMsg)(const char *msg) =
+                  (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+              if (ShowConsoleMsg) {
+                char log_msg[512];
+                snprintf(log_msg, sizeof(log_msg),
+                         "MAGDA: Chat callback received action type event: %.200s\n",
+                         event_json);
+                ShowConsoleMsg(log_msg);
+              }
+            }
+            
+            // Note: action_elem check is legacy - the action is already extracted
             wdl_json_element *action_elem = root->get_item_by_name("action");
             if (action_elem) {
-              // Serialize action to JSON string for queuing
-              // We need to convert the action element back to JSON
-              // For now, queue the full event and extract action in main thread
-              std::string actionEventJson = event_json;
               
               {
                 std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
@@ -1863,25 +1893,15 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
               // Update streaming buffer to show formatted action
               {
                 std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
-                // Format the action for display
+                // The actionEventJson IS the action object itself (already extracted by API client)
+                // e.g. {"action":"create_track","index":0,"name":"bass"}
                 wdl_json_parser actionParser;
-                wdl_json_element *actionRoot = actionParser.parse(actionEventJson.c_str(), (int)actionEventJson.length());
-                if (!actionParser.m_err && actionRoot) {
-                  // The event has "type": "action" and "action": {...}
-                  // Extract the actual action object from the "action" field
-                  wdl_json_element *actionObj = actionRoot->get_item_by_name("action");
-                  if (actionObj && actionObj->is_object()) {
-                    // Format the action object
-                    std::string formatted = FormatAction(actionObj, ctx->actionCount - 1);
-                    if (!formatted.empty()) {
-                      ctx->chat->m_streamingBuffer += formatted + "\n";
-                    } else {
-                      // Fallback to progress message
-                      char progress_msg[256];
-                      snprintf(progress_msg, sizeof(progress_msg), 
-                              "Received action %d...\n", ctx->actionCount);
-                      ctx->chat->m_streamingBuffer += progress_msg;
-                    }
+                wdl_json_element *actionObj = actionParser.parse(actionEventJson.c_str(), (int)actionEventJson.length());
+                if (!actionParser.m_err && actionObj) {
+                  // Format the action object directly
+                  std::string formatted = FormatAction(actionObj, ctx->actionCount - 1);
+                  if (!formatted.empty()) {
+                    ctx->chat->m_streamingBuffer += formatted + "\n";
                   } else {
                     // Fallback to progress message
                     char progress_msg[256];
@@ -1942,12 +1962,27 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
             return;
           }
         } else {
-          // No type field - might be raw action JSON (fallback for compatibility)
+          // No type field - this IS the action JSON extracted by the API client
+          // e.g. {"action":"create_track","index":0,"name":"bass"}
+          std::string actionJson = event_json;
+          
           {
             std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
-            ctx->chat->m_streamingActions.push_back(std::string(event_json));
+            ctx->chat->m_streamingActions.push_back(actionJson);
+            
+            // Format and add to streaming buffer for display
+            std::string formatted = FormatAction(root, ctx->actionCount);
+            if (!formatted.empty()) {
+              ctx->chat->m_streamingBuffer += formatted + "\n";
+            } else {
+              char progress_msg[256];
+              snprintf(progress_msg, sizeof(progress_msg), 
+                      "Action %d: %s\n", ctx->actionCount + 1,
+                      root->get_string_by_name("action") ? root->get_string_by_name("action") : "unknown");
+              ctx->chat->m_streamingBuffer += progress_msg;
+            }
           }
-          ctx->allActions.push_back(std::string(event_json));
+          ctx->allActions.push_back(actionJson);
           ctx->actionCount++;
         }
       } else {
@@ -1955,6 +1990,12 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
         {
           std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
           ctx->chat->m_streamingActions.push_back(std::string(event_json));
+          
+          // Still add to buffer for visibility
+          char progress_msg[256];
+          snprintf(progress_msg, sizeof(progress_msg), 
+                  "Action %d received\n", ctx->actionCount + 1);
+          ctx->chat->m_streamingBuffer += progress_msg;
         }
         ctx->allActions.push_back(std::string(event_json));
         ctx->actionCount++;
@@ -2025,59 +2066,45 @@ void MagdaImGuiChat::ProcessAsyncResult() {
 
   // Execute actions from stream on MAIN thread
   for (const auto &actionEventJson : actionsToExecute) {
-    // Parse action event JSON to extract the action
-    wdl_json_parser parser;
-    wdl_json_element *root = parser.parse(actionEventJson.c_str(), (int)actionEventJson.length());
+    // The actionEventJson is already the unwrapped action object:
+    // {"action":"create_track","index":0,"instrument":"@plugin:serum_2","name":"bass"}
+    // Just wrap it in an array for ExecuteActions
+    std::string singleActionJson = "[" + actionEventJson + "]";
     
-    if (!parser.m_err && root) {
-      // Extract action from event and execute it
-      wdl_json_element *action_elem = root->get_item_by_name("action");
-      if (action_elem && action_elem->m_value_string) {
-        // Build a single-action JSON array for ExecuteActions
-        std::string singleActionJson = "[";
-        singleActionJson += action_elem->m_value;
-        singleActionJson += "]";
-        
-        WDL_FastString execution_result, execution_error;
-        if (!MagdaActions::ExecuteActions(singleActionJson.c_str(), execution_result, execution_error)) {
-          // Log error
-          if (g_rec) {
-            void (*ShowConsoleMsg)(const char *msg) =
-                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-            if (ShowConsoleMsg) {
-              char log_msg[512];
-              snprintf(log_msg, sizeof(log_msg),
-                       "MAGDA: Action execution failed: %s\n",
-                       execution_error.Get());
-              ShowConsoleMsg(log_msg);
-            }
-          }
+    // Debug: log what we're executing
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[1024];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: Executing action: %.500s\n",
+                 singleActionJson.c_str());
+        ShowConsoleMsg(log_msg);
+      }
+    }
+    
+    WDL_FastString execution_result, execution_error;
+    if (!MagdaActions::ExecuteActions(singleActionJson.c_str(), execution_result, execution_error)) {
+      // Log error
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Action execution failed: %s\n",
+                   execution_error.Get());
+          ShowConsoleMsg(log_msg);
         }
-      } else if (action_elem) {
-        // Action element exists but is an object, not a string
-        // Try to serialize it - for now, skip (would need JSON serialization)
-        // TODO: serialize action_elem to JSON string
-      } else {
-        // Fallback: treat the event JSON itself as an action (if it's not wrapped)
-        // Build single-action array
-        std::string singleActionJson = "[";
-        singleActionJson += actionEventJson;
-        singleActionJson += "]";
-        
-        WDL_FastString execution_result, execution_error;
-        if (!MagdaActions::ExecuteActions(singleActionJson.c_str(), execution_result, execution_error)) {
-          // Log error
-          if (g_rec) {
-            void (*ShowConsoleMsg)(const char *msg) =
-                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-            if (ShowConsoleMsg) {
-              char log_msg[512];
-              snprintf(log_msg, sizeof(log_msg),
-                       "MAGDA: Action execution failed: %s\n",
-                       execution_error.Get());
-              ShowConsoleMsg(log_msg);
-            }
-          }
+      }
+    } else {
+      // Log success
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Action executed successfully\n");
         }
       }
     }
@@ -2115,35 +2142,41 @@ void MagdaImGuiChat::ProcessAsyncResult() {
 
   // Process final result on the MAIN thread
   if (success) {
-    // Clear streaming buffer and add final message
+    // For streaming: the buffer should contain formatted action messages
+    // ClearStreamingBuffer adds buffer content to chat history
+    bool hadStreamingContent = !m_streamingBuffer.empty();
     ClearStreamingBuffer();
     
-    // Extract summary of what was done
-    std::string summary = ExtractActionSummary(responseJson.c_str());
-    if (!summary.empty()) {
-      AddAssistantMessage(summary);
-    } else {
-      // Fallback: show action count
-      char summary_msg[256];
-      int action_count = 0;
-      if (!responseJson.empty()) {
-        char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
-            responseJson.c_str(), (int)responseJson.length());
-        if (actions_json) {
-          // Count actions (rough estimate)
-          for (const char *p = actions_json; *p; p++) {
-            if (strncmp(p, "\"action\":", 9) == 0) {
-              action_count++;
-            }
-          }
-          free(actions_json);
-        }
-      }
-      if (action_count > 0) {
-        snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).", action_count);
-        AddAssistantMessage(summary_msg);
+    // Only add summary if streaming buffer was empty (non-streaming response)
+    // For streaming, the actions were already formatted and displayed
+    if (!hadStreamingContent) {
+      // Extract summary of what was done from the response JSON
+      std::string summary = ExtractActionSummary(responseJson.c_str());
+      if (!summary.empty()) {
+        AddAssistantMessage(summary);
       } else {
-        AddAssistantMessage("Done.");
+        // Fallback: show action count
+        char summary_msg[256];
+        int action_count = 0;
+        if (!responseJson.empty()) {
+          char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
+              responseJson.c_str(), (int)responseJson.length());
+          if (actions_json) {
+            // Count actions (rough estimate)
+            for (const char *p = actions_json; *p; p++) {
+              if (strncmp(p, "\"action\":", 9) == 0) {
+                action_count++;
+              }
+            }
+            free(actions_json);
+          }
+        }
+        if (action_count > 0) {
+          snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).", action_count);
+          AddAssistantMessage(summary_msg);
+        } else {
+          AddAssistantMessage("Done.");
+        }
       }
     }
     SetAPIStatus("Connected", 0x88FF88FF); // Green

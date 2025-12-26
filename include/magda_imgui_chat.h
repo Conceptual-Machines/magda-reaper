@@ -162,6 +162,7 @@ private:
   char m_inputBuffer[4096] = {0};
   std::vector<ChatMessage> m_history;
   std::string m_streamingBuffer;
+  std::string m_lastRequest; // Store last request for repeat functionality
   bool m_scrollToBottom = false;
 
   // Pending mix analysis actions (waiting for user confirmation)
