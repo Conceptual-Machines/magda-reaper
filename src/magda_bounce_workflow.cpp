@@ -147,7 +147,10 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
       selectedTrackIndex = i;
       selectedTrack = track;
       if (GetSetMediaTrackInfo_String) {
-        char name[256];
+        // !!! CRITICAL: DO NOT REMOVE THE = {0} INITIALIZATION !!!
+        // Without it, nameless tracks cause garbage filenames like "Pò_÷"
+        // which break REAPER's render. This took hours to debug.
+        char name[256] = {0};
         bool setValue = false; // false = get value
         GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", name, &setValue);
         if (name[0]) {
@@ -1332,6 +1335,43 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       int (*CountTakesFunc)(MediaItem *) =
           (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
       int takesBefore = CountTakesFunc ? CountTakesFunc(item) : 0;
+
+      // Ensure take has a valid name before rendering (prevents garbage filenames)
+      if (GetActiveTake) {
+        MediaItem_Take *activeTake = GetActiveTake(item);
+        if (activeTake) {
+          bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
+                                                  char *, bool) =
+              (bool (*)(MediaItem_Take *, const char *, char *,
+                        bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+
+          if (GetSetMediaItemTakeInfo_String) {
+            // Check if take has a name
+            char takeName[512] = {0};
+            GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", takeName,
+                                           false);
+
+            // If no name, set a default based on track name or generic name
+            if (takeName[0] == '\0') {
+              char defaultName[256];
+              if (cmd.trackName[0] != '\0') {
+                snprintf(defaultName, sizeof(defaultName), "%s", cmd.trackName);
+              } else {
+                snprintf(defaultName, sizeof(defaultName), "Track_%d",
+                         cmd.trackIndex + 1);
+              }
+              GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", defaultName,
+                                             true);
+              if (ShowConsoleMsg) {
+                char msg[512];
+                snprintf(msg, sizeof(msg),
+                         "MAGDA: Set default take name: '%s'\n", defaultName);
+                ShowConsoleMsg(msg);
+              }
+            }
+          }
+        }
+      }
 
       // Render the item (apply FX to create new take)
       // Use action 40209: "Item: Apply track FX to items as new take"
