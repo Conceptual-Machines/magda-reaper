@@ -611,27 +611,54 @@ void MagdaImGuiChat::Render() {
     double zero = 0;
     m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    // Hide Send button when autocomplete is showing to prevent accidental
-    // clicks
+    // Hide Send/Cancel button when autocomplete is showing to prevent accidental clicks
     if (!m_showAutocomplete) {
-      if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
-        if (!m_busy && strlen(m_inputBuffer) > 0) {
-          std::string msg = m_inputBuffer;
-          m_lastRequest = msg; // Store for repeat functionality
-          AddUserMessage(msg);
-          m_inputBuffer[0] = '\0';
+      if (m_busy) {
+        // Red Cancel button when busy
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF4444AA);
+        if (m_ImGui_Button(m_ctx, "Cancel", nullptr, nullptr)) {
+          // Set cancel flag and clear busy state
+          {
+            std::lock_guard<std::mutex> lock(m_asyncMutex);
+            m_cancelRequested = true;
+            m_asyncPending = false;
+            m_asyncResultReady = false;
+          }
+          m_busy = false;
+          AddAssistantMessage("Request cancelled.");
+          SetAPIStatus("Cancelled", 0xFFAAAAFF);
+        }
+        int popCount = 1;
+        m_ImGui_PopStyleColor(m_ctx, &popCount);
+      } else {
+        // Normal Send button
+        bool canSend = strlen(m_inputBuffer) > 0;
+        if (!canSend) {
+          m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+        }
+        if (m_ImGui_Button(m_ctx, "Send", nullptr, nullptr)) {
+          if (canSend) {
+            std::string msg = m_inputBuffer;
+            m_lastRequest = msg; // Store for repeat functionality
+            AddUserMessage(msg);
+            m_inputBuffer[0] = '\0';
 
-          // Check for @mix: command first
-          if (HandleMixCommand(msg)) {
-            // Mix command handled, don't send to regular API
-          } else {
-            // Start async request - this won't block the UI
-            StartAsyncRequest(msg);
+            // Check for @mix: command first
+            if (HandleMixCommand(msg)) {
+              // Mix command handled, don't send to regular API
+            } else {
+              // Start async request - this won't block the UI
+              StartAsyncRequest(msg);
 
-            if (m_onSend) {
-              m_onSend(msg);
+              if (m_onSend) {
+                m_onSend(msg);
+              }
             }
           }
+        }
+        if (!canSend) {
+          int popCount = 1;
+          m_ImGui_PopStyleColor(m_ctx, &popCount);
         }
       }
     }
@@ -684,50 +711,37 @@ void MagdaImGuiChat::Render() {
         RenderMessageWithHighlighting(msg.content);
         m_ImGui_Separator(m_ctx);
       }
+      // Update streaming text (typewriter effect for mix analysis responses)
+      if (m_isStreamingText && m_streamingCharIndex < m_streamingFullText.length()) {
+        double now = (double)clock() / CLOCKS_PER_SEC;
+        // Stream 60 characters per second
+        while (m_streamingCharIndex < m_streamingFullText.length() &&
+               (now - m_lastStreamCharTime) > 0.016) {
+          m_streamingBuffer += m_streamingFullText[m_streamingCharIndex];
+          m_streamingCharIndex++;
+          m_lastStreamCharTime = now;
+          m_scrollToBottom = true;
+        }
+        // When done streaming, finalize the message
+        if (m_streamingCharIndex >= m_streamingFullText.length()) {
+          AddAssistantMessage(m_streamingFullText);
+          m_streamingBuffer.clear();
+          m_streamingFullText.clear();
+          m_isStreamingText = false;
+        }
+      }
+
       if (!m_streamingBuffer.empty()) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       }
 
+      // TODO: "Apply Changes" UI disabled for now - needs refinement
       // Show Yes/No buttons for pending mix actions
-      if (m_hasPendingMixActions) {
-        m_ImGui_Separator(m_ctx);
-        m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
-        m_ImGui_Dummy(m_ctx, 0, 5);
-
-        double btnW = 80;
-        double btnH = 0;
-
-        // Green "Yes" button
-        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
-        if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
-          // Execute the pending actions
-          WDL_FastString execution_result, execution_error;
-          if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
-                                           execution_result, execution_error)) {
-            AddAssistantMessage("Changes applied successfully!");
-          } else {
-            std::string errMsg = "Failed to apply changes: ";
-            errMsg += execution_error.Get();
-            AddAssistantMessage(errMsg);
-          }
-          m_hasPendingMixActions = false;
-          m_pendingMixActionsJson.clear();
-        }
-        m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-        m_ImGui_SameLine(m_ctx, &zero, &zero);
-
-        // Red "No" button
-        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
-        if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
-          AddAssistantMessage("Changes cancelled.");
-          m_hasPendingMixActions = false;
-          m_pendingMixActionsJson.clear();
-        }
-        m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-        m_ImGui_Separator(m_ctx);
-      }
+      // if (m_hasPendingMixActions) {
+      //   m_ImGui_Separator(m_ctx);
+      //   m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
+      //   ...
+      // }
 
       // Show loading spinner while busy
       if (m_busy) {
@@ -750,12 +764,31 @@ void MagdaImGuiChat::Render() {
         int frameIndex =
             ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
-        // Build loading message with spinner
-        char loadingMsg[128];
-        snprintf(loadingMsg, sizeof(loadingMsg), "%s Processing request...",
-                 spinnerFrames[frameIndex]);
-        m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
-        m_scrollToBottom = true; // Keep scrolling to show spinner
+        // Build loading message with spinner - show phase-specific message
+        // Don't show spinner if we're actively streaming (text is already appearing)
+        if (!m_isMixAnalysisStreaming) {
+          const char *phaseMsg = "Processing request...";
+          MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
+          switch (phase) {
+            case MIX_PHASE_RENDERING:
+              phaseMsg = "Rendering audio...";
+              break;
+            case MIX_PHASE_DSP_ANALYSIS:
+              phaseMsg = "Running DSP analysis...";
+              break;
+            case MIX_PHASE_API_CALL:
+              phaseMsg = "Analyzing with AI...";
+              break;
+            default:
+              phaseMsg = "Processing request...";
+              break;
+          }
+          char loadingMsg[128];
+          snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
+                   spinnerFrames[frameIndex], phaseMsg);
+          m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
+        }
+        m_scrollToBottom = true; // Keep scrolling to show new content
       }
       if (m_scrollToBottom) {
         double ratio = 1.0;
@@ -936,6 +969,24 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_Dummy(m_ctx, 0, 5);
     }
 
+    // Update streaming text (typewriter effect for mix analysis responses)
+    if (m_isStreamingText && m_streamingCharIndex < m_streamingFullText.length()) {
+      double now = (double)clock() / CLOCKS_PER_SEC;
+      while (m_streamingCharIndex < m_streamingFullText.length() &&
+             (now - m_lastStreamCharTime) > 0.016) {
+        m_streamingBuffer += m_streamingFullText[m_streamingCharIndex];
+        m_streamingCharIndex++;
+        m_lastStreamCharTime = now;
+        m_scrollToBottom = true;
+      }
+      if (m_streamingCharIndex >= m_streamingFullText.length()) {
+        AddAssistantMessage(m_streamingFullText);
+        m_streamingBuffer.clear();
+        m_streamingFullText.clear();
+        m_isStreamingText = false;
+      }
+    }
+
     if (!m_streamingBuffer.empty()) {
       m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.assistantBg);
       int streamChildFlags = 1;
@@ -949,46 +1000,8 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_PopStyleColor(m_ctx, &popCount);
     }
 
-    // Show Yes/No buttons for pending mix actions (compact view)
-    if (m_hasPendingMixActions) {
-      m_ImGui_Separator(m_ctx);
-      m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
-      m_ImGui_Dummy(m_ctx, 0, 5);
-
-      double btnW = 80;
-      double btnH = 0;
-      double spacing = 10;
-
-      // Green "Yes" button
-      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
-      if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
-        WDL_FastString execution_result, execution_error;
-        if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
-                                         execution_result, execution_error)) {
-          AddAssistantMessage("Changes applied successfully!");
-        } else {
-          std::string errMsg = "Failed to apply changes: ";
-          errMsg += execution_error.Get();
-          AddAssistantMessage(errMsg);
-        }
-        m_hasPendingMixActions = false;
-        m_pendingMixActionsJson.clear();
-      }
-      m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-      m_ImGui_SameLine(m_ctx, nullptr, &spacing);
-
-      // Red "No" button
-      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
-      if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
-        AddAssistantMessage("Changes cancelled.");
-        m_hasPendingMixActions = false;
-        m_pendingMixActionsJson.clear();
-      }
-      m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-      m_ImGui_Separator(m_ctx);
-    }
+    // TODO: "Apply Changes" UI disabled for now - needs refinement (compact view)
+    // if (m_hasPendingMixActions) { ... }
 
     // Show loading spinner while busy
     if (m_busy) {
@@ -1009,12 +1022,31 @@ void MagdaImGuiChat::RenderResponseColumn() {
       double elapsed = ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
       int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
-      // Build loading message with spinner
-      char loadingMsg[128];
-      snprintf(loadingMsg, sizeof(loadingMsg), "%s Processing request...",
-               spinnerFrames[frameIndex]);
-      m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
-      m_scrollToBottom = true; // Keep scrolling to show spinner
+      // Build loading message with spinner - show phase-specific message
+      // Don't show spinner if we're actively streaming (text is already appearing)
+      if (!m_isMixAnalysisStreaming) {
+        const char *phaseMsg = "Processing request...";
+        MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
+        switch (phase) {
+          case MIX_PHASE_RENDERING:
+            phaseMsg = "Rendering audio...";
+            break;
+          case MIX_PHASE_DSP_ANALYSIS:
+            phaseMsg = "Running DSP analysis...";
+            break;
+          case MIX_PHASE_API_CALL:
+            phaseMsg = "Analyzing with AI...";
+            break;
+          default:
+            phaseMsg = "Processing request...";
+            break;
+        }
+        char loadingMsg[128];
+        snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
+                 spinnerFrames[frameIndex], phaseMsg);
+        m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
+      }
+      m_scrollToBottom = true; // Keep scrolling to show new content
     }
 
     if (m_scrollToBottom) {
@@ -1213,37 +1245,56 @@ void MagdaImGuiChat::RenderInputArea() {
   double spacing = 5;
   m_ImGui_SameLine(m_ctx, &offset, &spacing);
 
-  bool canSend = !m_busy && strlen(m_inputBuffer) > 0;
-  if (!canSend) {
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
-  }
-
-  if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr) ||
-      submitted) {
-    if (canSend) {
-      std::string msg = m_inputBuffer;
-      m_lastRequest = msg; // Store for repeat functionality
-      // Add to command history
-      m_inputHistory.push_back(msg);
-      m_inputHistoryIndex = -1;
-      m_savedInput.clear();
-
-      AddUserMessage(msg);
-      m_inputBuffer[0] = '\0';
-      m_showAutocomplete = false;
-
-      // Check for @mix: command first
-      if (HandleMixCommand(msg)) {
-        // Mix command handled, don't send to regular API
-      } else if (m_onSend) {
-        m_onSend(msg);
+  // Show Cancel button when busy, Send button otherwise
+  if (m_busy) {
+    // Red Cancel button
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF4444AA);
+    if (m_ImGui_Button(m_ctx, "Cancel", nullptr, nullptr)) {
+      // Set cancel flag and clear busy state
+      {
+        std::lock_guard<std::mutex> lock(m_asyncMutex);
+        m_cancelRequested = true;
+        m_asyncPending = false;
+        m_asyncResultReady = false;
       }
+      m_busy = false;
+      AddAssistantMessage("Request cancelled.");
+      SetAPIStatus("Cancelled", 0xFFAAAAFF); // Light red
     }
-  }
-
-  if (!canSend) {
     int popCount = 1;
     m_ImGui_PopStyleColor(m_ctx, &popCount);
+  } else {
+    bool canSend = strlen(m_inputBuffer) > 0;
+    if (!canSend) {
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+    }
+
+    if (m_ImGui_Button(m_ctx, "Send", nullptr, nullptr) || submitted) {
+      if (canSend) {
+        std::string msg = m_inputBuffer;
+        m_lastRequest = msg; // Store for repeat functionality
+        // Add to command history
+        m_inputHistory.push_back(msg);
+        m_inputHistoryIndex = -1;
+        m_savedInput.clear();
+
+        AddUserMessage(msg);
+        m_inputBuffer[0] = '\0';
+        m_showAutocomplete = false;
+
+        // Check for @mix: command first
+        if (HandleMixCommand(msg)) {
+          // Mix command handled, don't send to regular API
+        } else if (m_onSend) {
+          m_onSend(msg);
+        }
+      }
+    }
+
+    if (!canSend) {
+      int popCount = 1;
+      m_ImGui_PopStyleColor(m_ctx, &popCount);
+    }
   }
 }
 
@@ -1821,6 +1872,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     m_asyncPending = true;
     m_asyncResultReady = false;
     m_asyncSuccess = false;
+    m_cancelRequested = false;  // Reset cancel flag for new request
     m_asyncResponseJson.clear();
     m_asyncErrorMsg.clear();
     m_streamingActions.clear(); // Clear any pending actions
@@ -1848,6 +1900,15 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
       StreamContext *ctx = static_cast<StreamContext *>(user_data);
       if (!ctx || !ctx->chat)
         return;
+
+      // Check if request was cancelled
+      {
+        std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+        if (ctx->chat->m_cancelRequested) {
+          return;  // Stop processing if cancelled
+        }
+      }
+
       // Parse event JSON
       wdl_json_parser parser;
       wdl_json_element *root =
@@ -2034,22 +2095,66 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
 }
 
 void MagdaImGuiChat::ProcessAsyncResult() {
-  // First check for mix analysis results
+  // First check for mix analysis streaming state (TRUE STREAMING)
+  {
+    MixStreamingState streamState;
+    if (MagdaBounceWorkflow::GetStreamingState(streamState)) {
+      // Update the assistant message with streamed content
+      if (streamState.isStreaming || streamState.streamComplete) {
+        // Create or update streaming message
+        if (m_history.empty() || m_history.back().is_user ||
+            !m_isMixAnalysisStreaming) {
+          // Start new message
+          AddAssistantMessage("");
+          m_isMixAnalysisStreaming = true;
+          m_lastMixStreamBuffer.clear();
+        }
+
+        // Update message content with accumulated stream
+        if (!m_history.empty() && streamState.streamBuffer != m_lastMixStreamBuffer) {
+          m_history.back().content = streamState.streamBuffer;
+          m_lastMixStreamBuffer = streamState.streamBuffer;
+          m_scrollToBottom = true;
+        }
+      }
+
+      if (streamState.streamComplete) {
+        // Streaming finished
+        m_isMixAnalysisStreaming = false;
+
+        if (streamState.streamError) {
+          std::string errorStr = "Mix analysis error: ";
+          errorStr += streamState.errorMessage;
+          if (!m_history.empty()) {
+            m_history.back().content = errorStr;
+          }
+          SetAPIStatus("Error", 0xFF6666FF); // Red
+        } else {
+          SetAPIStatus("Connected", 0x88FF88FF); // Green
+        }
+        m_busy = false;
+
+        // Clear streaming state for next request
+        MagdaBounceWorkflow::ClearStreamingState();
+        return;
+      }
+
+      // Still streaming - don't return, let UI update
+      if (streamState.isStreaming) {
+        return;
+      }
+    }
+  }
+
+  // Fallback: check for non-streaming mix analysis results
   {
     MixAnalysisResult mixResult;
     if (MagdaBounceWorkflow::GetPendingResult(mixResult)) {
       MagdaBounceWorkflow::ClearPendingResult();
 
       if (mixResult.success) {
-        // Add the response text
+        // Non-streaming: show full text at once
         AddAssistantMessage(mixResult.responseText);
-
-        // Store pending actions if any
-        if (!mixResult.actionsJson.empty() && mixResult.actionsJson != "[]") {
-          m_hasPendingMixActions = true;
-          m_pendingMixActionsJson = mixResult.actionsJson;
-        }
-
         SetAPIStatus("Connected", 0x88FF88FF); // Green
       } else {
         std::string errorStr = "Mix analysis error: ";
