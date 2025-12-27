@@ -162,6 +162,7 @@ private:
   char m_inputBuffer[4096] = {0};
   std::vector<ChatMessage> m_history;
   std::string m_streamingBuffer;
+  std::string m_lastRequest; // Store last request for repeat functionality
   bool m_scrollToBottom = false;
 
   // Pending mix analysis actions (waiting for user confirmation)
@@ -202,6 +203,7 @@ private:
   std::string m_asyncResponseJson;
   std::string m_asyncErrorMsg;
   std::string m_pendingQuestion; // Question being processed
+  std::vector<std::string> m_streamingActions; // Actions queued from stream (executed on main thread)
 
   // Internal methods
   void ProcessAsyncResult();

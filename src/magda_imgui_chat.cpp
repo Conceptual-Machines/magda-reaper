@@ -101,10 +101,63 @@ struct ThemeColors {
 
 static ThemeColors g_theme;
 
-// Helper function to extract action summary from response JSON
-static std::string ExtractActionSummary(const char *response_json) {
+// Helper function to format a single action as readable text
+// Format action as concise technical output for streaming display
+static std::string FormatAction(wdl_json_element *action, int index) {
+  if (!action) return "";
+  
+  std::string result;
+  char buf[512];
+  
+  // Get action type
+  wdl_json_element *action_type = action->get_item_by_name("action");
+  if (!action_type || !action_type->m_value_string) {
+    return "";
+  }
+  
+  const char *type = action_type->m_value;
+  
+  // Format: [N] action_type: key=value, key=value
+  snprintf(buf, sizeof(buf), "[%d] %s:", index + 1, type);
+  result = buf;
+  
+  // Add key parameters based on what's present
+  bool first = true;
+  
+  // Common parameters to show
+  const char *params[] = {"track", "name", "index", "bar", "length_bars", 
+                          "instrument", "fx", "position", "color", "selected", nullptr};
+  
+  for (int i = 0; params[i]; i++) {
+    const char *val = action->get_string_by_name(params[i], true);
+    if (val && val[0]) {
+      result += first ? " " : ", ";
+      result += params[i];
+      result += "=";
+      result += val;
+      first = false;
+    }
+  }
+  
+  // Check for notes array (MIDI)
+  wdl_json_element *notes_elem = action->get_item_by_name("notes");
+  if (notes_elem && notes_elem->is_array()) {
+    int note_count = 0;
+    int idx = 0;
+    while (notes_elem->enum_item(idx)) { note_count++; idx++; }
+    if (note_count > 0) {
+      snprintf(buf, sizeof(buf), "%s notes=%d", first ? " " : ", ", note_count);
+      result += buf;
+    }
+  }
+  
+  return result;
+}
+
+// Helper function to extract and format all actions from response JSON
+static std::string FormatAllActions(const char *response_json) {
   if (!response_json || !response_json[0]) {
-    return "Done";
+    return "Done (no actions)";
   }
 
   wdl_json_parser parser;
@@ -120,38 +173,20 @@ static std::string ExtractActionSummary(const char *response_json) {
     return "Done";
   }
 
-  // Count actions and collect action types
+  std::string result;
   int action_count = 0;
-  std::string action_types;
-  std::vector<std::string> unique_types;
 
   // Iterate through array using enum_item
   int idx = 0;
   wdl_json_element *action = actions->enum_item(idx);
   while (action) {
-    action_count++;
-    wdl_json_element *action_type = action->get_item_by_name("action");
-    if (action_type && action_type->m_value_string) {
-      std::string type = action_type->m_value;
-      // Simplify action names for display
-      if (type.find("create_") == 0) {
-        type = type.substr(7); // Remove "create_" prefix
-      } else if (type.find("set_") == 0) {
-        type = type.substr(4); // Remove "set_" prefix
-      } else if (type.find("add_") == 0) {
-        type = type.substr(4); // Remove "add_" prefix
+    std::string formatted = FormatAction(action, action_count);
+    if (!formatted.empty()) {
+      if (!result.empty()) {
+        result += "\n";
       }
-      // Only add unique types
-      bool found = false;
-      for (const auto &t : unique_types) {
-        if (t == type) {
-          found = true;
-          break;
-        }
-      }
-      if (!found && unique_types.size() < 3) {
-        unique_types.push_back(type);
-      }
+      result += formatted;
+      action_count++;
     }
     idx++;
     action = actions->enum_item(idx);
@@ -161,30 +196,13 @@ static std::string ExtractActionSummary(const char *response_json) {
     return "Done (no actions)";
   }
 
-  // Build summary string
-  std::string summary;
-  if (action_count == 1) {
-    summary = "Completed 1 action";
-  } else {
-    summary = "Completed " + std::to_string(action_count) + " actions";
-  }
+  return result;
+}
 
-  // Add action types if available
-  if (!unique_types.empty()) {
-    summary += " (";
-    for (size_t i = 0; i < unique_types.size(); i++) {
-      if (i > 0)
-        summary += ", ";
-      summary += unique_types[i];
-    }
-    if (unique_types.size() < (size_t)action_count &&
-        (size_t)action_count > unique_types.size()) {
-      summary += "...";
-    }
-    summary += ")";
-  }
-
-  return summary;
+// Helper function to extract action summary from response JSON
+static std::string ExtractActionSummary(const char *response_json) {
+  // Use FormatAllActions to show all actions
+  return FormatAllActions(response_json);
 }
 
 // Legacy color namespace for compatibility
@@ -594,6 +612,7 @@ void MagdaImGuiChat::Render() {
       if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
         if (!m_busy && strlen(m_inputBuffer) > 0) {
           std::string msg = m_inputBuffer;
+          m_lastRequest = msg; // Store for repeat functionality
           AddUserMessage(msg);
           m_inputBuffer[0] = '\0';
 
@@ -756,6 +775,55 @@ void MagdaImGuiChat::Render() {
         // Trigger master analysis workflow (bounce master/analyze/send to
         // agent)
         magdaAction(g_cmdMasterAnalyze, 0);
+      }
+      
+      m_ImGui_Separator(m_ctx);
+      m_ImGui_TextColored(m_ctx, g_theme.headerText, "UTILITIES");
+      m_ImGui_Separator(m_ctx);
+      
+      // Repeat last request button
+      bool canRepeat = !m_busy && !m_lastRequest.empty();
+      if (!canRepeat && m_ImGui_PushStyleColor) {
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+      }
+      if (m_ImGui_Button(m_ctx, "Repeat Last", nullptr, nullptr)) {
+        if (canRepeat) {
+          AddUserMessage(m_lastRequest);
+          if (HandleMixCommand(m_lastRequest)) {
+            // Mix command handled
+          } else {
+            StartAsyncRequest(m_lastRequest);
+            if (m_onSend) {
+              m_onSend(m_lastRequest);
+            }
+          }
+        }
+      }
+      if (!canRepeat && m_ImGui_PopStyleColor) {
+        int popCount = 1;
+        m_ImGui_PopStyleColor(m_ctx, &popCount);
+      }
+      
+      // Copy chat button
+      if (m_ImGui_Button(m_ctx, "Copy Chat", nullptr, nullptr)) {
+        std::string chatText;
+        for (const auto &msg : m_history) {
+          chatText += msg.is_user ? "User: " : "Assistant: ";
+          chatText += msg.content + "\n\n";
+        }
+        if (g_rec && !chatText.empty()) {
+          void (*CF_SetClipboard)(const char *) =
+              (void (*)(const char *))g_rec->GetFunc("CF_SetClipboard");
+          if (CF_SetClipboard) {
+            CF_SetClipboard(chatText.c_str());
+          }
+        }
+      }
+      
+      // Clear chat button
+      if (m_ImGui_Button(m_ctx, "Clear Chat", nullptr, nullptr)) {
+        m_history.clear();
+        m_streamingBuffer.clear();
       }
     }
     m_ImGui_EndChild(m_ctx);
@@ -1028,6 +1096,55 @@ void MagdaImGuiChat::RenderControlsColumn() {
 
   m_ImGui_Dummy(m_ctx, 0, 3);
 
+  // Repeat last request button
+  bool canRepeat = !m_busy && !m_lastRequest.empty();
+  if (!canRepeat) {
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+  }
+  if (m_ImGui_Button(m_ctx, "Repeat Last", &btnWidth, &btnHeight)) {
+    if (canRepeat) {
+      AddUserMessage(m_lastRequest);
+      if (HandleMixCommand(m_lastRequest)) {
+        // Mix command handled
+      } else {
+        StartAsyncRequest(m_lastRequest);
+        if (m_onSend) {
+          m_onSend(m_lastRequest);
+        }
+      }
+    }
+  }
+  if (!canRepeat) {
+    int popCount = 1;
+    m_ImGui_PopStyleColor(m_ctx, &popCount);
+  }
+
+  m_ImGui_Dummy(m_ctx, 0, 3);
+
+  // Copy chat to clipboard button
+  if (m_ImGui_Button(m_ctx, "Copy Chat", &btnWidth, &btnHeight)) {
+    // Build chat text
+    std::string chatText;
+    for (const auto &msg : m_history) {
+      if (msg.is_user) {
+        chatText += "User: ";
+      } else {
+        chatText += "Assistant: ";
+      }
+      chatText += msg.content + "\n\n";
+    }
+    // Copy to clipboard using REAPER API
+    if (g_rec && !chatText.empty()) {
+      void (*CF_SetClipboard)(const char *) =
+          (void (*)(const char *))g_rec->GetFunc("CF_SetClipboard");
+      if (CF_SetClipboard) {
+        CF_SetClipboard(chatText.c_str());
+      }
+    }
+  }
+
+  m_ImGui_Dummy(m_ctx, 0, 3);
+
   if (m_ImGui_Button(m_ctx, "Export Chat...", &btnWidth, &btnHeight)) {
     // Export chat to file
     if (g_rec) {
@@ -1155,6 +1272,7 @@ void MagdaImGuiChat::RenderInputArea() {
       submitted) {
     if (canSend) {
       std::string msg = m_inputBuffer;
+      m_lastRequest = msg; // Store for repeat functionality
       // Add to command history
       m_inputHistory.push_back(msg);
       m_inputHistoryIndex = -1;
@@ -1640,7 +1758,8 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Set busy state and start spinner animation
   m_busy = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-  SetAPIStatus("Sending...", 0xFFFF66FF); // Yellow
+  SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
+  ClearStreamingBuffer(); // Clear any previous streaming content
 
   // Set backend URL from settings
   const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
@@ -1648,10 +1767,16 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     s_httpClient.SetBackendURL(backendUrl);
   }
 
-  // Set JWT token if available
-  const char *token = MagdaImGuiLogin::GetStoredToken();
-  if (token && token[0]) {
-    s_httpClient.SetJWTToken(token);
+  // Only set JWT token if auth is required (Gateway mode)
+  // Local API (AuthMode::None) doesn't need authentication
+  if (g_imguiLogin && g_imguiLogin->GetAuthMode() == AuthMode::Gateway) {
+    const char *token = MagdaImGuiLogin::GetStoredToken();
+    if (token && token[0]) {
+      s_httpClient.SetJWTToken(token);
+    }
+  } else {
+    // Clear any existing token for local mode
+    s_httpClient.SetJWTToken(nullptr);
   }
 
   // Build request JSON on main thread (accesses REAPER state)
@@ -1702,6 +1827,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     m_asyncSuccess = false;
     m_asyncResponseJson.clear();
     m_asyncErrorMsg.clear();
+    m_streamingActions.clear(); // Clear any pending actions
   }
 
   // Wait for any previous thread to finish
@@ -1709,27 +1835,192 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     m_asyncThread.join();
   }
 
-  // Start the async request thread - ONLY do HTTP, no REAPER API calls
-  m_asyncThread = std::thread([this, requestJsonStr]() {
-    // Make the HTTP request (this is the slow part)
-    // Use SendPOSTRequest directly - do NOT call SendQuestion which executes
-    // actions
-    WDL_FastString response, error_msg;
-    bool success = s_httpClient.SendPOSTRequest(
-        "/api/v1/chat", requestJsonStr.c_str(), response, error_msg, 60);
+  // Streaming context for callback
+  struct StreamContext {
+    MagdaImGuiChat *chat;
+    std::vector<std::string> allActions;
+    int actionCount;
+  };
+  StreamContext *ctx = new StreamContext{this, {}, 0};
 
-    // Store the result
-    {
-      std::lock_guard<std::mutex> lock(m_asyncMutex);
-      m_asyncSuccess = success;
-      if (success) {
-        m_asyncResponseJson = response.Get();
+  // Start streaming request thread
+  m_asyncThread = std::thread([requestJsonStr, ctx]() {
+    WDL_FastString error_msg;
+
+    // Streaming callback - must be capture-less lambda or static function
+    auto streamCallback = [](const char *event_json, void *user_data) {
+      StreamContext *ctx = static_cast<StreamContext *>(user_data);
+      if (!ctx || !ctx->chat) return;
+      // Parse event JSON
+      wdl_json_parser parser;
+      wdl_json_element *root = parser.parse(event_json, (int)strlen(event_json));
+
+      if (!parser.m_err && root) {
+        // Check event type
+        wdl_json_element *type_elem = root->get_item_by_name("type");
+        if (type_elem && type_elem->m_value_string) {
+          const char *eventType = type_elem->m_value;
+
+          if (strcmp(eventType, "action") == 0) {
+            // The API client already extracted the action object from the SSE wrapper
+            // So event_json IS the action object: {"action":"create_track",...}
+            std::string actionEventJson = event_json;
+            
+            // Debug log
+            if (g_rec) {
+              void (*ShowConsoleMsg)(const char *msg) =
+                  (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+              if (ShowConsoleMsg) {
+                char log_msg[512];
+                snprintf(log_msg, sizeof(log_msg),
+                         "MAGDA: Chat callback received action type event: %.200s\n",
+                         event_json);
+                ShowConsoleMsg(log_msg);
+              }
+            }
+            
+            // Note: action_elem check is legacy - the action is already extracted
+            wdl_json_element *action_elem = root->get_item_by_name("action");
+            if (action_elem) {
+              
+              {
+                std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+                ctx->chat->m_streamingActions.push_back(actionEventJson);
+              }
+              ctx->allActions.push_back(actionEventJson);
+              ctx->actionCount++;
+
+              // Update streaming buffer to show formatted action
+              {
+                std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+                // The actionEventJson IS the action object itself (already extracted by API client)
+                // e.g. {"action":"create_track","index":0,"name":"bass"}
+                wdl_json_parser actionParser;
+                wdl_json_element *actionObj = actionParser.parse(actionEventJson.c_str(), (int)actionEventJson.length());
+                if (!actionParser.m_err && actionObj) {
+                  // Format the action object directly
+                  std::string formatted = FormatAction(actionObj, ctx->actionCount - 1);
+                  if (!formatted.empty()) {
+                    ctx->chat->m_streamingBuffer += formatted + "\n";
+                  } else {
+                    // Fallback to progress message
+                    char progress_msg[256];
+                    snprintf(progress_msg, sizeof(progress_msg), 
+                            "Received action %d...\n", ctx->actionCount);
+                    ctx->chat->m_streamingBuffer += progress_msg;
+                  }
+                } else {
+                  // Fallback to progress message
+                  char progress_msg[256];
+                  snprintf(progress_msg, sizeof(progress_msg), 
+                          "Received action %d...\n", ctx->actionCount);
+                  ctx->chat->m_streamingBuffer += progress_msg;
+                }
+              }
+            }
+          } else if (strcmp(eventType, "done") == 0) {
+            // Streaming complete
+            {
+              std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+              ctx->chat->m_asyncSuccess = true;
+              ctx->chat->m_asyncResultReady = true;
+              ctx->chat->m_asyncPending = false;
+              // Build final response JSON with all actions
+              ctx->chat->m_asyncResponseJson = "{\"actions\":[";
+              for (size_t i = 0; i < ctx->allActions.size(); i++) {
+                if (i > 0) ctx->chat->m_asyncResponseJson += ",";
+                // Extract action from event JSON
+                wdl_json_parser p;
+                wdl_json_element *r = p.parse(ctx->allActions[i].c_str(), (int)ctx->allActions[i].length());
+                if (!p.m_err && r) {
+                  wdl_json_element *a = r->get_item_by_name("action");
+                  if (a && a->m_value_string) {
+                    ctx->chat->m_asyncResponseJson += a->m_value;
+                  } else {
+                    // Fallback: use the action JSON directly if nested extraction fails
+                    ctx->chat->m_asyncResponseJson += ctx->allActions[i];
+                  }
+                }
+              }
+              ctx->chat->m_asyncResponseJson += "]}";
+            }
+            return; // Don't queue "done" as an action
+          } else if (strcmp(eventType, "error") == 0) {
+            // Error event
+            const char *errorMsg = "Unknown error";
+            wdl_json_element *msg_elem = root->get_item_by_name("message");
+            if (msg_elem && msg_elem->m_value_string) {
+              errorMsg = msg_elem->m_value;
+            }
+            {
+              std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+              ctx->chat->m_asyncErrorMsg = errorMsg;
+              ctx->chat->m_asyncSuccess = false;
+              ctx->chat->m_asyncResultReady = true;
+              ctx->chat->m_asyncPending = false;
+            }
+            return;
+          }
+        } else {
+          // No type field - this IS the action JSON extracted by the API client
+          // e.g. {"action":"create_track","index":0,"name":"bass"}
+          std::string actionJson = event_json;
+          
+          {
+            std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+            ctx->chat->m_streamingActions.push_back(actionJson);
+            
+            // Format and add to streaming buffer for display
+            std::string formatted = FormatAction(root, ctx->actionCount);
+            if (!formatted.empty()) {
+              ctx->chat->m_streamingBuffer += formatted + "\n";
+            } else {
+              char progress_msg[256];
+              snprintf(progress_msg, sizeof(progress_msg), 
+                      "Action %d: %s\n", ctx->actionCount + 1,
+                      root->get_string_by_name("action") ? root->get_string_by_name("action") : "unknown");
+              ctx->chat->m_streamingBuffer += progress_msg;
+            }
+          }
+          ctx->allActions.push_back(actionJson);
+          ctx->actionCount++;
+        }
       } else {
-        m_asyncErrorMsg = error_msg.Get();
+        // Parse failed - might still be valid JSON, try queuing it
+        {
+          std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+          ctx->chat->m_streamingActions.push_back(std::string(event_json));
+          
+          // Still add to buffer for visibility
+          char progress_msg[256];
+          snprintf(progress_msg, sizeof(progress_msg), 
+                  "Action %d received\n", ctx->actionCount + 1);
+          ctx->chat->m_streamingBuffer += progress_msg;
+        }
+        ctx->allActions.push_back(std::string(event_json));
+        ctx->actionCount++;
       }
-      m_asyncResultReady = true;
-      m_asyncPending = false;
+    };
+
+    // Make streaming request to /api/v1/chat/stream
+    bool success = s_httpClient.SendPOSTStream(
+        "/api/v1/chat/stream", requestJsonStr.c_str(), streamCallback, ctx,
+        error_msg, 60);
+
+    // If streaming failed completely (not just an error event)
+    if (!success) {
+      {
+        std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+        ctx->chat->m_asyncSuccess = false;
+        ctx->chat->m_asyncErrorMsg = error_msg.Get();
+        ctx->chat->m_asyncResultReady = true;
+        ctx->chat->m_asyncPending = false;
+      }
     }
+    // Otherwise, success/error was already set by the callback
+    
+    // Clean up context
+    delete ctx;
   });
 }
 
@@ -1762,15 +2053,75 @@ void MagdaImGuiChat::ProcessAsyncResult() {
     }
   }
 
+  // Process streaming actions as they arrive (even if stream not complete)
+  // This allows actions to execute in real-time as they stream in
+  std::vector<std::string> actionsToExecute;
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    if (!m_streamingActions.empty()) {
+      actionsToExecute = m_streamingActions;
+      m_streamingActions.clear(); // Clear after copying
+    }
+  }
+
+  // Execute actions from stream on MAIN thread
+  for (const auto &actionEventJson : actionsToExecute) {
+    // The actionEventJson is already the unwrapped action object:
+    // {"action":"create_track","index":0,"instrument":"@plugin:serum_2","name":"bass"}
+    // Just wrap it in an array for ExecuteActions
+    std::string singleActionJson = "[" + actionEventJson + "]";
+    
+    // Debug: log what we're executing
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[1024];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: Executing action: %.500s\n",
+                 singleActionJson.c_str());
+        ShowConsoleMsg(log_msg);
+      }
+    }
+    
+    WDL_FastString execution_result, execution_error;
+    if (!MagdaActions::ExecuteActions(singleActionJson.c_str(), execution_result, execution_error)) {
+      // Log error
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Action execution failed: %s\n",
+                   execution_error.Get());
+          ShowConsoleMsg(log_msg);
+        }
+      }
+    } else {
+      // Log success
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg("MAGDA: Action executed successfully\n");
+        }
+      }
+    }
+  }
+
+  // Check if final result is ready (stream complete)
   bool resultReady = false;
   bool success = false;
   std::string responseJson;
   std::string errorMsg;
 
-  // Check if result is ready (thread-safe)
   {
     std::lock_guard<std::mutex> lock(m_asyncMutex);
     if (!m_asyncResultReady) {
+      // Stream still in progress, but we've executed any queued actions
+      // API is connected and working - don't expose streaming implementation detail
+      SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
       return;
     }
     resultReady = true;
@@ -1789,41 +2140,49 @@ void MagdaImGuiChat::ProcessAsyncResult() {
     m_asyncThread.join();
   }
 
-  // Process the result on the MAIN thread (safe to call REAPER APIs here)
+  // Process final result on the MAIN thread
   if (success) {
-    // Execute actions from the response - MUST be on main thread
-    if (!responseJson.empty()) {
-      // Extract actions JSON from response
-      char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
-          responseJson.c_str(), (int)responseJson.length());
-
-      if (actions_json) {
-        WDL_FastString execution_result, execution_error;
-        if (!MagdaActions::ExecuteActions(actions_json, execution_result,
-                                          execution_error)) {
-          // Log error
-          if (g_rec) {
-            void (*ShowConsoleMsg)(const char *msg) =
-                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-            if (ShowConsoleMsg) {
-              char log_msg[512];
-              snprintf(log_msg, sizeof(log_msg),
-                       "MAGDA: Action execution failed: %s\n",
-                       execution_error.Get());
-              ShowConsoleMsg(log_msg);
+    // For streaming: the buffer should contain formatted action messages
+    // ClearStreamingBuffer adds buffer content to chat history
+    bool hadStreamingContent = !m_streamingBuffer.empty();
+    ClearStreamingBuffer();
+    
+    // Only add summary if streaming buffer was empty (non-streaming response)
+    // For streaming, the actions were already formatted and displayed
+    if (!hadStreamingContent) {
+      // Extract summary of what was done from the response JSON
+      std::string summary = ExtractActionSummary(responseJson.c_str());
+      if (!summary.empty()) {
+        AddAssistantMessage(summary);
+      } else {
+        // Fallback: show action count
+        char summary_msg[256];
+        int action_count = 0;
+        if (!responseJson.empty()) {
+          char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
+              responseJson.c_str(), (int)responseJson.length());
+          if (actions_json) {
+            // Count actions (rough estimate)
+            for (const char *p = actions_json; *p; p++) {
+              if (strncmp(p, "\"action\":", 9) == 0) {
+                action_count++;
+              }
             }
+            free(actions_json);
           }
         }
-        free(actions_json);
+        if (action_count > 0) {
+          snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).", action_count);
+          AddAssistantMessage(summary_msg);
+        } else {
+          AddAssistantMessage("Done.");
+        }
       }
     }
-
-    // Extract summary of what was done
-    std::string summary = ExtractActionSummary(responseJson.c_str());
-    AddAssistantMessage(summary);
     SetAPIStatus("Connected", 0x88FF88FF); // Green
   } else {
     // Error - show more context
+    ClearStreamingBuffer();
     std::string errorStr = "Error: ";
     errorStr += errorMsg;
     AddAssistantMessage(errorStr);

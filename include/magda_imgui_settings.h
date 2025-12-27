@@ -34,7 +34,8 @@ public:
 
 private:
   // ReaImGui function pointers
-  void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
+  void *(*m_ImGui_CreateContext)(const char *label,
+                                 int *config_flagsInOptional);
   bool (*m_ImGui_Begin)(void *ctx, const char *name, bool *p_openInOutOptional,
                         int *flagsInOptional);
   void (*m_ImGui_End)(void *ctx);
@@ -52,8 +53,9 @@ private:
   bool (*m_ImGui_BeginCombo)(void *ctx, const char *label,
                              const char *preview_value, int *flagsInOptional);
   void (*m_ImGui_EndCombo)(void *ctx);
-  bool (*m_ImGui_Selectable)(void *ctx, const char *label, bool *p_selectedInOut,
-                             int *flagsInOptional, double *size_wInOptional,
+  bool (*m_ImGui_Selectable)(void *ctx, const char *label,
+                             bool *p_selectedInOut, int *flagsInOptional,
+                             double *size_wInOptional,
                              double *size_hInOptional);
   bool (*m_ImGui_InputInt)(void *ctx, const char *label, int *v,
                            int *stepInOptional, int *step_fastInOptional,

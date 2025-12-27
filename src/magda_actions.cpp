@@ -529,10 +529,11 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
     return nullptr;
   }
 
-  // Find clip at or near the target position (within 0.1 seconds tolerance)
+  // Find clip at or near the target position (within tolerance)
+  // Use smaller tolerance for more precise matching (0.01 seconds = 10ms)
   int total_items = CountMediaItems(nullptr);
   MediaItem *best_match = nullptr;
-  double best_distance = 1.0; // 1 second tolerance
+  double best_distance = 0.01; // 10ms tolerance for precise matching
 
   for (int i = 0; i < total_items; i++) {
     MediaItem *item = GetMediaItem(nullptr, i);
@@ -549,6 +550,20 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
         best_match = item;
         best_distance = distance;
       }
+    }
+  }
+
+  // Log if clip not found for debugging
+  if (!best_match) {
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char msg[256];
+      snprintf(msg, sizeof(msg),
+               "MAGDA: FindClipByPosition: No clip found at position %.6f on "
+               "track (tolerance: 0.01s)\n",
+               target_position);
+      ShowConsoleMsg(msg);
     }
   }
 
@@ -756,9 +771,51 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   }
 
   if (!target_item) {
+    // Log what we were looking for
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      if (position_str) {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - Clip not found at position %s on track %d\n",
+                 position_str, track_index);
+      } else if (bar_str) {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - Clip not found at bar %s on track %d\n",
+                 bar_str, track_index);
+      } else if (clip_str) {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - Clip not found at index %s on track %d\n",
+                 clip_str, track_index);
+      } else {
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: ERROR - No clip identifier provided for track %d\n",
+                 track_index);
+      }
+      ShowConsoleMsg(log_msg);
+    }
+    
     error_msg.Set("Clip not found: specify 'clip' (index), 'position' "
                   "(seconds), or 'bar' (bar number)");
     return false;
+  }
+  
+  // Log successful clip identification
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  if (ShowConsoleMsg) {
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
+        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+    if (GetMediaItemInfo_Value) {
+      double item_pos = GetMediaItemInfo_Value(target_item, "D_POSITION");
+      double item_len = GetMediaItemInfo_Value(target_item, "D_LENGTH");
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: Found clip at position %.6f, length %.6f on track %d\n",
+               item_pos, item_len, track_index);
+      ShowConsoleMsg(log_msg);
+    }
   }
 
   // Set properties using REAPER API
@@ -777,25 +834,183 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
   // Set name if provided
-  if (name && name[0] && GetSetMediaItemInfo_String) {
-    GetSetMediaItemInfo_String(target_item, "P_NAME", (char *)name, true);
+  // IMPORTANT: MediaItems don't have names directly - only MediaItem_Takes do!
+  // We need to get the active take and set its name
+  if (name && name[0]) {
+    MediaItem_Take *(*GetActiveTake)(MediaItem *) =
+        (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
+    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *, char *,
+                                           int) =
+        (bool (*)(MediaItem_Take *, const char *, char *,
+                  int))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+    int (*CountTakes)(MediaItem *) =
+        (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+    MediaItem_Take *(*GetTake)(MediaItem *, int) =
+        (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
+    void (*SetActiveTake)(MediaItem_Take *) =
+        (void (*)(MediaItem_Take *))g_rec->GetFunc("SetActiveTake");
+
+    if (GetActiveTake && GetSetMediaItemTakeInfo_String) {
+      // Get the active take (or first take if no active take)
+      MediaItem_Take *activeTake = GetActiveTake(target_item);
+      if (!activeTake && CountTakes && GetTake && SetActiveTake) {
+        // No active take, get the first take and make it active
+        int takeCount = CountTakes(target_item);
+        if (takeCount > 0) {
+          MediaItem_Take *firstTake = GetTake(target_item, 0);
+          if (firstTake) {
+            SetActiveTake(firstTake);
+            activeTake = firstTake;
+          }
+        }
+      }
+
+      if (activeTake) {
+        // GetSetMediaItemTakeInfo_String requires a buffer - copy the name
+        char name_buffer[512];
+        strncpy(name_buffer, name, sizeof(name_buffer) - 1);
+        name_buffer[sizeof(name_buffer) - 1] = '\0';
+
+        // Log the rename operation for debugging
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+              (double (*)(MediaItem *, const char *))g_rec->GetFunc(
+                  "GetMediaItemInfo_Value");
+          double item_pos = GetMediaItemInfo_Value
+                                ? GetMediaItemInfo_Value(target_item, "D_POSITION")
+                                : -1.0;
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Setting clip name at position %.6f to '%s' (via take)\n",
+                   item_pos, name_buffer);
+          ShowConsoleMsg(log_msg);
+        }
+
+        bool result = GetSetMediaItemTakeInfo_String(activeTake, "P_NAME",
+                                                     name_buffer, true);
+
+        // Log result
+        void (*ShowConsoleMsg2)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg2) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: GetSetMediaItemTakeInfo_String returned: %s\n",
+                   result ? "true" : "false");
+          ShowConsoleMsg2(log_msg);
+
+          // Verify it was set by reading it back
+          char verify_buffer[512] = {0};
+          if (GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", verify_buffer,
+                                             false)) {
+            char verify_msg[256];
+            snprintf(verify_msg, sizeof(verify_msg),
+                     "MAGDA: Verified clip name is now: '%s'\n", verify_buffer);
+            ShowConsoleMsg2(verify_msg);
+          }
+        }
+      } else {
+        // No take available - create one if possible
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: WARNING - Clip has no takes, cannot set name\n");
+        }
+      }
+    }
   }
 
-  // Set color if provided (REAPER uses integer color values)
+  // Set color if provided (REAPER uses OS-dependent color values)
+  // Use ColorToNative for proper OS-dependent conversion
   if (color && color[0] && GetSetMediaItemInfo) {
-    // Parse hex color like "#ff0000" to integer
-    // REAPER uses BGR format: 0xBBGGRR
+    // Parse hex color like "#ff0000" or "ff0000" to RGB components
+    unsigned int r = 0, g = 0, b = 0;
+    bool parsed = false;
+    
     if (color[0] == '#') {
       unsigned int hex_color = 0;
-      if (strlen(color) >= 7) {
-        sscanf(color + 1, "%x", &hex_color);
-        // Convert RGB to BGR
-        unsigned int r = (hex_color >> 16) & 0xFF;
-        unsigned int g = (hex_color >> 8) & 0xFF;
-        unsigned int b = hex_color & 0xFF;
+      if (strlen(color) >= 7 && sscanf(color + 1, "%x", &hex_color) == 1) {
+        r = (hex_color >> 16) & 0xFF;
+        g = (hex_color >> 8) & 0xFF;
+        b = hex_color & 0xFF;
+        parsed = true;
+      }
+    } else {
+      // Try to parse as hex without #
+      unsigned int hex_color = 0;
+      if (sscanf(color, "%x", &hex_color) == 1) {
+        r = (hex_color >> 16) & 0xFF;
+        g = (hex_color >> 8) & 0xFF;
+        b = hex_color & 0xFF;
+        parsed = true;
+      }
+    }
+
+    if (parsed) {
+      // Use ColorToNative for OS-dependent color conversion
+      int (*ColorToNative)(int r, int g, int b) =
+          (int (*)(int, int, int))g_rec->GetFunc("ColorToNative");
+      
+      int color_val = 0;
+      if (ColorToNative) {
+        // Use REAPER's ColorToNative function for proper OS conversion
+        color_val = ColorToNative((int)r, (int)g, (int)b);
+      } else {
+        // Fallback: manual BGR conversion (shouldn't be needed, but just in case)
         unsigned int bgr = (b << 16) | (g << 8) | r;
-        int color_val = (int)bgr;
-        GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &color_val, nullptr);
+        color_val = (int)bgr;
+      }
+
+      // Set flag bit 0x1000000 to enable custom color
+      int color_with_flag = color_val | 0x1000000;
+      
+      // Log the color operation
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+            (double (*)(MediaItem *, const char *))g_rec->GetFunc(
+                "GetMediaItemInfo_Value");
+        double item_pos = GetMediaItemInfo_Value
+                              ? GetMediaItemInfo_Value(target_item, "D_POSITION")
+                              : -1.0;
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
+                 "(native: 0x%08x)\n",
+                 item_pos, r, g, b, color_with_flag);
+        ShowConsoleMsg(log_msg);
+      }
+      
+      GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &color_with_flag,
+                          nullptr);
+      
+      // Update arrange view to reflect color change
+      if (UpdateArrange) {
+        UpdateArrange();
+      }
+      
+      // Verify it was set by reading it back
+      if (ShowConsoleMsg) {
+        int verify_color = 0;
+        GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &verify_color,
+                            nullptr);
+        char verify_msg[256];
+        snprintf(verify_msg, sizeof(verify_msg),
+                 "MAGDA: Verified clip color is now: 0x%08x\n", verify_color);
+        ShowConsoleMsg(verify_msg);
+      }
+    } else {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: WARNING - Failed to parse color '%s'\n", color);
+        ShowConsoleMsg(log_msg);
       }
     }
   }
@@ -1483,15 +1698,43 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
         if (result_count > 0)
           result.Append(",");
 
+        // Log action execution for debugging
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg && action_type) {
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n",
+                   action_type);
+          ShowConsoleMsg(log_msg);
+        }
+
         WDL_FastString action_result, action_error;
         if (ExecuteAction(item, action_result, action_error)) {
           result.Append(action_result.Get());
+
+          // Log success
+          if (ShowConsoleMsg && action_type) {
+            char log_msg[512];
+            snprintf(log_msg, sizeof(log_msg),
+                     "MAGDA: Action '%s' succeeded: %s\n", action_type,
+                     action_result.Get());
+            ShowConsoleMsg(log_msg);
+          }
         } else {
           result.Append("{\"error\":");
           result.Append("\"");
           result.Append(action_error.Get());
           result.Append("\"}");
           success = false;
+
+          // Log error
+          if (ShowConsoleMsg && action_type) {
+            char log_msg[512];
+            snprintf(log_msg, sizeof(log_msg),
+                     "MAGDA: Action '%s' failed: %s\n", action_type,
+                     action_error.Get());
+            ShowConsoleMsg(log_msg);
+          }
         }
         result_count++;
       }
@@ -1530,15 +1773,43 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
     }
   } else if (root->is_object()) {
     // Single action
+    const char *action_type = root->get_string_by_name("action");
+
+    // Log action execution for debugging
+    void (*ShowConsoleMsg)(const char *msg) =
+        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    if (ShowConsoleMsg && action_type) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n",
+               action_type);
+      ShowConsoleMsg(log_msg);
+    }
+
     WDL_FastString action_result, action_error;
     if (ExecuteAction(root, action_result, action_error)) {
       result.Append(action_result.Get());
+
+      // Log success
+      if (ShowConsoleMsg && action_type) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' succeeded: %s\n",
+                 action_type, action_result.Get());
+        ShowConsoleMsg(log_msg);
+      }
     } else {
       result.Append("{\"error\":");
       result.Append("\"");
       result.Append(action_error.Get());
       result.Append("\"}");
       success = false;
+
+      // Log error
+      if (ShowConsoleMsg && action_type) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' failed: %s\n",
+                 action_type, action_error.Get());
+        ShowConsoleMsg(log_msg);
+      }
     }
   } else {
     error_msg.Set("JSON must be an object or array");

@@ -8,10 +8,10 @@
 
 // Auth mode detected from API
 enum class AuthMode {
-  Unknown,  // Not yet checked
-  None,     // Local/self-hosted - no auth required
-  Gateway,  // Hosted - auth required
-  Error     // Failed to connect
+  Unknown, // Not yet checked
+  None,    // Local/self-hosted - no auth required
+  Gateway, // Hosted - auth required
+  Error    // Failed to connect
 };
 
 class MagdaImGuiLogin {
