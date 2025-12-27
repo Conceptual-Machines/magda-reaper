@@ -1972,7 +1972,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     ShowConsoleMsg(log_msg);
   }
 
-  // Find the most recent clip on the track (or create one if none exists)
+  // Find the rightmost clip on the track (by position, not index)
   MediaItem *item = nullptr;
   int num_items = CountTrackMediaItems(track);
 
@@ -1984,10 +1984,33 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
   }
 
   if (num_items > 0) {
-    // Get the last clip
-    item = GetTrackMediaItem(track, num_items - 1);
-    if (ShowConsoleMsg)
-      ShowConsoleMsg("MAGDA: AddMIDI: Using existing media item\n");
+    // Find the rightmost item by position (not by index!)
+    // Use GetMediaItemInfo_Value as a more reliable way to get position
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
+        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+
+    double max_pos = -1.0;
+    for (int i = 0; i < num_items; i++) {
+      MediaItem *candidate = GetTrackMediaItem(track, i);
+      if (candidate) {
+        double pos = 0.0;
+        if (GetMediaItemInfo_Value) {
+          pos = GetMediaItemInfo_Value(candidate, "D_POSITION");
+        } else if (GetMediaItemPosition) {
+          pos = GetMediaItemPosition(candidate);
+        }
+        if (pos >= max_pos) {  // Use >= to prefer later items at same position
+          max_pos = pos;
+          item = candidate;
+        }
+      }
+    }
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: AddMIDI: Using rightmost item at position %.2f sec\n", max_pos);
+      ShowConsoleMsg(log_msg);
+    }
   } else {
     // No clips exist, create one at bar 1, 4 bars long
     if (ShowConsoleMsg)
@@ -2053,20 +2076,30 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
                      "CreateNewMIDIItemInProj...\n");
 
     // Get item position and length to recreate it as MIDI
-    double item_pos = GetMediaItemPosition ? GetMediaItemPosition(item) : 0.0;
+    // Use GetMediaItemInfo_Value which is more reliable
+    double (*GetMediaItemInfo_Val)(MediaItem *, const char *) = (double (*)(
+        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+
+    double item_pos = 0.0;
     double item_len = 4.0; // Default to 4 seconds
-    double (*GetMediaItemLength)(MediaItem *) =
-        (double (*)(MediaItem *))g_rec->GetFunc("GetMediaItemLength");
-    if (GetMediaItemLength) {
-      double old_len = GetMediaItemLength(item);
+
+    if (GetMediaItemInfo_Val) {
+      item_pos = GetMediaItemInfo_Val(item, "D_POSITION");
+      item_len = GetMediaItemInfo_Val(item, "D_LENGTH");
       if (ShowConsoleMsg) {
         char log_msg[256];
         snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI: Original clip length: %.2f seconds\n",
-                 old_len);
+                 "MAGDA: AddMIDI: Original clip pos=%.2f sec, len=%.2f sec\n",
+                 item_pos, item_len);
         ShowConsoleMsg(log_msg);
       }
-      item_len = old_len;
+    } else if (GetMediaItemPosition) {
+      item_pos = GetMediaItemPosition(item);
+      double (*GetMediaItemLength)(MediaItem *) =
+          (double (*)(MediaItem *))g_rec->GetFunc("GetMediaItemLength");
+      if (GetMediaItemLength) {
+        item_len = GetMediaItemLength(item);
+      }
     }
 
     // Calculate required length from notes (find max end time in beats/quarter
@@ -2209,17 +2242,9 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     return false;
   }
 
-  // Get REAPER's function to convert project QN to PPQ for this take
-  double (*MIDI_GetPPQPosFromProjQN)(MediaItem_Take *, double) = (double (*)(
-      MediaItem_Take *, double))g_rec->GetFunc("MIDI_GetPPQPosFromProjQN");
-
-  if (!MIDI_GetPPQPosFromProjQN) {
-    error_msg.Set("MIDI_GetPPQPosFromProjQN not available");
-    if (ShowConsoleMsg)
-      ShowConsoleMsg(
-          "MAGDA: AddMIDI ERROR: MIDI_GetPPQPosFromProjQN not available\n");
-    return false;
-  }
+  // MIDI notes use PPQ (pulses per quarter note), typically 960 PPQ per beat
+  // Note positions are relative to item start, so beat 0 = PPQ 0
+  const double PPQ_PER_QN = 960.0;
 
   // Insert each note
   int notes_inserted = 0;
@@ -2277,10 +2302,10 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     double start_beats = atof(start_str);
     double length_beats = atof(length_str);
 
-    // Convert beats (QN) to PPQ using REAPER's function - this handles tempo
-    // correctly
-    double start_ppq = MIDI_GetPPQPosFromProjQN(take, start_beats);
-    double end_ppq = MIDI_GetPPQPosFromProjQN(take, start_beats + length_beats);
+    // Convert beats to PPQ - note positions are relative to item start
+    // So beat 0 = PPQ 0, beat 1 = PPQ 960, etc.
+    double start_ppq = start_beats * PPQ_PER_QN;
+    double end_ppq = (start_beats + length_beats) * PPQ_PER_QN;
 
     if (ShowConsoleMsg) {
       char log_msg[512];
