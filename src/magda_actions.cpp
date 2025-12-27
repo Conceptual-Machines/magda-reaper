@@ -795,12 +795,12 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
       }
       ShowConsoleMsg(log_msg);
     }
-    
+
     error_msg.Set("Clip not found: specify 'clip' (index), 'position' "
                   "(seconds), or 'bar' (bar number)");
     return false;
   }
-  
+
   // Log successful clip identification
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
@@ -839,10 +839,10 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   if (name && name[0]) {
     MediaItem_Take *(*GetActiveTake)(MediaItem *) =
         (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
-    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *, char *,
-                                           int) =
-        (bool (*)(MediaItem_Take *, const char *, char *,
-                  int))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
+                                           char *, int) =
+        (bool (*)(MediaItem_Take *, const char *, char *, int))g_rec->GetFunc(
+            "GetSetMediaItemTakeInfo_String");
     int (*CountTakes)(MediaItem *) =
         (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
     MediaItem_Take *(*GetTake)(MediaItem *, int) =
@@ -878,13 +878,15 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
           double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
               (double (*)(MediaItem *, const char *))g_rec->GetFunc(
                   "GetMediaItemInfo_Value");
-          double item_pos = GetMediaItemInfo_Value
-                                ? GetMediaItemInfo_Value(target_item, "D_POSITION")
-                                : -1.0;
+          double item_pos =
+              GetMediaItemInfo_Value
+                  ? GetMediaItemInfo_Value(target_item, "D_POSITION")
+                  : -1.0;
           char log_msg[512];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Setting clip name at position %.6f to '%s' (via take)\n",
-                   item_pos, name_buffer);
+          snprintf(
+              log_msg, sizeof(log_msg),
+              "MAGDA: Setting clip name at position %.6f to '%s' (via take)\n",
+              item_pos, name_buffer);
           ShowConsoleMsg(log_msg);
         }
 
@@ -903,8 +905,8 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
 
           // Verify it was set by reading it back
           char verify_buffer[512] = {0};
-          if (GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", verify_buffer,
-                                             false)) {
+          if (GetSetMediaItemTakeInfo_String(activeTake, "P_NAME",
+                                             verify_buffer, false)) {
             char verify_msg[256];
             snprintf(verify_msg, sizeof(verify_msg),
                      "MAGDA: Verified clip name is now: '%s'\n", verify_buffer);
@@ -929,7 +931,7 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
     // Parse hex color like "#ff0000" or "ff0000" to RGB components
     unsigned int r = 0, g = 0, b = 0;
     bool parsed = false;
-    
+
     if (color[0] == '#') {
       unsigned int hex_color = 0;
       if (strlen(color) >= 7 && sscanf(color + 1, "%x", &hex_color) == 1) {
@@ -953,20 +955,21 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
       // Use ColorToNative for OS-dependent color conversion
       int (*ColorToNative)(int r, int g, int b) =
           (int (*)(int, int, int))g_rec->GetFunc("ColorToNative");
-      
+
       int color_val = 0;
       if (ColorToNative) {
         // Use REAPER's ColorToNative function for proper OS conversion
         color_val = ColorToNative((int)r, (int)g, (int)b);
       } else {
-        // Fallback: manual BGR conversion (shouldn't be needed, but just in case)
+        // Fallback: manual BGR conversion (shouldn't be needed, but just in
+        // case)
         unsigned int bgr = (b << 16) | (g << 8) | r;
         color_val = (int)bgr;
       }
 
       // Set flag bit 0x1000000 to enable custom color
       int color_with_flag = color_val | 0x1000000;
-      
+
       // Log the color operation
       void (*ShowConsoleMsg)(const char *msg) =
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
@@ -974,9 +977,10 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
         double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
             (double (*)(MediaItem *, const char *))g_rec->GetFunc(
                 "GetMediaItemInfo_Value");
-        double item_pos = GetMediaItemInfo_Value
-                              ? GetMediaItemInfo_Value(target_item, "D_POSITION")
-                              : -1.0;
+        double item_pos =
+            GetMediaItemInfo_Value
+                ? GetMediaItemInfo_Value(target_item, "D_POSITION")
+                : -1.0;
         char log_msg[512];
         snprintf(log_msg, sizeof(log_msg),
                  "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
@@ -984,15 +988,15 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
                  item_pos, r, g, b, color_with_flag);
         ShowConsoleMsg(log_msg);
       }
-      
+
       GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &color_with_flag,
                           nullptr);
-      
+
       // Update arrange view to reflect color change
       if (UpdateArrange) {
         UpdateArrange();
       }
-      
+
       // Verify it was set by reading it back
       if (ShowConsoleMsg) {
         int verify_color = 0;

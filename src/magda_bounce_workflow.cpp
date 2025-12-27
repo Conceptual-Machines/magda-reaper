@@ -635,7 +635,8 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
     }
 
     if (trackIndices.empty()) {
-      error_msg.Set("No tracks selected. Please select at least two tracks to compare.");
+      error_msg.Set(
+          "No tracks selected. Please select at least two tracks to compare.");
       return false;
     }
 
@@ -649,8 +650,8 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
     std::vector<std::string> trackIdentifiers;
     std::string current;
     for (char c : args) {
-      if (c == ' ' || c == ',' || c == '&' || 
-          (args.find(" and ") != std::string::npos && 
+      if (c == ' ' || c == ',' || c == '&' ||
+          (args.find(" and ") != std::string::npos &&
            current.find("and") != std::string::npos)) {
         if (!current.empty()) {
           // Remove "and" keyword
@@ -677,7 +678,8 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
         int idx = (int)trackNum;
         int numTracks = GetNumTracks();
         if (idx < numTracks) {
-          if (std::find(trackIndices.begin(), trackIndices.end(), idx) == trackIndices.end()) {
+          if (std::find(trackIndices.begin(), trackIndices.end(), idx) ==
+              trackIndices.end()) {
             trackIndices.push_back(idx);
           }
         }
@@ -689,13 +691,15 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
           if (track && GetSetMediaTrackInfo_String) {
             char trackName[256] = {0};
             bool setValue = false;
-            GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", trackName, &setValue);
+            GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", trackName,
+                                        &setValue);
             if (trackName[0]) {
               std::string name(trackName);
               std::transform(name.begin(), name.end(), name.begin(), ::tolower);
               if (name.find(ident) != std::string::npos ||
                   ident.find(name) != std::string::npos) {
-                if (std::find(trackIndices.begin(), trackIndices.end(), i) == trackIndices.end()) {
+                if (std::find(trackIndices.begin(), trackIndices.end(), i) ==
+                    trackIndices.end()) {
                   trackIndices.push_back(i);
                   break; // Match first track with this name
                 }
@@ -707,12 +711,15 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
     }
 
     if (trackIndices.empty()) {
-      error_msg.Set("No tracks found matching the provided identifiers. Try: '@mix:compare selected' or specify track names/indices.");
+      error_msg.Set("No tracks found matching the provided identifiers. Try: "
+                    "'@mix:compare selected' or specify track names/indices.");
       return false;
     }
 
     if (trackIndices.size() < 2) {
-      error_msg.Set("Please specify at least two tracks to compare (e.g., '@mix:compare track1 and track2' or '@mix:compare selected').");
+      error_msg.Set(
+          "Please specify at least two tracks to compare (e.g., '@mix:compare "
+          "track1 and track2' or '@mix:compare selected').");
       return false;
     }
   }
@@ -729,27 +736,30 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
   // Store track indices for sequential processing
   // This is a simplified implementation - in practice, you'd want to
   // queue all tracks and process them together
-  
+
   // For MVP, let's analyze tracks one by one and collect results
   // We'll store the analysis results and send them all together at the end
   // This requires modifying the workflow to support collecting multiple results
-  
+
   // For now, let's just analyze the first two tracks and send them together
   // as a proof of concept
   if (trackIndices.size() > 2) {
     if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Warning - comparing first 2 tracks (full multi-track support coming soon)\n");
+      ShowConsoleMsg("MAGDA: Warning - comparing first 2 tracks (full "
+                     "multi-track support coming soon)\n");
     }
     trackIndices.resize(2);
   }
 
-  // For MVP, queue the first track for analysis with a note that it's a comparison
-  // Future: Implement full multi-track analysis that collects all results and sends together
-  // For now, we'll analyze tracks sequentially and the user can compare them
-  // or we can enhance the backend to accept multiple tracks in one request
-  
+  // For MVP, queue the first track for analysis with a note that it's a
+  // comparison Future: Implement full multi-track analysis that collects all
+  // results and sends together For now, we'll analyze tracks sequentially and
+  // the user can compare them or we can enhance the backend to accept multiple
+  // tracks in one request
+
   if (trackIndices.size() > 2 && ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Comparing first 2 tracks (analyzing sequentially)\n");
+    ShowConsoleMsg(
+        "MAGDA: Comparing first 2 tracks (analyzing sequentially)\n");
   }
 
   // Queue each track for analysis - they'll be processed sequentially
@@ -785,7 +795,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
       cmd.selectedTrackIndex = trackIdx;
       strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
       cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
-      strncpy(cmd.trackType, i == 0 ? "compare_track1" : "compare_track2", 
+      strncpy(cmd.trackType, i == 0 ? "compare_track1" : "compare_track2",
               sizeof(cmd.trackType) - 1);
       cmd.trackType[sizeof(cmd.trackType) - 1] = '\0';
       // Add note that this is a comparison
@@ -795,7 +805,8 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
         if (otherTrack && GetSetMediaTrackInfo_String) {
           char otherName[256] = {0};
           bool setValue = false;
-          GetSetMediaTrackInfo_String((INT_PTR)otherTrack, "P_NAME", otherName, &setValue);
+          GetSetMediaTrackInfo_String((INT_PTR)otherTrack, "P_NAME", otherName,
+                                      &setValue);
           if (otherName[0]) {
             userReq += otherName;
           } else {

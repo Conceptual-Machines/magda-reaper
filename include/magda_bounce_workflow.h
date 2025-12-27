@@ -56,8 +56,8 @@ public:
                                     WDL_FastString &error_msg);
 
   // Execute multi-track comparison workflow
-  // Parses track identifiers from compareArgs (e.g., "track1 and track2" or "selected")
-  // Analyzes multiple tracks and sends them together for comparison
+  // Parses track identifiers from compareArgs (e.g., "track1 and track2" or
+  // "selected") Analyzes multiple tracks and sends them together for comparison
   static bool ExecuteMultiTrackWorkflow(const char *compareArgs,
                                         WDL_FastString &error_msg);
 
