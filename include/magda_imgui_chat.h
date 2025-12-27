@@ -69,6 +69,11 @@ public:
   void SetBusy(bool busy) { m_busy = busy; }
   bool IsBusy() const { return m_busy; }
 
+  // Actions (can be called from REAPER action system)
+  void ClearHistory();
+  bool RepeatLast(); // Returns false if nothing to repeat or busy
+  void CopyToClipboard();
+
   // Set API status for footer
   void SetAPIStatus(const std::string &status, int color) {
     m_apiStatus = status;
@@ -172,6 +177,9 @@ private:
   std::vector<std::string> m_inputHistory;
   int m_inputHistoryIndex = -1;
   std::string m_savedInput; // Saves current input when navigating history
+
+  // Last request for repeat functionality
+  std::string m_lastRequest;
 
   // Autocomplete state
   bool m_showAutocomplete = false;
