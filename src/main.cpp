@@ -155,8 +155,11 @@ static void imguiTimerCallback() {
 
 // Command IDs - dynamically allocated to avoid conflicts with REAPER built-ins
 // These are set in the entry point via rec->Register("command_id", ...)
-int g_cmdMixAnalyze = 0;    // Exported for use by other files via extern
-int g_cmdMasterAnalyze = 0; // Exported for use by other files via extern
+int g_cmdMixAnalyze = 0;     // Exported for use by other files via extern
+int g_cmdMasterAnalyze = 0;  // Exported for use by other files via extern
+int g_cmdChatRepeatLast = 0; // Repeat last chat command
+int g_cmdChatClear = 0;      // Clear chat history
+int g_cmdChatCopy = 0;       // Copy chat to clipboard
 
 // Internal command IDs (still using high numbers to avoid conflicts)
 static int g_cmdMenuID = 0;
@@ -181,6 +184,9 @@ static int g_cmdJSFXEditor = 0;
 #define MAGDA_CMD_MASTER_ANALYZE g_cmdMasterAnalyze
 #define MAGDA_CMD_TEST_EXECUTE_ACTION g_cmdTestExecute
 #define MAGDA_CMD_JSFX_EDITOR g_cmdJSFXEditor
+#define MAGDA_CMD_CHAT_REPEAT_LAST g_cmdChatRepeatLast
+#define MAGDA_CMD_CHAT_CLEAR g_cmdChatClear
+#define MAGDA_CMD_CHAT_COPY g_cmdChatCopy
 
 // Helper function to perform DSP analysis and output results
 static void performDSPAnalysis(int trackIndex, const char *trackName,
@@ -608,6 +614,38 @@ void magdaAction(int command_id, int flag) {
         }
       }
     }
+  } else if (command_id == g_cmdChatRepeatLast) {
+    // Repeat last chat command
+    if (g_imguiChat && g_imguiChat->IsAvailable()) {
+      if (!g_imguiChat->RepeatLast()) {
+        if (ShowConsoleMsg) {
+          ShowConsoleMsg(
+              "MAGDA: Nothing to repeat (no previous command or busy)\n");
+        }
+      }
+    } else if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");
+    }
+  } else if (command_id == g_cmdChatClear) {
+    // Clear chat history
+    if (g_imguiChat && g_imguiChat->IsAvailable()) {
+      g_imguiChat->ClearHistory();
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Chat history cleared\n");
+      }
+    } else if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");
+    }
+  } else if (command_id == g_cmdChatCopy) {
+    // Copy chat to clipboard
+    if (g_imguiChat && g_imguiChat->IsAvailable()) {
+      g_imguiChat->CopyToClipboard();
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Chat copied to clipboard\n");
+      }
+    } else if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");
+    }
   } else {
     if (ShowConsoleMsg) {
       char msg[128];
@@ -637,7 +675,10 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
       (g_cmdMixAnalyze != 0 && command == g_cmdMixAnalyze) ||
       (g_cmdMasterAnalyze != 0 && command == g_cmdMasterAnalyze) ||
       (g_cmdJSFXEditor != 0 && command == g_cmdJSFXEditor) ||
-      (g_cmdTestExecute != 0 && command == g_cmdTestExecute)) {
+      (g_cmdTestExecute != 0 && command == g_cmdTestExecute) ||
+      (g_cmdChatRepeatLast != 0 && command == g_cmdChatRepeatLast) ||
+      (g_cmdChatClear != 0 && command == g_cmdChatClear) ||
+      (g_cmdChatCopy != 0 && command == g_cmdChatCopy)) {
     magdaAction(command, 0);
     return true; // handled
   }
@@ -868,6 +909,10 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       rec->Register("command_id", (void *)"MAGDA_MasterAnalyze");
   g_cmdJSFXEditor = rec->Register("command_id", (void *)"MAGDA_JSFXEditor");
   g_cmdTestExecute = rec->Register("command_id", (void *)"MAGDA_TestExecute");
+  g_cmdChatRepeatLast =
+      rec->Register("command_id", (void *)"MAGDA_ChatRepeatLast");
+  g_cmdChatClear = rec->Register("command_id", (void *)"MAGDA_ChatClear");
+  g_cmdChatCopy = rec->Register("command_id", (void *)"MAGDA_ChatCopy");
 
   if (ShowConsoleMsg) {
     char msg[512];
@@ -903,6 +948,13 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       {0, 0, (unsigned short)g_cmdJSFXEditor}, "MAGDA: JSFX Editor"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
+  gaccel_register_t gaccel_chat_repeat_last = {
+      {0, 0, (unsigned short)g_cmdChatRepeatLast},
+      "MAGDA: Repeat Last Command"};
+  gaccel_register_t gaccel_chat_clear = {{0, 0, (unsigned short)g_cmdChatClear},
+                                         "MAGDA: Clear Chat History"};
+  gaccel_register_t gaccel_chat_copy = {{0, 0, (unsigned short)g_cmdChatCopy},
+                                        "MAGDA: Copy Chat to Clipboard"};
 
   if (rec->Register("gaccel", &gaccel_open)) {
     if (ShowConsoleMsg) {
@@ -953,6 +1005,21 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     if (ShowConsoleMsg) {
       ShowConsoleMsg(
           "MAGDA: Registered 'Test Execute Action' (for headless testing)\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_chat_repeat_last)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'Repeat Last Command' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_chat_clear)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'Clear Chat History' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_chat_copy)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'Copy Chat to Clipboard' action\n");
     }
   }
 

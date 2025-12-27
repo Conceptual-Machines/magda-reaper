@@ -781,6 +781,28 @@ void MagdaImGuiChat::Render() {
         // agent)
         magdaAction(g_cmdMasterAnalyze, 0);
       }
+
+      m_ImGui_Separator(m_ctx);
+
+      // Repeat last request button
+      bool canRepeat = !m_busy && !m_lastRequest.empty();
+      if (!canRepeat) {
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+      }
+      if (m_ImGui_Button(m_ctx, "Repeat Last", nullptr, nullptr)) {
+        RepeatLast();
+      }
+      if (!canRepeat) {
+        int popCount = 1;
+        m_ImGui_PopStyleColor(m_ctx, &popCount);
+      }
+
+      if (m_ImGui_Button(m_ctx, "Clear Chat", nullptr, nullptr)) {
+        ClearHistory();
+      }
+      if (m_ImGui_Button(m_ctx, "Copy Chat", nullptr, nullptr)) {
+        CopyToClipboard();
+      }
     }
     m_ImGui_EndChild(m_ctx);
 
@@ -1023,6 +1045,21 @@ void MagdaImGuiChat::RenderControlsColumn() {
     magdaAction(g_cmdMasterAnalyze, 0);
   }
 
+  m_ImGui_Dummy(m_ctx, 0, 3);
+
+  // Repeat last request button
+  bool canRepeat = !m_busy && !m_lastRequest.empty();
+  if (!canRepeat) {
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+  }
+  if (m_ImGui_Button(m_ctx, "Repeat Last", &btnWidth, &btnHeight)) {
+    RepeatLast();
+  }
+  if (!canRepeat) {
+    int popCount = 1;
+    m_ImGui_PopStyleColor(m_ctx, &popCount);
+  }
+
   m_ImGui_Separator(m_ctx);
   m_ImGui_Dummy(m_ctx, 0, 10);
 
@@ -1046,57 +1083,14 @@ void MagdaImGuiChat::RenderControlsColumn() {
   m_ImGui_Dummy(m_ctx, 0, 5);
 
   if (m_ImGui_Button(m_ctx, "Clear Chat", &btnWidth, &btnHeight)) {
-    m_history.clear();
-    m_streamingBuffer.clear();
-  }
-
-  m_ImGui_Dummy(m_ctx, 0, 3);
-
-  // Repeat last request button
-  bool canRepeat = !m_busy && !m_lastRequest.empty();
-  if (!canRepeat) {
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
-  }
-  if (m_ImGui_Button(m_ctx, "Repeat Last", &btnWidth, &btnHeight)) {
-    if (canRepeat) {
-      AddUserMessage(m_lastRequest);
-      if (HandleMixCommand(m_lastRequest)) {
-        // Mix command handled
-      } else {
-        StartAsyncRequest(m_lastRequest);
-        if (m_onSend) {
-          m_onSend(m_lastRequest);
-        }
-      }
-    }
-  }
-  if (!canRepeat) {
-    int popCount = 1;
-    m_ImGui_PopStyleColor(m_ctx, &popCount);
+    ClearHistory();
   }
 
   m_ImGui_Dummy(m_ctx, 0, 3);
 
   // Copy chat to clipboard button
   if (m_ImGui_Button(m_ctx, "Copy Chat", &btnWidth, &btnHeight)) {
-    // Build chat text
-    std::string chatText;
-    for (const auto &msg : m_history) {
-      if (msg.is_user) {
-        chatText += "User: ";
-      } else {
-        chatText += "Assistant: ";
-      }
-      chatText += msg.content + "\n\n";
-    }
-    // Copy to clipboard using REAPER API
-    if (g_rec && !chatText.empty()) {
-      void (*CF_SetClipboard)(const char *) =
-          (void (*)(const char *))g_rec->GetFunc("CF_SetClipboard");
-      if (CF_SetClipboard) {
-        CF_SetClipboard(chatText.c_str());
-      }
-    }
+    CopyToClipboard();
   }
 
   m_ImGui_Dummy(m_ctx, 0, 3);
@@ -1513,6 +1507,50 @@ void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
   m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
 
   m_atPosition = std::string::npos;
+}
+
+// Public action methods (callable from REAPER action system)
+void MagdaImGuiChat::ClearHistory() {
+  m_history.clear();
+  m_streamingBuffer.clear();
+}
+
+bool MagdaImGuiChat::RepeatLast() {
+  if (m_busy || m_lastRequest.empty()) {
+    return false;
+  }
+
+  AddUserMessage(m_lastRequest);
+  if (HandleMixCommand(m_lastRequest)) {
+    // Mix command handled
+  } else {
+    StartAsyncRequest(m_lastRequest);
+    if (m_onSend) {
+      m_onSend(m_lastRequest);
+    }
+  }
+  return true;
+}
+
+void MagdaImGuiChat::CopyToClipboard() {
+  // Build chat text
+  std::string chatText;
+  for (const auto &msg : m_history) {
+    if (msg.is_user) {
+      chatText += "User: ";
+    } else {
+      chatText += "Assistant: ";
+    }
+    chatText += msg.content + "\n\n";
+  }
+  // Copy to clipboard using REAPER API
+  if (g_rec && !chatText.empty()) {
+    void (*CF_SetClipboard)(const char *) =
+        (void (*)(const char *))g_rec->GetFunc("CF_SetClipboard");
+    if (CF_SetClipboard) {
+      CF_SetClipboard(chatText.c_str());
+    }
+  }
 }
 
 // Check if message is a @mix: or @master: command and handle it
