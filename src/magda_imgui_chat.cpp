@@ -684,37 +684,30 @@ void MagdaImGuiChat::Render() {
     double col3W = totalW * 0.25; // Controls (narrower)
     double paneH = -30;           // Leave room for footer
 
-    // Column 1: REQUEST (user messages)
-    if (m_ImGui_BeginChild(m_ctx, "##request", &col1W, &paneH, &borderFlags,
+    // Single-column chat area
+    double chatW = col1W + colSpacing + col2W;
+    int userColor = g_theme.accent;       // Blue for user
+    int assistantColor = g_theme.normalText; // Normal for assistant
+
+    if (m_ImGui_BeginChild(m_ctx, "##chat_scroll", &chatW, &paneH, &borderFlags,
                            &scrollFlags)) {
-      m_ImGui_TextColored(m_ctx, g_theme.headerText, "REQUEST");
-      m_ImGui_Separator(m_ctx);
+      // Render all messages in chronological order
       for (const auto &msg : m_history) {
-        if (!msg.is_user)
-          continue;
-        RenderMessageWithHighlighting(msg.content);
+        if (msg.is_user) {
+          // User message: show with ">" prefix in accent color
+          m_ImGui_TextColored(m_ctx, userColor, "> ");
+          m_ImGui_SameLine(m_ctx, nullptr, nullptr);
+          m_ImGui_TextColored(m_ctx, userColor, msg.content.c_str());
+        } else {
+          // Assistant message: normal text
+          m_ImGui_TextWrapped(m_ctx, msg.content.c_str());
+        }
         m_ImGui_Separator(m_ctx);
       }
-    }
-    m_ImGui_EndChild(m_ctx);
 
-    m_ImGui_SameLine(m_ctx, &zero, &colSpacing);
-
-    // Column 2: RESPONSE (assistant messages)
-    if (m_ImGui_BeginChild(m_ctx, "##response", &col2W, &paneH, &borderFlags,
-                           &scrollFlags)) {
-      m_ImGui_TextColored(m_ctx, g_theme.headerText, "RESPONSE");
-      m_ImGui_Separator(m_ctx);
-      for (const auto &msg : m_history) {
-        if (msg.is_user)
-          continue;
-        RenderMessageWithHighlighting(msg.content);
-        m_ImGui_Separator(m_ctx);
-      }
-      // Update streaming text (typewriter effect for mix analysis responses)
+      // Update streaming text
       if (m_isStreamingText && m_streamingCharIndex < m_streamingFullText.length()) {
         double now = (double)clock() / CLOCKS_PER_SEC;
-        // Stream 60 characters per second
         while (m_streamingCharIndex < m_streamingFullText.length() &&
                (now - m_lastStreamCharTime) > 0.016) {
           m_streamingBuffer += m_streamingFullText[m_streamingCharIndex];
@@ -722,7 +715,6 @@ void MagdaImGuiChat::Render() {
           m_lastStreamCharTime = now;
           m_scrollToBottom = true;
         }
-        // When done streaming, finalize the message
         if (m_streamingCharIndex >= m_streamingFullText.length()) {
           AddAssistantMessage(m_streamingFullText);
           m_streamingBuffer.clear();
@@ -731,65 +723,35 @@ void MagdaImGuiChat::Render() {
         }
       }
 
+      // Show streaming buffer or spinner
       if (!m_streamingBuffer.empty()) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
-      }
-
-      // TODO: "Apply Changes" UI disabled for now - needs refinement
-      // Show Yes/No buttons for pending mix actions
-      // if (m_hasPendingMixActions) {
-      //   m_ImGui_Separator(m_ctx);
-      //   m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
-      //   ...
-      // }
-
-      // Show loading spinner while busy
-      if (m_busy) {
-        // Animated spinner using braille dots: ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
+      } else if (m_busy && !m_isMixAnalysisStreaming) {
         const char *spinnerFrames[] = {
-            "\xe2\xa0\x8b", // ⠋
-            "\xe2\xa0\x99", // ⠙
-            "\xe2\xa0\xb9", // ⠹
-            "\xe2\xa0\xb8", // ⠸
-            "\xe2\xa0\xbc", // ⠼
-            "\xe2\xa0\xb4", // ⠴
-            "\xe2\xa0\xa6", // ⠦
-            "\xe2\xa0\xa7", // ⠧
-            "\xe2\xa0\x87", // ⠇
-            "\xe2\xa0\x8f"  // ⠏
+            "\xe2\xa0\x8b", "\xe2\xa0\x99", "\xe2\xa0\xb9", "\xe2\xa0\xb8",
+            "\xe2\xa0\xbc", "\xe2\xa0\xb4", "\xe2\xa0\xa6", "\xe2\xa0\xa7",
+            "\xe2\xa0\x87", "\xe2\xa0\x8f"
         };
-        const int numFrames = 10;
-        double elapsed =
-            ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
-        int frameIndex =
-            ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
+        double elapsed = ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
+        int frameIndex = ((int)(elapsed * 10.0)) % 10;
 
-        // Build loading message with spinner - show phase-specific message
-        // Don't show spinner if we're actively streaming (text is already appearing)
-        if (!m_isMixAnalysisStreaming) {
-          const char *phaseMsg = "Processing request...";
-          MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
+        // Only show phase-specific messages for mix analysis (when phase != IDLE)
+        const char *phaseMsg = "Processing request...";
+        MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
+        if (phase != MIX_PHASE_IDLE) {
           switch (phase) {
-            case MIX_PHASE_RENDERING:
-              phaseMsg = "Rendering audio...";
-              break;
-            case MIX_PHASE_DSP_ANALYSIS:
-              phaseMsg = "Running DSP analysis...";
-              break;
-            case MIX_PHASE_API_CALL:
-              phaseMsg = "Analyzing with AI...";
-              break;
-            default:
-              phaseMsg = "Processing request...";
-              break;
+            case MIX_PHASE_RENDERING: phaseMsg = "Rendering audio..."; break;
+            case MIX_PHASE_DSP_ANALYSIS: phaseMsg = "Running DSP analysis..."; break;
+            case MIX_PHASE_API_CALL: phaseMsg = "Analyzing with AI..."; break;
+            default: break;
           }
-          char loadingMsg[128];
-          snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
-                   spinnerFrames[frameIndex], phaseMsg);
-          m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
         }
-        m_scrollToBottom = true; // Keep scrolling to show new content
+        char loadingMsg[128];
+        snprintf(loadingMsg, sizeof(loadingMsg), "%s %s", spinnerFrames[frameIndex], phaseMsg);
+        m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
+        m_scrollToBottom = true;
       }
+
       if (m_scrollToBottom) {
         double ratio = 1.0;
         m_ImGui_SetScrollHereY(m_ctx, &ratio);
@@ -1807,6 +1769,9 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
   SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
   ClearStreamingBuffer();                // Clear any previous streaming content
+
+  // Reset mix analysis phase for regular chat requests (show generic "Processing...")
+  MagdaBounceWorkflow::SetCurrentPhase(MIX_PHASE_IDLE);
 
   // Set backend URL from settings
   const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
