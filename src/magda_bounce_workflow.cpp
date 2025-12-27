@@ -1658,6 +1658,23 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             WDL_FastString analysisJson;
             MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
 
+            // Queue take deletion BEFORE API call (must be done on main thread)
+            // We delete the rendered take early to avoid holding onto temp audio
+            {
+              std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
+              ReaperCommand deleteCmd;
+              deleteCmd.type = CMD_DELETE_TAKE;
+              deleteCmd.trackIndex = trackIndex;
+              deleteCmd.itemPtr = itemPtr;
+              deleteCmd.takeIndex = takeIndex;
+              deleteCmd.completed = false;
+              s_reaperCommandQueue.push_back(deleteCmd);
+            }
+
+            if (ShowConsoleMsg) {
+              ShowConsoleMsg("MAGDA: Queued take deletion, calling Mix API...\n");
+            }
+
             // Send to mix API
             WDL_FastString responseJson, error_msg;
             if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(),
@@ -1679,14 +1696,15 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               }
 
               // Parse response JSON and store result
+              // API returns: { "analysis": { "summary": "..." }, "recommendations": [...] }
               std::string fullJson = responseJson.Get();
               std::string responseText;
               std::string actionsJson;
 
-              // Extract "response" field
-              size_t respPos = fullJson.find("\"response\"");
-              if (respPos != std::string::npos) {
-                size_t colonPos = fullJson.find(':', respPos);
+              // Extract "summary" field from within "analysis" object
+              size_t summaryPos = fullJson.find("\"summary\"");
+              if (summaryPos != std::string::npos) {
+                size_t colonPos = fullJson.find(':', summaryPos);
                 if (colonPos != std::string::npos) {
                   size_t startQuote = fullJson.find('"', colonPos + 1);
                   if (startQuote != std::string::npos) {
@@ -1716,12 +1734,27 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                 }
               }
 
-              // Extract "actions" field
-              char *extracted = MagdaHTTPClient::ExtractActionsJSON(
-                  fullJson.c_str(), (int)fullJson.length());
-              if (extracted) {
-                actionsJson = extracted;
-                free(extracted);
+              // Extract "recommendations" array as actions
+              // The recommendations contain action objects that can be executed
+              size_t recsPos = fullJson.find("\"recommendations\"");
+              if (recsPos != std::string::npos) {
+                size_t colonPos = fullJson.find(':', recsPos);
+                if (colonPos != std::string::npos) {
+                  size_t arrayStart = fullJson.find('[', colonPos + 1);
+                  if (arrayStart != std::string::npos) {
+                    // Find matching closing bracket
+                    int depth = 1;
+                    size_t arrayEnd = arrayStart + 1;
+                    while (arrayEnd < fullJson.length() && depth > 0) {
+                      if (fullJson[arrayEnd] == '[') depth++;
+                      else if (fullJson[arrayEnd] == ']') depth--;
+                      arrayEnd++;
+                    }
+                    if (depth == 0) {
+                      actionsJson = fullJson.substr(arrayStart, arrayEnd - arrayStart);
+                    }
+                  }
+                }
               }
 
               if (responseText.empty()) {
@@ -1731,18 +1764,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               StoreResult(true, responseText, actionsJson);
             }
           }
-
-          // Queue take deletion (must be done on main thread)
-          {
-            std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
-            ReaperCommand deleteCmd;
-            deleteCmd.type = CMD_DELETE_TAKE;
-            deleteCmd.trackIndex = trackIndex;
-            deleteCmd.itemPtr = itemPtr;
-            deleteCmd.takeIndex = takeIndex;
-            deleteCmd.completed = false;
-            s_reaperCommandQueue.push_back(deleteCmd);
-          }
+          // Take deletion already queued before API call
         }).detach();
       }
 

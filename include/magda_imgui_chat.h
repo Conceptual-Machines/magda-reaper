@@ -207,6 +207,7 @@ private:
   bool m_asyncPending = false;
   bool m_asyncResultReady = false;
   bool m_asyncSuccess = false;
+  bool m_cancelRequested = false;  // Flag to cancel ongoing request
   std::string m_asyncResponseJson;
   std::string m_asyncErrorMsg;
   std::string m_pendingQuestion;               // Question being processed

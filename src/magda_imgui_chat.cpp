@@ -611,27 +611,54 @@ void MagdaImGuiChat::Render() {
     double zero = 0;
     m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    // Hide Send button when autocomplete is showing to prevent accidental
-    // clicks
+    // Hide Send/Cancel button when autocomplete is showing to prevent accidental clicks
     if (!m_showAutocomplete) {
-      if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr)) {
-        if (!m_busy && strlen(m_inputBuffer) > 0) {
-          std::string msg = m_inputBuffer;
-          m_lastRequest = msg; // Store for repeat functionality
-          AddUserMessage(msg);
-          m_inputBuffer[0] = '\0';
+      if (m_busy) {
+        // Red Cancel button when busy
+        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF4444AA);
+        if (m_ImGui_Button(m_ctx, "Cancel", nullptr, nullptr)) {
+          // Set cancel flag and clear busy state
+          {
+            std::lock_guard<std::mutex> lock(m_asyncMutex);
+            m_cancelRequested = true;
+            m_asyncPending = false;
+            m_asyncResultReady = false;
+          }
+          m_busy = false;
+          AddAssistantMessage("Request cancelled.");
+          SetAPIStatus("Cancelled", 0xFFAAAAFF);
+        }
+        int popCount = 1;
+        m_ImGui_PopStyleColor(m_ctx, &popCount);
+      } else {
+        // Normal Send button
+        bool canSend = strlen(m_inputBuffer) > 0;
+        if (!canSend) {
+          m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+        }
+        if (m_ImGui_Button(m_ctx, "Send", nullptr, nullptr)) {
+          if (canSend) {
+            std::string msg = m_inputBuffer;
+            m_lastRequest = msg; // Store for repeat functionality
+            AddUserMessage(msg);
+            m_inputBuffer[0] = '\0';
 
-          // Check for @mix: command first
-          if (HandleMixCommand(msg)) {
-            // Mix command handled, don't send to regular API
-          } else {
-            // Start async request - this won't block the UI
-            StartAsyncRequest(msg);
+            // Check for @mix: command first
+            if (HandleMixCommand(msg)) {
+              // Mix command handled, don't send to regular API
+            } else {
+              // Start async request - this won't block the UI
+              StartAsyncRequest(msg);
 
-            if (m_onSend) {
-              m_onSend(msg);
+              if (m_onSend) {
+                m_onSend(msg);
+              }
             }
           }
+        }
+        if (!canSend) {
+          int popCount = 1;
+          m_ImGui_PopStyleColor(m_ctx, &popCount);
         }
       }
     }
@@ -688,46 +715,13 @@ void MagdaImGuiChat::Render() {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       }
 
+      // TODO: "Apply Changes" UI disabled for now - needs refinement
       // Show Yes/No buttons for pending mix actions
-      if (m_hasPendingMixActions) {
-        m_ImGui_Separator(m_ctx);
-        m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
-        m_ImGui_Dummy(m_ctx, 0, 5);
-
-        double btnW = 80;
-        double btnH = 0;
-
-        // Green "Yes" button
-        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
-        if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
-          // Execute the pending actions
-          WDL_FastString execution_result, execution_error;
-          if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
-                                           execution_result, execution_error)) {
-            AddAssistantMessage("Changes applied successfully!");
-          } else {
-            std::string errMsg = "Failed to apply changes: ";
-            errMsg += execution_error.Get();
-            AddAssistantMessage(errMsg);
-          }
-          m_hasPendingMixActions = false;
-          m_pendingMixActionsJson.clear();
-        }
-        m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-        m_ImGui_SameLine(m_ctx, &zero, &zero);
-
-        // Red "No" button
-        m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
-        if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
-          AddAssistantMessage("Changes cancelled.");
-          m_hasPendingMixActions = false;
-          m_pendingMixActionsJson.clear();
-        }
-        m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-        m_ImGui_Separator(m_ctx);
-      }
+      // if (m_hasPendingMixActions) {
+      //   m_ImGui_Separator(m_ctx);
+      //   m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
+      //   ...
+      // }
 
       // Show loading spinner while busy
       if (m_busy) {
@@ -949,46 +943,8 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_PopStyleColor(m_ctx, &popCount);
     }
 
-    // Show Yes/No buttons for pending mix actions (compact view)
-    if (m_hasPendingMixActions) {
-      m_ImGui_Separator(m_ctx);
-      m_ImGui_TextColored(m_ctx, 0xFFFFAAAA, "Apply these changes?");
-      m_ImGui_Dummy(m_ctx, 0, 5);
-
-      double btnW = 80;
-      double btnH = 0;
-      double spacing = 10;
-
-      // Green "Yes" button
-      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF338833);
-      if (m_ImGui_Button(m_ctx, "Yes, Apply", &btnW, &btnH)) {
-        WDL_FastString execution_result, execution_error;
-        if (MagdaActions::ExecuteActions(m_pendingMixActionsJson.c_str(),
-                                         execution_result, execution_error)) {
-          AddAssistantMessage("Changes applied successfully!");
-        } else {
-          std::string errMsg = "Failed to apply changes: ";
-          errMsg += execution_error.Get();
-          AddAssistantMessage(errMsg);
-        }
-        m_hasPendingMixActions = false;
-        m_pendingMixActionsJson.clear();
-      }
-      m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-      m_ImGui_SameLine(m_ctx, nullptr, &spacing);
-
-      // Red "No" button
-      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF333388);
-      if (m_ImGui_Button(m_ctx, "No, Cancel", &btnW, &btnH)) {
-        AddAssistantMessage("Changes cancelled.");
-        m_hasPendingMixActions = false;
-        m_pendingMixActionsJson.clear();
-      }
-      m_ImGui_PopStyleColor(m_ctx, nullptr);
-
-      m_ImGui_Separator(m_ctx);
-    }
+    // TODO: "Apply Changes" UI disabled for now - needs refinement (compact view)
+    // if (m_hasPendingMixActions) { ... }
 
     // Show loading spinner while busy
     if (m_busy) {
@@ -1213,37 +1169,56 @@ void MagdaImGuiChat::RenderInputArea() {
   double spacing = 5;
   m_ImGui_SameLine(m_ctx, &offset, &spacing);
 
-  bool canSend = !m_busy && strlen(m_inputBuffer) > 0;
-  if (!canSend) {
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
-  }
-
-  if (m_ImGui_Button(m_ctx, m_busy ? "..." : "Send", nullptr, nullptr) ||
-      submitted) {
-    if (canSend) {
-      std::string msg = m_inputBuffer;
-      m_lastRequest = msg; // Store for repeat functionality
-      // Add to command history
-      m_inputHistory.push_back(msg);
-      m_inputHistoryIndex = -1;
-      m_savedInput.clear();
-
-      AddUserMessage(msg);
-      m_inputBuffer[0] = '\0';
-      m_showAutocomplete = false;
-
-      // Check for @mix: command first
-      if (HandleMixCommand(msg)) {
-        // Mix command handled, don't send to regular API
-      } else if (m_onSend) {
-        m_onSend(msg);
+  // Show Cancel button when busy, Send button otherwise
+  if (m_busy) {
+    // Red Cancel button
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF4444AA);
+    if (m_ImGui_Button(m_ctx, "Cancel", nullptr, nullptr)) {
+      // Set cancel flag and clear busy state
+      {
+        std::lock_guard<std::mutex> lock(m_asyncMutex);
+        m_cancelRequested = true;
+        m_asyncPending = false;
+        m_asyncResultReady = false;
       }
+      m_busy = false;
+      AddAssistantMessage("Request cancelled.");
+      SetAPIStatus("Cancelled", 0xFFAAAAFF); // Light red
     }
-  }
-
-  if (!canSend) {
     int popCount = 1;
     m_ImGui_PopStyleColor(m_ctx, &popCount);
+  } else {
+    bool canSend = strlen(m_inputBuffer) > 0;
+    if (!canSend) {
+      m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF555555);
+    }
+
+    if (m_ImGui_Button(m_ctx, "Send", nullptr, nullptr) || submitted) {
+      if (canSend) {
+        std::string msg = m_inputBuffer;
+        m_lastRequest = msg; // Store for repeat functionality
+        // Add to command history
+        m_inputHistory.push_back(msg);
+        m_inputHistoryIndex = -1;
+        m_savedInput.clear();
+
+        AddUserMessage(msg);
+        m_inputBuffer[0] = '\0';
+        m_showAutocomplete = false;
+
+        // Check for @mix: command first
+        if (HandleMixCommand(msg)) {
+          // Mix command handled, don't send to regular API
+        } else if (m_onSend) {
+          m_onSend(msg);
+        }
+      }
+    }
+
+    if (!canSend) {
+      int popCount = 1;
+      m_ImGui_PopStyleColor(m_ctx, &popCount);
+    }
   }
 }
 
@@ -1821,6 +1796,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     m_asyncPending = true;
     m_asyncResultReady = false;
     m_asyncSuccess = false;
+    m_cancelRequested = false;  // Reset cancel flag for new request
     m_asyncResponseJson.clear();
     m_asyncErrorMsg.clear();
     m_streamingActions.clear(); // Clear any pending actions
@@ -1848,6 +1824,15 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
       StreamContext *ctx = static_cast<StreamContext *>(user_data);
       if (!ctx || !ctx->chat)
         return;
+
+      // Check if request was cancelled
+      {
+        std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
+        if (ctx->chat->m_cancelRequested) {
+          return;  // Stop processing if cancelled
+        }
+      }
+
       // Parse event JSON
       wdl_json_parser parser;
       wdl_json_element *root =
@@ -2044,11 +2029,12 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         // Add the response text
         AddAssistantMessage(mixResult.responseText);
 
+        // TODO: "Apply Changes" disabled for now - needs refinement
         // Store pending actions if any
-        if (!mixResult.actionsJson.empty() && mixResult.actionsJson != "[]") {
-          m_hasPendingMixActions = true;
-          m_pendingMixActionsJson = mixResult.actionsJson;
-        }
+        // if (!mixResult.actionsJson.empty() && mixResult.actionsJson != "[]") {
+        //   m_hasPendingMixActions = true;
+        //   m_pendingMixActionsJson = mixResult.actionsJson;
+        // }
 
         SetAPIStatus("Connected", 0x88FF88FF); // Green
       } else {
