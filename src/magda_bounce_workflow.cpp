@@ -3,6 +3,7 @@
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_login.h"
 #include "reaper_plugin.h"
+#include "../WDL/WDL/jsonparse.h"
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
@@ -79,9 +80,66 @@ void MagdaBounceWorkflow::ClearPendingResult() {
   s_result = MixAnalysisResult();
 }
 
+// Streaming state for real-time text streaming
+static std::mutex s_streamMutex;
+static MixStreamingState s_streamState;
+
+bool MagdaBounceWorkflow::GetStreamingState(MixStreamingState &state) {
+  std::lock_guard<std::mutex> lock(s_streamMutex);
+  if (!s_streamState.isStreaming && !s_streamState.streamComplete) {
+    return false;  // No streaming active or complete
+  }
+  state = s_streamState;
+  return true;
+}
+
+void MagdaBounceWorkflow::AppendStreamText(const std::string &text) {
+  std::lock_guard<std::mutex> lock(s_streamMutex);
+  s_streamState.streamBuffer += text;
+}
+
+void MagdaBounceWorkflow::StartStreaming() {
+  std::lock_guard<std::mutex> lock(s_streamMutex);
+  s_streamState.isStreaming = true;
+  s_streamState.streamComplete = false;
+  s_streamState.streamError = false;
+  s_streamState.streamBuffer.clear();
+  s_streamState.errorMessage.clear();
+}
+
+void MagdaBounceWorkflow::CompleteStreaming(bool success, const std::string &error) {
+  std::lock_guard<std::mutex> lock(s_streamMutex);
+  s_streamState.isStreaming = false;
+  s_streamState.streamComplete = true;
+  s_streamState.streamError = !success;
+  s_streamState.errorMessage = error;
+}
+
+void MagdaBounceWorkflow::ClearStreamingState() {
+  std::lock_guard<std::mutex> lock(s_streamMutex);
+  s_streamState = MixStreamingState();
+}
+
+// Phase tracking for UI status display
+static std::mutex s_phaseMutex;
+static MixAnalysisPhase s_currentPhase = MIX_PHASE_IDLE;
+
+MixAnalysisPhase MagdaBounceWorkflow::GetCurrentPhase() {
+  std::lock_guard<std::mutex> lock(s_phaseMutex);
+  return s_currentPhase;
+}
+
+void MagdaBounceWorkflow::SetCurrentPhase(MixAnalysisPhase phase) {
+  std::lock_guard<std::mutex> lock(s_phaseMutex);
+  s_currentPhase = phase;
+}
+
 // Helper to store result (called from background thread)
 static void StoreResult(bool success, const std::string &responseText,
                         const std::string &actionsJson = "") {
+  // Set phase to idle (workflow complete)
+  MagdaBounceWorkflow::SetCurrentPhase(MIX_PHASE_IDLE);
+
   std::lock_guard<std::mutex> lock(s_resultMutex);
   s_resultPending = true;
   s_result.success = success;
@@ -115,6 +173,9 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
   if (ShowConsoleMsg) {
     ShowConsoleMsg("MAGDA: Starting mix analysis bounce workflow...\n");
   }
+
+  // Set phase to rendering
+  SetCurrentPhase(MIX_PHASE_RENDERING);
 
   // Step 0: Get selected track
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
@@ -1100,6 +1161,9 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     ShowConsoleMsg("MAGDA: Sending analysis to mix agent API...\n");
   }
 
+  // Set phase to API call
+  SetCurrentPhase(MIX_PHASE_API_CALL);
+
   // Set backend URL from settings
   const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
   if (backendUrl && backendUrl[0]) {
@@ -1189,24 +1253,86 @@ bool MagdaBounceWorkflow::SendToMixAPI(
 
   requestJson.Append("}"); // close request
 
-  // Send POST request to /api/v1/mix/analyze endpoint
-  bool success = s_httpClient.SendPOSTRequest(
-      "/api/v1/mix/analyze", requestJson.Get(), responseJson, error_msg,
-      120); // 2 minute timeout
+  // Start streaming state
+  StartStreaming();
 
-  if (success) {
-    if (ShowConsoleMsg) {
-      ShowConsoleMsg("MAGDA: Received mix analysis response\n");
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Starting streaming mix analysis...\n");
+  }
+
+  // SSE streaming callback - called for each event from the API
+  auto sseCallback = [](const char *event_json, void *user_data) {
+    (void)user_data; // Unused
+
+    wdl_json_parser parser;
+    wdl_json_element *root =
+        parser.parse(event_json, (int)strlen(event_json));
+
+    if (!parser.m_err && root) {
+      const char *eventType = nullptr;
+      if (wdl_json_element *type_elem = root->get_item_by_name("type")) {
+        if (type_elem->m_value_string) {
+          eventType = type_elem->m_value;
+        }
+      }
+
+      if (eventType && strcmp(eventType, "chunk") == 0) {
+        // TRUE STREAMING: receive text chunks as they arrive from LLM
+        if (wdl_json_element *chunk_elem = root->get_item_by_name("chunk")) {
+          if (chunk_elem->m_value_string && chunk_elem->m_value[0]) {
+            MagdaBounceWorkflow::AppendStreamText(chunk_elem->m_value);
+          }
+        }
+      } else if (eventType && strcmp(eventType, "start") == 0) {
+        // Stream started
+      } else if (eventType && strcmp(eventType, "complete") == 0) {
+        // Stream complete
+        MagdaBounceWorkflow::CompleteStreaming(true);
+      } else if (eventType && strcmp(eventType, "error") == 0) {
+        // Stream error
+        const char *msg = "Streaming error";
+        if (wdl_json_element *msg_elem = root->get_item_by_name("message")) {
+          if (msg_elem->m_value_string) {
+            msg = msg_elem->m_value;
+          }
+        }
+        MagdaBounceWorkflow::CompleteStreaming(false, msg);
+      }
     }
-  } else {
-    if (ShowConsoleMsg) {
-      char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA: Mix API error: %s\n", error_msg.Get());
-      ShowConsoleMsg(msg);
+  };
+
+  // Send streaming POST request to /api/v1/mix/analyze/stream endpoint
+  s_httpClient.SendPOSTStream(
+      "/api/v1/mix/analyze/stream", requestJson.Get(), sseCallback, nullptr,
+      error_msg, 180); // 3 minute timeout for streaming
+
+  // Check streaming state - if we have content, it's a success
+  // (SendPOSTStream returns false when connection closes, which is expected)
+  MixStreamingState state;
+  if (GetStreamingState(state)) {
+    // If we have accumulated text, streaming worked
+    if (!state.streamBuffer.empty()) {
+      if (!state.streamComplete) {
+        // Connection closed but we got content - mark as complete
+        CompleteStreaming(true);
+      }
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: Mix analysis streaming completed\n");
+      }
+      responseJson.Set(state.streamBuffer.c_str());
+      return true;
     }
   }
 
-  return success;
+  // No content received - actual error
+  CompleteStreaming(false, error_msg.Get());
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA: Mix API error: %s\n", error_msg.Get());
+    ShowConsoleMsg(msg);
+  }
+
+  return false;
 }
 
 bool MagdaBounceWorkflow::ProcessCommandQueue() {
@@ -1506,6 +1632,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       processedAny = true;
       ++it;
     } else if (cmd.type == CMD_DSP_ANALYZE) {
+      // Set phase to DSP analysis
+      SetCurrentPhase(MIX_PHASE_DSP_ANALYSIS);
+
       // Check if rendered file is ready (size has stabilized)
       MediaItem *dspItem = (MediaItem *)cmd.itemPtr;
       bool fileReady = false;
@@ -1675,7 +1804,8 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               ShowConsoleMsg("MAGDA: Queued take deletion, calling Mix API...\n");
             }
 
-            // Send to mix API
+            // Send to mix API with TRUE STREAMING
+            // Text is streamed to the UI in real-time via MagdaBounceWorkflow::AppendStreamText
             WDL_FastString responseJson, error_msg;
             if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(),
                               trackType[0] ? trackType : "other",
@@ -1688,80 +1818,14 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                          error_msg.Get());
                 ShowConsoleMsg(msg);
               }
-              StoreResult(false, error_msg.Get());
+              // Error already reported via CompleteStreaming in SendToMixAPI
             } else {
               if (ShowConsoleMsg) {
                 ShowConsoleMsg(
-                    "MAGDA: Mix analysis workflow completed successfully!\n");
+                    "MAGDA: Mix analysis streaming completed successfully!\n");
               }
-
-              // Parse response JSON and store result
-              // API returns: { "analysis": { "summary": "..." }, "recommendations": [...] }
-              std::string fullJson = responseJson.Get();
-              std::string responseText;
-              std::string actionsJson;
-
-              // Extract "summary" field from within "analysis" object
-              size_t summaryPos = fullJson.find("\"summary\"");
-              if (summaryPos != std::string::npos) {
-                size_t colonPos = fullJson.find(':', summaryPos);
-                if (colonPos != std::string::npos) {
-                  size_t startQuote = fullJson.find('"', colonPos + 1);
-                  if (startQuote != std::string::npos) {
-                    size_t endQuote = startQuote + 1;
-                    while (endQuote < fullJson.length()) {
-                      if (fullJson[endQuote] == '"' &&
-                          fullJson[endQuote - 1] != '\\')
-                        break;
-                      endQuote++;
-                    }
-                    responseText = fullJson.substr(startQuote + 1,
-                                                   endQuote - startQuote - 1);
-                    // Unescape
-                    size_t pos = 0;
-                    while ((pos = responseText.find("\\n", pos)) !=
-                           std::string::npos) {
-                      responseText.replace(pos, 2, "\n");
-                      pos++;
-                    }
-                    pos = 0;
-                    while ((pos = responseText.find("\\\"", pos)) !=
-                           std::string::npos) {
-                      responseText.replace(pos, 2, "\"");
-                      pos++;
-                    }
-                  }
-                }
-              }
-
-              // Extract "recommendations" array as actions
-              // The recommendations contain action objects that can be executed
-              size_t recsPos = fullJson.find("\"recommendations\"");
-              if (recsPos != std::string::npos) {
-                size_t colonPos = fullJson.find(':', recsPos);
-                if (colonPos != std::string::npos) {
-                  size_t arrayStart = fullJson.find('[', colonPos + 1);
-                  if (arrayStart != std::string::npos) {
-                    // Find matching closing bracket
-                    int depth = 1;
-                    size_t arrayEnd = arrayStart + 1;
-                    while (arrayEnd < fullJson.length() && depth > 0) {
-                      if (fullJson[arrayEnd] == '[') depth++;
-                      else if (fullJson[arrayEnd] == ']') depth--;
-                      arrayEnd++;
-                    }
-                    if (depth == 0) {
-                      actionsJson = fullJson.substr(arrayStart, arrayEnd - arrayStart);
-                    }
-                  }
-                }
-              }
-
-              if (responseText.empty()) {
-                responseText = "Mix analysis completed.";
-              }
-
-              StoreResult(true, responseText, actionsJson);
+              // Success already handled by streaming - text was streamed to UI in real-time
+              // and CompleteStreaming was called
             }
           }
           // Take deletion already queued before API call

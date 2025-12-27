@@ -169,6 +169,16 @@ private:
   std::string m_streamingBuffer;
   bool m_scrollToBottom = false;
 
+  // Streaming text display (for typewriter effect on responses)
+  std::string m_streamingFullText;      // Full text to stream
+  size_t m_streamingCharIndex = 0;      // Current position in text
+  double m_lastStreamCharTime = 0.0;    // Last time we added a character
+  bool m_isStreamingText = false;       // Whether we're currently streaming
+
+  // TRUE streaming state for mix analysis (SSE streaming from API)
+  bool m_isMixAnalysisStreaming = false;
+  std::string m_lastMixStreamBuffer;
+
   // Pending mix analysis actions (waiting for user confirmation)
   bool m_hasPendingMixActions = false;
   std::string m_pendingMixActionsJson;

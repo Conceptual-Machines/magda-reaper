@@ -711,6 +711,26 @@ void MagdaImGuiChat::Render() {
         RenderMessageWithHighlighting(msg.content);
         m_ImGui_Separator(m_ctx);
       }
+      // Update streaming text (typewriter effect for mix analysis responses)
+      if (m_isStreamingText && m_streamingCharIndex < m_streamingFullText.length()) {
+        double now = (double)clock() / CLOCKS_PER_SEC;
+        // Stream 60 characters per second
+        while (m_streamingCharIndex < m_streamingFullText.length() &&
+               (now - m_lastStreamCharTime) > 0.016) {
+          m_streamingBuffer += m_streamingFullText[m_streamingCharIndex];
+          m_streamingCharIndex++;
+          m_lastStreamCharTime = now;
+          m_scrollToBottom = true;
+        }
+        // When done streaming, finalize the message
+        if (m_streamingCharIndex >= m_streamingFullText.length()) {
+          AddAssistantMessage(m_streamingFullText);
+          m_streamingBuffer.clear();
+          m_streamingFullText.clear();
+          m_isStreamingText = false;
+        }
+      }
+
       if (!m_streamingBuffer.empty()) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       }
@@ -744,12 +764,31 @@ void MagdaImGuiChat::Render() {
         int frameIndex =
             ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
-        // Build loading message with spinner
-        char loadingMsg[128];
-        snprintf(loadingMsg, sizeof(loadingMsg), "%s Processing request...",
-                 spinnerFrames[frameIndex]);
-        m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
-        m_scrollToBottom = true; // Keep scrolling to show spinner
+        // Build loading message with spinner - show phase-specific message
+        // Don't show spinner if we're actively streaming (text is already appearing)
+        if (!m_isMixAnalysisStreaming) {
+          const char *phaseMsg = "Processing request...";
+          MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
+          switch (phase) {
+            case MIX_PHASE_RENDERING:
+              phaseMsg = "Rendering audio...";
+              break;
+            case MIX_PHASE_DSP_ANALYSIS:
+              phaseMsg = "Running DSP analysis...";
+              break;
+            case MIX_PHASE_API_CALL:
+              phaseMsg = "Analyzing with AI...";
+              break;
+            default:
+              phaseMsg = "Processing request...";
+              break;
+          }
+          char loadingMsg[128];
+          snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
+                   spinnerFrames[frameIndex], phaseMsg);
+          m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
+        }
+        m_scrollToBottom = true; // Keep scrolling to show new content
       }
       if (m_scrollToBottom) {
         double ratio = 1.0;
@@ -930,6 +969,24 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_Dummy(m_ctx, 0, 5);
     }
 
+    // Update streaming text (typewriter effect for mix analysis responses)
+    if (m_isStreamingText && m_streamingCharIndex < m_streamingFullText.length()) {
+      double now = (double)clock() / CLOCKS_PER_SEC;
+      while (m_streamingCharIndex < m_streamingFullText.length() &&
+             (now - m_lastStreamCharTime) > 0.016) {
+        m_streamingBuffer += m_streamingFullText[m_streamingCharIndex];
+        m_streamingCharIndex++;
+        m_lastStreamCharTime = now;
+        m_scrollToBottom = true;
+      }
+      if (m_streamingCharIndex >= m_streamingFullText.length()) {
+        AddAssistantMessage(m_streamingFullText);
+        m_streamingBuffer.clear();
+        m_streamingFullText.clear();
+        m_isStreamingText = false;
+      }
+    }
+
     if (!m_streamingBuffer.empty()) {
       m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.assistantBg);
       int streamChildFlags = 1;
@@ -965,12 +1022,31 @@ void MagdaImGuiChat::RenderResponseColumn() {
       double elapsed = ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
       int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
-      // Build loading message with spinner
-      char loadingMsg[128];
-      snprintf(loadingMsg, sizeof(loadingMsg), "%s Processing request...",
-               spinnerFrames[frameIndex]);
-      m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
-      m_scrollToBottom = true; // Keep scrolling to show spinner
+      // Build loading message with spinner - show phase-specific message
+      // Don't show spinner if we're actively streaming (text is already appearing)
+      if (!m_isMixAnalysisStreaming) {
+        const char *phaseMsg = "Processing request...";
+        MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
+        switch (phase) {
+          case MIX_PHASE_RENDERING:
+            phaseMsg = "Rendering audio...";
+            break;
+          case MIX_PHASE_DSP_ANALYSIS:
+            phaseMsg = "Running DSP analysis...";
+            break;
+          case MIX_PHASE_API_CALL:
+            phaseMsg = "Analyzing with AI...";
+            break;
+          default:
+            phaseMsg = "Processing request...";
+            break;
+        }
+        char loadingMsg[128];
+        snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
+                 spinnerFrames[frameIndex], phaseMsg);
+        m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
+      }
+      m_scrollToBottom = true; // Keep scrolling to show new content
     }
 
     if (m_scrollToBottom) {
@@ -2019,23 +2095,66 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
 }
 
 void MagdaImGuiChat::ProcessAsyncResult() {
-  // First check for mix analysis results
+  // First check for mix analysis streaming state (TRUE STREAMING)
+  {
+    MixStreamingState streamState;
+    if (MagdaBounceWorkflow::GetStreamingState(streamState)) {
+      // Update the assistant message with streamed content
+      if (streamState.isStreaming || streamState.streamComplete) {
+        // Create or update streaming message
+        if (m_history.empty() || m_history.back().is_user ||
+            !m_isMixAnalysisStreaming) {
+          // Start new message
+          AddAssistantMessage("");
+          m_isMixAnalysisStreaming = true;
+          m_lastMixStreamBuffer.clear();
+        }
+
+        // Update message content with accumulated stream
+        if (!m_history.empty() && streamState.streamBuffer != m_lastMixStreamBuffer) {
+          m_history.back().content = streamState.streamBuffer;
+          m_lastMixStreamBuffer = streamState.streamBuffer;
+          m_scrollToBottom = true;
+        }
+      }
+
+      if (streamState.streamComplete) {
+        // Streaming finished
+        m_isMixAnalysisStreaming = false;
+
+        if (streamState.streamError) {
+          std::string errorStr = "Mix analysis error: ";
+          errorStr += streamState.errorMessage;
+          if (!m_history.empty()) {
+            m_history.back().content = errorStr;
+          }
+          SetAPIStatus("Error", 0xFF6666FF); // Red
+        } else {
+          SetAPIStatus("Connected", 0x88FF88FF); // Green
+        }
+        m_busy = false;
+
+        // Clear streaming state for next request
+        MagdaBounceWorkflow::ClearStreamingState();
+        return;
+      }
+
+      // Still streaming - don't return, let UI update
+      if (streamState.isStreaming) {
+        return;
+      }
+    }
+  }
+
+  // Fallback: check for non-streaming mix analysis results
   {
     MixAnalysisResult mixResult;
     if (MagdaBounceWorkflow::GetPendingResult(mixResult)) {
       MagdaBounceWorkflow::ClearPendingResult();
 
       if (mixResult.success) {
-        // Add the response text
+        // Non-streaming: show full text at once
         AddAssistantMessage(mixResult.responseText);
-
-        // TODO: "Apply Changes" disabled for now - needs refinement
-        // Store pending actions if any
-        // if (!mixResult.actionsJson.empty() && mixResult.actionsJson != "[]") {
-        //   m_hasPendingMixActions = true;
-        //   m_pendingMixActionsJson = mixResult.actionsJson;
-        // }
-
         SetAPIStatus("Connected", 0x88FF88FF); // Green
       } else {
         std::string errorStr = "Mix analysis error: ";

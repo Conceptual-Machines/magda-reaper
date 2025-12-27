@@ -16,11 +16,29 @@ enum BounceMode {
   BOUNCE_MODE_SELECTION = 2   // Bounce time selection
 };
 
+// Current phase of mix analysis workflow
+enum MixAnalysisPhase {
+  MIX_PHASE_IDLE = 0,
+  MIX_PHASE_RENDERING,
+  MIX_PHASE_DSP_ANALYSIS,
+  MIX_PHASE_API_CALL,
+  MIX_PHASE_COMPLETE
+};
+
 // Result structure for mix analysis
 struct MixAnalysisResult {
   bool success = false;
   std::string responseText; // Human-readable explanation
   std::string actionsJson;  // JSON actions to execute
+};
+
+// Streaming state for mix analysis
+struct MixStreamingState {
+  bool isStreaming = false;
+  bool streamComplete = false;
+  bool streamError = false;
+  std::string streamBuffer;   // Accumulated text from streaming
+  std::string errorMessage;   // Error message if failed
 };
 
 // Result callback type for mix analysis
@@ -70,6 +88,28 @@ public:
 
   // Clear pending result
   static void ClearPendingResult();
+
+  // Streaming API for real-time text streaming
+  // Returns true if streaming is active, populates state
+  static bool GetStreamingState(MixStreamingState &state);
+
+  // Append text to streaming buffer (called by SSE callback)
+  static void AppendStreamText(const std::string &text);
+
+  // Start streaming (reset buffer)
+  static void StartStreaming();
+
+  // Complete streaming (signal done)
+  static void CompleteStreaming(bool success, const std::string &error = "");
+
+  // Clear streaming state (after processing completed stream)
+  static void ClearStreamingState();
+
+  // Get current analysis phase (for UI status display)
+  static MixAnalysisPhase GetCurrentPhase();
+
+  // Set current analysis phase (called by workflow)
+  static void SetCurrentPhase(MixAnalysisPhase phase);
 
   // Get current bounce mode preference from settings
   static BounceMode GetBounceModePreference();
