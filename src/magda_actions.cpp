@@ -926,95 +926,95 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   }
 
   // Set color if provided (REAPER uses OS-dependent color values)
-  // Use ColorToNative for proper OS-dependent conversion
-  if (color && color[0] && GetSetMediaItemInfo) {
-    // Parse hex color like "#ff0000" or "ff0000" to RGB components
-    unsigned int r = 0, g = 0, b = 0;
-    bool parsed = false;
+  if (color && color[0]) {
+    // Use SetMediaItemInfo_Value with CORRECT signature (returns double, takes double)
+    double (*SetMediaItemInfo_Value)(MediaItem *, const char *, double) =
+        (double (*)(MediaItem *, const char *, double))g_rec->GetFunc(
+            "SetMediaItemInfo_Value");
 
-    if (color[0] == '#') {
-      unsigned int hex_color = 0;
-      if (strlen(color) >= 7 && sscanf(color + 1, "%x", &hex_color) == 1) {
-        r = (hex_color >> 16) & 0xFF;
-        g = (hex_color >> 8) & 0xFF;
-        b = hex_color & 0xFF;
-        parsed = true;
-      }
-    } else {
-      // Try to parse as hex without #
-      unsigned int hex_color = 0;
-      if (sscanf(color, "%x", &hex_color) == 1) {
-        r = (hex_color >> 16) & 0xFF;
-        g = (hex_color >> 8) & 0xFF;
-        b = hex_color & 0xFF;
-        parsed = true;
-      }
-    }
+    if (SetMediaItemInfo_Value) {
+      // Parse hex color like "#ff0000" or "ff0000" to RGB components
+      unsigned int r = 0, g = 0, b = 0;
+      bool parsed = false;
 
-    if (parsed) {
-      // Use ColorToNative for OS-dependent color conversion
-      int (*ColorToNative)(int r, int g, int b) =
-          (int (*)(int, int, int))g_rec->GetFunc("ColorToNative");
-
-      int color_val = 0;
-      if (ColorToNative) {
-        // Use REAPER's ColorToNative function for proper OS conversion
-        color_val = ColorToNative((int)r, (int)g, (int)b);
+      if (color[0] == '#') {
+        unsigned int hex_color = 0;
+        if (strlen(color) >= 7 && sscanf(color + 1, "%x", &hex_color) == 1) {
+          r = (hex_color >> 16) & 0xFF;
+          g = (hex_color >> 8) & 0xFF;
+          b = hex_color & 0xFF;
+          parsed = true;
+        }
       } else {
-        // Fallback: manual BGR conversion (shouldn't be needed, but just in
-        // case)
-        unsigned int bgr = (b << 16) | (g << 8) | r;
-        color_val = (int)bgr;
+        // Try to parse as hex without #
+        unsigned int hex_color = 0;
+        if (sscanf(color, "%x", &hex_color) == 1) {
+          r = (hex_color >> 16) & 0xFF;
+          g = (hex_color >> 8) & 0xFF;
+          b = hex_color & 0xFF;
+          parsed = true;
+        }
       }
 
-      // Set flag bit 0x1000000 to enable custom color
-      int color_with_flag = color_val | 0x1000000;
+      if (parsed) {
+        // Use ColorToNative for OS-dependent color conversion
+        int (*ColorToNative)(int r, int g, int b) =
+            (int (*)(int, int, int))g_rec->GetFunc("ColorToNative");
 
-      // Log the color operation
-      void (*ShowConsoleMsg)(const char *msg) =
-          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-      if (ShowConsoleMsg) {
-        double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
-            (double (*)(MediaItem *, const char *))g_rec->GetFunc(
-                "GetMediaItemInfo_Value");
-        double item_pos =
-            GetMediaItemInfo_Value
-                ? GetMediaItemInfo_Value(target_item, "D_POSITION")
-                : -1.0;
-        char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
-                 "(native: 0x%08x)\n",
-                 item_pos, r, g, b, color_with_flag);
-        ShowConsoleMsg(log_msg);
-      }
+        int color_val = 0;
+        if (ColorToNative) {
+          color_val = ColorToNative((int)r, (int)g, (int)b);
+        } else {
+          // Fallback: manual BGR conversion
+          unsigned int bgr = (b << 16) | (g << 8) | r;
+          color_val = (int)bgr;
+        }
 
-      GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &color_with_flag,
-                          nullptr);
+        // Set flag bit 0x1000000 to enable custom color
+        int color_with_flag = color_val | 0x1000000;
 
-      // Update arrange view to reflect color change
-      if (UpdateArrange) {
-        UpdateArrange();
-      }
+        // Log the color operation
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+              (double (*)(MediaItem *, const char *))g_rec->GetFunc(
+                  "GetMediaItemInfo_Value");
+          double item_pos =
+              GetMediaItemInfo_Value
+                  ? GetMediaItemInfo_Value(target_item, "D_POSITION")
+                  : -1.0;
+          char log_msg[512];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
+                   "(native: 0x%08x)\n",
+                   item_pos, r, g, b, color_with_flag);
+          ShowConsoleMsg(log_msg);
+        }
 
-      // Verify it was set by reading it back
-      if (ShowConsoleMsg) {
-        int verify_color = 0;
-        GetSetMediaItemInfo(target_item, "I_CUSTOMCOLOR", &verify_color,
-                            nullptr);
-        char verify_msg[256];
-        snprintf(verify_msg, sizeof(verify_msg),
-                 "MAGDA: Verified clip color is now: 0x%08x\n", verify_color);
-        ShowConsoleMsg(verify_msg);
+        // Use correct API: SetMediaItemInfo_Value with double
+        SetMediaItemInfo_Value(target_item, "I_CUSTOMCOLOR",
+                               (double)color_with_flag);
+
+        // Update arrange view to reflect color change
+        if (UpdateArrange) {
+          UpdateArrange();
+        }
+      } else {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: WARNING - Failed to parse color '%s'\n", color);
+          ShowConsoleMsg(log_msg);
+        }
       }
     } else {
       void (*ShowConsoleMsg)(const char *msg) =
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
-        char log_msg[256];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: WARNING - Failed to parse color '%s'\n", color);
-        ShowConsoleMsg(log_msg);
+        ShowConsoleMsg("MAGDA: ERROR - SetMediaItemInfo_Value not available\n");
       }
     }
   }
@@ -1373,12 +1373,13 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
   } else if (strcmp(action_type, "add_midi") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     wdl_json_element *notes_array = action->get_item_by_name("notes");
+    const char *name = action->get_string_by_name("name", true);  // Optional take name
     if (!track_str || !notes_array) {
       error_msg.Set("Missing 'track' or 'notes' field");
       return false;
     }
     int track_index = atoi(track_str);
-    if (AddMIDI(track_index, notes_array, error_msg)) {
+    if (AddMIDI(track_index, notes_array, name, error_msg)) {
       result.Append("{\"action\":\"add_midi\",\"success\":true}");
       return true;
     }
@@ -1759,7 +1760,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
 
       if (drum_notes_array) {
         WDL_FastString drum_error;
-        if (AddMIDI(drum_track_index, drum_notes_array, drum_error)) {
+        if (AddMIDI(drum_track_index, drum_notes_array, "Drum Pattern", drum_error)) {
           result.Append(
               "{\"action\":\"drum_pattern\",\"success\":true,\"notes\":"
               "");
@@ -1835,7 +1836,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
 }
 
 bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
-                           WDL_FastString &error_msg) {
+                           const char *take_name, WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -1972,7 +1973,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     ShowConsoleMsg(log_msg);
   }
 
-  // Find the most recent clip on the track (or create one if none exists)
+  // Find the rightmost clip on the track (by position, not index)
   MediaItem *item = nullptr;
   int num_items = CountTrackMediaItems(track);
 
@@ -1984,10 +1985,33 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
   }
 
   if (num_items > 0) {
-    // Get the last clip
-    item = GetTrackMediaItem(track, num_items - 1);
-    if (ShowConsoleMsg)
-      ShowConsoleMsg("MAGDA: AddMIDI: Using existing media item\n");
+    // Find the rightmost item by position (not by index!)
+    // Use GetMediaItemInfo_Value as a more reliable way to get position
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
+        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+
+    double max_pos = -1.0;
+    for (int i = 0; i < num_items; i++) {
+      MediaItem *candidate = GetTrackMediaItem(track, i);
+      if (candidate) {
+        double pos = 0.0;
+        if (GetMediaItemInfo_Value) {
+          pos = GetMediaItemInfo_Value(candidate, "D_POSITION");
+        } else if (GetMediaItemPosition) {
+          pos = GetMediaItemPosition(candidate);
+        }
+        if (pos >= max_pos) {  // Use >= to prefer later items at same position
+          max_pos = pos;
+          item = candidate;
+        }
+      }
+    }
+    if (ShowConsoleMsg) {
+      char log_msg[512];
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: AddMIDI: Using rightmost item at position %.2f sec\n", max_pos);
+      ShowConsoleMsg(log_msg);
+    }
   } else {
     // No clips exist, create one at bar 1, 4 bars long
     if (ShowConsoleMsg)
@@ -2053,20 +2077,30 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
                      "CreateNewMIDIItemInProj...\n");
 
     // Get item position and length to recreate it as MIDI
-    double item_pos = GetMediaItemPosition ? GetMediaItemPosition(item) : 0.0;
+    // Use GetMediaItemInfo_Value which is more reliable
+    double (*GetMediaItemInfo_Val)(MediaItem *, const char *) = (double (*)(
+        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+
+    double item_pos = 0.0;
     double item_len = 4.0; // Default to 4 seconds
-    double (*GetMediaItemLength)(MediaItem *) =
-        (double (*)(MediaItem *))g_rec->GetFunc("GetMediaItemLength");
-    if (GetMediaItemLength) {
-      double old_len = GetMediaItemLength(item);
+
+    if (GetMediaItemInfo_Val) {
+      item_pos = GetMediaItemInfo_Val(item, "D_POSITION");
+      item_len = GetMediaItemInfo_Val(item, "D_LENGTH");
       if (ShowConsoleMsg) {
         char log_msg[256];
         snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI: Original clip length: %.2f seconds\n",
-                 old_len);
+                 "MAGDA: AddMIDI: Original clip pos=%.2f sec, len=%.2f sec\n",
+                 item_pos, item_len);
         ShowConsoleMsg(log_msg);
       }
-      item_len = old_len;
+    } else if (GetMediaItemPosition) {
+      item_pos = GetMediaItemPosition(item);
+      double (*GetMediaItemLength)(MediaItem *) =
+          (double (*)(MediaItem *))g_rec->GetFunc("GetMediaItemLength");
+      if (GetMediaItemLength) {
+        item_len = GetMediaItemLength(item);
+      }
     }
 
     // Calculate required length from notes (find max end time in beats/quarter
@@ -2209,17 +2243,29 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     return false;
   }
 
-  // Get REAPER's function to convert project QN to PPQ for this take
-  double (*MIDI_GetPPQPosFromProjQN)(MediaItem_Take *, double) = (double (*)(
-      MediaItem_Take *, double))g_rec->GetFunc("MIDI_GetPPQPosFromProjQN");
-
-  if (!MIDI_GetPPQPosFromProjQN) {
-    error_msg.Set("MIDI_GetPPQPosFromProjQN not available");
-    if (ShowConsoleMsg)
-      ShowConsoleMsg(
-          "MAGDA: AddMIDI ERROR: MIDI_GetPPQPosFromProjQN not available\n");
-    return false;
+  // Set take name if provided
+  if (take_name && take_name[0]) {
+    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
+                                           char *, bool) =
+        (bool (*)(MediaItem_Take *, const char *, char *,
+                  bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+    if (GetSetMediaItemTakeInfo_String) {
+      char name_buf[256];
+      strncpy(name_buf, take_name, sizeof(name_buf) - 1);
+      name_buf[sizeof(name_buf) - 1] = '\0';
+      GetSetMediaItemTakeInfo_String(take, "P_NAME", name_buf, true);
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Set take name to '%s'\n", take_name);
+        ShowConsoleMsg(log_msg);
+      }
+    }
   }
+
+  // MIDI notes use PPQ (pulses per quarter note), typically 960 PPQ per beat
+  // Note positions are relative to item start, so beat 0 = PPQ 0
+  const double PPQ_PER_QN = 960.0;
 
   // Insert each note
   int notes_inserted = 0;
@@ -2277,10 +2323,10 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     double start_beats = atof(start_str);
     double length_beats = atof(length_str);
 
-    // Convert beats (QN) to PPQ using REAPER's function - this handles tempo
-    // correctly
-    double start_ppq = MIDI_GetPPQPosFromProjQN(take, start_beats);
-    double end_ppq = MIDI_GetPPQPosFromProjQN(take, start_beats + length_beats);
+    // Convert beats to PPQ - note positions are relative to item start
+    // So beat 0 = PPQ 0, beat 1 = PPQ 960, etc.
+    double start_ppq = start_beats * PPQ_PER_QN;
+    double end_ppq = (start_beats + length_beats) * PPQ_PER_QN;
 
     if (ShowConsoleMsg) {
       char log_msg[512];
@@ -2595,7 +2641,7 @@ bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
     return false;
   }
 
-  return AddMIDI(track_index, notes_array, error_msg);
+  return AddMIDI(track_index, notes_array, drum_name, error_msg);
 }
 
 // Add automation envelope to track
