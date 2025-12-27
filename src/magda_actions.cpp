@@ -1373,12 +1373,13 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
   } else if (strcmp(action_type, "add_midi") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     wdl_json_element *notes_array = action->get_item_by_name("notes");
+    const char *name = action->get_string_by_name("name", true);  // Optional take name
     if (!track_str || !notes_array) {
       error_msg.Set("Missing 'track' or 'notes' field");
       return false;
     }
     int track_index = atoi(track_str);
-    if (AddMIDI(track_index, notes_array, error_msg)) {
+    if (AddMIDI(track_index, notes_array, name, error_msg)) {
       result.Append("{\"action\":\"add_midi\",\"success\":true}");
       return true;
     }
@@ -1759,7 +1760,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
 
       if (drum_notes_array) {
         WDL_FastString drum_error;
-        if (AddMIDI(drum_track_index, drum_notes_array, drum_error)) {
+        if (AddMIDI(drum_track_index, drum_notes_array, "Drum Pattern", drum_error)) {
           result.Append(
               "{\"action\":\"drum_pattern\",\"success\":true,\"notes\":"
               "");
@@ -1835,7 +1836,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
 }
 
 bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
-                           WDL_FastString &error_msg) {
+                           const char *take_name, WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -2242,6 +2243,26 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     return false;
   }
 
+  // Set take name if provided
+  if (take_name && take_name[0]) {
+    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
+                                           char *, bool) =
+        (bool (*)(MediaItem_Take *, const char *, char *,
+                  bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+    if (GetSetMediaItemTakeInfo_String) {
+      char name_buf[256];
+      strncpy(name_buf, take_name, sizeof(name_buf) - 1);
+      name_buf[sizeof(name_buf) - 1] = '\0';
+      GetSetMediaItemTakeInfo_String(take, "P_NAME", name_buf, true);
+      if (ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Set take name to '%s'\n", take_name);
+        ShowConsoleMsg(log_msg);
+      }
+    }
+  }
+
   // MIDI notes use PPQ (pulses per quarter note), typically 960 PPQ per beat
   // Note positions are relative to item start, so beat 0 = PPQ 0
   const double PPQ_PER_QN = 960.0;
@@ -2620,7 +2641,7 @@ bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
     return false;
   }
 
-  return AddMIDI(track_index, notes_array, error_msg);
+  return AddMIDI(track_index, notes_array, drum_name, error_msg);
 }
 
 // Add automation envelope to track

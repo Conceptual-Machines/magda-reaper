@@ -46,7 +46,7 @@ private:
   static bool DeleteClip(int track_index, int clip_index,
                          WDL_FastString &error_msg);
   static bool AddMIDI(int track_index, wdl_json_element *notes_array,
-                      WDL_FastString &error_msg);
+                      const char *take_name, WDL_FastString &error_msg);
 
   // Drum pattern handler - converts grid notation to MIDI notes
   static bool AddDrumPattern(int track_index, const char *drum_name,
