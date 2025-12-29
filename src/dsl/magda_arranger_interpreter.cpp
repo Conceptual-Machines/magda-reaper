@@ -39,8 +39,7 @@ Interpreter::~Interpreter() {}
 static void Log(const char *fmt, ...) {
   if (!g_rec)
     return;
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (!ShowConsoleMsg)
     return;
 
@@ -94,8 +93,7 @@ bool Interpreter::ParseParams(const char *params, ArrangerParams &out) {
   // Parse key=value pairs
   size_t pos = 0;
   while (pos < paramStr.length()) {
-    while (pos < paramStr.length() &&
-           (paramStr[pos] == ' ' || paramStr[pos] == ','))
+    while (pos < paramStr.length() && (paramStr[pos] == ' ' || paramStr[pos] == ','))
       pos++;
     if (pos >= paramStr.length())
       break;
@@ -124,8 +122,7 @@ bool Interpreter::ParseParams(const char *params, ArrangerParams &out) {
         if (key == "chords") {
           size_t arrPos = 0;
           while (arrPos < value.length()) {
-            while (arrPos < value.length() &&
-                   (value[arrPos] == ' ' || value[arrPos] == ','))
+            while (arrPos < value.length() && (value[arrPos] == ' ' || value[arrPos] == ','))
               arrPos++;
             size_t end = value.find_first_of(", ]", arrPos);
             if (end == std::string::npos)
@@ -225,8 +222,7 @@ int Interpreter::NoteToPitch(const char *noteName) {
 // ============================================================================
 // Chord Symbol to Notes
 // ============================================================================
-bool Interpreter::ChordToNotes(const char *symbol, int *notes, int &noteCount,
-                               int octave) {
+bool Interpreter::ChordToNotes(const char *symbol, int *notes, int &noteCount, int octave) {
   if (!symbol || !*symbol)
     return false;
 
@@ -315,8 +311,7 @@ bool Interpreter::ChordToNotes(const char *symbol, int *notes, int &noteCount,
 // ============================================================================
 // Build JSON notes array and call AddMIDI
 // ============================================================================
-bool Interpreter::AddNotesToTrack(int trackIndex,
-                                  const std::vector<NoteData> &notes,
+bool Interpreter::AddNotesToTrack(int trackIndex, const std::vector<NoteData> &notes,
                                   const char *name) {
   if (notes.empty()) {
     m_error.Set("No notes to add");
@@ -329,14 +324,13 @@ bool Interpreter::AddNotesToTrack(int trackIndex,
   for (size_t i = 0; i < notes.size(); i++) {
     if (i > 0)
       json.Append(",");
-    json.AppendFormatted(
-        128, "{\"pitch\":%d,\"start\":%.4f,\"length\":%.4f,\"velocity\":%d}",
-        notes[i].pitch, notes[i].start, notes[i].length, notes[i].velocity);
+    json.AppendFormatted(128, "{\"pitch\":%d,\"start\":%.4f,\"length\":%.4f,\"velocity\":%d}",
+                         notes[i].pitch, notes[i].start, notes[i].length, notes[i].velocity);
   }
   json.Append("]");
 
-  Log("MAGDA Arranger: Adding %d notes to track %d: %s\n", (int)notes.size(),
-      trackIndex, json.Get());
+  Log("MAGDA Arranger: Adding %d notes to track %d: %s\n", (int)notes.size(), trackIndex,
+      json.Get());
 
   // Parse JSON
   wdl_json_parser parser;
@@ -461,8 +455,7 @@ bool Interpreter::ExecuteArpeggio(const char *params) {
       noteIndex = (pos < noteCount) ? pos : cycle - pos;
     }
 
-    notes.push_back(
-        {pitches[noteIndex], currentBeat, p.noteDuration, p.velocity});
+    notes.push_back({pitches[noteIndex], currentBeat, p.noteDuration, p.velocity});
     currentBeat += p.noteDuration;
   }
 
@@ -505,9 +498,15 @@ bool Interpreter::ExecuteProgression(const char *params) {
 }
 
 // Stub implementations for interface compatibility
-MediaTrack *Interpreter::GetSelectedTrack() { return nullptr; }
-double Interpreter::GetTempo() { return 120.0; }
-MediaItem *Interpreter::GetOrCreateTargetItem(double) { return nullptr; }
+MediaTrack *Interpreter::GetSelectedTrack() {
+  return nullptr;
+}
+double Interpreter::GetTempo() {
+  return 120.0;
+}
+MediaItem *Interpreter::GetOrCreateTargetItem(double) {
+  return nullptr;
+}
 bool Interpreter::CreateMIDINote(MediaItem *, int, double, double, int) {
   return false;
 }

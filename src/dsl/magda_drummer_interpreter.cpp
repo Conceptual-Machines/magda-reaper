@@ -13,8 +13,7 @@ namespace MagdaDrummer {
 static void Log(const char *fmt, ...) {
   if (!g_rec)
     return;
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (!ShowConsoleMsg)
     return;
 
@@ -91,8 +90,7 @@ bool Interpreter::ExecutePattern(const char *params) {
   // Parse key=value pairs
   size_t pos = 0;
   while (pos < paramStr.length()) {
-    while (pos < paramStr.length() &&
-           (paramStr[pos] == ' ' || paramStr[pos] == ','))
+    while (pos < paramStr.length() && (paramStr[pos] == ' ' || paramStr[pos] == ','))
       pos++;
     if (pos >= paramStr.length())
       break;
@@ -138,12 +136,12 @@ bool Interpreter::ExecutePattern(const char *params) {
   }
 
   int trackIndex = (m_trackIndex >= 0) ? m_trackIndex : GetSelectedTrackIndex();
-  Log("MAGDA Drummer: Adding pattern drum=%s grid=%s velocity=%d to track %d\n",
-      drumName.c_str(), grid.c_str(), velocity, trackIndex);
+  Log("MAGDA Drummer: Adding pattern drum=%s grid=%s velocity=%d to track %d\n", drumName.c_str(),
+      grid.c_str(), velocity, trackIndex);
 
   WDL_FastString errorMsg;
-  bool success = MagdaActions::AddDrumPattern(
-      trackIndex, drumName.c_str(), grid.c_str(), velocity, nullptr, errorMsg);
+  bool success = MagdaActions::AddDrumPattern(trackIndex, drumName.c_str(), grid.c_str(), velocity,
+                                              nullptr, errorMsg);
 
   if (!success) {
     m_error.SetFormatted(512, "AddDrumPattern failed: %s", errorMsg.Get());

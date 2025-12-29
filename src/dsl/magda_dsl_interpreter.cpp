@@ -115,8 +115,7 @@ Token Tokenizer::ReadIdentifier() {
     m_col++;
   }
 
-  return Token(TokenType::IDENTIFIER, std::string(start, m_pos - start), m_line,
-               start_col);
+  return Token(TokenType::IDENTIFIER, std::string(start, m_pos - start), m_line, start_col);
 }
 
 Token Tokenizer::ReadString() {
@@ -190,8 +189,7 @@ Token Tokenizer::ReadNumber() {
     }
   }
 
-  return Token(TokenType::NUMBER, std::string(start, m_pos - start), m_line,
-               start_col);
+  return Token(TokenType::NUMBER, std::string(start, m_pos - start), m_line, start_col);
 }
 
 Token Tokenizer::Next() {
@@ -278,8 +276,7 @@ Token Tokenizer::Next() {
   }
 
   // Unknown character
-  m_error.SetFormatted(256, "Unexpected character '%c' at line %d, col %d", c,
-                       m_line, m_col);
+  m_error.SetFormatted(256, "Unexpected character '%c' at line %d, col %d", c, m_line, m_col);
   m_pos++;
   m_col++;
   return Token(TokenType::ERROR, std::string(1, c), m_line, start_col);
@@ -338,8 +335,7 @@ bool Interpreter::Execute(const char *dsl_code) {
 
   // Log execution start
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[512];
       snprintf(msg, sizeof(msg), "MAGDA DSL: Executing: %.200s%s\n", dsl_code,
@@ -364,8 +360,7 @@ bool Interpreter::Execute(const char *dsl_code) {
 
   // Log success
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA DSL: Execution complete\n");
     }
@@ -384,8 +379,7 @@ bool Interpreter::ParseStatement(Tokenizer &tok) {
   } else if (t.type == TokenType::END_OF_INPUT) {
     return true;
   } else {
-    m_ctx.SetErrorF("Unexpected token '%s' at line %d", t.value.c_str(),
-                    t.line);
+    m_ctx.SetErrorF("Unexpected token '%s' at line %d", t.value.c_str(), t.line);
     return false;
   }
 }
@@ -427,12 +421,11 @@ bool Interpreter::ParseTrackStatement(Tokenizer &tok) {
       return false;
     }
     // Get index
-    double (*GetMediaTrackInfo_Value)(MediaTrack *, const char *) = (double (*)(
-        MediaTrack *, const char *))g_rec->GetFunc("GetMediaTrackInfo_Value");
+    double (*GetMediaTrackInfo_Value)(MediaTrack *, const char *) =
+        (double (*)(MediaTrack *, const char *))g_rec->GetFunc("GetMediaTrackInfo_Value");
     if (GetMediaTrackInfo_Value) {
       m_ctx.current_track_idx =
-          (int)GetMediaTrackInfo_Value(m_ctx.current_track, "IP_TRACKNUMBER") -
-          1;
+          (int)GetMediaTrackInfo_Value(m_ctx.current_track, "IP_TRACKNUMBER") - 1;
     }
   } else {
     // track() or track(name="...", instrument="...") - create new track
@@ -457,8 +450,7 @@ bool Interpreter::ParseFilterStatement(Tokenizer &tok) {
   // Expect: filter(tracks, track.name == "value")
   Token collection = tok.Next();
   if (!collection.Is("tracks")) {
-    m_ctx.SetErrorF("Expected 'tracks' in filter, got '%s'",
-                    collection.value.c_str());
+    m_ctx.SetErrorF("Expected 'tracks' in filter, got '%s'", collection.value.c_str());
     return false;
   }
 
@@ -470,8 +462,7 @@ bool Interpreter::ParseFilterStatement(Tokenizer &tok) {
   // Parse condition: track.field == "value"
   Token trackToken = tok.Next();
   if (!trackToken.Is("track")) {
-    m_ctx.SetErrorF("Expected 'track' in filter condition, got '%s'",
-                    trackToken.value.c_str());
+    m_ctx.SetErrorF("Expected 'track' in filter condition, got '%s'", trackToken.value.c_str());
     return false;
   }
 
@@ -552,8 +543,7 @@ bool Interpreter::ParseMethodChain(Tokenizer &tok) {
       success = ParseSetTrack(tok, params);
     } else if (method.value == "add_fx") {
       success = ParseAddFx(tok, params);
-    } else if (method.value == "addAutomation" ||
-               method.value == "add_automation") {
+    } else if (method.value == "addAutomation" || method.value == "add_automation") {
       success = ParseAddAutomation(tok, params);
     } else if (method.value == "delete") {
       success = ParseDelete(tok);
@@ -635,18 +625,13 @@ MediaTrack *Interpreter::CreateTrack(const Params &params) {
     return nullptr;
   }
 
-  void (*InsertTrackAtIndex)(int, bool) =
-      (void (*)(int, bool))g_rec->GetFunc("InsertTrackAtIndex");
+  void (*InsertTrackAtIndex)(int, bool) = (void (*)(int, bool))g_rec->GetFunc("InsertTrackAtIndex");
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
-  MediaTrack *(*GetTrack)(void *, int) =
-      (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
-  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *,
-                                      bool) =
-      (bool (*)(MediaTrack *, const char *, char *, bool))g_rec->GetFunc(
-          "GetSetMediaTrackInfo_String");
+  MediaTrack *(*GetTrack)(void *, int) = (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
+  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *, bool) = (bool (*)(
+      MediaTrack *, const char *, char *, bool))g_rec->GetFunc("GetSetMediaTrackInfo_String");
   int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc(
-          "TrackFX_AddByName");
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
 
   if (!InsertTrackAtIndex || !GetNumTracks || !GetTrack) {
     m_ctx.SetError("Required REAPER API functions not available");
@@ -668,8 +653,7 @@ MediaTrack *Interpreter::CreateTrack(const Params &params) {
   std::string trackName;
   if (params.Has("name") && GetSetMediaTrackInfo_String) {
     trackName = params.Get("name");
-    GetSetMediaTrackInfo_String(track, "P_NAME", (char *)trackName.c_str(),
-                                true);
+    GetSetMediaTrackInfo_String(track, "P_NAME", (char *)trackName.c_str(), true);
   }
 
   // Store in global context for Arranger/Drummer to use
@@ -690,16 +674,14 @@ MediaTrack *Interpreter::CreateTrack(const Params &params) {
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char msg[256];
-        snprintf(msg, sizeof(msg),
-                 "MAGDA DSL: Warning - instrument '%s' not found\n",
+        snprintf(msg, sizeof(msg), "MAGDA DSL: Warning - instrument '%s' not found\n",
                  instrument.c_str());
         ShowConsoleMsg(msg);
       }
     }
   }
 
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
     snprintf(msg, sizeof(msg), "MAGDA DSL: Created track %d%s%s\n", idx + 1,
@@ -715,8 +697,7 @@ MediaTrack *Interpreter::GetTrackById(int id) {
   if (!g_rec)
     return nullptr;
 
-  MediaTrack *(*GetTrack)(void *, int) =
-      (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
+  MediaTrack *(*GetTrack)(void *, int) = (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
   if (!GetTrack)
     return nullptr;
 
@@ -729,12 +710,9 @@ MediaTrack *Interpreter::GetTrackByName(const std::string &name) {
     return nullptr;
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
-  MediaTrack *(*GetTrack)(void *, int) =
-      (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
-  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *,
-                                      bool) =
-      (bool (*)(MediaTrack *, const char *, char *, bool))g_rec->GetFunc(
-          "GetSetMediaTrackInfo_String");
+  MediaTrack *(*GetTrack)(void *, int) = (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
+  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *, bool) = (bool (*)(
+      MediaTrack *, const char *, char *, bool))g_rec->GetFunc("GetSetMediaTrackInfo_String");
 
   if (!GetNumTracks || !GetTrack || !GetSetMediaTrackInfo_String)
     return nullptr;
@@ -770,8 +748,7 @@ void Interpreter::DeleteTrack(MediaTrack *track) {
   if (!g_rec || !track)
     return;
 
-  void (*DeleteTrack)(MediaTrack *) =
-      (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+  void (*DeleteTrack)(MediaTrack *) = (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
   if (DeleteTrack) {
     DeleteTrack(track);
   }
@@ -781,13 +758,10 @@ void Interpreter::SetTrackProperties(MediaTrack *track, const Params &params) {
   if (!g_rec || !track)
     return;
 
-  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *,
-                                      bool) =
-      (bool (*)(MediaTrack *, const char *, char *, bool))g_rec->GetFunc(
-          "GetSetMediaTrackInfo_String");
+  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *, bool) = (bool (*)(
+      MediaTrack *, const char *, char *, bool))g_rec->GetFunc("GetSetMediaTrackInfo_String");
   bool (*SetMediaTrackInfo_Value)(MediaTrack *, const char *, double) =
-      (bool (*)(MediaTrack *, const char *, double))g_rec->GetFunc(
-          "SetMediaTrackInfo_Value");
+      (bool (*)(MediaTrack *, const char *, double))g_rec->GetFunc("SetMediaTrackInfo_Value");
 
   if (params.Has("name") && GetSetMediaTrackInfo_String) {
     std::string name = params.Get("name");
@@ -807,18 +781,15 @@ void Interpreter::SetTrackProperties(MediaTrack *track, const Params &params) {
     }
 
     if (params.Has("mute")) {
-      SetMediaTrackInfo_Value(track, "B_MUTE",
-                              params.GetBool("mute") ? 1.0 : 0.0);
+      SetMediaTrackInfo_Value(track, "B_MUTE", params.GetBool("mute") ? 1.0 : 0.0);
     }
 
     if (params.Has("solo")) {
-      SetMediaTrackInfo_Value(track, "I_SOLO",
-                              params.GetBool("solo") ? 1.0 : 0.0);
+      SetMediaTrackInfo_Value(track, "I_SOLO", params.GetBool("solo") ? 1.0 : 0.0);
     }
 
     if (params.Has("selected")) {
-      SetMediaTrackInfo_Value(track, "I_SELECTED",
-                              params.GetBool("selected") ? 1.0 : 0.0);
+      SetMediaTrackInfo_Value(track, "I_SELECTED", params.GetBool("selected") ? 1.0 : 0.0);
     }
   }
 }
@@ -857,9 +828,8 @@ double Interpreter::GetProjectTimeSignature() const {
   if (!g_rec)
     return 4.0;
 
-  double (*TimeMap_GetTimeSigAtTime)(void *, double, int *, int *, double *) =
-      (double (*)(void *, double, int *, int *, double *))g_rec->GetFunc(
-          "TimeMap_GetTimeSigAtTime");
+  double (*TimeMap_GetTimeSigAtTime)(void *, double, int *, int *, double *) = (double (*)(
+      void *, double, int *, int *, double *))g_rec->GetFunc("TimeMap_GetTimeSigAtTime");
   if (!TimeMap_GetTimeSigAtTime)
     return 4.0;
 
@@ -868,27 +838,25 @@ double Interpreter::GetProjectTimeSignature() const {
   return (double)num;
 }
 
-MediaItem *Interpreter::CreateClipAtBar(MediaTrack *track, int bar,
-                                        int length_bars) {
+MediaItem *Interpreter::CreateClipAtBar(MediaTrack *track, int bar, int length_bars) {
   if (!g_rec || !track)
     return nullptr;
 
   MediaItem *(*AddMediaItemToTrack)(MediaTrack *) =
       (MediaItem * (*)(MediaTrack *)) g_rec->GetFunc("AddMediaItemToTrack");
-  bool (*SetMediaItemPosition)(MediaItem *, double, bool) = (bool (*)(
-      MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
+  bool (*SetMediaItemPosition)(MediaItem *, double, bool) =
+      (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
   bool (*SetMediaItemLength)(MediaItem *, double, bool) =
       (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemLength");
   MediaItem_Take *(*AddTakeToMediaItem)(MediaItem *) =
       (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("AddTakeToMediaItem");
-  bool (*SetMediaItemTake_Source)(MediaItem_Take *, void *) = (bool (*)(
-      MediaItem_Take *, void *))g_rec->GetFunc("SetMediaItemTake_Source");
+  bool (*SetMediaItemTake_Source)(MediaItem_Take *, void *) =
+      (bool (*)(MediaItem_Take *, void *))g_rec->GetFunc("SetMediaItemTake_Source");
   void *(*PCM_Source_CreateFromType)(const char *) =
       (void *(*)(const char *))g_rec->GetFunc("PCM_Source_CreateFromType");
 
   if (!AddMediaItemToTrack || !SetMediaItemPosition || !SetMediaItemLength) {
-    m_ctx.SetError(
-        "Required REAPER API functions not available for clip creation");
+    m_ctx.SetError("Required REAPER API functions not available for clip creation");
     return nullptr;
   }
 
@@ -905,8 +873,7 @@ MediaItem *Interpreter::CreateClipAtBar(MediaTrack *track, int bar,
   SetMediaItemLength(item, len, false);
 
   // Create MIDI take
-  if (AddTakeToMediaItem && SetMediaItemTake_Source &&
-      PCM_Source_CreateFromType) {
+  if (AddTakeToMediaItem && SetMediaItemTake_Source && PCM_Source_CreateFromType) {
     MediaItem_Take *take = AddTakeToMediaItem(item);
     if (take) {
       void *midi_source = PCM_Source_CreateFromType("MIDI");
@@ -929,12 +896,10 @@ MediaItem *Interpreter::CreateClipAtBar(MediaTrack *track, int bar,
   // Store in global context for Arranger/Drummer to use
   MagdaDSLContext::Get().SetCreatedClip(m_ctx.current_track_idx, itemIndex);
 
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg),
-             "MAGDA DSL: Created clip at bar %d, length %d bars\n", bar,
+    snprintf(msg, sizeof(msg), "MAGDA DSL: Created clip at bar %d, length %d bars\n", bar,
              length_bars);
     ShowConsoleMsg(msg);
   }
@@ -948,16 +913,15 @@ MediaItem *Interpreter::CreateClipAtBar(MediaTrack *track, int bar,
   return item;
 }
 
-MediaItem *Interpreter::CreateClipAtPosition(MediaTrack *track, double pos,
-                                             double length) {
+MediaItem *Interpreter::CreateClipAtPosition(MediaTrack *track, double pos, double length) {
   // Similar to CreateClipAtBar but with time-based positioning
   if (!g_rec || !track)
     return nullptr;
 
   MediaItem *(*AddMediaItemToTrack)(MediaTrack *) =
       (MediaItem * (*)(MediaTrack *)) g_rec->GetFunc("AddMediaItemToTrack");
-  bool (*SetMediaItemPosition)(MediaItem *, double, bool) = (bool (*)(
-      MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
+  bool (*SetMediaItemPosition)(MediaItem *, double, bool) =
+      (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
   bool (*SetMediaItemLength)(MediaItem *, double, bool) =
       (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemLength");
 
@@ -990,8 +954,8 @@ void Interpreter::DeleteClip(MediaTrack *track, int clip_index) {
       (int (*)(MediaTrack *))g_rec->GetFunc("GetTrackNumMediaItems");
   MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
       (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
-  bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) = (bool (*)(
-      MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
+  bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) =
+      (bool (*)(MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
 
   if (!GetTrackNumMediaItems || !GetTrackMediaItem || !DeleteTrackMediaItem)
     return;
@@ -1070,8 +1034,7 @@ bool Interpreter::AddFX(MediaTrack *track, const std::string &fx_name) {
     return false;
 
   int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc(
-          "TrackFX_AddByName");
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
   if (!TrackFX_AddByName) {
     m_ctx.SetError("TrackFX_AddByName not available");
     return false;
@@ -1089,20 +1052,17 @@ bool Interpreter::AddFX(MediaTrack *track, const std::string &fx_name) {
     return false;
   }
 
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA DSL: Added FX '%s' at index %d\n",
-             fx_name.c_str(), idx);
+    snprintf(msg, sizeof(msg), "MAGDA DSL: Added FX '%s' at index %d\n", fx_name.c_str(), idx);
     ShowConsoleMsg(msg);
   }
 
   return true;
 }
 
-bool Interpreter::AddInstrument(MediaTrack *track,
-                                const std::string &instrument_name) {
+bool Interpreter::AddInstrument(MediaTrack *track, const std::string &instrument_name) {
   return AddFX(track, instrument_name);
 }
 
@@ -1127,12 +1087,10 @@ bool Interpreter::AddAutomation(MediaTrack *track, const Params &params) {
 
   (void)track;
 
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg),
-             "MAGDA DSL: TODO - AddAutomation(param=%s, curve=%s)\n",
+    snprintf(msg, sizeof(msg), "MAGDA DSL: TODO - AddAutomation(param=%s, curve=%s)\n",
              params.Get("param").c_str(), params.Get("curve").c_str());
     ShowConsoleMsg(msg);
   }
@@ -1185,12 +1143,9 @@ bool Interpreter::FilterTracks(const std::string &field, const std::string &op,
     return false;
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
-  MediaTrack *(*GetTrack)(void *, int) =
-      (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
-  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *,
-                                      bool) =
-      (bool (*)(MediaTrack *, const char *, char *, bool))g_rec->GetFunc(
-          "GetSetMediaTrackInfo_String");
+  MediaTrack *(*GetTrack)(void *, int) = (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
+  bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *, bool) = (bool (*)(
+      MediaTrack *, const char *, char *, bool))g_rec->GetFunc("GetSetMediaTrackInfo_String");
 
   if (!GetNumTracks || !GetTrack || !GetSetMediaTrackInfo_String)
     return false;
@@ -1220,23 +1175,18 @@ bool Interpreter::FilterTracks(const std::string &field, const std::string &op,
     }
   }
 
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(
-        msg, sizeof(msg),
-        "MAGDA DSL: Filter matched %d tracks (field=%s, op=%s, value=%s)\n",
-        (int)m_ctx.filtered_tracks.size(), field.c_str(), op.c_str(),
-        value.c_str());
+    snprintf(msg, sizeof(msg), "MAGDA DSL: Filter matched %d tracks (field=%s, op=%s, value=%s)\n",
+             (int)m_ctx.filtered_tracks.size(), field.c_str(), op.c_str(), value.c_str());
     ShowConsoleMsg(msg);
   }
 
   return true;
 }
 
-bool Interpreter::ApplyToFilteredTracks(const std::string &method,
-                                        const Params &params) {
+bool Interpreter::ApplyToFilteredTracks(const std::string &method, const Params &params) {
   // This is handled by ParseSetTrack checking m_ctx.in_filter_context
   (void)method;
   (void)params;

@@ -35,12 +35,10 @@ extern int g_cmdMixAnalyze;
 #define IDC_BTN_HOUSEKEEPING 1013
 
 MagdaChatWindow::MagdaChatWindow()
-    : m_hwnd(nullptr), m_hwndQuestionInput(nullptr),
-      m_hwndQuestionDisplay(nullptr), m_hwndReplyDisplay(nullptr),
-      m_hwndSendButton(nullptr), m_hwndRequestHeader(nullptr),
-      m_hwndResponseHeader(nullptr), m_hwndControlsHeader(nullptr),
-      m_hwndStatusFooter(nullptr), m_requestLineCount(0),
-      m_responseLineCount(0) {}
+    : m_hwnd(nullptr), m_hwndQuestionInput(nullptr), m_hwndQuestionDisplay(nullptr),
+      m_hwndReplyDisplay(nullptr), m_hwndSendButton(nullptr), m_hwndRequestHeader(nullptr),
+      m_hwndResponseHeader(nullptr), m_hwndControlsHeader(nullptr), m_hwndStatusFooter(nullptr),
+      m_requestLineCount(0), m_responseLineCount(0) {}
 
 MagdaChatWindow::~MagdaChatWindow() {
   if (m_hwnd) {
@@ -88,18 +86,15 @@ void MagdaChatWindow::Show(bool toggle) {
       // Add window to REAPER's dock system AFTER showing
       // This makes it dockable while keeping it undockable
       if (g_rec) {
-        void (*DockWindowAddEx)(HWND hwnd, const char *name,
-                                const char *identstr, bool allowShow) =
-            (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc(
-                "DockWindowAddEx");
+        void (*DockWindowAddEx)(HWND hwnd, const char *name, const char *identstr, bool allowShow) =
+            (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc("DockWindowAddEx");
         if (DockWindowAddEx) {
           // allowShow=false: Don't auto-show if docked, let user control
           // visibility
           DockWindowAddEx(m_hwnd, "MAGDA Chat", "MAGDA_CHAT_WINDOW", false);
 
           // Refresh the dock system
-          void (*DockWindowRefresh)() =
-              (void (*)())g_rec->GetFunc("DockWindowRefresh");
+          void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
           if (DockWindowRefresh) {
             DockWindowRefresh();
           }
@@ -124,8 +119,7 @@ void MagdaChatWindow::Show(bool toggle) {
     if (isDocked) {
       // Window is docked - activate the dock tab
       // This works even if the window was previously hidden/closed
-      void (*DockWindowActivate)(HWND hwnd) =
-          (void (*)(HWND))g_rec->GetFunc("DockWindowActivate");
+      void (*DockWindowActivate)(HWND hwnd) = (void (*)(HWND))g_rec->GetFunc("DockWindowActivate");
       if (DockWindowActivate) {
         DockWindowActivate(m_hwnd);
       }
@@ -166,11 +160,9 @@ void MagdaChatWindow::Hide() {
 }
 
 // Static dialog proc - SWS pattern
-INT_PTR WINAPI MagdaChatWindow::sDialogProc(HWND hwndDlg, UINT uMsg,
-                                            WPARAM wParam, LPARAM lParam) {
+INT_PTR WINAPI MagdaChatWindow::sDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   // Get 'this' pointer from GWLP_USERDATA (SWS pattern)
-  MagdaChatWindow *pObj =
-      (MagdaChatWindow *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+  MagdaChatWindow *pObj = (MagdaChatWindow *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
   if (!pObj && uMsg == WM_INITDIALOG) {
     // Store 'this' pointer from lParam (passed from CreateDialogParam)
     SetWindowLongPtr(hwndDlg, GWLP_USERDATA, lParam);
@@ -290,23 +282,20 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
       POINT pt;
       GetCursorPos(&pt);
-      int cmd =
-          TrackPopupMenu(hMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_LEFTALIGN,
-                         pt.x, pt.y, 0, m_hwnd, NULL);
+      int cmd = TrackPopupMenu(hMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_LEFTALIGN, pt.x, pt.y, 0,
+                               m_hwnd, NULL);
       DestroyMenu(hMenu);
 
       if (cmd == 1000) {
         // Undock: Remove from dock system and show as floating
         if (g_rec) {
-          void (*DockWindowRemove)(HWND hwnd) =
-              (void (*)(HWND))g_rec->GetFunc("DockWindowRemove");
+          void (*DockWindowRemove)(HWND hwnd) = (void (*)(HWND))g_rec->GetFunc("DockWindowRemove");
           if (DockWindowRemove) {
             // Remove from dock first
             DockWindowRemove(m_hwnd);
 
             // Refresh dock system
-            void (*DockWindowRefresh)() =
-                (void (*)())g_rec->GetFunc("DockWindowRefresh");
+            void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
             if (DockWindowRefresh) {
               DockWindowRefresh();
             }
@@ -347,17 +336,15 @@ INT_PTR MagdaChatWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
       } else if (cmd == 1001) {
         // Dock: Add back to dock system
         if (g_rec) {
-          void (*DockWindowAddEx)(HWND hwnd, const char *name,
-                                  const char *identstr, bool allowShow) =
-              (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc(
-                  "DockWindowAddEx");
+          void (*DockWindowAddEx)(HWND hwnd, const char *name, const char *identstr,
+                                  bool allowShow) =
+              (void (*)(HWND, const char *, const char *, bool))g_rec->GetFunc("DockWindowAddEx");
           if (DockWindowAddEx) {
             // Add back to dock system
             DockWindowAddEx(m_hwnd, "MAGDA Chat", "MAGDA_CHAT_WINDOW", true);
 
             // Refresh dock system
-            void (*DockWindowRefresh)() =
-                (void (*)())g_rec->GetFunc("DockWindowRefresh");
+            void (*DockWindowRefresh)() = (void (*)())g_rec->GetFunc("DockWindowRefresh");
             if (DockWindowRefresh) {
               DockWindowRefresh();
             }
@@ -413,8 +400,7 @@ void MagdaChatWindow::OnCommand(int command, int notifyCode) {
   case IDC_BTN_GAIN_STAGING:
     // For now, send chat message (can be updated later)
     if (m_hwndQuestionInput) {
-      SetWindowText(m_hwndQuestionInput,
-                    "Check gain staging across all tracks");
+      SetWindowText(m_hwndQuestionInput, "Check gain staging across all tracks");
       OnSendMessage();
     }
     break;
@@ -628,13 +614,10 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
   // flipY = height - normalY - controlHeight
 
   // Normal Y positions (top = 0):
-  int inputY_normal = padding; // Input at top
-  int headerY_normal =
-      padding + inputHeight + 5; // Headers below input (less padding)
-  int displayTop_normal =
-      headerY_normal + headerHeight + 2; // Minimal gap to display
-  int displayHeight =
-      height - displayTop_normal - padding - footerHeight - padding;
+  int inputY_normal = padding;                               // Input at top
+  int headerY_normal = padding + inputHeight + 5;            // Headers below input (less padding)
+  int displayTop_normal = headerY_normal + headerHeight + 2; // Minimal gap to display
+  int displayHeight = height - displayTop_normal - padding - footerHeight - padding;
   if (displayHeight < 50)
     displayHeight = 50;
   int footerY_normal = displayTop_normal + displayHeight + padding;
@@ -650,45 +633,44 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
   if (inputWidth < 50)
     inputWidth = 50;
   if (m_hwndQuestionInput) {
-    SetWindowPos(m_hwndQuestionInput, NULL, padding, inputY, inputWidth,
-                 inputHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndQuestionInput, NULL, padding, inputY, inputWidth, inputHeight, SWP_NOZORDER);
   }
 
   // Send button: right of input (aligned with chat area)
   if (m_hwndSendButton) {
-    SetWindowPos(m_hwndSendButton, NULL, padding + inputWidth + spacing, inputY,
-                 buttonWidth, buttonHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndSendButton, NULL, padding + inputWidth + spacing, inputY, buttonWidth,
+                 buttonHeight, SWP_NOZORDER);
   }
 
   // Request header: left
   if (m_hwndRequestHeader) {
-    SetWindowPos(m_hwndRequestHeader, NULL, padding, headerY, paneWidth,
-                 headerHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndRequestHeader, NULL, padding, headerY, paneWidth, headerHeight,
+                 SWP_NOZORDER);
   }
 
   // Response header: middle
   if (m_hwndResponseHeader) {
-    SetWindowPos(m_hwndResponseHeader, NULL, padding + paneWidth + spacing,
-                 headerY, paneWidth, headerHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndResponseHeader, NULL, padding + paneWidth + spacing, headerY, paneWidth,
+                 headerHeight, SWP_NOZORDER);
   }
 
   // Controls header: right
   int controlsX = padding + paneWidth + spacing + paneWidth + spacing;
   if (m_hwndControlsHeader) {
-    SetWindowPos(m_hwndControlsHeader, NULL, controlsX, headerY,
-                 controlsPanelWidth, headerHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndControlsHeader, NULL, controlsX, headerY, controlsPanelWidth, headerHeight,
+                 SWP_NOZORDER);
   }
 
   // Request display: left pane
   if (m_hwndQuestionDisplay) {
-    SetWindowPos(m_hwndQuestionDisplay, NULL, padding, displayTop, paneWidth,
-                 displayHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndQuestionDisplay, NULL, padding, displayTop, paneWidth, displayHeight,
+                 SWP_NOZORDER);
   }
 
   // Response display: middle pane
   if (m_hwndReplyDisplay) {
-    SetWindowPos(m_hwndReplyDisplay, NULL, padding + paneWidth + spacing,
-                 displayTop, paneWidth, displayHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndReplyDisplay, NULL, padding + paneWidth + spacing, displayTop, paneWidth,
+                 displayHeight, SWP_NOZORDER);
   }
 
   // Control buttons: right column (need Y-flip like other controls)
@@ -698,8 +680,8 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
   int btnStartY_normal = headerY_normal + headerHeight + 10;
 
   // Button IDs - reduced set
-  int buttonIDs[] = {IDC_BTN_MIX_ANALYSIS, IDC_BTN_MASTER_ANALYSIS,
-                     IDC_BTN_GAIN_STAGING, IDC_BTN_HOUSEKEEPING};
+  int buttonIDs[] = {IDC_BTN_MIX_ANALYSIS, IDC_BTN_MASTER_ANALYSIS, IDC_BTN_GAIN_STAGING,
+                     IDC_BTN_HOUSEKEEPING};
   int numButtons = sizeof(buttonIDs) / sizeof(buttonIDs[0]);
 
   for (int i = 0; i < numButtons; i++) {
@@ -707,14 +689,13 @@ void MagdaChatWindow::UpdateLayout(int width, int height) {
     if (hBtn) {
       int btnY_normal = btnStartY_normal + i * (btnHeight + btnSpacing);
       int btnY = height - btnY_normal - btnHeight;
-      SetWindowPos(hBtn, NULL, controlsX + 5, btnY, btnWidth, btnHeight,
-                   SWP_NOZORDER);
+      SetWindowPos(hBtn, NULL, controlsX + 5, btnY, btnWidth, btnHeight, SWP_NOZORDER);
     }
   }
 
   // Status footer: at bottom
   if (m_hwndStatusFooter) {
-    SetWindowPos(m_hwndStatusFooter, NULL, padding, footerY,
-                 width - padding * 2, footerHeight, SWP_NOZORDER);
+    SetWindowPos(m_hwndStatusFooter, NULL, padding, footerY, width - padding * 2, footerHeight,
+                 SWP_NOZORDER);
   }
 }

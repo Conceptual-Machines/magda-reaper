@@ -70,8 +70,7 @@ public:
 
   // Callback type for async scan completion
   // Called from background thread - should use PostMessage to update UI
-  typedef void (*ScanCallback)(bool success, int plugin_count,
-                               const char *error);
+  typedef void (*ScanCallback)(bool success, int plugin_count, const char *error);
 
   // Scan plugins and generate aliases asynchronously in background thread
   // callback will be invoked from the background thread when scan completes
@@ -79,23 +78,19 @@ public:
 
   // Get plugin aliases (reverse mapping: full_name -> list of aliases)
   // Returns map of full plugin name -> vector of aliases
-  const std::map<std::string, std::vector<std::string>> &
-  GetAliasesByPlugin() const {
+  const std::map<std::string, std::vector<std::string>> &GetAliasesByPlugin() const {
     return m_aliasesByPlugin;
   }
 
   // Get all aliases (forward mapping: alias -> full_name, for quick lookup)
-  const std::map<std::string, std::string> &GetAliases() const {
-    return m_aliases;
-  }
+  const std::map<std::string, std::string> &GetAliases() const { return m_aliases; }
 
   // Resolve plugin alias to full name
   // Returns full name if alias found, otherwise returns alias as-is
   std::string ResolveAlias(const char *alias) const;
 
   // Set aliases for a plugin (replaces existing aliases)
-  void SetPluginAliases(const char *full_name,
-                        const std::vector<std::string> &aliases);
+  void SetPluginAliases(const char *full_name, const std::vector<std::string> &aliases);
 
   // Add alias for a plugin
   void AddPluginAlias(const char *full_name, const char *alias);
@@ -104,15 +99,12 @@ public:
   void RemovePluginAlias(const char *full_name, const char *alias);
 
   // Set single alias for a plugin by key (ident), replaces all existing aliases
-  void SetAliasForPlugin(const std::string &plugin_key,
-                         const std::string &alias);
+  void SetAliasForPlugin(const std::string &plugin_key, const std::string &alias);
 
 private:
   std::vector<PluginInfo> m_plugins;
-  std::map<std::string, std::vector<std::string>>
-      m_aliasesByPlugin; // full_name -> [aliases]
-  std::map<std::string, std::string>
-      m_aliases; // alias -> full_name (for quick lookup)
+  std::map<std::string, std::vector<std::string>> m_aliasesByPlugin; // full_name -> [aliases]
+  std::map<std::string, std::string> m_aliases; // alias -> full_name (for quick lookup)
   bool m_initialized;
 
   // Rebuild forward mapping from reverse mapping
@@ -141,16 +133,12 @@ private:
 
   // Helper methods for programmatic alias generation
   std::string ExtractBaseName(const std::string &full_name) const;
-  std::vector<std::string>
-  GenerateAliasesForPlugin(const PluginInfo &plugin) const;
-  std::vector<std::string>
-  GenerateVersionAliases(const std::string &base_name) const;
+  std::vector<std::string> GenerateAliasesForPlugin(const PluginInfo &plugin) const;
+  std::vector<std::string> GenerateVersionAliases(const std::string &base_name) const;
   std::vector<std::string> SplitCamelCase(const std::string &name) const;
-  std::vector<std::string>
-  GenerateManufacturerAliases(const std::string &base_name,
-                              const std::string &manufacturer) const;
-  std::vector<std::string>
-  GenerateAbbreviationAliases(const std::string &base_name) const;
+  std::vector<std::string> GenerateManufacturerAliases(const std::string &base_name,
+                                                       const std::string &manufacturer) const;
+  std::vector<std::string> GenerateAbbreviationAliases(const std::string &base_name) const;
 
   // Helper: Convert string to lowercase
   static std::string ToLower(const std::string &str);

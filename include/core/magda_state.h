@@ -39,8 +39,7 @@ public:
 
   // Get all tracks info (appends to json)
   // If prefs is provided, applies filtering based on preferences
-  static void GetTracksInfo(WDL_FastString &json,
-                            const StateFilterPreferences *prefs = nullptr);
+  static void GetTracksInfo(WDL_FastString &json, const StateFilterPreferences *prefs = nullptr);
 
   // Get play state (appends to json)
   static void GetPlayState(WDL_FastString &json);

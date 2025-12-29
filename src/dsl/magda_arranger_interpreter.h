@@ -52,15 +52,13 @@ private:
   bool ParseParams(const char *params, struct ArrangerParams &out);
 
   // Build JSON and call AddMIDI
-  bool AddNotesToTrack(int trackIndex, const std::vector<NoteData> &notes,
-                       const char *name);
+  bool AddNotesToTrack(int trackIndex, const std::vector<NoteData> &notes, const char *name);
 
   // Get selected track index
   int GetSelectedTrackIndex();
 
   // Chord symbol to notes
-  bool ChordToNotes(const char *symbol, int *notes, int &noteCount,
-                    int octave = 3);
+  bool ChordToNotes(const char *symbol, int *notes, int &noteCount, int octave = 3);
 
   // Note name to MIDI pitch
   int NoteToPitch(const char *noteName);
@@ -69,8 +67,7 @@ private:
   MediaTrack *GetSelectedTrack();
   double GetTempo();
   MediaItem *GetOrCreateTargetItem(double lengthBeats);
-  bool CreateMIDINote(MediaItem *item, int pitch, double startBeat,
-                      double duration, int velocity);
+  bool CreateMIDINote(MediaItem *item, int pitch, double startBeat, double duration, int velocity);
 
   WDL_FastString m_error;
   MediaTrack *m_targetTrack;

@@ -11,8 +11,7 @@ namespace MagdaJSFX {
 static void Log(const char *fmt, ...) {
   if (!g_rec)
     return;
-  void (*ShowConsoleMsg)(const char *) =
-      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (!ShowConsoleMsg)
     return;
 
@@ -55,12 +54,10 @@ bool Interpreter::Execute(const char *jsfx_code, const char *effect_name) {
     }
   }
 
-  Log("MAGDA JSFX: Saving effect '%s' (%d bytes)\n", name.c_str(),
-      (int)strlen(jsfx_code));
+  Log("MAGDA JSFX: Saving effect '%s' (%d bytes)\n", name.c_str(), (int)strlen(jsfx_code));
 
   WDL_FastString errorMsg;
-  bool success = MagdaActions::SaveAndApplyJSFX(jsfx_code, name.c_str(),
-                                                m_trackIndex, errorMsg);
+  bool success = MagdaActions::SaveAndApplyJSFX(jsfx_code, name.c_str(), m_trackIndex, errorMsg);
 
   if (!success) {
     m_error.SetFormatted(512, "SaveAndApplyJSFX failed: %s", errorMsg.Get());

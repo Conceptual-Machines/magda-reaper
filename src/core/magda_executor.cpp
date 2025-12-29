@@ -3,8 +3,7 @@
 #include "reaper_plugin.h"
 #include <cstring>
 
-bool MagdaExecutor::ExecuteAction(const char *input,
-                                  WDL_FastString &error_msg) {
+bool MagdaExecutor::ExecuteAction(const char *input, WDL_FastString &error_msg) {
   if (!input || !input[0]) {
     error_msg.Set("Empty input");
     return false;

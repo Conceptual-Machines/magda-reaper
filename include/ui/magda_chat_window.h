@@ -11,9 +11,7 @@ public:
 
   void Show(bool toggle = false);
   void Hide();
-  bool IsVisible() const {
-    return m_hwnd != nullptr && IsWindowVisible(m_hwnd);
-  }
+  bool IsVisible() const { return m_hwnd != nullptr && IsWindowVisible(m_hwnd); }
 
   // Check API health and update status
   void CheckAPIHealth();
@@ -33,8 +31,7 @@ private:
   int m_responseLineCount; // Track response line count for alignment
 
   // SWS pattern: static proc that gets 'this' from GWLP_USERDATA
-  static INT_PTR WINAPI sDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
-                                    LPARAM lParam);
+  static INT_PTR WINAPI sDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
   // Instance proc that handles all messages
   INT_PTR DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam);

@@ -28,42 +28,37 @@ public:
   // Returns true on success, false on error
   // response_json contains the structured JSON response with actions
   // The actions are automatically executed after receiving the response
-  bool SendQuestion(const char *question, WDL_FastString &response_json,
-                    WDL_FastString &error_msg);
+  bool SendQuestion(const char *question, WDL_FastString &response_json, WDL_FastString &error_msg);
 
   // Callback type for streaming actions - called for each action as it arrives
-  typedef void (*StreamActionCallback)(const char *action_json,
-                                       void *user_data);
+  typedef void (*StreamActionCallback)(const char *action_json, void *user_data);
 
   // Send question to backend with streaming (SSE)
   // Executes actions one-by-one as they arrive instead of waiting for all
   // callback is called for each action as it's received
   // Returns true on success, false on error
-  bool SendQuestionStream(const char *question, StreamActionCallback callback,
-                          void *user_data, WDL_FastString &error_msg);
+  bool SendQuestionStream(const char *question, StreamActionCallback callback, void *user_data,
+                          WDL_FastString &error_msg);
 
   // Generic POST request with SSE streaming support
   // endpoint should include leading slash, e.g. "/api/v1/jsfx/generate/stream"
   // json_data is the POST body
   // timeout_seconds optional (defaults to 60s)
-  bool SendPOSTStream(const char *endpoint, const char *json_data,
-                      StreamActionCallback callback, void *user_data,
-                      WDL_FastString &error_msg, int timeout_seconds = 60);
+  bool SendPOSTStream(const char *endpoint, const char *json_data, StreamActionCallback callback,
+                      void *user_data, WDL_FastString &error_msg, int timeout_seconds = 60);
 
   // Send login request to backend
   // Returns true on success, false on error
   // jwt_token_out contains the JWT token on success
   // error_msg contains error description on failure
-  bool SendLoginRequest(const char *email, const char *password,
-                        WDL_FastString &jwt_token_out,
+  bool SendLoginRequest(const char *email, const char *password, WDL_FastString &jwt_token_out,
                         WDL_FastString &error_msg);
 
   // Send refresh token request to backend
   // Returns true on success, false on error
   // jwt_token_out contains the new JWT token on success
   // error_msg contains error description on failure
-  bool SendRefreshRequest(const char *refresh_token,
-                          WDL_FastString &jwt_token_out,
+  bool SendRefreshRequest(const char *refresh_token, WDL_FastString &jwt_token_out,
                           WDL_FastString &error_msg);
 
   // Get backend URL
@@ -71,9 +66,8 @@ public:
 
   // Generic POST request (for plugin processing, etc.)
   // timeout_seconds: Optional timeout in seconds (0 = use default 30s)
-  bool SendPOSTRequest(const char *endpoint, const char *json_data,
-                       WDL_FastString &response, WDL_FastString &error_msg,
-                       int timeout_seconds = 0);
+  bool SendPOSTRequest(const char *endpoint, const char *json_data, WDL_FastString &response,
+                       WDL_FastString &error_msg, int timeout_seconds = 0);
 
   // Health check - returns true if API is reachable
   bool CheckHealth(WDL_FastString &error_msg, int timeout_seconds = 5);

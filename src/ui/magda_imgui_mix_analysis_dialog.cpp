@@ -4,20 +4,20 @@
 
 extern reaper_plugin_info_t *g_rec;
 
-#define LOAD_IMGUI_FUNC(name, type)                                            \
-  m_##name = (type)g_rec->GetFunc(#name);                                      \
-  if (!m_##name) {                                                             \
-    return false;                                                              \
+#define LOAD_IMGUI_FUNC(name, type)                                                                \
+  m_##name = (type)g_rec->GetFunc(#name);                                                          \
+  if (!m_##name) {                                                                                 \
+    return false;                                                                                  \
   }
 
 MagdaImGuiMixAnalysisDialog::MagdaImGuiMixAnalysisDialog()
-    : m_ImGui_CreateContext(nullptr), m_ImGui_Begin(nullptr),
-      m_ImGui_End(nullptr), m_ImGui_SetNextWindowSize(nullptr),
-      m_ImGui_Text(nullptr), m_ImGui_InputText(nullptr),
-      m_ImGui_Button(nullptr), m_ImGui_SameLine(nullptr),
-      m_ImGui_Separator(nullptr) {}
+    : m_ImGui_CreateContext(nullptr), m_ImGui_Begin(nullptr), m_ImGui_End(nullptr),
+      m_ImGui_SetNextWindowSize(nullptr), m_ImGui_Text(nullptr), m_ImGui_InputText(nullptr),
+      m_ImGui_Button(nullptr), m_ImGui_SameLine(nullptr), m_ImGui_Separator(nullptr) {}
 
-MagdaImGuiMixAnalysisDialog::~MagdaImGuiMixAnalysisDialog() { m_ctx = nullptr; }
+MagdaImGuiMixAnalysisDialog::~MagdaImGuiMixAnalysisDialog() {
+  m_ctx = nullptr;
+}
 
 bool MagdaImGuiMixAnalysisDialog::Initialize(reaper_plugin_info_t *rec) {
   if (!rec)
@@ -27,13 +27,10 @@ bool MagdaImGuiMixAnalysisDialog::Initialize(reaper_plugin_info_t *rec) {
   LOAD_IMGUI_FUNC(ImGui_CreateContext, void *(*)(const char *, int *));
   LOAD_IMGUI_FUNC(ImGui_Begin, bool (*)(void *, const char *, bool *, int *));
   LOAD_IMGUI_FUNC(ImGui_End, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize,
-                  void (*)(void *, double, double, int *));
+  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize, void (*)(void *, double, double, int *));
   LOAD_IMGUI_FUNC(ImGui_Text, void (*)(void *, const char *));
-  LOAD_IMGUI_FUNC(ImGui_InputText,
-                  bool (*)(void *, const char *, char *, int, int *, void *));
-  LOAD_IMGUI_FUNC(ImGui_Button,
-                  bool (*)(void *, const char *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_InputText, bool (*)(void *, const char *, char *, int, int *, void *));
+  LOAD_IMGUI_FUNC(ImGui_Button, bool (*)(void *, const char *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_SameLine, void (*)(void *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_Separator, void (*)(void *));
 
@@ -46,8 +43,7 @@ void MagdaImGuiMixAnalysisDialog::Show() {
     void (*ShowConsoleMsg)(const char *msg) =
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
-      ShowConsoleMsg(
-          "MAGDA: Mix analysis dialog not available (ReaImGui required)\n");
+      ShowConsoleMsg("MAGDA: Mix analysis dialog not available (ReaImGui required)\n");
     }
     return;
   }
@@ -90,8 +86,7 @@ void MagdaImGuiMixAnalysisDialog::Render() {
   }
 
   // Validate function pointers
-  if (!m_ImGui_CreateContext || !m_ImGui_Begin || !m_ImGui_End ||
-      !m_ImGui_SetNextWindowSize) {
+  if (!m_ImGui_CreateContext || !m_ImGui_Begin || !m_ImGui_End || !m_ImGui_SetNextWindowSize) {
     return;
   }
 
@@ -123,15 +118,15 @@ void MagdaImGuiMixAnalysisDialog::Render() {
   // Track type input
   m_ImGui_Text(m_ctx, "Track Type:");
   int inputFlags = 0;
-  m_ImGui_InputText(m_ctx, "##tracktype", m_trackTypeBuffer,
-                    sizeof(m_trackTypeBuffer), &inputFlags, nullptr);
+  m_ImGui_InputText(m_ctx, "##tracktype", m_trackTypeBuffer, sizeof(m_trackTypeBuffer), &inputFlags,
+                    nullptr);
 
   m_ImGui_Separator(m_ctx);
 
   // User query input
   m_ImGui_Text(m_ctx, "Query (optional):");
-  m_ImGui_InputText(m_ctx, "##query", m_userQueryBuffer,
-                    sizeof(m_userQueryBuffer), &inputFlags, nullptr);
+  m_ImGui_InputText(m_ctx, "##query", m_userQueryBuffer, sizeof(m_userQueryBuffer), &inputFlags,
+                    nullptr);
 
   m_ImGui_Separator(m_ctx);
 

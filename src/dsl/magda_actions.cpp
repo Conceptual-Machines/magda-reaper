@@ -23,10 +23,11 @@ extern reaper_plugin_info_t *g_rec;
 int MagdaActions::GetLastCreatedTrackIndex() {
   return MagdaDSLContext::Get().GetCreatedTrackIndex();
 }
-void MagdaActions::ClearLastCreatedTrack() { MagdaDSLContext::Get().Clear(); }
+void MagdaActions::ClearLastCreatedTrack() {
+  MagdaDSLContext::Get().Clear();
+}
 
-bool MagdaActions::CreateTrack(int index, const char *name,
-                               const char *instrument,
+bool MagdaActions::CreateTrack(int index, const char *name, const char *instrument,
                                WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
@@ -36,13 +37,11 @@ bool MagdaActions::CreateTrack(int index, const char *name,
   void (*InsertTrackInProject)(ReaProject *, int, int) =
       (void (*)(ReaProject *, int, int))g_rec->GetFunc("InsertTrackInProject");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc(
-          "TrackFX_AddByName");
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
 
   if (!InsertTrackInProject || !GetSetMediaTrackInfo || !GetTrack) {
     error_msg.Set("Required REAPER API functions not available");
@@ -82,8 +81,7 @@ bool MagdaActions::CreateTrack(int index, const char *name,
 
     // recFX = false (track FX, not input FX), instantiate = -1 (always create
     // new instance)
-    int fx_index =
-        TrackFX_AddByName(track, resolved_instrument_str.c_str(), false, -1);
+    int fx_index = TrackFX_AddByName(track, resolved_instrument_str.c_str(), false, -1);
     if (fx_index < 0) {
       // Log warning but don't fail - track was created successfully
       if (g_rec) {
@@ -91,10 +89,9 @@ bool MagdaActions::CreateTrack(int index, const char *name,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char log_msg[512];
-          snprintf(
-              log_msg, sizeof(log_msg),
-              "MAGDA: Warning - Failed to add instrument '%s' to track %d\n",
-              instrument, index);
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Warning - Failed to add instrument '%s' to track %d\n", instrument,
+                   index);
           ShowConsoleMsg(log_msg);
         }
       }
@@ -115,8 +112,7 @@ bool MagdaActions::CreateClip(int track_index, double position, double length,
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   int (*CountTrackMediaItems)(MediaTrack *) =
       (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
-  MediaItem *(*CreateNewMIDIItemInProj)(MediaTrack *, double, double,
-                                        const bool *) =
+  MediaItem *(*CreateNewMIDIItemInProj)(MediaTrack *, double, double, const bool *) =
       (MediaItem * (*)(MediaTrack *, double, double, const bool *))
           g_rec->GetFunc("CreateNewMIDIItemInProj");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
@@ -134,8 +130,7 @@ bool MagdaActions::CreateClip(int track_index, double position, double length,
 
   // Create MIDI item directly (ready for notes)
   // Using CreateNewMIDIItemInProj so it's immediately usable for MIDI
-  MediaItem *item =
-      CreateNewMIDIItemInProj(track, position, position + length, nullptr);
+  MediaItem *item = CreateNewMIDIItemInProj(track, position, position + length, nullptr);
   if (!item) {
     error_msg.Set("Failed to create MIDI item");
     return false;
@@ -176,8 +171,7 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   int (*TrackFX_AddByName)(MediaTrack *, const char *, bool, int) =
-      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc(
-          "TrackFX_AddByName");
+      (int (*)(MediaTrack *, const char *, bool, int))g_rec->GetFunc("TrackFX_AddByName");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
   if (!GetTrack || !TrackFX_AddByName) {
@@ -215,8 +209,7 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   }
 
   // Add FX - instantiate = -1 means always create new instance
-  int fx_index =
-      TrackFX_AddByName(track, resolved_fxname_str.c_str(), recFX, -1);
+  int fx_index = TrackFX_AddByName(track, resolved_fxname_str.c_str(), recFX, -1);
   if (fx_index < 0) {
     error_msg.Set("Failed to add FX: ");
     error_msg.Append(fxname);
@@ -228,8 +221,7 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   if (TrackFX_GetCount) {
     int fx_count_after = TrackFX_GetCount(track, recFX);
     if (fx_count_after <= fx_count_before) {
-      error_msg.Set(
-          "FX add reported success but FX count did not increase. Name: ");
+      error_msg.Set("FX add reported success but FX count did not increase. Name: ");
       error_msg.Append(fxname);
       return false;
     }
@@ -243,8 +235,7 @@ bool MagdaActions::AddTrackFX(int track_index, const char *fxname, bool recFX,
   return true;
 }
 
-bool MagdaActions::SetTrackVolume(int track_index, double volume_db,
-                                  WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackVolume(int track_index, double volume_db, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -253,8 +244,7 @@ bool MagdaActions::SetTrackVolume(int track_index, double volume_db,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -276,8 +266,7 @@ bool MagdaActions::SetTrackVolume(int track_index, double volume_db,
   return true;
 }
 
-bool MagdaActions::SetTrackPan(int track_index, double pan,
-                               WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackPan(int track_index, double pan, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -286,8 +275,7 @@ bool MagdaActions::SetTrackPan(int track_index, double pan,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -312,8 +300,7 @@ bool MagdaActions::SetTrackPan(int track_index, double pan,
   return true;
 }
 
-bool MagdaActions::SetTrackMute(int track_index, bool mute,
-                                WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackMute(int track_index, bool mute, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -322,8 +309,7 @@ bool MagdaActions::SetTrackMute(int track_index, bool mute,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -342,8 +328,7 @@ bool MagdaActions::SetTrackMute(int track_index, bool mute,
   return true;
 }
 
-bool MagdaActions::SetTrackSolo(int track_index, bool solo,
-                                WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackSolo(int track_index, bool solo, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -352,8 +337,7 @@ bool MagdaActions::SetTrackSolo(int track_index, bool solo,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -372,8 +356,7 @@ bool MagdaActions::SetTrackSolo(int track_index, bool solo,
   return true;
 }
 
-bool MagdaActions::SetTrackName(int track_index, const char *name,
-                                WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackName(int track_index, const char *name, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -382,8 +365,7 @@ bool MagdaActions::SetTrackName(int track_index, const char *name,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER API functions not available");
@@ -407,8 +389,7 @@ bool MagdaActions::SetTrackName(int track_index, const char *name,
   return true;
 }
 
-bool MagdaActions::SetTrackSelected(int track_index, bool selected,
-                                    WDL_FastString &error_msg) {
+bool MagdaActions::SetTrackSelected(int track_index, bool selected, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -442,8 +423,8 @@ bool MagdaActions::SetTrackSelected(int track_index, bool selected,
   return true;
 }
 
-bool MagdaActions::SetClipSelected(int track_index, int clip_index,
-                                   bool selected, WDL_FastString &error_msg) {
+bool MagdaActions::SetClipSelected(int track_index, int clip_index, bool selected,
+                                   WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -455,12 +436,11 @@ bool MagdaActions::SetClipSelected(int track_index, int clip_index,
       (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
   MediaTrack *(*GetMediaItemTrack)(MediaItem *) =
       (MediaTrack * (*)(MediaItem *)) g_rec->GetFunc("GetMediaItemTrack");
-  int (*CountMediaItems)(ReaProject *) =
-      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  int (*CountMediaItems)(ReaProject *) = (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
   void (*SetMediaItemSelected)(MediaItem *, bool) =
       (void (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
-  double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
-      MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+  double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+      (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
 
   if (!GetTrack || !GetMediaItem || !GetMediaItemTrack || !CountMediaItems ||
       !SetMediaItemSelected || !GetMediaItemInfo_Value) {
@@ -517,8 +497,8 @@ bool MagdaActions::SetClipSelected(int track_index, int clip_index,
 }
 
 // Helper function to find clip by position (in seconds) or bar number
-static MediaItem *FindClipByPosition(MediaTrack *track, double position,
-                                     int bar, WDL_FastString &error_msg) {
+static MediaItem *FindClipByPosition(MediaTrack *track, double position, int bar,
+                                     WDL_FastString &error_msg) {
   if (!g_rec) {
     return nullptr;
   }
@@ -527,13 +507,11 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
       (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
   MediaTrack *(*GetMediaItemTrack)(MediaItem *) =
       (MediaTrack * (*)(MediaItem *)) g_rec->GetFunc("GetMediaItemTrack");
-  int (*CountMediaItems)(ReaProject *) =
-      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
-  double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
-      MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+  int (*CountMediaItems)(ReaProject *) = (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+      (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
 
-  if (!GetMediaItem || !GetMediaItemTrack || !CountMediaItems ||
-      !GetMediaItemInfo_Value) {
+  if (!GetMediaItem || !GetMediaItemTrack || !CountMediaItems || !GetMediaItemInfo_Value) {
     return nullptr;
   }
 
@@ -592,13 +570,10 @@ static MediaItem *FindClipByPosition(MediaTrack *track, double position,
 
 // Unified track properties setter (Phase 1: Refactoring)
 // Sets multiple track properties in a single operation
-bool MagdaActions::SetTrackProperties(int track_index, const char *name,
-                                      const char *volume_db_str,
+bool MagdaActions::SetTrackProperties(int track_index, const char *name, const char *volume_db_str,
                                       const char *pan_str, const char *mute_str,
-                                      const char *solo_str,
-                                      const char *selected_str,
-                                      const char *color_str,
-                                      WDL_FastString &error_msg) {
+                                      const char *solo_str, const char *selected_str,
+                                      const char *color_str, WDL_FastString &error_msg) {
   // Set name if provided
   if (name && name[0]) {
     if (!SetTrackName(track_index, name, error_msg)) {
@@ -640,8 +615,7 @@ bool MagdaActions::SetTrackProperties(int track_index, const char *name,
 
   // Set selected if provided
   if (selected_str && selected_str[0]) {
-    bool selected =
-        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
+    bool selected = (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
     if (!SetTrackSelected(track_index, selected, error_msg)) {
       return false;
     }
@@ -652,8 +626,7 @@ bool MagdaActions::SetTrackProperties(int track_index, const char *name,
     MediaTrack *(*GetTrack)(ReaProject *, int) =
         (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
     void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-        (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-            "GetSetMediaTrackInfo");
+        (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
     void (*SetTrackColor)(MediaTrack *, int) =
         (void (*)(MediaTrack *, int))g_rec->GetFunc("SetTrackColor");
 
@@ -704,8 +677,7 @@ bool MagdaActions::SetTrackProperties(int track_index, const char *name,
       SetTrackColor(track, color_val | 0x1000000); // Set flag bit
     } else {
       int color_with_flag = color_val | 0x1000000;
-      GetSetMediaTrackInfo((INT_PTR)track, "I_CUSTOMCOLOR", &color_with_flag,
-                           nullptr);
+      GetSetMediaTrackInfo((INT_PTR)track, "I_CUSTOMCOLOR", &color_with_flag, nullptr);
     }
   }
 
@@ -717,11 +689,9 @@ bool MagdaActions::SetTrackProperties(int track_index, const char *name,
 // Note: Some clip properties (name, color, position) may need to be
 // implemented first
 bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
-                                     const char *position_str,
-                                     const char *bar_str, const char *name,
-                                     const char *color, const char *length_str,
-                                     const char *selected_str,
-                                     WDL_FastString &error_msg) {
+                                     const char *position_str, const char *bar_str,
+                                     const char *name, const char *color, const char *length_str,
+                                     const char *selected_str, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -753,8 +723,7 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
         (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
     MediaTrack *(*GetMediaItemTrack)(MediaItem *) =
         (MediaTrack * (*)(MediaItem *)) g_rec->GetFunc("GetMediaItemTrack");
-    int (*CountMediaItems)(ReaProject *) =
-        (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+    int (*CountMediaItems)(ReaProject *) = (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
 
     if (GetMediaItem && GetMediaItemTrack && CountMediaItems) {
       int total_items = CountMediaItems(nullptr);
@@ -798,20 +767,17 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
       char log_msg[512];
       if (position_str) {
         snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: ERROR - Clip not found at position %s on track %d\n",
-                 position_str, track_index);
+                 "MAGDA: ERROR - Clip not found at position %s on track %d\n", position_str,
+                 track_index);
       } else if (bar_str) {
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: ERROR - Clip not found at bar %s on track %d\n",
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: ERROR - Clip not found at bar %s on track %d\n",
                  bar_str, track_index);
       } else if (clip_str) {
         snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: ERROR - Clip not found at index %s on track %d\n",
-                 clip_str, track_index);
+                 "MAGDA: ERROR - Clip not found at index %s on track %d\n", clip_str, track_index);
       } else {
         snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: ERROR - No clip identifier provided for track %d\n",
-                 track_index);
+                 "MAGDA: ERROR - No clip identifier provided for track %d\n", track_index);
       }
       ShowConsoleMsg(log_msg);
     }
@@ -825,15 +791,15 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
-    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
-        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+        (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
     if (GetMediaItemInfo_Value) {
       double item_pos = GetMediaItemInfo_Value(target_item, "D_POSITION");
       double item_len = GetMediaItemInfo_Value(target_item, "D_LENGTH");
       char log_msg[512];
       snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: Found clip at position %.6f, length %.6f on track %d\n",
-               item_pos, item_len, track_index);
+               "MAGDA: Found clip at position %.6f, length %.6f on track %d\n", item_pos, item_len,
+               track_index);
       ShowConsoleMsg(log_msg);
     }
   }
@@ -842,11 +808,10 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   void *(*GetSetMediaItemInfo)(MediaItem *, const char *, void *, bool *) =
       (void *(*)(MediaItem *, const char *, void *, bool *))g_rec->GetFunc(
           "GetSetMediaItemInfo_Value");
-  bool (*GetSetMediaItemInfo_String)(MediaItem *, const char *, char *, int) =
-      (bool (*)(MediaItem *, const char *, char *, int))g_rec->GetFunc(
-          "GetSetMediaItemInfo_String");
-  void (*SetMediaItemPosition)(MediaItem *, double, bool) = (void (*)(
-      MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
+  bool (*GetSetMediaItemInfo_String)(MediaItem *, const char *, char *, int) = (bool (*)(
+      MediaItem *, const char *, char *, int))g_rec->GetFunc("GetSetMediaItemInfo_String");
+  void (*SetMediaItemPosition)(MediaItem *, double, bool) =
+      (void (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
   void (*SetMediaItemLength)(MediaItem *, double, bool) =
       (void (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemLength");
   void (*SetMediaItemSelected)(MediaItem *, bool) =
@@ -859,12 +824,10 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
   if (name && name[0]) {
     MediaItem_Take *(*GetActiveTake)(MediaItem *) =
         (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
-    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
-                                           char *, int) =
+    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *, char *, int) =
         (bool (*)(MediaItem_Take *, const char *, char *, int))g_rec->GetFunc(
             "GetSetMediaItemTakeInfo_String");
-    int (*CountTakes)(MediaItem *) =
-        (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+    int (*CountTakes)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
     MediaItem_Take *(*GetTake)(MediaItem *, int) =
         (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
     void (*SetActiveTake)(MediaItem_Take *) =
@@ -896,40 +859,33 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
-              (double (*)(MediaItem *, const char *))g_rec->GetFunc(
-                  "GetMediaItemInfo_Value");
+              (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
           double item_pos =
-              GetMediaItemInfo_Value
-                  ? GetMediaItemInfo_Value(target_item, "D_POSITION")
-                  : -1.0;
+              GetMediaItemInfo_Value ? GetMediaItemInfo_Value(target_item, "D_POSITION") : -1.0;
           char log_msg[512];
-          snprintf(
-              log_msg, sizeof(log_msg),
-              "MAGDA: Setting clip name at position %.6f to '%s' (via take)\n",
-              item_pos, name_buffer);
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Setting clip name at position %.6f to '%s' (via take)\n", item_pos,
+                   name_buffer);
           ShowConsoleMsg(log_msg);
         }
 
-        bool result = GetSetMediaItemTakeInfo_String(activeTake, "P_NAME",
-                                                     name_buffer, true);
+        bool result = GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", name_buffer, true);
 
         // Log result
         void (*ShowConsoleMsg2)(const char *msg) =
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg2) {
           char log_msg[256];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: GetSetMediaItemTakeInfo_String returned: %s\n",
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: GetSetMediaItemTakeInfo_String returned: %s\n",
                    result ? "true" : "false");
           ShowConsoleMsg2(log_msg);
 
           // Verify it was set by reading it back
           char verify_buffer[512] = {0};
-          if (GetSetMediaItemTakeInfo_String(activeTake, "P_NAME",
-                                             verify_buffer, false)) {
+          if (GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", verify_buffer, false)) {
             char verify_msg[256];
-            snprintf(verify_msg, sizeof(verify_msg),
-                     "MAGDA: Verified clip name is now: '%s'\n", verify_buffer);
+            snprintf(verify_msg, sizeof(verify_msg), "MAGDA: Verified clip name is now: '%s'\n",
+                     verify_buffer);
             ShowConsoleMsg2(verify_msg);
           }
         }
@@ -938,8 +894,7 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
         void (*ShowConsoleMsg)(const char *msg) =
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
-          ShowConsoleMsg(
-              "MAGDA: WARNING - Clip has no takes, cannot set name\n");
+          ShowConsoleMsg("MAGDA: WARNING - Clip has no takes, cannot set name\n");
         }
       }
     }
@@ -950,8 +905,7 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
     // Use SetMediaItemInfo_Value with CORRECT signature (returns double, takes
     // double)
     double (*SetMediaItemInfo_Value)(MediaItem *, const char *, double) =
-        (double (*)(MediaItem *, const char *, double))g_rec->GetFunc(
-            "SetMediaItemInfo_Value");
+        (double (*)(MediaItem *, const char *, double))g_rec->GetFunc("SetMediaItemInfo_Value");
 
     if (SetMediaItemInfo_Value) {
       // Parse hex color like "#ff0000" or "ff0000" to RGB components
@@ -999,24 +953,19 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
-              (double (*)(MediaItem *, const char *))g_rec->GetFunc(
-                  "GetMediaItemInfo_Value");
+              (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
           double item_pos =
-              GetMediaItemInfo_Value
-                  ? GetMediaItemInfo_Value(target_item, "D_POSITION")
-                  : -1.0;
+              GetMediaItemInfo_Value ? GetMediaItemInfo_Value(target_item, "D_POSITION") : -1.0;
           char log_msg[512];
-          snprintf(
-              log_msg, sizeof(log_msg),
-              "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
-              "(native: 0x%08x)\n",
-              item_pos, r, g, b, color_with_flag);
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
+                   "(native: 0x%08x)\n",
+                   item_pos, r, g, b, color_with_flag);
           ShowConsoleMsg(log_msg);
         }
 
         // Use correct API: SetMediaItemInfo_Value with double
-        SetMediaItemInfo_Value(target_item, "I_CUSTOMCOLOR",
-                               (double)color_with_flag);
+        SetMediaItemInfo_Value(target_item, "I_CUSTOMCOLOR", (double)color_with_flag);
 
         // Update arrange view to reflect color change
         if (UpdateArrange) {
@@ -1027,8 +976,8 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char log_msg[256];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: WARNING - Failed to parse color '%s'\n", color);
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: WARNING - Failed to parse color '%s'\n",
+                   color);
           ShowConsoleMsg(log_msg);
         }
       }
@@ -1057,8 +1006,7 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
 
   // Set selected if provided
   if (selected_str && selected_str[0] && SetMediaItemSelected) {
-    bool selected =
-        (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
+    bool selected = (strcmp(selected_str, "true") == 0 || strcmp(selected_str, "1") == 0);
     SetMediaItemSelected(target_item, selected);
   }
 
@@ -1078,8 +1026,7 @@ bool MagdaActions::DeleteTrack(int track_index, WDL_FastString &error_msg) {
 
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-  void (*DeleteTrack)(MediaTrack *) =
-      (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+  void (*DeleteTrack)(MediaTrack *) = (void (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
   if (!GetTrack || !DeleteTrack) {
@@ -1104,8 +1051,7 @@ bool MagdaActions::DeleteTrack(int track_index, WDL_FastString &error_msg) {
   return true;
 }
 
-bool MagdaActions::DeleteClip(int track_index, int clip_index,
-                              WDL_FastString &error_msg) {
+bool MagdaActions::DeleteClip(int track_index, int clip_index, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -1117,12 +1063,11 @@ bool MagdaActions::DeleteClip(int track_index, int clip_index,
       (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
   MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
       (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
-  bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) = (bool (*)(
-      MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
+  bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) =
+      (bool (*)(MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
-  if (!GetTrack || !CountTrackMediaItems || !GetTrackMediaItem ||
-      !DeleteTrackMediaItem) {
+  if (!GetTrack || !CountTrackMediaItems || !GetTrackMediaItem || !DeleteTrackMediaItem) {
     error_msg.Set("Required REAPER API functions not available");
     return false;
   }
@@ -1161,8 +1106,7 @@ bool MagdaActions::DeleteClip(int track_index, int clip_index,
   return true;
 }
 
-bool MagdaActions::ExecuteAction(const wdl_json_element *action,
-                                 WDL_FastString &result,
+bool MagdaActions::ExecuteAction(const wdl_json_element *action, WDL_FastString &result,
                                  WDL_FastString &error_msg) {
   if (!action || !action->is_object()) {
     error_msg.Set("Action must be an object");
@@ -1217,16 +1161,14 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
   } else if (strcmp(action_type, "create_clip_at_bar") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     const char *bar_str = action->get_string_by_name("bar", true);
-    const char *length_bars_str =
-        action->get_string_by_name("length_bars", true);
+    const char *length_bars_str = action->get_string_by_name("length_bars", true);
     if (!track_str || !bar_str) {
       error_msg.Set("Missing 'track' or 'bar' field");
       return false;
     }
     int track_index = atoi(track_str);
     int bar = atoi(bar_str);
-    int length_bars =
-        length_bars_str ? atoi(length_bars_str) : 4; // Default to 4 bars
+    int length_bars = length_bars_str ? atoi(length_bars_str) : 4; // Default to 4 bars
     if (CreateClipAtBar(track_index, bar, length_bars, error_msg)) {
       result.Append("{\"action\":\"create_clip_at_bar\",\"success\":true}");
       return true;
@@ -1244,8 +1186,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return false;
     }
     int track_index = atoi(track_str);
-    bool recFX = recFX_str && (strcmp(recFX_str, "true") == 0 ||
-                               strcmp(recFX_str, "1") == 0);
+    bool recFX = recFX_str && (strcmp(recFX_str, "true") == 0 || strcmp(recFX_str, "1") == 0);
 
     if (AddTrackFX(track_index, fxname, recFX, error_msg)) {
       result.Append("{\"action\":\"");
@@ -1272,8 +1213,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     const char *selected_str = action->get_string_by_name("selected", true);
     const char *color_str = action->get_string_by_name("color");
 
-    if (SetTrackProperties(track_index, name, volume_db_str, pan_str, mute_str,
-                           solo_str, selected_str, color_str, error_msg)) {
+    if (SetTrackProperties(track_index, name, volume_db_str, pan_str, mute_str, solo_str,
+                           selected_str, color_str, error_msg)) {
       result.Append("{\"action\":\"set_track\",\"success\":true}");
       return true;
     }
@@ -1303,14 +1244,13 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return false;
     }
 
-    if (SetClipProperties(track_index, clip_str, position_str, bar_str, name,
-                          color, length_str, selected_str, error_msg)) {
+    if (SetClipProperties(track_index, clip_str, position_str, bar_str, name, color, length_str,
+                          selected_str, error_msg)) {
       result.Append("{\"action\":\"set_clip\",\"success\":true}");
       return true;
     }
     return false;
-  } else if (strcmp(action_type, "delete_track") == 0 ||
-             strcmp(action_type, "remove_track") == 0) {
+  } else if (strcmp(action_type, "delete_track") == 0 || strcmp(action_type, "remove_track") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     if (!track_str) {
       error_msg.Set("Missing 'track' field");
@@ -1322,8 +1262,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       return true;
     }
     return false;
-  } else if (strcmp(action_type, "delete_clip") == 0 ||
-             strcmp(action_type, "remove_clip") == 0) {
+  } else if (strcmp(action_type, "delete_clip") == 0 || strcmp(action_type, "remove_clip") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     if (!track_str) {
       error_msg.Set("Missing 'track' field");
@@ -1333,8 +1272,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
 
     MediaTrack *(*GetTrack)(ReaProject *, int) =
         (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-    bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) = (bool (*)(
-        MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
+    bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) =
+        (bool (*)(MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
     void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
     if (!GetTrack || !DeleteTrackMediaItem) {
@@ -1395,8 +1334,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
   } else if (strcmp(action_type, "add_midi") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     wdl_json_element *notes_array = action->get_item_by_name("notes");
-    const char *name =
-        action->get_string_by_name("name", true); // Optional take name
+    const char *name = action->get_string_by_name("name", true); // Optional take name
     if (!track_str || !notes_array) {
       error_msg.Set("Missing 'track' or 'notes' field");
       return false;
@@ -1434,10 +1372,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
       }
     }
 
-    if (AddDrumPattern(track_index, drum_name, grid, velocity, nullptr,
-                       error_msg)) {
-      result.Append(
-          "{\"action\":\"drum_pattern\",\"success\":true,\"drum\":\"");
+    if (AddDrumPattern(track_index, drum_name, grid, velocity, nullptr, error_msg)) {
+      result.Append("{\"action\":\"drum_pattern\",\"success\":true,\"drum\":\"");
       result.Append(drum_name);
       result.Append("\"}");
       return true;
@@ -1465,12 +1401,10 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     }
 
     // Perform analysis
-    DSPAnalysisResult analysisResult =
-        MagdaDSPAnalyzer::AnalyzeTrack(track_index, config);
+    DSPAnalysisResult analysisResult = MagdaDSPAnalyzer::AnalyzeTrack(track_index, config);
 
     if (analysisResult.success) {
-      result.Append(
-          "{\"action\":\"analyze_track\",\"success\":true,\"analysis\":");
+      result.Append("{\"action\":\"analyze_track\",\"success\":true,\"analysis\":");
       WDL_FastString analysisJson;
       MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
       result.Append(analysisJson.Get());
@@ -1526,8 +1460,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char log[128];
-        snprintf(log, sizeof(log),
-                 "MAGDA: start_bar=%d -> start_time=%.2f sec\n", bar_num,
+        snprintf(log, sizeof(log), "MAGDA: start_bar=%d -> start_time=%.2f sec\n", bar_num,
                  start_time);
         ShowConsoleMsg(log);
       }
@@ -1541,8 +1474,7 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char log[128];
-        snprintf(log, sizeof(log), "MAGDA: end_bar=%d -> end_time=%.2f sec\n",
-                 bar_num, end_time);
+        snprintf(log, sizeof(log), "MAGDA: end_bar=%d -> end_time=%.2f sec\n", bar_num, end_time);
         ShowConsoleMsg(log);
       }
     }
@@ -1569,11 +1501,9 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
     if (shape_str)
       shape = atoi(shape_str);
 
-    if (AddAutomation(track_index, param, curve, start_time, end_time,
-                      times_in_seconds, from_val, to_val, freq, amplitude,
-                      phase, shape, points_array, error_msg)) {
-      result.Append(
-          "{\"action\":\"add_automation\",\"success\":true,\"param\":\"");
+    if (AddAutomation(track_index, param, curve, start_time, end_time, times_in_seconds, from_val,
+                      to_val, freq, amplitude, phase, shape, points_array, error_msg)) {
+      result.Append("{\"action\":\"add_automation\",\"success\":true,\"param\":\"");
       result.Append(param);
       if (curve) {
         result.Append("\",\"curve\":\"");
@@ -1615,8 +1545,8 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
     error_msg.Set(parser.m_err);
     // End undo block on error
     if (Undo_BeginBlock2) {
-      void (*Undo_EndBlock2)(ReaProject *, const char *, int) = (void (*)(
-          ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
+      void (*Undo_EndBlock2)(ReaProject *, const char *, int) =
+          (void (*)(ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
       if (Undo_EndBlock2) {
         Undo_EndBlock2(nullptr, "MAGDA actions (failed)", 0);
       }
@@ -1628,8 +1558,8 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
     error_msg.Set("Failed to parse JSON");
     // End undo block on error
     if (Undo_BeginBlock2) {
-      void (*Undo_EndBlock2)(ReaProject *, const char *, int) = (void (*)(
-          ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
+      void (*Undo_EndBlock2)(ReaProject *, const char *, int) =
+          (void (*)(ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
       if (Undo_EndBlock2) {
         Undo_EndBlock2(nullptr, "MAGDA actions (failed)", 0);
       }
@@ -1711,11 +1641,10 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
               char note_json[256];
               // Offset note start by bar position
               double note_start = drum_bar_offset + (i * sixteenth);
-              snprintf(
-                  note_json, sizeof(note_json),
-                  "{\"pitch\":%d,\"velocity\":%d,\"start\":%.4f,\"length\":"
-                  "%.4f}",
-                  midi_note, note_vel, note_start, sixteenth);
+              snprintf(note_json, sizeof(note_json),
+                       "{\"pitch\":%d,\"velocity\":%d,\"start\":%.4f,\"length\":"
+                       "%.4f}",
+                       midi_note, note_vel, note_start, sixteenth);
               drum_notes_json.Append(note_json);
               drum_note_count++;
             }
@@ -1731,8 +1660,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg && action_type) {
           char log_msg[512];
-          snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n",
-                   action_type);
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n", action_type);
           ShowConsoleMsg(log_msg);
         }
 
@@ -1743,8 +1671,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
           // Log success
           if (ShowConsoleMsg && action_type) {
             char log_msg[512];
-            snprintf(log_msg, sizeof(log_msg),
-                     "MAGDA: Action '%s' succeeded: %s\n", action_type,
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' succeeded: %s\n", action_type,
                      action_result.Get());
             ShowConsoleMsg(log_msg);
           }
@@ -1758,8 +1685,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
           // Log error
           if (ShowConsoleMsg && action_type) {
             char log_msg[512];
-            snprintf(log_msg, sizeof(log_msg),
-                     "MAGDA: Action '%s' failed: %s\n", action_type,
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' failed: %s\n", action_type,
                      action_error.Get());
             ShowConsoleMsg(log_msg);
           }
@@ -1778,16 +1704,14 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
         result.Append(",");
 
       wdl_json_parser drum_parser;
-      wdl_json_element *drum_notes_array = drum_parser.parse(
-          drum_notes_json.Get(), (int)drum_notes_json.GetLength());
+      wdl_json_element *drum_notes_array =
+          drum_parser.parse(drum_notes_json.Get(), (int)drum_notes_json.GetLength());
 
       if (drum_notes_array) {
         WDL_FastString drum_error;
-        if (AddMIDI(drum_track_index, drum_notes_array, "Drum Pattern",
-                    drum_error)) {
-          result.Append(
-              "{\"action\":\"drum_pattern\",\"success\":true,\"notes\":"
-              "");
+        if (AddMIDI(drum_track_index, drum_notes_array, "Drum Pattern", drum_error)) {
+          result.Append("{\"action\":\"drum_pattern\",\"success\":true,\"notes\":"
+                        "");
           char buf[32];
           snprintf(buf, sizeof(buf), "%d", drum_note_count);
           result.Append(buf);
@@ -1809,8 +1733,7 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg && action_type) {
       char log_msg[512];
-      snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n",
-               action_type);
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Executing action: %s\n", action_type);
       ShowConsoleMsg(log_msg);
     }
 
@@ -1821,8 +1744,8 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
       // Log success
       if (ShowConsoleMsg && action_type) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' succeeded: %s\n",
-                 action_type, action_result.Get());
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' succeeded: %s\n", action_type,
+                 action_result.Get());
         ShowConsoleMsg(log_msg);
       }
     } else {
@@ -1835,8 +1758,8 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
       // Log error
       if (ShowConsoleMsg && action_type) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' failed: %s\n",
-                 action_type, action_error.Get());
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Action '%s' failed: %s\n", action_type,
+                 action_error.Get());
         ShowConsoleMsg(log_msg);
       }
     }
@@ -1848,26 +1771,24 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
   result.Append("]}");
 
   // End undo block with description
-  void (*Undo_EndBlock2)(ReaProject *, const char *, int) = (void (*)(
-      ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
+  void (*Undo_EndBlock2)(ReaProject *, const char *, int) =
+      (void (*)(ReaProject *, const char *, int))g_rec->GetFunc("Undo_EndBlock2");
   if (Undo_EndBlock2) {
-    const char *desc =
-        success ? "MAGDA actions" : "MAGDA actions (partial failure)";
+    const char *desc = success ? "MAGDA actions" : "MAGDA actions (partial failure)";
     Undo_EndBlock2(nullptr, desc, 0);
   }
 
   return success;
 }
 
-bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
-                           const char *take_name, WDL_FastString &error_msg) {
+bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array, const char *take_name,
+                           WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
   if (ShowConsoleMsg) {
     char log_msg[512];
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI called: track_index=%d\n", track_index);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI called: track_index=%d\n", track_index);
     ShowConsoleMsg(log_msg);
   }
 
@@ -1895,25 +1816,21 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
   MediaItem_Take *(*GetActiveTake)(MediaItem *) =
       (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
   MediaItem_Take *(*GetMediaItemTake)(MediaItem *, int) =
-      (MediaItem_Take * (*)(MediaItem *, int))
-          g_rec->GetFunc("GetMediaItemTake");
+      (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetMediaItemTake");
   int (*GetMediaItemNumTakes)(MediaItem *) =
       (int (*)(MediaItem *))g_rec->GetFunc("GetMediaItemNumTakes");
   PCM_source *(*GetMediaItemTake_Source)(MediaItem_Take *) =
-      (PCM_source * (*)(MediaItem_Take *))
-          g_rec->GetFunc("GetMediaItemTake_Source");
-  MediaItem *(*CreateNewMIDIItemInProj)(MediaTrack *, double, double,
-                                        const bool *) =
+      (PCM_source * (*)(MediaItem_Take *)) g_rec->GetFunc("GetMediaItemTake_Source");
+  MediaItem *(*CreateNewMIDIItemInProj)(MediaTrack *, double, double, const bool *) =
       (MediaItem * (*)(MediaTrack *, double, double, const bool *))
           g_rec->GetFunc("CreateNewMIDIItemInProj");
-  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) = (bool (*)(
-      MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
-  bool (*MIDI_InsertNote)(MediaItem_Take *, bool, bool, double, double, int,
-                          int, int, const bool *) =
+  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) =
+      (bool (*)(MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
+  bool (*MIDI_InsertNote)(MediaItem_Take *, bool, bool, double, double, int, int, int,
+                          const bool *) =
       (bool (*)(MediaItem_Take *, bool, bool, double, double, int, int, int,
                 const bool *))g_rec->GetFunc("MIDI_InsertNote");
-  void (*MIDI_Sort)(MediaItem_Take *) =
-      (void (*)(MediaItem_Take *))g_rec->GetFunc("MIDI_Sort");
+  void (*MIDI_Sort)(MediaItem_Take *) = (void (*)(MediaItem_Take *))g_rec->GetFunc("MIDI_Sort");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
   double (*GetMediaItemPosition)(MediaItem *) =
       (double (*)(MediaItem *))g_rec->GetFunc("GetMediaItemPosition");
@@ -1925,12 +1842,10 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetTrack: %s\n",
              GetTrack ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: CountTrackMediaItems: %s\n",
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: CountTrackMediaItems: %s\n",
              CountTrackMediaItems ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: GetTrackMediaItem: %s\n",
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetTrackMediaItem: %s\n",
              GetTrackMediaItem ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
     snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetActiveTake: %s\n",
@@ -1939,20 +1854,16 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetMediaItemTake: %s\n",
              GetMediaItemTake ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: GetMediaItemNumTakes: %s\n",
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetMediaItemNumTakes: %s\n",
              GetMediaItemNumTakes ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: GetMediaItemTake_Source: %s\n",
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: GetMediaItemTake_Source: %s\n",
              GetMediaItemTake_Source ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: CreateNewMIDIItemInProj: %s\n",
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: CreateNewMIDIItemInProj: %s\n",
              CreateNewMIDIItemInProj ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: SetMediaItemTake_Source: %s\n",
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: SetMediaItemTake_Source: %s\n",
              SetMediaItemTake_Source ? "OK" : "MISSING");
     ShowConsoleMsg(log_msg);
     snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: MIDI_InsertNote: %s\n",
@@ -1963,10 +1874,9 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     ShowConsoleMsg(log_msg);
   }
 
-  if (!GetTrack || !CountTrackMediaItems || !GetTrackMediaItem ||
-      !GetActiveTake || !GetMediaItemTake || !GetMediaItemNumTakes ||
-      !GetMediaItemTake_Source || !CreateNewMIDIItemInProj ||
-      !SetMediaItemTake_Source || !MIDI_InsertNote || !MIDI_Sort) {
+  if (!GetTrack || !CountTrackMediaItems || !GetTrackMediaItem || !GetActiveTake ||
+      !GetMediaItemTake || !GetMediaItemNumTakes || !GetMediaItemTake_Source ||
+      !CreateNewMIDIItemInProj || !SetMediaItemTake_Source || !MIDI_InsertNote || !MIDI_Sort) {
     error_msg.Set("Required REAPER API functions not available");
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: AddMIDI ERROR: Required REAPER API functions not "
@@ -1982,8 +1892,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     error_msg.Set("Track not found");
     if (ShowConsoleMsg) {
       char log_msg[512];
-      snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: AddMIDI ERROR: Track not found at index %d\n",
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI ERROR: Track not found at index %d\n",
                track_index);
       ShowConsoleMsg(log_msg);
     }
@@ -1992,8 +1901,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
 
   if (ShowConsoleMsg) {
     char log_msg[512];
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: Found track at index %d\n", track_index);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Found track at index %d\n", track_index);
     ShowConsoleMsg(log_msg);
   }
 
@@ -2004,8 +1912,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
 
   if (ShowConsoleMsg) {
     char log_msg[512];
-    snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: Track has %d media items\n", num_items);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Track has %d media items\n", num_items);
     ShowConsoleMsg(log_msg);
   }
 
@@ -2016,10 +1923,9 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
       item = GetTrackMediaItem(track, clipItemIndex);
       if (item && ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(
-            log_msg, sizeof(log_msg),
-            "MAGDA: AddMIDI: Using clip from context (item %d on track %d)\n",
-            clipItemIndex, track_index);
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Using clip from context (item %d on track %d)\n", clipItemIndex,
+                 track_index);
         ShowConsoleMsg(log_msg);
       }
     }
@@ -2027,8 +1933,8 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
 
   // If no context clip, find the rightmost item
   if (!item && num_items > 0) {
-    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
-        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+        (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
 
     double max_pos = -1.0;
     for (int i = 0; i < num_items; i++) {
@@ -2049,20 +1955,17 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     if (ShowConsoleMsg) {
       char log_msg[512];
       snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: AddMIDI: Using rightmost item at position %.2f sec\n",
-               max_pos);
+               "MAGDA: AddMIDI: Using rightmost item at position %.2f sec\n", max_pos);
       ShowConsoleMsg(log_msg);
     }
   } else if (!item) {
     // No clips exist, create one at bar 1, 4 bars long
     if (ShowConsoleMsg)
-      ShowConsoleMsg(
-          "MAGDA: AddMIDI: No clips exist, creating new clip at bar 1\n");
+      ShowConsoleMsg("MAGDA: AddMIDI: No clips exist, creating new clip at bar 1\n");
     if (!CreateClipAtBar(track_index, 1, 4, error_msg)) {
       if (ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI ERROR: Failed to create clip: %s\n",
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI ERROR: Failed to create clip: %s\n",
                  error_msg.Get());
         ShowConsoleMsg(log_msg);
       }
@@ -2099,8 +2002,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     PCM_source *source = GetMediaItemTake_Source(take);
     if (!source) {
       if (ShowConsoleMsg)
-        ShowConsoleMsg(
-            "MAGDA: AddMIDI: Take has no source, will create MIDI take\n");
+        ShowConsoleMsg("MAGDA: AddMIDI: Take has no source, will create MIDI take\n");
       needs_midi_take = true;
     } else {
       // Check if it's a MIDI source (we'll assume it's not if we can't verify)
@@ -2119,8 +2021,8 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
 
     // Get item position and length to recreate it as MIDI
     // Use GetMediaItemInfo_Value which is more reliable
-    double (*GetMediaItemInfo_Val)(MediaItem *, const char *) = (double (*)(
-        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+    double (*GetMediaItemInfo_Val)(MediaItem *, const char *) =
+        (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
 
     double item_pos = 0.0;
     double item_len = 4.0; // Default to 4 seconds
@@ -2131,8 +2033,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
       if (ShowConsoleMsg) {
         char log_msg[256];
         snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI: Original clip pos=%.2f sec, len=%.2f sec\n",
-                 item_pos, item_len);
+                 "MAGDA: AddMIDI: Original clip pos=%.2f sec, len=%.2f sec\n", item_pos, item_len);
         ShowConsoleMsg(log_msg);
       }
     } else if (GetMediaItemPosition) {
@@ -2153,10 +2054,8 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
       if (note) {
         const wdl_json_element *start_el = note->get_item_by_name("start");
         const wdl_json_element *len_el = note->get_item_by_name("length");
-        double note_start =
-            (start_el && start_el->m_value) ? atof(start_el->m_value) : 0.0;
-        double note_len =
-            (len_el && len_el->m_value) ? atof(len_el->m_value) : 1.0;
+        double note_start = (start_el && start_el->m_value) ? atof(start_el->m_value) : 0.0;
+        double note_len = (len_el && len_el->m_value) ? atof(len_el->m_value) : 1.0;
         double note_end = note_start + note_len;
         if (note_end > max_end_beats)
           max_end_beats = note_end;
@@ -2178,8 +2077,8 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     }
 
     // Delete the old item
-    bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) = (bool (*)(
-        MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
+    bool (*DeleteTrackMediaItem)(MediaTrack *, MediaItem *) =
+        (bool (*)(MediaTrack *, MediaItem *))g_rec->GetFunc("DeleteTrackMediaItem");
     if (DeleteTrackMediaItem) {
       DeleteTrackMediaItem(track, item);
       if (ShowConsoleMsg)
@@ -2197,18 +2096,16 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
 
     if (ShowConsoleMsg) {
       char log_msg[256];
-      snprintf(
-          log_msg, sizeof(log_msg),
-          "MAGDA: AddMIDI: Creating MIDI item at %.2f QN, length %.2f QN\n",
-          item_pos_qn, max_end_beats);
+      snprintf(log_msg, sizeof(log_msg),
+               "MAGDA: AddMIDI: Creating MIDI item at %.2f QN, length %.2f QN\n", item_pos_qn,
+               max_end_beats);
       ShowConsoleMsg(log_msg);
     }
 
     // Create new MIDI item using quarter notes (beats) - tempo independent!
     // qnInOptional = true means times are in quarter notes
     bool use_qn = true;
-    item = CreateNewMIDIItemInProj(track, item_pos_qn,
-                                   item_pos_qn + max_end_beats, &use_qn);
+    item = CreateNewMIDIItemInProj(track, item_pos_qn, item_pos_qn + max_end_beats, &use_qn);
     if (!item) {
       error_msg.Set("Failed to create MIDI item");
       if (ShowConsoleMsg)
@@ -2219,11 +2116,10 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
       ShowConsoleMsg("MAGDA: AddMIDI: MIDI item created successfully\n");
 
     // Verify and explicitly set the item length
-    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
-        MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
+    double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
+        (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
     bool (*SetMediaItemInfo_Value)(MediaItem *, const char *, double) =
-        (bool (*)(MediaItem *, const char *, double))g_rec->GetFunc(
-            "SetMediaItemInfo_Value");
+        (bool (*)(MediaItem *, const char *, double))g_rec->GetFunc("SetMediaItemInfo_Value");
     double (*TimeMap2_QNToTime)(ReaProject *, double) =
         (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
 
@@ -2233,14 +2129,13 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
       if (ShowConsoleMsg) {
         char log_msg[256];
         snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI: Item created - pos=%.4f sec, len=%.4f sec\n",
-                 actual_pos, actual_len);
+                 "MAGDA: AddMIDI: Item created - pos=%.4f sec, len=%.4f sec\n", actual_pos,
+                 actual_len);
         ShowConsoleMsg(log_msg);
       }
 
       // Convert desired QN length to seconds using project tempo
-      double desired_end_time =
-          TimeMap2_QNToTime(nullptr, item_pos_qn + max_end_beats);
+      double desired_end_time = TimeMap2_QNToTime(nullptr, item_pos_qn + max_end_beats);
       double desired_start_time = TimeMap2_QNToTime(nullptr, item_pos_qn);
       double desired_len_seconds = desired_end_time - desired_start_time;
 
@@ -2258,8 +2153,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
         SetMediaItemInfo_Value(item, "D_LENGTH", desired_len_seconds);
         if (ShowConsoleMsg) {
           char log_msg[256];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: AddMIDI: Extended item to %.4f sec\n",
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Extended item to %.4f sec\n",
                    desired_len_seconds);
           ShowConsoleMsg(log_msg);
         }
@@ -2271,8 +2165,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     if (!take) {
       error_msg.Set("Failed to get MIDI take from new item");
       if (ShowConsoleMsg)
-        ShowConsoleMsg(
-            "MAGDA: AddMIDI ERROR: Failed to get MIDI take from new item\n");
+        ShowConsoleMsg("MAGDA: AddMIDI ERROR: Failed to get MIDI take from new item\n");
       return false;
     }
     if (ShowConsoleMsg)
@@ -2286,8 +2179,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
 
   // Set take name if provided
   if (take_name && take_name[0]) {
-    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
-                                           char *, bool) =
+    bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *, char *, bool) =
         (bool (*)(MediaItem_Take *, const char *, char *, bool))g_rec->GetFunc(
             "GetSetMediaItemTakeInfo_String");
     if (GetSetMediaItemTakeInfo_String) {
@@ -2297,8 +2189,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
       GetSetMediaItemTakeInfo_String(take, "P_NAME", name_buf, true);
       if (ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI: Set take name to '%s'\n", take_name);
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Set take name to '%s'\n", take_name);
         ShowConsoleMsg(log_msg);
       }
     }
@@ -2325,8 +2216,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
 
   if (ShowConsoleMsg) {
     char log_msg[512];
-    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Processing %d notes\n",
-             total_notes);
+    snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Processing %d notes\n", total_notes);
     ShowConsoleMsg(log_msg);
   }
 
@@ -2380,13 +2270,11 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     }
 
     // Insert the note (channel 0, selected=false, muted=false)
-    if (MIDI_InsertNote(take, false, false, start_ppq, end_ppq, 0, pitch,
-                        velocity, &noSort)) {
+    if (MIDI_InsertNote(take, false, false, start_ppq, end_ppq, 0, pitch, velocity, &noSort)) {
       notes_inserted++;
       if (ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI: Successfully inserted note %d\n",
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: AddMIDI: Successfully inserted note %d\n",
                  notes_inserted);
         ShowConsoleMsg(log_msg);
       }
@@ -2431,8 +2319,8 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
   if (ShowConsoleMsg) {
     char log_msg[512];
     snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddMIDI: SUCCESS - Inserted %d notes out of %d total\n",
-             notes_inserted, total_notes);
+             "MAGDA: AddMIDI: SUCCESS - Inserted %d notes out of %d total\n", notes_inserted,
+             total_notes);
     ShowConsoleMsg(log_msg);
   }
 
@@ -2445,10 +2333,9 @@ double MagdaActions::BarToTime(int bar) {
     return 0.0;
   }
 
-  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *,
-                                   int *, double *) =
-      (double (*)(ReaProject *, int, double *, double *, int *, int *,
-                  double *))g_rec->GetFunc("TimeMap_GetMeasureInfo");
+  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *, int *, double *) =
+      (double (*)(ReaProject *, int, double *, double *, int *, int *, double *))g_rec->GetFunc(
+          "TimeMap_GetMeasureInfo");
   double (*TimeMap2_QNToTime)(ReaProject *, double) =
       (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
 
@@ -2464,8 +2351,8 @@ double MagdaActions::BarToTime(int bar) {
   int timesig_denom = 4;
   double tempo = 120.0;
 
-  TimeMap_GetMeasureInfo(nullptr, measure, &qn_start, &qn_end, &timesig_num,
-                         &timesig_denom, &tempo);
+  TimeMap_GetMeasureInfo(nullptr, measure, &qn_start, &qn_end, &timesig_num, &timesig_denom,
+                         &tempo);
   return TimeMap2_QNToTime(nullptr, qn_start);
 }
 
@@ -2475,10 +2362,9 @@ double MagdaActions::BarsToTime(int bars) {
     return 0.0;
   }
 
-  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *,
-                                   int *, double *) =
-      (double (*)(ReaProject *, int, double *, double *, int *, int *,
-                  double *))g_rec->GetFunc("TimeMap_GetMeasureInfo");
+  double (*TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *, int *, double *) =
+      (double (*)(ReaProject *, int, double *, double *, int *, int *, double *))g_rec->GetFunc(
+          "TimeMap_GetMeasureInfo");
   double (*TimeMap2_QNToTime)(ReaProject *, double) =
       (double (*)(ReaProject *, double))g_rec->GetFunc("TimeMap2_QNToTime");
 
@@ -2498,13 +2384,12 @@ double MagdaActions::BarsToTime(int bars) {
   double tempo = 120.0;
 
   // Get start of first bar (measure 0 = bar 1)
-  TimeMap_GetMeasureInfo(nullptr, start_bar - 1, &qn_start, nullptr,
-                         &timesig_num, &timesig_denom, &tempo);
+  TimeMap_GetMeasureInfo(nullptr, start_bar - 1, &qn_start, nullptr, &timesig_num, &timesig_denom,
+                         &tempo);
 
   // Get end of last bar by getting qn_end from the last bar's measure
   // Measure index is 0-based, so last_bar - 1
-  TimeMap_GetMeasureInfo(nullptr, last_bar - 1, nullptr, &qn_end, nullptr,
-                         nullptr, nullptr);
+  TimeMap_GetMeasureInfo(nullptr, last_bar - 1, nullptr, &qn_end, nullptr, nullptr, nullptr);
 
   double time_start = TimeMap2_QNToTime(nullptr, qn_start);
   double time_end = TimeMap2_QNToTime(nullptr, qn_end);
@@ -2533,8 +2418,7 @@ static std::string NormalizeDrumName(const char *drum_name) {
 
 // Resolve drum name to MIDI note using drum mapping
 // Falls back to General MIDI if no plugin mapping exists
-int MagdaActions::ResolveDrumNote(const char *drum_name,
-                                  const char *plugin_key) {
+int MagdaActions::ResolveDrumNote(const char *drum_name, const char *plugin_key) {
   std::string canonical_name = NormalizeDrumName(drum_name);
 
   // Default General MIDI drum notes
@@ -2550,8 +2434,7 @@ int MagdaActions::ResolveDrumNote(const char *drum_name,
 
   // Try to use plugin-specific mapping first
   if (plugin_key && plugin_key[0] && g_drumMappingManager) {
-    const DrumMapping *mapping =
-        g_drumMappingManager->GetMappingForPlugin(plugin_key);
+    const DrumMapping *mapping = g_drumMappingManager->GetMappingForPlugin(plugin_key);
     if (mapping) {
       int note = mapping->GetNote(canonical_name);
       if (note >= 0) {
@@ -2571,10 +2454,8 @@ int MagdaActions::ResolveDrumNote(const char *drum_name,
 }
 
 // Add drum pattern to track - converts grid notation to MIDI notes
-bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
-                                  const char *grid, int velocity,
-                                  const char *plugin_key,
-                                  WDL_FastString &error_msg) {
+bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name, const char *grid,
+                                  int velocity, const char *plugin_key, WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
     return false;
@@ -2646,8 +2527,8 @@ bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
 
     char note_json[256];
     snprintf(note_json, sizeof(note_json),
-             "{\"pitch\":%d,\"velocity\":%d,\"start\":%.4f,\"length\":%.4f}",
-             midi_note, note_velocity, start_beats, length_beats);
+             "{\"pitch\":%d,\"velocity\":%d,\"start\":%.4f,\"length\":%.4f}", midi_note,
+             note_velocity, start_beats, length_beats);
     notes_json.Append(note_json);
     note_count++;
   }
@@ -2666,16 +2547,15 @@ bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
     if (ShowConsoleMsg) {
       char log_msg[512];
       snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: drum_pattern: drum=%s, note=%d, grid=%s, %d hits\n",
-               drum_name, midi_note, grid, note_count);
+               "MAGDA: drum_pattern: drum=%s, note=%d, grid=%s, %d hits\n", drum_name, midi_note,
+               grid, note_count);
       ShowConsoleMsg(log_msg);
     }
   }
 
   // Parse the notes JSON and call AddMIDI
   wdl_json_parser parser;
-  wdl_json_element *notes_array =
-      parser.parse(notes_json.Get(), (int)notes_json.GetLength());
+  wdl_json_element *notes_array = parser.parse(notes_json.Get(), (int)notes_json.GetLength());
 
   if (parser.m_err || !notes_array) {
     error_msg.Set("drum_pattern: internal error parsing notes");
@@ -2688,12 +2568,10 @@ bool MagdaActions::AddDrumPattern(int track_index, const char *drum_name,
 // Add automation envelope to track
 // Supports curve-based and point-based syntax
 // Curve types: fade_in, fade_out, ramp, sine, saw, square, exp_in, exp_out
-bool MagdaActions::AddAutomation(int track_index, const char *param,
-                                 const char *curve, double start_time,
-                                 double end_time, bool times_in_seconds,
-                                 double from_val, double to_val, double freq,
-                                 double amplitude, double phase, int shape,
-                                 wdl_json_element *points_array,
+bool MagdaActions::AddAutomation(int track_index, const char *param, const char *curve,
+                                 double start_time, double end_time, bool times_in_seconds,
+                                 double from_val, double to_val, double freq, double amplitude,
+                                 double phase, int shape, wdl_json_element *points_array,
                                  WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
@@ -2704,15 +2582,13 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   TrackEnvelope *(*GetTrackEnvelopeByName)(MediaTrack *, const char *) =
-      (TrackEnvelope * (*)(MediaTrack *, const char *))
-          g_rec->GetFunc("GetTrackEnvelopeByName");
+      (TrackEnvelope * (*)(MediaTrack *, const char *)) g_rec->GetFunc("GetTrackEnvelopeByName");
   TrackEnvelope *(*GetTrackEnvelopeByChunkName)(MediaTrack *, const char *) =
       (TrackEnvelope * (*)(MediaTrack *, const char *))
           g_rec->GetFunc("GetTrackEnvelopeByChunkName");
-  bool (*InsertEnvelopePoint)(TrackEnvelope *, double, double, int, double,
-                              bool, bool *) =
-      (bool (*)(TrackEnvelope *, double, double, int, double, bool,
-                bool *))g_rec->GetFunc("InsertEnvelopePoint");
+  bool (*InsertEnvelopePoint)(TrackEnvelope *, double, double, int, double, bool, bool *) =
+      (bool (*)(TrackEnvelope *, double, double, int, double, bool, bool *))g_rec->GetFunc(
+          "InsertEnvelopePoint");
   bool (*Envelope_SortPoints)(TrackEnvelope *) =
       (bool (*)(TrackEnvelope *))g_rec->GetFunc("Envelope_SortPoints");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
@@ -2757,8 +2633,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   } else {
     // FX parameter - format is "FXName:ParamName"
     // For now, only support volume/pan - FX params need more complex handling
-    error_msg.Set(
-        "FX parameter automation not yet supported - use 'volume' or 'pan'");
+    error_msg.Set("FX parameter automation not yet supported - use 'volume' or 'pan'");
     return false;
   }
 
@@ -2775,8 +2650,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   if (!envelope) {
     error_msg.Set("Could not get envelope for parameter: ");
     error_msg.Append(param);
-    error_msg.Append(
-        " - try showing the envelope first (View > Track Envelope > Volume)");
+    error_msg.Append(" - try showing the envelope first (View > Track Envelope > Volume)");
     return false;
   }
 
@@ -2797,9 +2671,8 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
              "MAGDA: AddAutomation: track=%d, param=%s, curve=%s\n"
              "  times_in_seconds=%d, start_time=%.2f, end_time=%.2f\n"
              "  start_sec=%.2f, end_sec=%.2f, duration=%.2f sec\n",
-             track_index, param, curve ? curve : "points",
-             times_in_seconds ? 1 : 0, start_time, end_time, start_sec, end_sec,
-             end_sec - start_sec);
+             track_index, param, curve ? curve : "points", times_in_seconds ? 1 : 0, start_time,
+             end_time, start_sec, end_sec, end_sec - start_sec);
     ShowConsoleMsg(log_msg);
   }
 
@@ -2897,9 +2770,8 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
     }
 
     // Check if this is a simple linear curve (only needs 2 points)
-    bool is_linear =
-        (strcmp(curve, "fade_in") == 0 || strcmp(curve, "fade_out") == 0 ||
-         strcmp(curve, "ramp") == 0);
+    bool is_linear = (strcmp(curve, "fade_in") == 0 || strcmp(curve, "fade_out") == 0 ||
+                      strcmp(curve, "ramp") == 0);
 
     // Helper lambda to insert a point
     auto insertPoint = [&](double time_pos, double value) -> bool {
@@ -2919,8 +2791,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
         }
       }
 
-      bool result = InsertEnvelopePoint(envelope, time_pos, raw_value, shape,
-                                        0.0, false, &noSort);
+      bool result = InsertEnvelopePoint(envelope, time_pos, raw_value, shape, 0.0, false, &noSort);
       if (result)
         points_inserted++;
       return result;
@@ -2934,8 +2805,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
       // Non-linear curves need multiple points
       // Use more points for oscillating curves to get smooth waves
       bool is_oscillating =
-          (strcmp(curve, "sine") == 0 || strcmp(curve, "saw") == 0 ||
-           strcmp(curve, "square") == 0);
+          (strcmp(curve, "sine") == 0 || strcmp(curve, "saw") == 0 || strcmp(curve, "square") == 0);
       // For oscillating: ~32 points per cycle for smooth curve
       int num_points = is_oscillating ? (int)(32 * fmax(1.0, freq)) : 32;
       num_points = fmin(num_points, 256); // Cap at reasonable max
@@ -2974,8 +2844,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
 
           // Convert from_val/to_val to dB for symmetric oscillation
           // Default: from_val=0 (silence/-inf), to_val=1 (unity/0dB)
-          double from_db =
-              (from_val <= 0.0001) ? -60.0 : 20.0 * log10(from_val);
+          double from_db = (from_val <= 0.0001) ? -60.0 : 20.0 * log10(from_val);
           double to_db = (to_val <= 0.0001) ? -60.0 : 20.0 * log10(to_val);
 
           // Calculate center and range in dB space
@@ -2994,9 +2863,8 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
           // Debug: log every 8th point
           if (ShowConsoleMsg && i % 8 == 0) {
             char dbg[128];
-            snprintf(dbg, sizeof(dbg),
-                     "MAGDA: sine i=%d t=%.3f angle=%.1f° dB=%.1f val=%.3f\n",
-                     i, t, angle * 180.0 / M_PI, db_value, value);
+            snprintf(dbg, sizeof(dbg), "MAGDA: sine i=%d t=%.3f angle=%.1f° dB=%.1f val=%.3f\n", i,
+                     t, angle * 180.0 / M_PI, db_value, value);
             ShowConsoleMsg(dbg);
           }
         } else if (strcmp(curve, "saw") == 0) {
@@ -3052,8 +2920,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
               value = pow(10.0, value / 20.0);
           }
 
-          if (InsertEnvelopePoint(envelope, time_pos, value, shape, 0.0, false,
-                                  &noSort)) {
+          if (InsertEnvelopePoint(envelope, time_pos, value, shape, 0.0, false, &noSort)) {
             points_inserted++;
           }
         }
@@ -3073,11 +2940,9 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
 
   // Make envelope visible in the arrange view
   bool (*GetEnvelopeStateChunk)(TrackEnvelope *, char *, int, bool) =
-      (bool (*)(TrackEnvelope *, char *, int, bool))g_rec->GetFunc(
-          "GetEnvelopeStateChunk");
+      (bool (*)(TrackEnvelope *, char *, int, bool))g_rec->GetFunc("GetEnvelopeStateChunk");
   bool (*SetEnvelopeStateChunk)(TrackEnvelope *, const char *, bool) =
-      (bool (*)(TrackEnvelope *, const char *, bool))g_rec->GetFunc(
-          "SetEnvelopeStateChunk");
+      (bool (*)(TrackEnvelope *, const char *, bool))g_rec->GetFunc("SetEnvelopeStateChunk");
 
   if (GetEnvelopeStateChunk && SetEnvelopeStateChunk && points_inserted > 0) {
     char chunk[32768];
@@ -3089,8 +2954,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
         char preview[801];
         strncpy(preview, chunk, 800);
         preview[800] = '\0';
-        snprintf(log_msg, sizeof(log_msg), "MAGDA: Envelope chunk:\n%s\n...\n",
-                 preview);
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Envelope chunk:\n%s\n...\n", preview);
         ShowConsoleMsg(log_msg);
       }
       // Find and modify VIS parameter
@@ -3119,8 +2983,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   if (ShowConsoleMsg) {
     char log_msg[512];
     snprintf(log_msg, sizeof(log_msg),
-             "MAGDA: AddAutomation: SUCCESS - Inserted %d envelope points\n",
-             points_inserted);
+             "MAGDA: AddAutomation: SUCCESS - Inserted %d envelope points\n", points_inserted);
     ShowConsoleMsg(log_msg);
   }
 
@@ -3128,8 +2991,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
 }
 
 // Save JSFX code to file and optionally add to track
-bool MagdaActions::SaveAndApplyJSFX(const char *jsfx_code,
-                                    const char *effect_name, int track_index,
+bool MagdaActions::SaveAndApplyJSFX(const char *jsfx_code, const char *effect_name, int track_index,
                                     WDL_FastString &error_msg) {
   if (!g_rec) {
     error_msg.Set("REAPER API not available");
@@ -3145,8 +3007,7 @@ bool MagdaActions::SaveAndApplyJSFX(const char *jsfx_code,
   }
 
   // Get REAPER resource path for Effects folder
-  const char *(*GetResourcePath)() =
-      (const char *(*)())g_rec->GetFunc("GetResourcePath");
+  const char *(*GetResourcePath)() = (const char *(*)())g_rec->GetFunc("GetResourcePath");
   if (!GetResourcePath) {
     error_msg.Set("GetResourcePath not available");
     return false;
@@ -3166,8 +3027,8 @@ bool MagdaActions::SaveAndApplyJSFX(const char *jsfx_code,
   std::string filename = effect_name ? effect_name : "magda_effect";
   // Sanitize filename
   for (char &c : filename) {
-    if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' ||
-        c == '<' || c == '>' || c == '|') {
+    if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' ||
+        c == '>' || c == '|') {
       c = '_';
     }
   }
@@ -3180,8 +3041,7 @@ bool MagdaActions::SaveAndApplyJSFX(const char *jsfx_code,
   // Write JSFX code to file
   std::ofstream file(fullPath);
   if (!file.is_open()) {
-    error_msg.SetFormatted(512, "Failed to create JSFX file: %s",
-                           fullPath.c_str());
+    error_msg.SetFormatted(512, "Failed to create JSFX file: %s", fullPath.c_str());
     return false;
   }
   file << jsfx_code;
@@ -3194,8 +3054,7 @@ bool MagdaActions::SaveAndApplyJSFX(const char *jsfx_code,
   }
 
   // Refresh JSFX list (Action 41997)
-  void (*Main_OnCommand)(int, int) =
-      (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
+  void (*Main_OnCommand)(int, int) = (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
   if (Main_OnCommand) {
     Main_OnCommand(41997, 0); // Refresh list of JSFX
   }

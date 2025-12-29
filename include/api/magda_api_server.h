@@ -43,6 +43,5 @@ private:
   void SendJSONResponse(JNL_HTTPServ *serv, const char *json, int status = 200);
 
   // Helper to send error response
-  void SendErrorResponse(JNL_HTTPServ *serv, const char *message,
-                         int status = 400);
+  void SendErrorResponse(JNL_HTTPServ *serv, const char *message, int status = 400);
 };

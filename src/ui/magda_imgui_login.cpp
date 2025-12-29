@@ -66,8 +66,7 @@ static ThemeColors g_theme;
 static const int COLOR_SUCCESS = THEME_RGBA(0x88, 0xFF, 0x88);
 static const int COLOR_ERROR = THEME_RGBA(0xFF, 0x66, 0x66);
 static const int COLOR_WARNING = THEME_RGBA(0xFF, 0xCC, 0x66);
-static const int COLOR_INFO =
-    THEME_RGBA(0x6D, 0x8A, 0xFE); // Lighter electric blue for text
+static const int COLOR_INFO = THEME_RGBA(0x6D, 0x8A, 0xFE); // Lighter electric blue for text
 static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
 // Default API URL for local development (Go backend port)
@@ -90,48 +89,37 @@ bool MagdaImGuiLogin::Initialize(reaper_plugin_info_t *rec) {
     return false;
 
   // Load ReaImGui function pointers
-  m_ImGui_CreateContext =
-      (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
-  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc(
-      "ImGui_Begin");
+  m_ImGui_CreateContext = (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
+  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc("ImGui_Begin");
   m_ImGui_End = (void (*)(void *))rec->GetFunc("ImGui_End");
-  m_ImGui_SetNextWindowSize = (void (*)(
-      void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
+  m_ImGui_SetNextWindowSize =
+      (void (*)(void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
   m_ImGui_Text = (void (*)(void *, const char *))rec->GetFunc("ImGui_Text");
-  m_ImGui_TextColored =
-      (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
-  m_ImGui_InputText = (bool (*)(void *, const char *, char *, int, int *,
-                                void *))rec->GetFunc("ImGui_InputText");
-  m_ImGui_InputTextWithHint =
-      (bool (*)(void *, const char *, const char *, char *, int, int *,
-                void *))rec->GetFunc("ImGui_InputTextWithHint");
-  m_ImGui_Button = (bool (*)(void *, const char *, double *,
-                             double *))rec->GetFunc("ImGui_Button");
-  m_ImGui_SameLine =
-      (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
+  m_ImGui_TextColored = (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
+  m_ImGui_InputText =
+      (bool (*)(void *, const char *, char *, int, int *, void *))rec->GetFunc("ImGui_InputText");
+  m_ImGui_InputTextWithHint = (bool (*)(void *, const char *, const char *, char *, int, int *,
+                                        void *))rec->GetFunc("ImGui_InputTextWithHint");
+  m_ImGui_Button = (bool (*)(void *, const char *, double *, double *))rec->GetFunc("ImGui_Button");
+  m_ImGui_SameLine = (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
   m_ImGui_Separator = (void (*)(void *))rec->GetFunc("ImGui_Separator");
   m_ImGui_Spacing = (void (*)(void *))rec->GetFunc("ImGui_Spacing");
   m_ImGui_Dummy = (void (*)(void *, double, double))rec->GetFunc("ImGui_Dummy");
-  m_ImGui_PushStyleColor =
-      (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
-  m_ImGui_PopStyleColor =
-      (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
-  m_ImGui_PushItemWidth =
-      (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
+  m_ImGui_PushStyleColor = (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
+  m_ImGui_PopStyleColor = (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
+  m_ImGui_PushItemWidth = (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
   m_ImGui_PopItemWidth = (void (*)(void *))rec->GetFunc("ImGui_PopItemWidth");
-  m_ImGui_IsWindowAppearing =
-      (bool (*)(void *))rec->GetFunc("ImGui_IsWindowAppearing");
+  m_ImGui_IsWindowAppearing = (bool (*)(void *))rec->GetFunc("ImGui_IsWindowAppearing");
   m_ImGui_SetKeyboardFocusHere =
       (void (*)(void *, int *))rec->GetFunc("ImGui_SetKeyboardFocusHere");
-  m_ImGui_GetContentRegionAvail = (void (*)(
-      void *, double *, double *))rec->GetFunc("ImGui_GetContentRegionAvail");
-  m_ImGui_BeginDisabled =
-      (bool (*)(void *, bool *))rec->GetFunc("ImGui_BeginDisabled");
+  m_ImGui_GetContentRegionAvail =
+      (void (*)(void *, double *, double *))rec->GetFunc("ImGui_GetContentRegionAvail");
+  m_ImGui_BeginDisabled = (bool (*)(void *, bool *))rec->GetFunc("ImGui_BeginDisabled");
   m_ImGui_EndDisabled = (void (*)(void *))rec->GetFunc("ImGui_EndDisabled");
 
   // Check if essential functions are available
-  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
-                m_ImGui_Text && m_ImGui_InputText && m_ImGui_Button;
+  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End && m_ImGui_Text &&
+                m_ImGui_InputText && m_ImGui_Button;
 
   if (m_available) {
     // Load saved settings
@@ -146,8 +134,7 @@ void MagdaImGuiLogin::LoadSettings() {
     return;
 
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc(
-          "GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
   if (!GetExtState)
     return;
 
@@ -180,10 +167,8 @@ void MagdaImGuiLogin::SaveSettings() {
   if (!g_rec)
     return;
 
-  void (*SetExtState)(const char *section, const char *key, const char *value,
-                      bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
-          "SetExtState");
+  void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
   if (!SetExtState)
     return;
 
@@ -225,8 +210,7 @@ const char *MagdaImGuiLogin::GetBackendURL() {
   // Fall back to ExtState
   if (g_rec) {
     const char *(*GetExtState)(const char *, const char *) =
-        (const char *(*)(const char *, const char *))g_rec->GetFunc(
-            "GetExtState");
+        (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
     if (GetExtState) {
       const char *stored = GetExtState("MAGDA", "api_url");
       if (stored && strlen(stored) > 0) {
@@ -254,7 +238,9 @@ void MagdaImGuiLogin::Show() {
   }
 }
 
-void MagdaImGuiLogin::Hide() { m_visible = false; }
+void MagdaImGuiLogin::Hide() {
+  m_visible = false;
+}
 
 void MagdaImGuiLogin::Toggle() {
   if (m_visible) {
@@ -264,7 +250,9 @@ void MagdaImGuiLogin::Toggle() {
   }
 }
 
-void MagdaImGuiLogin::CheckAPIHealth() { StartHealthCheck(); }
+void MagdaImGuiLogin::CheckAPIHealth() {
+  StartHealthCheck();
+}
 
 void MagdaImGuiLogin::StartHealthCheck() {
   if (m_asyncPending)
@@ -299,8 +287,7 @@ void MagdaImGuiLogin::StartHealthCheck() {
       m_asyncSuccess = true;
     } else {
       m_asyncAuthMode = AuthMode::Error;
-      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get()
-                                                 : "Failed to connect to API";
+      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Failed to connect to API";
       m_asyncSuccess = false;
     }
 
@@ -339,8 +326,7 @@ void MagdaImGuiLogin::StartLoginRequest() {
     httpClient.SetBackendURL(apiUrl.c_str());
 
     WDL_FastString tokenOut, errorMsg;
-    bool success = httpClient.SendLoginRequest(email.c_str(), password.c_str(),
-                                               tokenOut, errorMsg);
+    bool success = httpClient.SendLoginRequest(email.c_str(), password.c_str(), tokenOut, errorMsg);
 
     std::lock_guard<std::mutex> lock(m_asyncMutex);
 
@@ -349,8 +335,7 @@ void MagdaImGuiLogin::StartLoginRequest() {
       m_asyncSuccess = true;
     } else {
       m_asyncSuccess = false;
-      m_asyncErrorMsg =
-          errorMsg.GetLength() > 0 ? errorMsg.Get() : "Login failed";
+      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Login failed";
     }
 
     m_asyncResultReady = true;
@@ -404,7 +389,9 @@ void MagdaImGuiLogin::ProcessAsyncResult() {
   }
 }
 
-void MagdaImGuiLogin::OnLogin() { StartLoginRequest(); }
+void MagdaImGuiLogin::OnLogin() {
+  StartLoginRequest();
+}
 
 void MagdaImGuiLogin::OnLogout() {
   StoreToken(nullptr);
@@ -439,8 +426,7 @@ void MagdaImGuiLogin::Render() {
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, g_theme.inputBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered,
-                           g_theme.buttonHover);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered, g_theme.buttonHover);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgActive, g_theme.buttonBg);
     styleColorCount++;
@@ -455,8 +441,7 @@ void MagdaImGuiLogin::Render() {
     // Title bar colors
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBg, g_theme.titleBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive,
-                           g_theme.titleBgActive);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive, g_theme.titleBgActive);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgCollapsed, g_theme.titleBg);
     styleColorCount++;
@@ -534,8 +519,7 @@ void MagdaImGuiLogin::RenderAPISection() {
 
   // Help text
   if (m_ImGui_TextColored) {
-    m_ImGui_TextColored(m_ctx, COLOR_DIM,
-                        "Enter the MAGDA API URL (local or hosted):");
+    m_ImGui_TextColored(m_ctx, COLOR_DIM, "Enter the MAGDA API URL (local or hosted):");
   }
   if (m_ImGui_Spacing)
     m_ImGui_Spacing(m_ctx);
@@ -553,12 +537,11 @@ void MagdaImGuiLogin::RenderAPISection() {
   int flags = 0;
   bool urlChanged = false;
   if (m_ImGui_InputTextWithHint) {
-    urlChanged = m_ImGui_InputTextWithHint(
-        m_ctx, "##apiurl", "http://localhost:8081", m_apiUrlBuffer,
-        sizeof(m_apiUrlBuffer), &flags, nullptr);
+    urlChanged = m_ImGui_InputTextWithHint(m_ctx, "##apiurl", "http://localhost:8081",
+                                           m_apiUrlBuffer, sizeof(m_apiUrlBuffer), &flags, nullptr);
   } else {
-    urlChanged = m_ImGui_InputText(m_ctx, "##apiurl", m_apiUrlBuffer,
-                                   sizeof(m_apiUrlBuffer), &flags, nullptr);
+    urlChanged = m_ImGui_InputText(m_ctx, "##apiurl", m_apiUrlBuffer, sizeof(m_apiUrlBuffer),
+                                   &flags, nullptr);
   }
 
   if (m_ImGui_PopItemWidth) {
@@ -587,8 +570,7 @@ void MagdaImGuiLogin::RenderAPISection() {
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.accentActive);
   }
 
-  if (m_ImGui_Button(m_ctx, m_checkingHealth ? "Checking..." : "Connect",
-                     nullptr, nullptr)) {
+  if (m_ImGui_Button(m_ctx, m_checkingHealth ? "Checking..." : "Connect", nullptr, nullptr)) {
     SaveSettings();
     StartHealthCheck();
   }
@@ -613,18 +595,15 @@ void MagdaImGuiLogin::RenderAPISection() {
     }
   } else if (m_authMode == AuthMode::Gateway) {
     if (m_ImGui_TextColored) {
-      m_ImGui_TextColored(m_ctx, COLOR_INFO,
-                          "Connected - Hosted mode (login below)");
+      m_ImGui_TextColored(m_ctx, COLOR_INFO, "Connected - Hosted mode (login below)");
     }
   } else if (m_authMode == AuthMode::Error) {
     if (m_ImGui_TextColored) {
-      m_ImGui_TextColored(m_ctx, COLOR_ERROR,
-                          "Connection failed - check URL and try again");
+      m_ImGui_TextColored(m_ctx, COLOR_ERROR, "Connection failed - check URL and try again");
     }
   } else {
     if (m_ImGui_TextColored) {
-      m_ImGui_TextColored(m_ctx, COLOR_DIM,
-                          "Click 'Connect' to test the API connection");
+      m_ImGui_TextColored(m_ctx, COLOR_DIM, "Click 'Connect' to test the API connection");
     }
   }
 }
@@ -634,8 +613,7 @@ void MagdaImGuiLogin::RenderAuthSection() {
   if (m_authMode != AuthMode::Gateway) {
     if (m_authMode == AuthMode::None) {
       if (m_ImGui_TextColored) {
-        m_ImGui_TextColored(m_ctx, COLOR_DIM,
-                            "Authentication not required for local API");
+        m_ImGui_TextColored(m_ctx, COLOR_DIM, "Authentication not required for local API");
       }
     }
     return;
@@ -682,27 +660,26 @@ void MagdaImGuiLogin::RenderAuthSection() {
     // Email input
     int flags = 0;
     if (m_ImGui_InputTextWithHint) {
-      m_ImGui_InputTextWithHint(m_ctx, "##email", "Email", m_emailBuffer,
-                                sizeof(m_emailBuffer), &flags, nullptr);
+      m_ImGui_InputTextWithHint(m_ctx, "##email", "Email", m_emailBuffer, sizeof(m_emailBuffer),
+                                &flags, nullptr);
     } else {
       m_ImGui_Text(m_ctx, "Email:");
-      m_ImGui_InputText(m_ctx, "##email", m_emailBuffer, sizeof(m_emailBuffer),
-                        &flags, nullptr);
+      m_ImGui_InputText(m_ctx, "##email", m_emailBuffer, sizeof(m_emailBuffer), &flags, nullptr);
     }
 
     // Password input
     flags = ImGuiInputTextFlags::Password;
     if (m_ImGui_InputTextWithHint) {
-      bool enterPressed = m_ImGui_InputTextWithHint(
-          m_ctx, "##password", "Password", m_passwordBuffer,
-          sizeof(m_passwordBuffer), &flags, nullptr);
+      bool enterPressed =
+          m_ImGui_InputTextWithHint(m_ctx, "##password", "Password", m_passwordBuffer,
+                                    sizeof(m_passwordBuffer), &flags, nullptr);
       if (enterPressed) {
         OnLogin();
       }
     } else {
       m_ImGui_Text(m_ctx, "Password:");
-      m_ImGui_InputText(m_ctx, "##password", m_passwordBuffer,
-                        sizeof(m_passwordBuffer), &flags, nullptr);
+      m_ImGui_InputText(m_ctx, "##password", m_passwordBuffer, sizeof(m_passwordBuffer), &flags,
+                        nullptr);
     }
 
     if (m_ImGui_PopItemWidth) {
@@ -719,8 +696,7 @@ void MagdaImGuiLogin::RenderAuthSection() {
       m_ImGui_BeginDisabled(m_ctx, &disabled);
     }
 
-    if (m_ImGui_Button(m_ctx, m_asyncPending ? "Logging in..." : "Login",
-                       nullptr, nullptr)) {
+    if (m_ImGui_Button(m_ctx, m_asyncPending ? "Logging in..." : "Login", nullptr, nullptr)) {
       OnLogin();
     }
 

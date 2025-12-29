@@ -22,8 +22,7 @@
 #define IDC_MAX_CLIPS_PER_TRACK_INPUT 4009
 
 // Dialog resource definition using SWELL
-SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_SETTINGS, 0, "MAGDA Settings", 450,
-                                   300, 1.0)
+SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_SETTINGS, 0, "MAGDA Settings", 450, 300, 1.0)
 BEGIN
 // Backend URL label
 LTEXT "Backend URL:", IDC_BACKEND_URL_LABEL, 20, 60, 100,
@@ -58,8 +57,7 @@ LTEXT "Backend URL:", IDC_BACKEND_URL_LABEL, 20, 60, 100,
 
         // Include empty tracks checkbox
         CONTROL "Include empty tracks",
-    IDC_INCLUDE_EMPTY_TRACKS_CHECK, "Button", BS_AUTOCHECKBOX | WS_VISIBLE, 20,
-    175, 200,
+    IDC_INCLUDE_EMPTY_TRACKS_CHECK, "Button", BS_AUTOCHECKBOX | WS_VISIBLE, 20, 175, 200,
     20
 
     // Max clips per track label
@@ -75,5 +73,4 @@ LTEXT "Backend URL:", IDC_BACKEND_URL_LABEL, 20, 60, 100,
 
         // Save button (centered)
         PUSHBUTTON "Save",
-    IDC_SAVE_BUTTON, 185, 250, 80,
-    30 END SWELL_DEFINE_DIALOG_RESOURCE_END(IDD_MAGDA_SETTINGS)
+    IDC_SAVE_BUTTON, 185, 250, 80, 30 END SWELL_DEFINE_DIALOG_RESOURCE_END(IDD_MAGDA_SETTINGS)

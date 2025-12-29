@@ -16,8 +16,7 @@
 #define IDC_STATUS_LABEL 5004
 
 // Dialog resource definition using SWELL
-SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_PLUGIN, 0, "MAGDA Plugin Aliases",
-                                   900, 600, 1.0)
+SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_PLUGIN, 0, "MAGDA Plugin Aliases", 900, 600, 1.0)
 BEGIN
 // Status label
 LTEXT "Click 'Generate' to create aliases", IDC_STATUS_LABEL, 20, 5, 860,
@@ -27,9 +26,8 @@ LTEXT "Click 'Generate' to create aliases", IDC_STATUS_LABEL, 20, 5, 860,
     // right after label - LVS_EDITLABELS allows editing
     CONTROL "",
     IDC_ALIAS_LIST, "SysListView32",
-    LVS_REPORT | LVS_SINGLESEL | WS_VSCROLL | WS_HSCROLL | WS_BORDER |
-        WS_VISIBLE | WS_TABSTOP,
-    20, 25, 860,
+    LVS_REPORT | LVS_SINGLESEL | WS_VSCROLL | WS_HSCROLL | WS_BORDER | WS_VISIBLE | WS_TABSTOP, 20,
+    25, 860,
     445
 
     // Generate button (generates aliases)
@@ -39,5 +37,4 @@ LTEXT "Click 'Generate' to create aliases", IDC_STATUS_LABEL, 20, 5, 860,
 
     // Save button (saves modified aliases)
     PUSHBUTTON "Save",
-    IDC_REFRESH_BUTTON, 150, 465, 80,
-    30 END SWELL_DEFINE_DIALOG_RESOURCE_END(IDD_MAGDA_PLUGIN)
+    IDC_REFRESH_BUTTON, 150, 465, 80, 30 END SWELL_DEFINE_DIALOG_RESOURCE_END(IDD_MAGDA_PLUGIN)

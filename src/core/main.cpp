@@ -105,10 +105,8 @@ static void imguiTimerCallback() {
       // Execute workflow with track type and user query
       if (ShowConsoleMsg) {
         char msg[512];
-        snprintf(msg, sizeof(msg), "MAGDA: Track type: %s, Query: %s\n",
-                 result.trackType.Get(),
-                 result.userQuery.GetLength() > 0 ? result.userQuery.Get()
-                                                  : "(none)");
+        snprintf(msg, sizeof(msg), "MAGDA: Track type: %s, Query: %s\n", result.trackType.Get(),
+                 result.userQuery.GetLength() > 0 ? result.userQuery.Get() : "(none)");
         ShowConsoleMsg(msg);
       }
 
@@ -119,21 +117,17 @@ static void imguiTimerCallback() {
       WDL_FastString error_msg;
       bool success = MagdaBounceWorkflow::ExecuteWorkflow(
           bounceMode, result.trackType.Get(),
-          result.userQuery.GetLength() > 0 ? result.userQuery.Get() : "",
-          error_msg);
+          result.userQuery.GetLength() > 0 ? result.userQuery.Get() : "", error_msg);
 
       if (!success) {
         if (ShowConsoleMsg) {
           char msg[512];
-          snprintf(msg, sizeof(msg),
-                   "MAGDA: Mix analysis workflow failed: %s\n",
-                   error_msg.Get());
+          snprintf(msg, sizeof(msg), "MAGDA: Mix analysis workflow failed: %s\n", error_msg.Get());
           ShowConsoleMsg(msg);
         }
       } else {
         if (ShowConsoleMsg) {
-          ShowConsoleMsg(
-              "MAGDA: Mix analysis workflow completed successfully!\n");
+          ShowConsoleMsg("MAGDA: Mix analysis workflow completed successfully!\n");
         }
       }
 
@@ -200,8 +194,8 @@ static int g_cmdJSFXEditor = 0;
 #define MAGDA_CMD_CHAT_COPY g_cmdChatCopy
 
 // Helper function to perform DSP analysis and output results
-static void performDSPAnalysis(int trackIndex, const char *trackName,
-                               float analysisLength, bool isPostFX) {
+static void performDSPAnalysis(int trackIndex, const char *trackName, float analysisLength,
+                               bool isPostFX) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -219,8 +213,7 @@ static void performDSPAnalysis(int trackIndex, const char *trackName,
     if (ShowConsoleMsg) {
       const char *fxStatus = isPostFX ? "(Post-FX)" : "(Raw - no FX)";
       char header[128];
-      snprintf(header, sizeof(header), "MAGDA: Analysis complete! %s\n",
-               fxStatus);
+      snprintf(header, sizeof(header), "MAGDA: Analysis complete! %s\n", fxStatus);
       ShowConsoleMsg(header);
       ShowConsoleMsg("--- DSP Analysis Results ---\n");
 
@@ -233,38 +226,32 @@ static void performDSPAnalysis(int trackIndex, const char *trackName,
                "Stereo: Width=%.2f, Correlation=%.2f\n"
                "Freq Bands: Sub=%.1f, Bass=%.1f, Mid=%.1f, High=%.1f dB\n"
                "Resonances detected: %zu\n",
-               trackName, trackIndex, result.lengthSeconds, result.sampleRate,
-               result.channels, result.loudness.rms, result.loudness.peak,
-               result.loudness.lufs, result.dynamics.dynamicRange,
-               result.dynamics.crestFactor, result.stereo.width,
-               result.stereo.correlation, result.bands.sub, result.bands.bass,
-               result.bands.mid, result.bands.brilliance,
-               result.resonances.size());
+               trackName, trackIndex, result.lengthSeconds, result.sampleRate, result.channels,
+               result.loudness.rms, result.loudness.peak, result.loudness.lufs,
+               result.dynamics.dynamicRange, result.dynamics.crestFactor, result.stereo.width,
+               result.stereo.correlation, result.bands.sub, result.bands.bass, result.bands.mid,
+               result.bands.brilliance, result.resonances.size());
       ShowConsoleMsg(summary);
 
       if (!result.resonances.empty()) {
         ShowConsoleMsg("Resonances:\n");
         for (size_t i = 0; i < result.resonances.size(); i++) {
           char resBuf[256];
-          snprintf(resBuf, sizeof(resBuf),
-                   "  %.0f Hz: +%.1f dB (Q=%.1f) - %s %s\n",
-                   result.resonances[i].frequency,
-                   result.resonances[i].magnitude, result.resonances[i].q,
-                   result.resonances[i].severity, result.resonances[i].type);
+          snprintf(resBuf, sizeof(resBuf), "  %.0f Hz: +%.1f dB (Q=%.1f) - %s %s\n",
+                   result.resonances[i].frequency, result.resonances[i].magnitude,
+                   result.resonances[i].q, result.resonances[i].severity,
+                   result.resonances[i].type);
           ShowConsoleMsg(resBuf);
         }
       }
     }
 
     // Store result in project state for API access
-    void (*SetProjExtState)(ReaProject *, const char *, const char *,
-                            const char *) =
-        (void (*)(ReaProject *, const char *, const char *,
-                  const char *))g_rec->GetFunc("SetProjExtState");
+    void (*SetProjExtState)(ReaProject *, const char *, const char *, const char *) = (void (*)(
+        ReaProject *, const char *, const char *, const char *))g_rec->GetFunc("SetProjExtState");
     if (SetProjExtState) {
       SetProjExtState(nullptr, "MAGDA_DSP", "ANALYSIS_JSON", json.Get());
-      SetProjExtState(nullptr, "MAGDA_DSP", "TRACK_INDEX",
-                      std::to_string(trackIndex).c_str());
+      SetProjExtState(nullptr, "MAGDA_DSP", "TRACK_INDEX", std::to_string(trackIndex).c_str());
       SetProjExtState(nullptr, "MAGDA_DSP", "TRACK_NAME", trackName);
       if (ShowConsoleMsg) {
         ShowConsoleMsg("MAGDA: Analysis stored in project state (MAGDA_DSP)\n");
@@ -273,8 +260,7 @@ static void performDSPAnalysis(int trackIndex, const char *trackName,
   } else {
     if (ShowConsoleMsg) {
       char errMsg[512];
-      snprintf(errMsg, sizeof(errMsg), "MAGDA: Analysis failed: %s\n",
-               result.errorMessage.Get());
+      snprintf(errMsg, sizeof(errMsg), "MAGDA: Analysis failed: %s\n", result.errorMessage.Get());
       ShowConsoleMsg(errMsg);
     }
   }
@@ -388,14 +374,11 @@ void magdaAction(int command_id, int flag) {
             (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
         int (*IsTrackSelected)(MediaTrack *) =
             (int (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
-        bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *,
-                                            bool) =
-            (bool (*)(MediaTrack *, const char *, char *, bool))g_rec->GetFunc(
-                "GetSetMediaTrackInfo_String");
-        void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *,
-                                      double *, bool) =
-            (void (*)(ReaProject *, bool, bool, double *, double *,
-                      bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
+        bool (*GetSetMediaTrackInfo_String)(MediaTrack *, const char *, char *, bool) = (bool (*)(
+            MediaTrack *, const char *, char *, bool))g_rec->GetFunc("GetSetMediaTrackInfo_String");
+        void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *, bool) =
+            (void (*)(ReaProject *, bool, bool, double *, double *, bool))g_rec->GetFunc(
+                "GetSet_LoopTimeRange2");
         double (*GetProjectLength)(ReaProject *) =
             (double (*)(ReaProject *))g_rec->GetFunc("GetProjectLength");
         int (*CountTrackMediaItems)(MediaTrack *) =
@@ -428,16 +411,15 @@ void magdaAction(int command_id, int flag) {
 
         if (selectedTrackIndex < 0) {
           if (ShowConsoleMsg) {
-            ShowConsoleMsg(
-                "MAGDA: No track selected. Please select a track first.\n");
+            ShowConsoleMsg("MAGDA: No track selected. Please select a track first.\n");
           }
           return;
         }
 
         if (ShowConsoleMsg) {
           char msg[512];
-          snprintf(msg, sizeof(msg), "MAGDA: Analyzing track %d ('%s')...\n",
-                   selectedTrackIndex, trackName);
+          snprintf(msg, sizeof(msg), "MAGDA: Analyzing track %d ('%s')...\n", selectedTrackIndex,
+                   trackName);
           ShowConsoleMsg(msg);
         }
 
@@ -445,8 +427,7 @@ void magdaAction(int command_id, int flag) {
         double timeSelStart = 0, timeSelEnd = 0;
         bool hasTimeSelection = false;
         if (GetSet_LoopTimeRange2) {
-          GetSet_LoopTimeRange2(nullptr, false, false, &timeSelStart,
-                                &timeSelEnd, false);
+          GetSet_LoopTimeRange2(nullptr, false, false, &timeSelStart, &timeSelEnd, false);
           hasTimeSelection = (timeSelEnd - timeSelStart) > 0.1;
         }
 
@@ -465,8 +446,7 @@ void magdaAction(int command_id, int flag) {
 
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg),
-                   "MAGDA: Analysis range: %.2f - %.2f sec (%.1f sec)\n",
+          snprintf(msg, sizeof(msg), "MAGDA: Analysis range: %.2f - %.2f sec (%.1f sec)\n",
                    timeSelStart, timeSelEnd, analysisLength);
           ShowConsoleMsg(msg);
         }
@@ -480,16 +460,14 @@ void magdaAction(int command_id, int flag) {
         if (!hasAudioItems) {
           if (ShowConsoleMsg) {
             ShowConsoleMsg("MAGDA: Track has no media items to analyze.\n");
-            ShowConsoleMsg(
-                "MAGDA: For VSTi tracks, please bounce to audio first.\n");
+            ShowConsoleMsg("MAGDA: For VSTi tracks, please bounce to audio first.\n");
           }
           return;
         }
 
         // Perform DSP analysis directly on the track's audio
         // This reads the source audio (pre-FX for audio tracks)
-        performDSPAnalysis(selectedTrackIndex, trackName, (float)analysisLength,
-                           false);
+        performDSPAnalysis(selectedTrackIndex, trackName, (float)analysisLength, false);
       }).detach();
     }
   } else if (command_id == g_cmdMixAnalyze) {
@@ -509,8 +487,7 @@ void magdaAction(int command_id, int flag) {
 
         // Get selected track name for smart suggestion
         MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
-            (MediaTrack * (*)(ReaProject *, int))
-                g_rec->GetFunc("GetSelectedTrack");
+            (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetSelectedTrack");
         bool (*GetTrackName)(MediaTrack *, char *, int) =
             (bool (*)(MediaTrack *, char *, int))g_rec->GetFunc("GetTrackName");
 
@@ -518,8 +495,7 @@ void magdaAction(int command_id, int flag) {
           MediaTrack *track = GetSelectedTrack(nullptr, 0);
           if (track) {
             char trackName[256] = {0};
-            if (GetTrackName(track, trackName, sizeof(trackName)) &&
-                trackName[0]) {
+            if (GetTrackName(track, trackName, sizeof(trackName)) && trackName[0]) {
               // Simple keyword detection (could be improved later)
               std::string lowerName = trackName;
               for (auto &c : lowerName)
@@ -595,24 +571,21 @@ void magdaAction(int command_id, int flag) {
     // project state
     {
       // Get JSON action from project state (stored via SetProjExtState)
-      void *(*GetProjExtState)(ReaProject *, const char *, const char *, char *,
-                               int) =
-          (void *(*)(ReaProject *, const char *, const char *, char *,
-                     int))g_rec->GetFunc("GetProjExtState");
+      void *(*GetProjExtState)(ReaProject *, const char *, const char *, char *, int) =
+          (void *(*)(ReaProject *, const char *, const char *, char *, int))g_rec->GetFunc(
+              "GetProjExtState");
 
       if (GetProjExtState) {
         char action_json[4096] = {0};
-        GetProjExtState(nullptr, "MAGDA_TEST", "ACTION_JSON", action_json,
-                        sizeof(action_json));
+        GetProjExtState(nullptr, "MAGDA_TEST", "ACTION_JSON", action_json, sizeof(action_json));
 
         if (action_json[0]) {
           WDL_FastString result, error;
           if (MagdaActions::ExecuteActions(action_json, result, error)) {
             // Store result in project state for Lua to read
-            void (*SetProjExtState)(ReaProject *, const char *, const char *,
-                                    const char *) =
-                (void (*)(ReaProject *, const char *, const char *,
-                          const char *))g_rec->GetFunc("SetProjExtState");
+            void (*SetProjExtState)(ReaProject *, const char *, const char *, const char *) =
+                (void (*)(ReaProject *, const char *, const char *, const char *))g_rec->GetFunc(
+                    "SetProjExtState");
             if (SetProjExtState) {
               SetProjExtState(nullptr, "MAGDA_TEST", "RESULT", result.Get());
               SetProjExtState(nullptr, "MAGDA_TEST", "ERROR", "");
@@ -622,18 +595,16 @@ void magdaAction(int command_id, int flag) {
             }
           } else {
             // Store error
-            void (*SetProjExtState)(ReaProject *, const char *, const char *,
-                                    const char *) =
-                (void (*)(ReaProject *, const char *, const char *,
-                          const char *))g_rec->GetFunc("SetProjExtState");
+            void (*SetProjExtState)(ReaProject *, const char *, const char *, const char *) =
+                (void (*)(ReaProject *, const char *, const char *, const char *))g_rec->GetFunc(
+                    "SetProjExtState");
             if (SetProjExtState) {
               SetProjExtState(nullptr, "MAGDA_TEST", "RESULT", "");
               SetProjExtState(nullptr, "MAGDA_TEST", "ERROR", error.Get());
             }
             if (ShowConsoleMsg) {
               char msg[512];
-              snprintf(msg, sizeof(msg), "MAGDA: Test action failed: %s\n",
-                       error.Get());
+              snprintf(msg, sizeof(msg), "MAGDA: Test action failed: %s\n", error.Get());
               ShowConsoleMsg(msg);
             }
           }
@@ -644,19 +615,15 @@ void magdaAction(int command_id, int flag) {
     // Test DSL interpreter: Execute MAGDA DSL from project state
     // This allows testing the new DSL interpreter without going through OpenAI
     {
-      void *(*GetProjExtState)(ReaProject *, const char *, const char *, char *,
-                               int) =
-          (void *(*)(ReaProject *, const char *, const char *, char *,
-                     int))g_rec->GetFunc("GetProjExtState");
-      void (*SetProjExtState)(ReaProject *, const char *, const char *,
-                              const char *) =
-          (void (*)(ReaProject *, const char *, const char *,
-                    const char *))g_rec->GetFunc("SetProjExtState");
+      void *(*GetProjExtState)(ReaProject *, const char *, const char *, char *, int) =
+          (void *(*)(ReaProject *, const char *, const char *, char *, int))g_rec->GetFunc(
+              "GetProjExtState");
+      void (*SetProjExtState)(ReaProject *, const char *, const char *, const char *) = (void (*)(
+          ReaProject *, const char *, const char *, const char *))g_rec->GetFunc("SetProjExtState");
 
       if (GetProjExtState) {
         char dsl_code[4096] = {0};
-        GetProjExtState(nullptr, "MAGDA_TEST", "DSL_CODE", dsl_code,
-                        sizeof(dsl_code));
+        GetProjExtState(nullptr, "MAGDA_TEST", "DSL_CODE", dsl_code, sizeof(dsl_code));
 
         if (dsl_code[0]) {
           // Create DSL interpreter and execute
@@ -672,8 +639,7 @@ void magdaAction(int command_id, int flag) {
           } else {
             if (SetProjExtState) {
               SetProjExtState(nullptr, "MAGDA_TEST", "DSL_RESULT", "ERROR");
-              SetProjExtState(nullptr, "MAGDA_TEST", "DSL_ERROR",
-                              interpreter.GetError());
+              SetProjExtState(nullptr, "MAGDA_TEST", "DSL_ERROR", interpreter.GetError());
             }
             if (ShowConsoleMsg) {
               char msg[512];
@@ -694,8 +660,7 @@ void magdaAction(int command_id, int flag) {
     if (g_imguiChat && g_imguiChat->IsAvailable()) {
       if (!g_imguiChat->RepeatLast()) {
         if (ShowConsoleMsg) {
-          ShowConsoleMsg(
-              "MAGDA: Nothing to repeat (no previous command or busy)\n");
+          ShowConsoleMsg("MAGDA: Nothing to repeat (no previous command or busy)\n");
         }
       }
     } else if (ShowConsoleMsg) {
@@ -731,8 +696,8 @@ void magdaAction(int command_id, int flag) {
 }
 
 // Static function for hookcommand2 - must be defined before entry point
-static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
-                         int relmode, HWND hwnd) {
+static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2, int relmode,
+                         HWND hwnd) {
   (void)sec;
   (void)val;
   (void)val2;
@@ -740,8 +705,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   (void)hwnd; // Suppress unused warnings
 
   // Only handle if IDs are allocated (non-zero) and command matches
-  if ((g_cmdMenuID != 0 && command == g_cmdMenuID) ||
-      (g_cmdOpen != 0 && command == g_cmdOpen) ||
+  if ((g_cmdMenuID != 0 && command == g_cmdMenuID) || (g_cmdOpen != 0 && command == g_cmdOpen) ||
       (g_cmdSettings != 0 && command == g_cmdSettings) ||
       (g_cmdApiKeys != 0 && command == g_cmdApiKeys) ||
       (g_cmdAbout != 0 && command == g_cmdAbout) ||
@@ -796,8 +760,7 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     int itemCount = GetMenuItemCount(hMenu);
     if (ShowConsoleMsg) {
       char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA: Initial menu count: %d items\n",
-               itemCount);
+      snprintf(msg, sizeof(msg), "MAGDA: Initial menu count: %d items\n", itemCount);
       ShowConsoleMsg(msg);
     }
 
@@ -899,9 +862,8 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
 
 // Reaper extension entry point
 extern "C" {
-REAPER_PLUGIN_DLL_EXPORT int
-REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
-                         reaper_plugin_info_t *rec) {
+REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
+                                                      reaper_plugin_info_t *rec) {
   if (!rec) {
     // Extension is being unloaded
     if (g_imguiPluginWindow) {
@@ -965,8 +927,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   g_rec = rec;
 
   // Get console message function for debugging
-  void (*ShowConsoleMsg)(const char *msg) =
-      (void (*)(const char *))rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *msg) = (void (*)(const char *))rec->GetFunc("ShowConsoleMsg");
 
   // Always try to show a message - even if ShowConsoleMsg is NULL, we'll
   // continue
@@ -986,13 +947,11 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   g_cmdScanPlugins = rec->Register("command_id", (void *)"MAGDA_ScanPlugins");
   g_cmdAnalyzeTrack = rec->Register("command_id", (void *)"MAGDA_AnalyzeTrack");
   g_cmdMixAnalyze = rec->Register("command_id", (void *)"MAGDA_MixAnalyze");
-  g_cmdMasterAnalyze =
-      rec->Register("command_id", (void *)"MAGDA_MasterAnalyze");
+  g_cmdMasterAnalyze = rec->Register("command_id", (void *)"MAGDA_MasterAnalyze");
   g_cmdJSFXEditor = rec->Register("command_id", (void *)"MAGDA_JSFXEditor");
   g_cmdTestExecute = rec->Register("command_id", (void *)"MAGDA_TestExecute");
   g_cmdTestDSL = rec->Register("command_id", (void *)"MAGDA_TestDSL");
-  g_cmdChatRepeatLast =
-      rec->Register("command_id", (void *)"MAGDA_ChatRepeatLast");
+  g_cmdChatRepeatLast = rec->Register("command_id", (void *)"MAGDA_ChatRepeatLast");
   g_cmdChatClear = rec->Register("command_id", (void *)"MAGDA_ChatClear");
   g_cmdChatCopy = rec->Register("command_id", (void *)"MAGDA_ChatCopy");
 
@@ -1002,41 +961,33 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
              "MAGDA: Allocated command IDs: Open=%d, Login=%d, Settings=%d, "
              "About=%d, Plugins=%d, Analyze=%d, MixAnalyze=%d, "
              "MasterAnalyze=%d, Test=%d\n",
-             g_cmdOpen, g_cmdLogin, g_cmdSettings, g_cmdAbout, g_cmdScanPlugins,
-             g_cmdAnalyzeTrack, g_cmdMixAnalyze, g_cmdMasterAnalyze,
-             g_cmdTestExecute);
+             g_cmdOpen, g_cmdLogin, g_cmdSettings, g_cmdAbout, g_cmdScanPlugins, g_cmdAnalyzeTrack,
+             g_cmdMixAnalyze, g_cmdMasterAnalyze, g_cmdTestExecute);
     ShowConsoleMsg(msg);
   }
 
   // Register actions for all menu items (using dynamically allocated IDs)
-  gaccel_register_t gaccel_open = {{0, 0, (unsigned short)g_cmdOpen},
-                                   "MAGDA: Open MAGDA"};
-  gaccel_register_t gaccel_login = {{0, 0, (unsigned short)g_cmdLogin},
-                                    "MAGDA: Login"};
-  gaccel_register_t gaccel_settings = {{0, 0, (unsigned short)g_cmdSettings},
-                                       "MAGDA: Settings"};
-  gaccel_register_t gaccel_api_keys = {{0, 0, (unsigned short)g_cmdApiKeys},
-                                       "MAGDA: API Keys"};
-  gaccel_register_t gaccel_about = {{0, 0, (unsigned short)g_cmdAbout},
-                                    "MAGDA: About"};
-  gaccel_register_t gaccel_scan_plugins = {
-      {0, 0, (unsigned short)g_cmdScanPlugins}, "MAGDA: Plugins"};
-  gaccel_register_t gaccel_analyze_track = {
-      {0, 0, (unsigned short)g_cmdAnalyzeTrack},
-      "MAGDA: Analyze Selected Track"};
-  gaccel_register_t gaccel_mix_analyze = {
-      {0, 0, (unsigned short)g_cmdMixAnalyze}, "MAGDA: Mix Analysis"};
-  gaccel_register_t gaccel_master_analyze = {
-      {0, 0, (unsigned short)g_cmdMasterAnalyze}, "MAGDA: Master Analysis"};
-  gaccel_register_t gaccel_jsfx_editor = {
-      {0, 0, (unsigned short)g_cmdJSFXEditor}, "MAGDA: JSFX Editor"};
-  gaccel_register_t gaccel_test_execute = {
-      {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
+  gaccel_register_t gaccel_open = {{0, 0, (unsigned short)g_cmdOpen}, "MAGDA: Open MAGDA"};
+  gaccel_register_t gaccel_login = {{0, 0, (unsigned short)g_cmdLogin}, "MAGDA: Login"};
+  gaccel_register_t gaccel_settings = {{0, 0, (unsigned short)g_cmdSettings}, "MAGDA: Settings"};
+  gaccel_register_t gaccel_api_keys = {{0, 0, (unsigned short)g_cmdApiKeys}, "MAGDA: API Keys"};
+  gaccel_register_t gaccel_about = {{0, 0, (unsigned short)g_cmdAbout}, "MAGDA: About"};
+  gaccel_register_t gaccel_scan_plugins = {{0, 0, (unsigned short)g_cmdScanPlugins},
+                                           "MAGDA: Plugins"};
+  gaccel_register_t gaccel_analyze_track = {{0, 0, (unsigned short)g_cmdAnalyzeTrack},
+                                            "MAGDA: Analyze Selected Track"};
+  gaccel_register_t gaccel_mix_analyze = {{0, 0, (unsigned short)g_cmdMixAnalyze},
+                                          "MAGDA: Mix Analysis"};
+  gaccel_register_t gaccel_master_analyze = {{0, 0, (unsigned short)g_cmdMasterAnalyze},
+                                             "MAGDA: Master Analysis"};
+  gaccel_register_t gaccel_jsfx_editor = {{0, 0, (unsigned short)g_cmdJSFXEditor},
+                                          "MAGDA: JSFX Editor"};
+  gaccel_register_t gaccel_test_execute = {{0, 0, (unsigned short)g_cmdTestExecute},
+                                           "MAGDA: Test Execute Action"};
   gaccel_register_t gaccel_test_dsl = {{0, 0, (unsigned short)g_cmdTestDSL},
                                        "MAGDA: Test DSL Interpreter"};
-  gaccel_register_t gaccel_chat_repeat_last = {
-      {0, 0, (unsigned short)g_cmdChatRepeatLast},
-      "MAGDA: Repeat Last Command"};
+  gaccel_register_t gaccel_chat_repeat_last = {{0, 0, (unsigned short)g_cmdChatRepeatLast},
+                                               "MAGDA: Repeat Last Command"};
   gaccel_register_t gaccel_chat_clear = {{0, 0, (unsigned short)g_cmdChatClear},
                                          "MAGDA: Clear Chat History"};
   gaccel_register_t gaccel_chat_copy = {{0, 0, (unsigned short)g_cmdChatCopy},
@@ -1094,14 +1045,12 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   }
   if (rec->Register("gaccel", &gaccel_test_execute)) {
     if (ShowConsoleMsg) {
-      ShowConsoleMsg(
-          "MAGDA: Registered 'Test Execute Action' (for headless testing)\n");
+      ShowConsoleMsg("MAGDA: Registered 'Test Execute Action' (for headless testing)\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_test_dsl)) {
     if (ShowConsoleMsg) {
-      ShowConsoleMsg(
-          "MAGDA: Registered 'Test DSL Interpreter' (for DSL testing)\n");
+      ShowConsoleMsg("MAGDA: Registered 'Test DSL Interpreter' (for DSL testing)\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_chat_repeat_last)) {
@@ -1132,8 +1081,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     g_pluginScanner->SaveToCache();
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg), "MAGDA: Scanned %d plugins on startup\n",
-               count);
+      snprintf(msg, sizeof(msg), "MAGDA: Scanned %d plugins on startup\n", count);
       ShowConsoleMsg(msg);
     }
   } else {

@@ -16,7 +16,7 @@ struct JSFXChatMessage {
   bool streaming_complete = false; // True when streaming is done
   std::string compile_error;       // Compile error if any
   bool compile_checked = false;    // True when compilation was attempted
-  int auto_fix_attempt = 0; // Which auto-fix attempt this is (0 = original)
+  int auto_fix_attempt = 0;        // Which auto-fix attempt this is (0 = original)
 };
 
 // File entry for browser
@@ -133,18 +133,14 @@ private:
   void (*m_ImGui_TextWrapped)(void *, const char *) = nullptr;
   void (*m_ImGui_TextColored)(void *, int, const char *) = nullptr;
   bool (*m_ImGui_Button)(void *, const char *, double *, double *) = nullptr;
-  bool (*m_ImGui_Selectable)(void *, const char *, bool *, int *, double *,
-                             double *) = nullptr;
-  bool (*m_ImGui_InputText)(void *, const char *, char *, int, int *,
-                            void *) = nullptr;
-  bool (*m_ImGui_InputTextMultiline)(void *, const char *, char *, int,
-                                     double *, double *, int *,
+  bool (*m_ImGui_Selectable)(void *, const char *, bool *, int *, double *, double *) = nullptr;
+  bool (*m_ImGui_InputText)(void *, const char *, char *, int, int *, void *) = nullptr;
+  bool (*m_ImGui_InputTextMultiline)(void *, const char *, char *, int, double *, double *, int *,
                                      void *) = nullptr;
   void (*m_ImGui_Separator)(void *) = nullptr;
   void (*m_ImGui_SameLine)(void *, double *, double *) = nullptr;
   void (*m_ImGui_Dummy)(void *, double, double) = nullptr;
-  bool (*m_ImGui_BeginChild)(void *, const char *, double *, double *, int *,
-                             int *) = nullptr;
+  bool (*m_ImGui_BeginChild)(void *, const char *, double *, double *, int *, int *) = nullptr;
   void (*m_ImGui_EndChild)(void *) = nullptr;
   void (*m_ImGui_SetNextWindowSize)(void *, double, double, int *) = nullptr;
   void (*m_ImGui_PushStyleColor)(void *, int, int) = nullptr;
@@ -153,13 +149,12 @@ private:
   double (*m_ImGui_GetTextLineHeight)(void *) = nullptr;
   void (*m_ImGui_BeginGroup)(void *) = nullptr;
   void (*m_ImGui_EndGroup)(void *) = nullptr;
-  bool (*m_ImGui_BeginTable)(void *, const char *, int, int *, double *,
-                             double *, double *) = nullptr;
+  bool (*m_ImGui_BeginTable)(void *, const char *, int, int *, double *, double *,
+                             double *) = nullptr;
   void (*m_ImGui_EndTable)(void *) = nullptr;
   void (*m_ImGui_TableNextRow)(void *, int *, double *) = nullptr;
   void (*m_ImGui_TableNextColumn)(void *) = nullptr;
-  void (*m_ImGui_TableSetupColumn)(void *, const char *, int *, double *,
-                                   double *) = nullptr;
+  void (*m_ImGui_TableSetupColumn)(void *, const char *, int *, double *, double *) = nullptr;
   int (*m_ImGui_GetStyleColor)(void *, int) = nullptr;
   void (*m_ImGui_SetCursorPosY)(void *, double) = nullptr;
   double (*m_ImGui_GetCursorPosY)(void *) = nullptr;
@@ -173,13 +168,11 @@ private:
 
   // Popup/context menu functions
   bool (*m_ImGui_BeginPopupContextItem)(void *, const char *, int *) = nullptr;
-  bool (*m_ImGui_BeginPopupContextWindow)(void *, const char *,
-                                          int *) = nullptr;
+  bool (*m_ImGui_BeginPopupContextWindow)(void *, const char *, int *) = nullptr;
   bool (*m_ImGui_BeginPopup)(void *, const char *, int *) = nullptr;
   void (*m_ImGui_OpenPopup)(void *, const char *, int *) = nullptr;
   void (*m_ImGui_EndPopup)(void *) = nullptr;
-  bool (*m_ImGui_MenuItem)(void *, const char *, const char *, bool *,
-                           bool *) = nullptr;
+  bool (*m_ImGui_MenuItem)(void *, const char *, const char *, bool *, bool *) = nullptr;
   void (*m_ImGui_CloseCurrentPopup)(void *) = nullptr;
 
   // Keyboard input functions

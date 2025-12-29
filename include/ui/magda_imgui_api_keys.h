@@ -38,13 +38,11 @@ public:
 
 private:
   // ReaImGui function pointers
-  void *(*m_ImGui_CreateContext)(const char *label,
-                                 int *config_flagsInOptional);
+  void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
   bool (*m_ImGui_Begin)(void *ctx, const char *name, bool *p_openInOutOptional,
                         int *flagsInOptional);
   void (*m_ImGui_End)(void *ctx);
-  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h,
-                                    int *condInOptional);
+  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h, int *condInOptional);
   void (*m_ImGui_Text)(void *ctx, const char *text);
   void (*m_ImGui_TextColored)(void *ctx, int col_rgba, const char *text);
   bool (*m_ImGui_Button)(void *ctx, const char *label, double *size_wInOptional,
@@ -54,13 +52,10 @@ private:
   void (*m_ImGui_Separator)(void *ctx);
   void (*m_ImGui_Spacing)(void *ctx);
   bool (*m_ImGui_Checkbox)(void *ctx, const char *label, bool *v);
-  bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf,
-                            int buf_size, int *flagsInOptional,
-                            void *callbackInOptional);
-  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label,
-                                    const char *hint, char *buf, int buf_size,
-                                    int *flagsInOptional,
-                                    void *callbackInOptional);
+  bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf, int buf_size,
+                            int *flagsInOptional, void *callbackInOptional);
+  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label, const char *hint, char *buf,
+                                    int buf_size, int *flagsInOptional, void *callbackInOptional);
   void (*m_ImGui_PushItemWidth)(void *ctx, double item_width);
   void (*m_ImGui_PopItemWidth)(void *ctx);
   void (*m_ImGui_PushStyleColor)(void *ctx, int idx, int col_rgba);

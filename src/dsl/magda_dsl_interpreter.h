@@ -46,9 +46,7 @@ struct Token {
       : type(t), value(v), line(l), col(c) {}
 
   bool Is(TokenType t) const { return type == t; }
-  bool Is(const char *id) const {
-    return type == TokenType::IDENTIFIER && value == id;
-  }
+  bool Is(const char *id) const { return type == TokenType::IDENTIFIER && value == id; }
 };
 
 // ============================================================================
@@ -189,8 +187,7 @@ private:
   bool AddAutomation(MediaTrack *track, const Params &params);
 
   // Filter operations
-  bool FilterTracks(const std::string &field, const std::string &op,
-                    const std::string &value);
+  bool FilterTracks(const std::string &field, const std::string &op, const std::string &value);
   bool ApplyToFilteredTracks(const std::string &method, const Params &params);
 
   // Utility

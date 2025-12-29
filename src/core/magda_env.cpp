@@ -23,8 +23,7 @@ void MagdaEnv::LoadEnvFile() {
   s_envLoaded = true;
 
   // Try to find .env file - look in current directory and parent directories
-  const char *envPaths[] = {".env", "../.env", "../../.env", "../../../.env",
-                            nullptr};
+  const char *envPaths[] = {".env", "../.env", "../../.env", "../../../.env", nullptr};
 
   FILE *fp = nullptr;
   for (int i = 0; envPaths[i]; i++) {
@@ -40,8 +39,7 @@ void MagdaEnv::LoadEnvFile() {
     if (!home) {
 #ifdef _WIN32
       char path[MAX_PATH];
-      if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL,
-                                     SHGFP_TYPE_CURRENT, path))) {
+      if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, path))) {
         home = path;
       }
 #endif
@@ -52,16 +50,14 @@ void MagdaEnv::LoadEnvFile() {
       // Windows: %APPDATA%\REAPER\UserPlugins\.env
 #ifdef _WIN32
       char envPath[MAX_PATH];
-      snprintf(envPath, sizeof(envPath),
-               "%s\\AppData\\Roaming\\REAPER\\UserPlugins\\.env", home);
+      snprintf(envPath, sizeof(envPath), "%s\\AppData\\Roaming\\REAPER\\UserPlugins\\.env", home);
 #elif defined(__APPLE__)
       char envPath[512];
-      snprintf(envPath, sizeof(envPath),
-               "%s/Library/Application Support/REAPER/UserPlugins/.env", home);
+      snprintf(envPath, sizeof(envPath), "%s/Library/Application Support/REAPER/UserPlugins/.env",
+               home);
 #else
       char envPath[512];
-      snprintf(envPath, sizeof(envPath), "%s/.config/REAPER/UserPlugins/.env",
-               home);
+      snprintf(envPath, sizeof(envPath), "%s/.config/REAPER/UserPlugins/.env", home);
 #endif
       fp = fopen(envPath, "r");
     }
@@ -73,8 +69,7 @@ void MagdaEnv::LoadEnvFile() {
     if (!home) {
 #ifdef _WIN32
       char path[MAX_PATH];
-      if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL,
-                                     SHGFP_TYPE_CURRENT, path))) {
+      if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, path))) {
         home = path;
       }
 #endif

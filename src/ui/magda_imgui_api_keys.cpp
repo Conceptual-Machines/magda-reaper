@@ -62,7 +62,9 @@ struct ThemeColors {
 };
 static ThemeColors g_theme;
 
-MagdaImGuiApiKeys::MagdaImGuiApiKeys() { LoadSettings(); }
+MagdaImGuiApiKeys::MagdaImGuiApiKeys() {
+  LoadSettings();
+}
 
 MagdaImGuiApiKeys::~MagdaImGuiApiKeys() {}
 
@@ -71,44 +73,32 @@ bool MagdaImGuiApiKeys::Initialize(reaper_plugin_info_t *rec) {
     return false;
 
   // Load ReaImGui function pointers
-  m_ImGui_CreateContext =
-      (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
-  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc(
-      "ImGui_Begin");
+  m_ImGui_CreateContext = (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
+  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc("ImGui_Begin");
   m_ImGui_End = (void (*)(void *))rec->GetFunc("ImGui_End");
-  m_ImGui_SetNextWindowSize = (void (*)(
-      void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
+  m_ImGui_SetNextWindowSize =
+      (void (*)(void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
   m_ImGui_Text = (void (*)(void *, const char *))rec->GetFunc("ImGui_Text");
-  m_ImGui_TextColored =
-      (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
-  m_ImGui_Button = (bool (*)(void *, const char *, double *,
-                             double *))rec->GetFunc("ImGui_Button");
-  m_ImGui_SameLine =
-      (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
+  m_ImGui_TextColored = (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
+  m_ImGui_Button = (bool (*)(void *, const char *, double *, double *))rec->GetFunc("ImGui_Button");
+  m_ImGui_SameLine = (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
   m_ImGui_Separator = (void (*)(void *))rec->GetFunc("ImGui_Separator");
   m_ImGui_Spacing = (void (*)(void *))rec->GetFunc("ImGui_Spacing");
-  m_ImGui_Checkbox =
-      (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
-  m_ImGui_InputText = (bool (*)(void *, const char *, char *, int, int *,
-                                void *))rec->GetFunc("ImGui_InputText");
-  m_ImGui_InputTextWithHint =
-      (bool (*)(void *, const char *, const char *, char *, int, int *,
-                void *))rec->GetFunc("ImGui_InputTextWithHint");
-  m_ImGui_PushItemWidth =
-      (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
+  m_ImGui_Checkbox = (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
+  m_ImGui_InputText =
+      (bool (*)(void *, const char *, char *, int, int *, void *))rec->GetFunc("ImGui_InputText");
+  m_ImGui_InputTextWithHint = (bool (*)(void *, const char *, const char *, char *, int, int *,
+                                        void *))rec->GetFunc("ImGui_InputTextWithHint");
+  m_ImGui_PushItemWidth = (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
   m_ImGui_PopItemWidth = (void (*)(void *))rec->GetFunc("ImGui_PopItemWidth");
-  m_ImGui_PushStyleColor =
-      (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
-  m_ImGui_PopStyleColor =
-      (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
+  m_ImGui_PushStyleColor = (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
+  m_ImGui_PopStyleColor = (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
 
   // Load constant getter functions
-  m_ImGui_InputTextFlags_Password =
-      (int (*)())rec->GetFunc("ImGui_InputTextFlags_Password");
+  m_ImGui_InputTextFlags_Password = (int (*)())rec->GetFunc("ImGui_InputTextFlags_Password");
 
-  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
-                m_ImGui_Text && m_ImGui_Button && m_ImGui_InputText &&
-                m_ImGui_InputTextFlags_Password;
+  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End && m_ImGui_Text &&
+                m_ImGui_Button && m_ImGui_InputText && m_ImGui_InputTextFlags_Password;
 
   return m_available;
 }
@@ -118,8 +108,7 @@ void MagdaImGuiApiKeys::LoadSettings() {
     return;
 
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc(
-          "GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
   if (!GetExtState)
     return;
 
@@ -149,10 +138,8 @@ void MagdaImGuiApiKeys::SaveSettings() {
   if (!g_rec)
     return;
 
-  void (*SetExtState)(const char *section, const char *key, const char *value,
-                      bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
-          "SetExtState");
+  void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
   if (!SetExtState)
     return;
 
@@ -177,8 +164,7 @@ const char *MagdaImGuiApiKeys::GetOpenAIApiKey() {
     return "";
 
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc(
-          "GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
   if (!GetExtState)
     return "";
 
@@ -190,10 +176,8 @@ void MagdaImGuiApiKeys::SetOpenAIApiKey(const char *key) {
   if (!g_rec)
     return;
 
-  void (*SetExtState)(const char *section, const char *key_name,
-                      const char *value, bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
-          "SetExtState");
+  void (*SetExtState)(const char *section, const char *key_name, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
   if (!SetExtState)
     return;
 
@@ -210,7 +194,9 @@ void MagdaImGuiApiKeys::Show() {
   LoadSettings();
 }
 
-void MagdaImGuiApiKeys::Hide() { m_visible = false; }
+void MagdaImGuiApiKeys::Hide() {
+  m_visible = false;
+}
 
 void MagdaImGuiApiKeys::Toggle() {
   if (m_visible) {
@@ -270,14 +256,12 @@ void MagdaImGuiApiKeys::ValidateOpenAIKey() {
     if (success) {
       OnValidationComplete(true, "API key is valid!");
     } else {
-      OnValidationComplete(false, error.GetLength() > 0 ? error.Get()
-                                                        : "Invalid API key");
+      OnValidationComplete(false, error.GetLength() > 0 ? error.Get() : "Invalid API key");
     }
   }).detach();
 }
 
-void MagdaImGuiApiKeys::OnValidationComplete(bool success,
-                                             const char *message) {
+void MagdaImGuiApiKeys::OnValidationComplete(bool success, const char *message) {
   m_openaiKeyStatus = success ? ApiKeyStatus::Valid : ApiKeyStatus::Invalid;
   m_statusMessage = message ? message : "";
 
@@ -308,8 +292,7 @@ void MagdaImGuiApiKeys::Render() {
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, g_theme.inputBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered,
-                           g_theme.buttonHover);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered, g_theme.buttonHover);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgActive, g_theme.buttonBg);
     styleColorCount++;
@@ -323,8 +306,7 @@ void MagdaImGuiApiKeys::Render() {
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBg, g_theme.titleBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive,
-                           g_theme.titleBgActive);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive, g_theme.titleBgActive);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgCollapsed, g_theme.titleBg);
     styleColorCount++;
@@ -387,8 +369,8 @@ void MagdaImGuiApiKeys::Render() {
   m_ImGui_Text(m_ctx, "API Key:");
   int inputFlags = m_ImGui_InputTextFlags_Password();
   if (m_ImGui_InputText) {
-    m_ImGui_InputText(m_ctx, "##apikey", m_openaiApiKey, sizeof(m_openaiApiKey),
-                      &inputFlags, nullptr);
+    m_ImGui_InputText(m_ctx, "##apikey", m_openaiApiKey, sizeof(m_openaiApiKey), &inputFlags,
+                      nullptr);
   }
 
   if (m_ImGui_PopItemWidth) {

@@ -13,7 +13,9 @@ MagdaDSLContext &MagdaDSLContext::Get() {
   return instance;
 }
 
-MagdaDSLContext::MagdaDSLContext() { Clear(); }
+MagdaDSLContext::MagdaDSLContext() {
+  Clear();
+}
 
 // ============================================================================
 // Clear
@@ -35,12 +37,10 @@ void MagdaDSLContext::SetCreatedTrack(int index, const char *name) {
   m_createdTrackName = name ? name : "";
 
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA Context: Track created - index=%d name='%s'\n", index,
+      snprintf(msg, sizeof(msg), "MAGDA Context: Track created - index=%d name='%s'\n", index,
                m_createdTrackName.c_str());
       ShowConsoleMsg(msg);
     }
@@ -56,12 +56,10 @@ void MagdaDSLContext::SetCreatedClip(int trackIndex, int itemIndex) {
   m_createdClipItemIndex = itemIndex;
 
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA Context: Clip created - track=%d item=%d\n", trackIndex,
+      snprintf(msg, sizeof(msg), "MAGDA Context: Clip created - track=%d item=%d\n", trackIndex,
                itemIndex);
       ShowConsoleMsg(msg);
     }
@@ -77,8 +75,7 @@ int MagdaDSLContext::FindTrackByName(const char *name) {
     return -1;
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
-  MediaTrack *(*GetTrack)(void *, int) =
-      (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
+  MediaTrack *(*GetTrack)(void *, int) = (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
   bool (*GetTrackName)(MediaTrack *, char *, int) =
       (bool (*)(MediaTrack *, char *, int))g_rec->GetFunc("GetTrackName");
 
@@ -113,9 +110,8 @@ int MagdaDSLContext::ResolveTargetTrack(const char *trackName) {
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg),
-                   "MAGDA Context: Resolved track '%s' to index %d\n",
-                   trackName, found);
+          snprintf(msg, sizeof(msg), "MAGDA Context: Resolved track '%s' to index %d\n", trackName,
+                   found);
           ShowConsoleMsg(msg);
         }
       }
@@ -130,8 +126,7 @@ int MagdaDSLContext::ResolveTargetTrack(const char *trackName) {
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char msg[256];
-        snprintf(msg, sizeof(msg),
-                 "MAGDA Context: Using created track %d ('%s')\n",
+        snprintf(msg, sizeof(msg), "MAGDA Context: Using created track %d ('%s')\n",
                  m_createdTrackIndex, m_createdTrackName.c_str());
         ShowConsoleMsg(msg);
       }
@@ -144,10 +139,8 @@ int MagdaDSLContext::ResolveTargetTrack(const char *trackName) {
     return 0;
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
-  MediaTrack *(*GetTrack)(void *, int) =
-      (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
-  int (*IsTrackSelected)(MediaTrack *) =
-      (int (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
+  MediaTrack *(*GetTrack)(void *, int) = (MediaTrack * (*)(void *, int)) g_rec->GetFunc("GetTrack");
+  int (*IsTrackSelected)(MediaTrack *) = (int (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
 
   if (!GetNumTracks || !GetTrack || !IsTrackSelected)
     return 0;
@@ -161,8 +154,7 @@ int MagdaDSLContext::ResolveTargetTrack(const char *trackName) {
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA Context: Using selected track %d\n",
-                   i);
+          snprintf(msg, sizeof(msg), "MAGDA Context: Using selected track %d\n", i);
           ShowConsoleMsg(msg);
         }
       }
@@ -172,8 +164,7 @@ int MagdaDSLContext::ResolveTargetTrack(const char *trackName) {
 
   // Fallback to track 0
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA Context: No track context, using track 0\n");
     }

@@ -79,8 +79,7 @@ static void EscapeJSONString(const char *input, WDL_FastString &output) {
   }
 }
 
-char *MagdaOpenAI::BuildRequestJSON(const char *question,
-                                    const char *system_prompt,
+char *MagdaOpenAI::BuildRequestJSON(const char *question, const char *system_prompt,
                                     const char *state_json) {
   WDL_FastString json;
   WDL_FastString escaped;
@@ -152,10 +151,8 @@ char *MagdaOpenAI::BuildRequestJSON(const char *question,
   return result;
 }
 
-bool MagdaOpenAI::ExtractDSLFromResponse(const char *response_json,
-                                         int response_len,
-                                         WDL_FastString &out_dsl,
-                                         WDL_FastString &error_msg) {
+bool MagdaOpenAI::ExtractDSLFromResponse(const char *response_json, int response_len,
+                                         WDL_FastString &out_dsl, WDL_FastString &error_msg) {
   if (!response_json || response_len <= 0) {
     error_msg.Set("Empty response from API");
     return false;
@@ -211,12 +208,10 @@ bool MagdaOpenAI::ExtractDSLFromResponse(const char *response_json,
     if (strcmp(type_elem->m_value, "custom_tool_call") == 0) {
       // Check if this is our magda_dsl tool
       wdl_json_element *name_elem = item->get_item_by_name("name");
-      if (name_elem && name_elem->m_value_string &&
-          strcmp(name_elem->m_value, "magda_dsl") == 0) {
+      if (name_elem && name_elem->m_value_string && strcmp(name_elem->m_value, "magda_dsl") == 0) {
         // DSL code is directly in the "input" field (raw text, not JSON)
         wdl_json_element *input_elem = item->get_item_by_name("input");
-        if (input_elem && input_elem->m_value_string &&
-            input_elem->m_value[0]) {
+        if (input_elem && input_elem->m_value_string && input_elem->m_value[0]) {
           out_dsl.Set(input_elem->m_value);
           return true;
         }
@@ -267,9 +262,8 @@ bool MagdaOpenAI::ExtractDSLFromResponse(const char *response_json,
 
 #ifdef _WIN32
 // Windows WinHTTP implementation
-bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
-                                   int post_data_len, WDL_FastString &response,
-                                   WDL_FastString &error_msg) {
+bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data, int post_data_len,
+                                   WDL_FastString &response, WDL_FastString &error_msg) {
   HINTERNET hSession = nullptr;
   HINTERNET hConnect = nullptr;
   HINTERNET hRequest = nullptr;
@@ -292,8 +286,8 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
     return false;
   }
 
-  hSession = WinHttpOpen(L"MAGDA/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-                         WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+  hSession = WinHttpOpen(L"MAGDA/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
+                         WINHTTP_NO_PROXY_BYPASS, 0);
   if (!hSession) {
     error_msg.Set("Failed to initialize WinHTTP");
     return false;
@@ -308,8 +302,7 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
   wchar_t *hostname_w = new wchar_t[hostname_len];
   MultiByteToWideChar(CP_UTF8, 0, hostname, -1, hostname_w, hostname_len);
 
-  hConnect =
-      WinHttpConnect(hSession, hostname_w, INTERNET_DEFAULT_HTTPS_PORT, 0);
+  hConnect = WinHttpConnect(hSession, hostname_w, INTERNET_DEFAULT_HTTPS_PORT, 0);
   delete[] hostname_w;
 
   if (!hConnect) {
@@ -323,9 +316,8 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
   wchar_t *path_w = new wchar_t[path_len];
   MultiByteToWideChar(CP_UTF8, 0, path, -1, path_w, path_len);
 
-  hRequest =
-      WinHttpOpenRequest(hConnect, L"POST", path_w, nullptr, WINHTTP_NO_REFERER,
-                         WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+  hRequest = WinHttpOpenRequest(hConnect, L"POST", path_w, nullptr, WINHTTP_NO_REFERER,
+                                WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
   delete[] path_w;
 
   if (!hRequest) {
@@ -337,15 +329,13 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
 
   // Set headers
   wchar_t headers[1024];
-  swprintf(headers, 1024,
-           L"Content-Type: application/json\r\nAuthorization: Bearer %S\r\n",
+  swprintf(headers, 1024, L"Content-Type: application/json\r\nAuthorization: Bearer %S\r\n",
            m_api_key.Get());
-  WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1,
-                           WINHTTP_ADDREQ_FLAG_ADD);
+  WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
 
   // Send request
-  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                          (LPVOID)post_data, post_data_len, post_data_len, 0)) {
+  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)post_data,
+                          post_data_len, post_data_len, 0)) {
     error_msg.Set("Failed to send request");
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
@@ -365,15 +355,13 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
   // Check status code
   DWORD statusCode = 0;
   DWORD statusCodeSize = sizeof(statusCode);
-  WinHttpQueryHeaders(hRequest,
-                      WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode,
-                      &statusCodeSize, WINHTTP_NO_HEADER_INDEX);
+  WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize,
+                      WINHTTP_NO_HEADER_INDEX);
 
   // Read response body
   DWORD bytesAvailable = 0;
-  while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) &&
-         bytesAvailable > 0) {
+  while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
     char *buffer = (char *)malloc(bytesAvailable + 1);
     if (!buffer)
       break;
@@ -387,8 +375,7 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
   }
 
   if (statusCode != 200) {
-    error_msg.SetFormatted(512, "HTTP error %lu: %.200s", statusCode,
-                           response.Get());
+    error_msg.SetFormatted(512, "HTTP error %lu: %.200s", statusCode, response.Get());
   } else {
     success = true;
   }
@@ -405,8 +392,7 @@ struct CurlWriteData {
   WDL_FastString *response;
 };
 
-static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb,
-                                void *userp) {
+static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
   size_t realsize = size * nmemb;
   CurlWriteData *data = (CurlWriteData *)userp;
   if (data->response) {
@@ -426,15 +412,13 @@ struct CurlStreamWriteData {
 };
 
 // SSE streaming write callback - processes OpenAI streaming events
-static size_t CurlStreamWriteCallback(void *contents, size_t size, size_t nmemb,
-                                      void *userp) {
+static size_t CurlStreamWriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
   size_t total_size = size * nmemb;
   CurlStreamWriteData *data = (CurlStreamWriteData *)userp;
   char *ptr = (char *)contents;
 
   for (size_t i = 0; i < total_size; i++) {
-    if (ptr[i] == '\n' ||
-        data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
+    if (ptr[i] == '\n' || data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
       data->line_buffer[data->line_pos] = '\0';
 
       if (data->line_pos > 0) {
@@ -452,8 +436,7 @@ static size_t CurlStreamWriteCallback(void *contents, size_t size, size_t nmemb,
           } else {
             // Parse JSON to extract text delta
             wdl_json_parser parser;
-            wdl_json_element *root =
-                parser.parse(json_data, (int)strlen(json_data));
+            wdl_json_element *root = parser.parse(json_data, (int)strlen(json_data));
 
             if (!parser.m_err && root) {
               wdl_json_element *type_elem = root->get_item_by_name("type");
@@ -462,34 +445,25 @@ static size_t CurlStreamWriteCallback(void *contents, size_t size, size_t nmemb,
 
                 // Handle text delta events (for plain text output)
                 if (strcmp(event_type, "response.output_text.delta") == 0) {
-                  wdl_json_element *delta_elem =
-                      root->get_item_by_name("delta");
-                  if (delta_elem && delta_elem->m_value_string &&
-                      delta_elem->m_value) {
+                  wdl_json_element *delta_elem = root->get_item_by_name("delta");
+                  if (delta_elem && delta_elem->m_value_string && delta_elem->m_value) {
                     // Call callback with text chunk
                     if (data->callback) {
                       data->callback(delta_elem->m_value, false);
                     }
                     data->received_content = true;
                   }
-                } else if (strcmp(event_type,
-                                  "response.function_call_arguments.delta") ==
-                           0) {
+                } else if (strcmp(event_type, "response.function_call_arguments.delta") == 0) {
                   // CFG grammar tool call streaming (for JSFX/DSL output)
-                  wdl_json_element *delta_elem =
-                      root->get_item_by_name("delta");
-                  if (delta_elem && delta_elem->m_value_string &&
-                      delta_elem->m_value) {
+                  wdl_json_element *delta_elem = root->get_item_by_name("delta");
+                  if (delta_elem && delta_elem->m_value_string && delta_elem->m_value) {
                     if (data->callback) {
                       data->callback(delta_elem->m_value, false);
                     }
                     data->received_content = true;
                   }
-                } else if (strcmp(event_type, "response.output_text.done") ==
-                               0 ||
-                           strcmp(event_type,
-                                  "response.function_call_arguments.done") ==
-                               0) {
+                } else if (strcmp(event_type, "response.output_text.done") == 0 ||
+                           strcmp(event_type, "response.function_call_arguments.done") == 0) {
                   // Text/arguments output complete - mark content received
                   data->received_content = true;
                 } else if (strcmp(event_type, "response.done") == 0 ||
@@ -501,26 +475,20 @@ static size_t CurlStreamWriteCallback(void *contents, size_t size, size_t nmemb,
                   }
                 } else if (strcmp(event_type, "response.failed") == 0) {
                   // Response failed - extract error from response.error.message
-                  wdl_json_element *response_elem =
-                      root->get_item_by_name("response");
+                  wdl_json_element *response_elem = root->get_item_by_name("response");
                   if (response_elem) {
-                    wdl_json_element *error_elem =
-                        response_elem->get_item_by_name("error");
+                    wdl_json_element *error_elem = response_elem->get_item_by_name("error");
                     if (error_elem) {
-                      wdl_json_element *msg_elem =
-                          error_elem->get_item_by_name("message");
-                      if (msg_elem && msg_elem->m_value_string &&
-                          msg_elem->m_value) {
+                      wdl_json_element *msg_elem = error_elem->get_item_by_name("message");
+                      if (msg_elem && msg_elem->m_value_string && msg_elem->m_value) {
                         data->error_msg.Set(msg_elem->m_value);
                       }
                     }
                   }
                 } else if (strcmp(event_type, "error") == 0) {
                   // Error event
-                  wdl_json_element *msg_elem =
-                      root->get_item_by_name("message");
-                  if (msg_elem && msg_elem->m_value_string &&
-                      msg_elem->m_value) {
+                  wdl_json_element *msg_elem = root->get_item_by_name("message");
+                  if (msg_elem && msg_elem->m_value_string && msg_elem->m_value) {
                     data->error_msg.Set(msg_elem->m_value);
                   }
                 }
@@ -538,9 +506,8 @@ static size_t CurlStreamWriteCallback(void *contents, size_t size, size_t nmemb,
   return total_size;
 }
 
-bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
-                                   int post_data_len, WDL_FastString &response,
-                                   WDL_FastString &error_msg) {
+bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data, int post_data_len,
+                                   WDL_FastString &response, WDL_FastString &error_msg) {
   CURL *curl = curl_easy_init();
   if (!curl) {
     error_msg.Set("Failed to initialize curl");
@@ -565,8 +532,7 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
   headers = curl_slist_append(headers, "Content-Type: application/json");
 
   char auth_header[512];
-  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
-           m_api_key.Get());
+  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_api_key.Get());
   headers = curl_slist_append(headers, auth_header);
 
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -584,9 +550,8 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char log_msg[2048];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA OpenAI: HTTP %ld, Response: %.1500s\n", response_code,
-                 response.Get());
+        snprintf(log_msg, sizeof(log_msg), "MAGDA OpenAI: HTTP %ld, Response: %.1500s\n",
+                 response_code, response.Get());
         ShowConsoleMsg(log_msg);
       }
     }
@@ -594,8 +559,7 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
     if (response_code == 200) {
       success = true;
     } else {
-      error_msg.SetFormatted(512, "HTTP error %ld: %.200s", response_code,
-                             response.Get());
+      error_msg.SetFormatted(512, "HTTP error %ld: %.200s", response_code, response.Get());
     }
   } else {
     error_msg.Set(curl_easy_strerror(res));
@@ -612,16 +576,12 @@ bool MagdaOpenAI::SendHTTPSRequest(const char *url, const char *post_data,
 // ============================================================================
 
 bool MagdaOpenAI::GenerateDSL(const char *question, const char *system_prompt,
-                              WDL_FastString &out_dsl,
-                              WDL_FastString &error_msg) {
-  return GenerateDSLWithState(question, system_prompt, nullptr, out_dsl,
-                              error_msg);
+                              WDL_FastString &out_dsl, WDL_FastString &error_msg) {
+  return GenerateDSLWithState(question, system_prompt, nullptr, out_dsl, error_msg);
 }
 
-bool MagdaOpenAI::GenerateDSLWithState(const char *question,
-                                       const char *system_prompt,
-                                       const char *state_json,
-                                       WDL_FastString &out_dsl,
+bool MagdaOpenAI::GenerateDSLWithState(const char *question, const char *system_prompt,
+                                       const char *state_json, WDL_FastString &out_dsl,
                                        WDL_FastString &error_msg) {
   if (!HasAPIKey()) {
     error_msg.Set("OpenAI API key not configured");
@@ -635,12 +595,11 @@ bool MagdaOpenAI::GenerateDSLWithState(const char *question,
 
   // Log request
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA OpenAI: Generating DSL for: %.100s%s\n",
-               question, strlen(question) > 100 ? "..." : "");
+      snprintf(msg, sizeof(msg), "MAGDA OpenAI: Generating DSL for: %.100s%s\n", question,
+               strlen(question) > 100 ? "..." : "");
       ShowConsoleMsg(msg);
     }
   }
@@ -654,12 +613,10 @@ bool MagdaOpenAI::GenerateDSLWithState(const char *question,
 
   // Log request for debugging (truncated)
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[2048];
-      snprintf(msg, sizeof(msg),
-               "MAGDA OpenAI: Request JSON (first 1000 chars): %.1000s%s\n",
+      snprintf(msg, sizeof(msg), "MAGDA OpenAI: Request JSON (first 1000 chars): %.1000s%s\n",
                request_json, strlen(request_json) > 1000 ? "..." : "");
       ShowConsoleMsg(msg);
     }
@@ -667,9 +624,8 @@ bool MagdaOpenAI::GenerateDSLWithState(const char *question,
 
   // Make API request
   WDL_FastString response;
-  bool success =
-      SendHTTPSRequest("https://api.openai.com/v1/responses", request_json,
-                       (int)strlen(request_json), response, error_msg);
+  bool success = SendHTTPSRequest("https://api.openai.com/v1/responses", request_json,
+                                  (int)strlen(request_json), response, error_msg);
   free(request_json);
 
   if (!success) {
@@ -677,21 +633,17 @@ bool MagdaOpenAI::GenerateDSLWithState(const char *question,
   }
 
   // Extract DSL from response
-  if (!ExtractDSLFromResponse(response.Get(), response.GetLength(), out_dsl,
-                              error_msg)) {
+  if (!ExtractDSLFromResponse(response.Get(), response.GetLength(), out_dsl, error_msg)) {
     return false;
   }
 
   // Log success
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[512];
-      snprintf(msg, sizeof(msg),
-               "MAGDA OpenAI: Generated DSL (%d chars): %.100s%s\n",
-               out_dsl.GetLength(), out_dsl.Get(),
-               out_dsl.GetLength() > 100 ? "..." : "");
+      snprintf(msg, sizeof(msg), "MAGDA OpenAI: Generated DSL (%d chars): %.100s%s\n",
+               out_dsl.GetLength(), out_dsl.Get(), out_dsl.GetLength() > 100 ? "..." : "");
       ShowConsoleMsg(msg);
     }
   }
@@ -699,17 +651,14 @@ bool MagdaOpenAI::GenerateDSLWithState(const char *question,
   return true;
 }
 
-bool MagdaOpenAI::GenerateDSLStream(const char *question,
-                                    const char *system_prompt,
-                                    const char *state_json,
-                                    StreamCallback callback,
+bool MagdaOpenAI::GenerateDSLStream(const char *question, const char *system_prompt,
+                                    const char *state_json, StreamCallback callback,
                                     WDL_FastString &error_msg) {
   // For now, use non-streaming implementation and call callback once at end
   // TODO: Implement true streaming with SSE parsing
 
   WDL_FastString dsl;
-  bool success =
-      GenerateDSLWithState(question, system_prompt, state_json, dsl, error_msg);
+  bool success = GenerateDSLWithState(question, system_prompt, state_json, dsl, error_msg);
 
   if (success && callback) {
     callback(dsl.Get(), true);
@@ -734,8 +683,8 @@ bool MagdaOpenAI::ValidateAPIKey(WDL_FastString &error_msg) {
   HINTERNET hRequest = nullptr;
   bool success = false;
 
-  hSession = WinHttpOpen(L"MAGDA/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-                         WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+  hSession = WinHttpOpen(L"MAGDA/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
+                         WINHTTP_NO_PROXY_BYPASS, 0);
   if (!hSession) {
     error_msg.Set("Failed to initialize WinHTTP");
     return false;
@@ -743,8 +692,7 @@ bool MagdaOpenAI::ValidateAPIKey(WDL_FastString &error_msg) {
 
   WinHttpSetTimeouts(hSession, 10000, 10000, 10000, 10000);
 
-  hConnect = WinHttpConnect(hSession, L"api.openai.com",
-                            INTERNET_DEFAULT_HTTPS_PORT, 0);
+  hConnect = WinHttpConnect(hSession, L"api.openai.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
   if (!hConnect) {
     error_msg.Set("Failed to connect");
     WinHttpCloseHandle(hSession);
@@ -752,9 +700,8 @@ bool MagdaOpenAI::ValidateAPIKey(WDL_FastString &error_msg) {
   }
 
   // GET request to /v1/models
-  hRequest = WinHttpOpenRequest(
-      hConnect, L"GET", L"/v1/models", nullptr, WINHTTP_NO_REFERER,
-      WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+  hRequest = WinHttpOpenRequest(hConnect, L"GET", L"/v1/models", nullptr, WINHTTP_NO_REFERER,
+                                WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
   if (!hRequest) {
     error_msg.Set("Failed to create request");
     WinHttpCloseHandle(hConnect);
@@ -765,11 +712,10 @@ bool MagdaOpenAI::ValidateAPIKey(WDL_FastString &error_msg) {
   // Set Authorization header
   wchar_t headers[512];
   swprintf(headers, 512, L"Authorization: Bearer %S", m_api_key.Get());
-  WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1,
-                           WINHTTP_ADDREQ_FLAG_ADD);
+  WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
 
-  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                          WINHTTP_NO_REQUEST_DATA, 0, 0, 0)) {
+  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0,
+                          0)) {
     error_msg.Set("Failed to send request");
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
@@ -787,10 +733,9 @@ bool MagdaOpenAI::ValidateAPIKey(WDL_FastString &error_msg) {
 
   DWORD statusCode = 0;
   DWORD statusCodeSize = sizeof(statusCode);
-  WinHttpQueryHeaders(hRequest,
-                      WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode,
-                      &statusCodeSize, WINHTTP_NO_HEADER_INDEX);
+  WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize,
+                      WINHTTP_NO_HEADER_INDEX);
 
   if (statusCode == 200) {
     success = true;
@@ -836,8 +781,7 @@ bool MagdaOpenAI::ValidateAPIKey(WDL_FastString &error_msg) {
   // Set Authorization header
   struct curl_slist *headers = nullptr;
   char auth_header[512];
-  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
-           m_api_key.Get());
+  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_api_key.Get());
   headers = curl_slist_append(headers, auth_header);
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
@@ -885,10 +829,8 @@ Be concise but thorough. Focus on actionable advice. Use proper audio engineerin
 
 Format your response in clear sections with markdown headers.)";
 
-bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
-                                      const char *track_context_json,
-                                      const char *user_request,
-                                      StreamCallback callback,
+bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json, const char *track_context_json,
+                                      const char *user_request, StreamCallback callback,
                                       WDL_FastString &error_msg) {
   if (!HasAPIKey()) {
     error_msg.Set("OpenAI API key not configured");
@@ -950,8 +892,7 @@ bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
   if (g_rec) {
     ShowConsoleMsg = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
-      ShowConsoleMsg(
-          "MAGDA OpenAI: Sending streaming mix analysis request...\n");
+      ShowConsoleMsg("MAGDA OpenAI: Sending streaming mix analysis request...\n");
     }
   }
 
@@ -985,8 +926,7 @@ bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
   headers = curl_slist_append(headers, "Accept: text/event-stream");
 
   char auth_header[512];
-  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
-           m_api_key.Get());
+  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_api_key.Get());
   headers = curl_slist_append(headers, auth_header);
 
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -1003,8 +943,7 @@ bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
     // Success if: HTTP 200 AND (explicit done event OR received content)
-    if (response_code == 200 &&
-        (streamData.success || streamData.received_content)) {
+    if (response_code == 200 && (streamData.success || streamData.received_content)) {
       success = true;
       // Call callback with is_done=true if we haven't already
       if (!streamData.success && callback) {
@@ -1015,13 +954,11 @@ bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
       }
     } else if (response_code != 200) {
       error_msg.SetFormatted(512, "HTTP %ld: %s", response_code,
-                             streamData.error_msg.GetLength() > 0
-                                 ? streamData.error_msg.Get()
-                                 : "Unknown error");
+                             streamData.error_msg.GetLength() > 0 ? streamData.error_msg.Get()
+                                                                  : "Unknown error");
       if (ShowConsoleMsg) {
         char msg[512];
-        snprintf(msg, sizeof(msg), "MAGDA OpenAI: Streaming failed: %s\n",
-                 error_msg.Get());
+        snprintf(msg, sizeof(msg), "MAGDA OpenAI: Streaming failed: %s\n", error_msg.Get());
         ShowConsoleMsg(msg);
       }
     } else {
@@ -1035,8 +972,7 @@ bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
     error_msg.Set(curl_easy_strerror(res));
     if (ShowConsoleMsg) {
       char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA OpenAI: Curl error: %s\n",
-               error_msg.Get());
+      snprintf(msg, sizeof(msg), "MAGDA OpenAI: Curl error: %s\n", error_msg.Get());
       ShowConsoleMsg(msg);
     }
   }
@@ -1049,9 +985,8 @@ bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
   // Windows: Fall back to non-streaming for now
   // TODO: Implement WinHTTP streaming
   WDL_FastString response;
-  bool success =
-      SendHTTPSRequest("https://api.openai.com/v1/responses", json.Get(),
-                       json.GetLength(), response, error_msg);
+  bool success = SendHTTPSRequest("https://api.openai.com/v1/responses", json.Get(),
+                                  json.GetLength(), response, error_msg);
 
   if (!success) {
     return false;
@@ -1132,10 +1067,8 @@ bool MagdaOpenAI::GenerateMixFeedback(const char *analysis_json,
 // JSFX Generation with Streaming
 // ============================================================================
 
-bool MagdaOpenAI::GenerateJSFXStream(const char *question,
-                                     const char *existing_code,
-                                     StreamCallback callback,
-                                     WDL_FastString &error_msg) {
+bool MagdaOpenAI::GenerateJSFXStream(const char *question, const char *existing_code,
+                                     StreamCallback callback, WDL_FastString &error_msg) {
   if (!HasAPIKey()) {
     error_msg.Set("OpenAI API key not configured");
     return false;
@@ -1190,8 +1123,7 @@ bool MagdaOpenAI::GenerateJSFXStream(const char *question,
   if (g_rec) {
     ShowConsoleMsg = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
-      ShowConsoleMsg(
-          "MAGDA OpenAI: Sending streaming JSFX generation request...\n");
+      ShowConsoleMsg("MAGDA OpenAI: Sending streaming JSFX generation request...\n");
     }
   }
 
@@ -1225,8 +1157,7 @@ bool MagdaOpenAI::GenerateJSFXStream(const char *question,
   headers = curl_slist_append(headers, "Accept: text/event-stream");
 
   char auth_header[512];
-  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
-           m_api_key.Get());
+  snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_api_key.Get());
   headers = curl_slist_append(headers, auth_header);
 
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -1242,8 +1173,7 @@ bool MagdaOpenAI::GenerateJSFXStream(const char *question,
     long response_code = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-    if (response_code == 200 &&
-        (streamData.success || streamData.received_content)) {
+    if (response_code == 200 && (streamData.success || streamData.received_content)) {
       success = true;
       if (streamData.received_content && !streamData.success && callback) {
         callback("", true);
@@ -1253,13 +1183,11 @@ bool MagdaOpenAI::GenerateJSFXStream(const char *question,
       }
     } else if (response_code != 200) {
       error_msg.SetFormatted(512, "HTTP %ld: %s", response_code,
-                             streamData.error_msg.GetLength() > 0
-                                 ? streamData.error_msg.Get()
-                                 : "API error");
+                             streamData.error_msg.GetLength() > 0 ? streamData.error_msg.Get()
+                                                                  : "API error");
       if (ShowConsoleMsg) {
         char msg[512];
-        snprintf(msg, sizeof(msg), "MAGDA OpenAI: JSFX streaming failed: %s\n",
-                 error_msg.Get());
+        snprintf(msg, sizeof(msg), "MAGDA OpenAI: JSFX streaming failed: %s\n", error_msg.Get());
         ShowConsoleMsg(msg);
       }
     } else {
@@ -1272,8 +1200,7 @@ bool MagdaOpenAI::GenerateJSFXStream(const char *question,
     error_msg.Set(curl_easy_strerror(res));
     if (ShowConsoleMsg) {
       char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA OpenAI: JSFX curl error: %s\n",
-               error_msg.Get());
+      snprintf(msg, sizeof(msg), "MAGDA OpenAI: JSFX curl error: %s\n", error_msg.Get());
       ShowConsoleMsg(msg);
     }
   }

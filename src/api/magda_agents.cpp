@@ -69,13 +69,14 @@ void MagdaAgentManager::SetAPIKey(const char *api_key) {
     m_api_key.Set(api_key);
 }
 
-bool MagdaAgentManager::HasAPIKey() const { return m_api_key.GetLength() > 0; }
+bool MagdaAgentManager::HasAPIKey() const {
+  return m_api_key.GetLength() > 0;
+}
 
 // ============================================================================
 // Agent Detection (gpt-4.1-mini)
 // ============================================================================
-bool MagdaAgentManager::DetectAgents(const char *question,
-                                     AgentDetection &result,
+bool MagdaAgentManager::DetectAgents(const char *question, AgentDetection &result,
                                      WDL_FastString &error) {
   if (!HasAPIKey()) {
     error.Set("API key not set");
@@ -89,8 +90,8 @@ bool MagdaAgentManager::DetectAgents(const char *question,
   result.needsJSFX = false;
 
   // Quick keyword detection first
-  if (strstr(question, "jsfx") || strstr(question, "JSFX") ||
-      strstr(question, "effect") || strstr(question, "plugin")) {
+  if (strstr(question, "jsfx") || strstr(question, "JSFX") || strstr(question, "effect") ||
+      strstr(question, "plugin")) {
     result.needsJSFX = true;
     return true;
   }
@@ -132,17 +133,15 @@ Return ONLY JSON: {"needsArranger": bool, "needsDrummer": bool})";
   json.Append("}");
 
   WDL_FastString response;
-  if (!SendHTTPSRequest("https://api.openai.com/v1/responses", json.Get(),
-                        json.GetLength(), response, error)) {
+  if (!SendHTTPSRequest("https://api.openai.com/v1/responses", json.Get(), json.GetLength(),
+                        response, error)) {
     // Fallback: keyword detection
-    if (strstr(question, "chord") || strstr(question, "arpeggio") ||
-        strstr(question, "melody") || strstr(question, "note") ||
-        strstr(question, "bass")) {
+    if (strstr(question, "chord") || strstr(question, "arpeggio") || strstr(question, "melody") ||
+        strstr(question, "note") || strstr(question, "bass")) {
       result.needsArranger = true;
     }
-    if (strstr(question, "drum") || strstr(question, "beat") ||
-        strstr(question, "kick") || strstr(question, "snare") ||
-        strstr(question, "groove") || strstr(question, "rhythm")) {
+    if (strstr(question, "drum") || strstr(question, "beat") || strstr(question, "kick") ||
+        strstr(question, "snare") || strstr(question, "groove") || strstr(question, "rhythm")) {
       result.needsDrummer = true;
     }
     return true; // Use fallback
@@ -165,13 +164,11 @@ Return ONLY JSON: {"needsArranger": bool, "needsDrummer": bool})";
             if (textElem && textElem->m_value_string) {
               // Parse the JSON in text
               wdl_json_parser textParser;
-              wdl_json_element *textRoot = textParser.parse(
-                  textElem->m_value, (int)strlen(textElem->m_value));
+              wdl_json_element *textRoot =
+                  textParser.parse(textElem->m_value, (int)strlen(textElem->m_value));
               if (!textParser.m_err && textRoot) {
-                wdl_json_element *arr =
-                    textRoot->get_item_by_name("needsArranger");
-                wdl_json_element *drum =
-                    textRoot->get_item_by_name("needsDrummer");
+                wdl_json_element *arr = textRoot->get_item_by_name("needsArranger");
+                wdl_json_element *drum = textRoot->get_item_by_name("needsDrummer");
                 if (arr && arr->m_value) {
                   result.needsArranger = (strcmp(arr->m_value, "true") == 0);
                 }
@@ -188,12 +185,10 @@ Return ONLY JSON: {"needsArranger": bool, "needsDrummer": bool})";
 
   // Log detection result
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA Agent Detection: DAW=%d, Arranger=%d, Drummer=%d\n",
+      snprintf(msg, sizeof(msg), "MAGDA Agent Detection: DAW=%d, Arranger=%d, Drummer=%d\n",
                result.needsDAW, result.needsArranger, result.needsDrummer);
       ShowConsoleMsg(msg);
     }
@@ -205,9 +200,9 @@ Return ONLY JSON: {"needsArranger": bool, "needsDrummer": bool})";
 // ============================================================================
 // Build Agent Request JSON
 // ============================================================================
-char *MagdaAgentManager::BuildAgentRequest(
-    const char *model, const char *question, const char *system_prompt,
-    const char *tool_name, const char *tool_description, const char *grammar) {
+char *MagdaAgentManager::BuildAgentRequest(const char *model, const char *question,
+                                           const char *system_prompt, const char *tool_name,
+                                           const char *tool_description, const char *grammar) {
   WDL_FastString json, escaped;
 
   json.Set("{");
@@ -262,10 +257,8 @@ char *MagdaAgentManager::BuildAgentRequest(
 // ============================================================================
 // Extract DSL from Response
 // ============================================================================
-bool MagdaAgentManager::ExtractDSL(const char *response_json, int len,
-                                   const char *tool_name,
-                                   WDL_FastString &out_dsl,
-                                   WDL_FastString &error) {
+bool MagdaAgentManager::ExtractDSL(const char *response_json, int len, const char *tool_name,
+                                   WDL_FastString &out_dsl, WDL_FastString &error) {
   wdl_json_parser parser;
   wdl_json_element *root = parser.parse(response_json, len);
 
@@ -303,8 +296,7 @@ bool MagdaAgentManager::ExtractDSL(const char *response_json, int len,
 
     if (strcmp(type->m_value, "custom_tool_call") == 0) {
       wdl_json_element *name = item->get_item_by_name("name");
-      if (name && name->m_value_string &&
-          strcmp(name->m_value, tool_name) == 0) {
+      if (name && name->m_value_string && strcmp(name->m_value, tool_name) == 0) {
         wdl_json_element *input = item->get_item_by_name("input");
         if (input && input->m_value_string && input->m_value[0]) {
           out_dsl.Set(input->m_value);
@@ -326,8 +318,7 @@ struct CurlWriteData {
   WDL_FastString *response;
 };
 
-static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb,
-                                void *userp) {
+static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
   size_t realsize = size * nmemb;
   CurlWriteData *data = (CurlWriteData *)userp;
   if (data->response) {
@@ -336,10 +327,8 @@ static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb,
   return realsize;
 }
 
-bool MagdaAgentManager::SendHTTPSRequest(const char *url, const char *post_data,
-                                         int post_data_len,
-                                         WDL_FastString &response,
-                                         WDL_FastString &error) {
+bool MagdaAgentManager::SendHTTPSRequest(const char *url, const char *post_data, int post_data_len,
+                                         WDL_FastString &response, WDL_FastString &error) {
   CURL *curl = curl_easy_init();
   if (!curl) {
     error.Set("Failed to init curl");
@@ -386,10 +375,8 @@ bool MagdaAgentManager::SendHTTPSRequest(const char *url, const char *post_data,
 }
 #else
 // Windows implementation would go here
-bool MagdaAgentManager::SendHTTPSRequest(const char *url, const char *post_data,
-                                         int post_data_len,
-                                         WDL_FastString &response,
-                                         WDL_FastString &error) {
+bool MagdaAgentManager::SendHTTPSRequest(const char *url, const char *post_data, int post_data_len,
+                                         WDL_FastString &response, WDL_FastString &error) {
   error.Set("Windows not implemented yet");
   return false;
 }
@@ -398,10 +385,8 @@ bool MagdaAgentManager::SendHTTPSRequest(const char *url, const char *post_data,
 // ============================================================================
 // Agent Generators
 // ============================================================================
-bool MagdaAgentManager::GenerateDAW(const char *question,
-                                    const char *state_json,
-                                    WDL_FastString &out_dsl,
-                                    WDL_FastString &error) {
+bool MagdaAgentManager::GenerateDAW(const char *question, const char *state_json,
+                                    WDL_FastString &out_dsl, WDL_FastString &error) {
   // Build system prompt with state
   WDL_FastString prompt;
   prompt.Set(MAGDA_DSL_TOOL_DESCRIPTION);
@@ -410,76 +395,63 @@ bool MagdaAgentManager::GenerateDAW(const char *question,
     prompt.Append(state_json);
   }
 
-  char *request =
-      BuildAgentRequest("gpt-5.1", question, prompt.Get(), "magda_dsl",
-                        MAGDA_DSL_TOOL_DESCRIPTION, MAGDA_DSL_GRAMMAR);
+  char *request = BuildAgentRequest("gpt-5.1", question, prompt.Get(), "magda_dsl",
+                                    MAGDA_DSL_TOOL_DESCRIPTION, MAGDA_DSL_GRAMMAR);
   if (!request) {
     error.Set("Failed to build request");
     return false;
   }
 
   WDL_FastString response;
-  bool success =
-      SendHTTPSRequest("https://api.openai.com/v1/responses", request,
-                       (int)strlen(request), response, error);
+  bool success = SendHTTPSRequest("https://api.openai.com/v1/responses", request,
+                                  (int)strlen(request), response, error);
   free(request);
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "magda_dsl", out_dsl,
-                    error);
+  return ExtractDSL(response.Get(), response.GetLength(), "magda_dsl", out_dsl, error);
 }
 
-bool MagdaAgentManager::GenerateArranger(const char *question,
-                                         WDL_FastString &out_dsl,
+bool MagdaAgentManager::GenerateArranger(const char *question, WDL_FastString &out_dsl,
                                          WDL_FastString &error) {
-  char *request = BuildAgentRequest(
-      "gpt-5.1", question, ARRANGER_TOOL_DESCRIPTION, "arranger_dsl",
-      ARRANGER_TOOL_DESCRIPTION, ARRANGER_DSL_GRAMMAR);
+  char *request = BuildAgentRequest("gpt-5.1", question, ARRANGER_TOOL_DESCRIPTION, "arranger_dsl",
+                                    ARRANGER_TOOL_DESCRIPTION, ARRANGER_DSL_GRAMMAR);
   if (!request) {
     error.Set("Failed to build request");
     return false;
   }
 
   WDL_FastString response;
-  bool success =
-      SendHTTPSRequest("https://api.openai.com/v1/responses", request,
-                       (int)strlen(request), response, error);
+  bool success = SendHTTPSRequest("https://api.openai.com/v1/responses", request,
+                                  (int)strlen(request), response, error);
   free(request);
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "arranger_dsl",
-                    out_dsl, error);
+  return ExtractDSL(response.Get(), response.GetLength(), "arranger_dsl", out_dsl, error);
 }
 
-bool MagdaAgentManager::GenerateDrummer(const char *question,
-                                        WDL_FastString &out_dsl,
+bool MagdaAgentManager::GenerateDrummer(const char *question, WDL_FastString &out_dsl,
                                         WDL_FastString &error) {
-  char *request = BuildAgentRequest(
-      "gpt-5.1", question, DRUMMER_TOOL_DESCRIPTION, "drummer_dsl",
-      DRUMMER_TOOL_DESCRIPTION, DRUMMER_DSL_GRAMMAR);
+  char *request = BuildAgentRequest("gpt-5.1", question, DRUMMER_TOOL_DESCRIPTION, "drummer_dsl",
+                                    DRUMMER_TOOL_DESCRIPTION, DRUMMER_DSL_GRAMMAR);
   if (!request) {
     error.Set("Failed to build request");
     return false;
   }
 
   WDL_FastString response;
-  bool success =
-      SendHTTPSRequest("https://api.openai.com/v1/responses", request,
-                       (int)strlen(request), response, error);
+  bool success = SendHTTPSRequest("https://api.openai.com/v1/responses", request,
+                                  (int)strlen(request), response, error);
   free(request);
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "drummer_dsl",
-                    out_dsl, error);
+  return ExtractDSL(response.Get(), response.GetLength(), "drummer_dsl", out_dsl, error);
 }
 
-bool MagdaAgentManager::GenerateJSFX(const char *question,
-                                     const char *existing_code,
-                                     WDL_FastString &out_code,
-                                     WDL_FastString &error) {
+bool MagdaAgentManager::GenerateJSFX(const char *question, const char *existing_code,
+                                     WDL_FastString &out_code, WDL_FastString &error) {
   WDL_FastString fullQuestion;
   fullQuestion.Set(question);
   if (existing_code && *existing_code) {
@@ -487,33 +459,28 @@ bool MagdaAgentManager::GenerateJSFX(const char *question,
     fullQuestion.Append(existing_code);
   }
 
-  char *request =
-      BuildAgentRequest("gpt-5.1", fullQuestion.Get(), JSFX_SYSTEM_PROMPT,
-                        "jsfx_generator", JSFX_TOOL_DESCRIPTION, JSFX_GRAMMAR);
+  char *request = BuildAgentRequest("gpt-5.1", fullQuestion.Get(), JSFX_SYSTEM_PROMPT,
+                                    "jsfx_generator", JSFX_TOOL_DESCRIPTION, JSFX_GRAMMAR);
   if (!request) {
     error.Set("Failed to build request");
     return false;
   }
 
   WDL_FastString response;
-  bool success =
-      SendHTTPSRequest("https://api.openai.com/v1/responses", request,
-                       (int)strlen(request), response, error);
+  bool success = SendHTTPSRequest("https://api.openai.com/v1/responses", request,
+                                  (int)strlen(request), response, error);
   free(request);
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "jsfx_generator",
-                    out_code, error);
+  return ExtractDSL(response.Get(), response.GetLength(), "jsfx_generator", out_code, error);
 }
 
 // ============================================================================
 // Orchestrate - Run agents in parallel
 // ============================================================================
-bool MagdaAgentManager::Orchestrate(const char *question,
-                                    const char *state_json,
-                                    std::vector<AgentResult> &results,
-                                    WDL_FastString &error) {
+bool MagdaAgentManager::Orchestrate(const char *question, const char *state_json,
+                                    std::vector<AgentResult> &results, WDL_FastString &error) {
   // Step 1: Detect which agents are needed
   AgentDetection detection;
   if (!DetectAgents(question, detection, error)) {

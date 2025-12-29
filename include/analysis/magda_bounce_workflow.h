@@ -42,8 +42,7 @@ struct MixStreamingState {
 };
 
 // Result callback type for mix analysis
-using MixAnalysisCallback =
-    std::function<void(bool success, const std::string &result)>;
+using MixAnalysisCallback = std::function<void(bool success, const std::string &result)>;
 
 // Mix analysis bounce workflow
 // Workflow structure:
@@ -64,20 +63,17 @@ public:
   // 3. After render, start async thread for DSP analysis + API call
   // 4. After async completes, queue delete command
   // Returns true on success, false on error (check error_msg)
-  static bool ExecuteWorkflow(BounceMode bounceMode, const char *trackType,
-                              const char *userRequest,
+  static bool ExecuteWorkflow(BounceMode bounceMode, const char *trackType, const char *userRequest,
                               WDL_FastString &error_msg);
 
   // Execute master analysis workflow (bounce master bus output)
   // Similar to ExecuteWorkflow but bounces the master track output instead
-  static bool ExecuteMasterWorkflow(const char *userRequest,
-                                    WDL_FastString &error_msg);
+  static bool ExecuteMasterWorkflow(const char *userRequest, WDL_FastString &error_msg);
 
   // Execute multi-track comparison workflow
   // Parses track identifiers from compareArgs (e.g., "track1 and track2" or
   // "selected") Analyzes multiple tracks and sends them together for comparison
-  static bool ExecuteMultiTrackWorkflow(const char *compareArgs,
-                                        WDL_FastString &error_msg);
+  static bool ExecuteMultiTrackWorkflow(const char *compareArgs, WDL_FastString &error_msg);
 
   // Set callback for when mix analysis completes
   static void SetResultCallback(MixAnalysisCallback callback);
@@ -135,14 +131,11 @@ private:
   static bool HideTrack(int trackIndex, WDL_FastString &error_msg);
 
   // Step 3: Run DSP analysis on bounced track
-  static bool RunDSPAnalysis(int trackIndex, const char *trackName,
-                             WDL_FastString &analysisJson,
+  static bool RunDSPAnalysis(int trackIndex, const char *trackName, WDL_FastString &analysisJson,
                              WDL_FastString &fxJson, WDL_FastString &error_msg);
 
   // Step 4: Send analysis to mix agent API
-  static bool SendToMixAPI(const char *analysisJson, const char *fxJson,
-                           const char *trackType, const char *userRequest,
-                           int trackIndex, const char *trackName,
-                           WDL_FastString &responseJson,
-                           WDL_FastString &error_msg);
+  static bool SendToMixAPI(const char *analysisJson, const char *fxJson, const char *trackType,
+                           const char *userRequest, int trackIndex, const char *trackName,
+                           WDL_FastString &responseJson, WDL_FastString &error_msg);
 };
