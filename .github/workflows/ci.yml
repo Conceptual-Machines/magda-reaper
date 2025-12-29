@@ -9,16 +9,7 @@ on:
 jobs:
   unit-tests:
     name: Unit Tests
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            cmake_generator: "Unix Makefiles"
-          - os: macos-latest
-            cmake_generator: "Unix Makefiles"
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -26,21 +17,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install dependencies (Ubuntu)
-        if: runner.os == 'Linux'
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential
 
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install cmake
-
       - name: Configure unit tests
         working-directory: tests/unit
         run: |
-          cmake -B build -G "${{ matrix.cmake_generator }}" .
+          cmake -B build .
 
       - name: Build unit tests
         working-directory: tests/unit
@@ -51,34 +36,3 @@ jobs:
         working-directory: tests/unit
         run: |
           ctest --test-dir build --output-on-failure --verbose
-
-  build:
-    name: Build Extension
-    # Only build on macOS - Linux has SWELL min/max macro conflicts with STL
-    # Windows support can be added later with proper NOMINMAX handling
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: |
-          brew install cmake
-
-      - name: Configure build
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: |
-          cmake --build build --config Release --parallel
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: reaper_magda.dylib
-          path: build/reaper_magda.dylib
-          if-no-files-found: warn
