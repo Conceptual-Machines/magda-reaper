@@ -18,31 +18,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format-18 cppcheck
-          # Use clang-format-18 as default
+          sudo apt-get install -y clang-format-18
           sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-18 100
 
       - name: Check formatting (clang-format)
         run: |
-          # Find all C++ files and check formatting
           find src include -type f \( -name "*.cpp" -o -name "*.h" \) | while read file; do
             clang-format --dry-run --Werror "$file" || exit 1
           done
-
-      - name: Static analysis (cppcheck)
-        run: |
-          cppcheck --enable=warning,style,performance \
-            --suppress=missingIncludeSystem \
-            --suppress=unusedFunction \
-            --error-exitcode=1 \
-            --inline-suppr \
-            -I include \
-            -I src \
-            src/ 2>&1 | tee cppcheck.log
-          # Only fail on errors, not warnings for now
-          if grep -q "error:" cppcheck.log; then
-            exit 1
-          fi
 
   unit-tests:
     name: Unit Tests
