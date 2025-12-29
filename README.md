@@ -4,16 +4,17 @@ Native REAPER extension for **MAGDA** (**M**ulti-**A**gent **G**enerative **D**A
 
 ## Overview
 
-MAGDA REAPER is a native C++ extension for REAPER that enables natural language control of your DAW. This is the REAPER implementation of the MAGDA system.
+MAGDA REAPER is a native C++ extension for REAPER that enables natural language control of your DAW. Talk to your DAW using plain English to create tracks, add effects, generate drum patterns, and more.
 
 ## Features
 
 - 🎹 **Natural Language DAW Control** - Create tracks, add effects, manage clips via plain English
-- 🎸 **JSFX Generation** - AI-assisted audio effect creation
-- 🥁 **Drum Pattern Generation** - Intelligent drum programming
-- 🎚️ **Mix Analysis** - AI-powered mixing suggestions
+- 🎸 **JSFX Generation** - AI-assisted audio effect creation with live preview
+- 🥁 **Drum Pattern Generation** - Intelligent drum programming with grid notation
+- 🎚️ **Mix Analysis** - AI-powered mixing suggestions based on your project
 - 🔌 **Plugin Management** - Scan and manage plugins with aliases
 - 💬 **Chat Interface** - Modern ImGui-based chat UI
+- 🔄 **Streaming Responses** - Real-time streaming from AI for instant feedback
 
 ## Requirements
 
@@ -21,60 +22,72 @@ MAGDA REAPER is a native C++ extension for REAPER that enables natural language 
 
 - **REAPER** 6.0+ (64-bit recommended)
 - **ReaImGui** extension (required for UI) - Install via [ReaPack](https://reapack.com/)
+- **OpenAI API Key** (for AI features)
 
 ### Build Prerequisites
 
-- REAPER SDK (from GitHub: https://github.com/justinfrankel/reaper-sdk)
+- REAPER SDK (included as submodule)
 - CMake 3.22+
 - C++20 compatible compiler
+- libcurl (macOS/Linux)
 
-### Setup Reaper SDK and WDL
+## Quick Start
 
-Both REAPER SDK and WDL are included as git submodules. After cloning this repository, initialize submodules:
-
-```bash
-git submodule update --init --recursive
-```
-
-Then create a symlink so the SDK can find WDL (required for building):
+### 1. Clone and Setup
 
 ```bash
-cd reaper-sdk
-ln -s ../WDL WDL
-cd ..
+git clone --recursive https://github.com/Conceptual-Machines/magda-reaper.git
+cd magda-reaper
 ```
 
-The SDK headers will be in `reaper-sdk/sdk/` and WDL will be in `WDL/`
-
-### Build Instructions
-
-**Using Make (Recommended):**
+### 2. Build
 
 ```bash
 make build
 ```
 
 This will automatically:
-- Initialize submodules (Reaper SDK and WDL)
-- Create the WDL symlink
+- Initialize submodules (REAPER SDK and WDL)
 - Configure and build the extension
+- Copy to REAPER's UserPlugins directory (macOS)
+
+### 3. Configure
+
+Create a `.env` file in the project root with your OpenAI API key:
+
+```
+OPENAI_API_KEY=sk-your-key-here
+```
+
+Or set the API key in REAPER via **Extensions → MAGDA → Settings**.
+
+### 4. Install ReaImGui
+
+ReaImGui is required for MAGDA's user interface:
+
+1. Install [ReaPack](https://reapack.com/) if you haven't already
+2. In REAPER, go to **Extensions → ReaPack → Browse packages**
+3. Search for "ReaImGui" and install it
+4. Restart REAPER
+
+## Build Instructions
+
+**Using Make (Recommended):**
+
+```bash
+make build      # Build the extension
+make clean      # Remove build directory
+make rebuild    # Clean and rebuild
+make help       # Show all available commands
+```
 
 **Using CMake directly:**
 
 ```bash
-mkdir build
-cd build
+mkdir build && cd build
 cmake ..
 cmake --build .
 ```
-
-**Other Make commands:**
-- `make setup` - Initialize submodules and create symlink
-- `make clean` - Remove build directory
-- `make rebuild` - Clean and rebuild
-- `make help` - Show all available commands
-
-The CMake configuration will automatically find the SDK if it's in `reaper-sdk/sdk/` relative to the project root, or you can set `REAPER_SDK_PATH` to point to the `sdk/` directory.
 
 ## Installation
 
@@ -89,52 +102,51 @@ For manual installation, copy the built extension to REAPER's `UserPlugins` dire
 
 ```
 magda-reaper/
-├── src/                    # Source code
-├── include/                # Headers
-├── CMakeLists.txt         # Build configuration
-├── Makefile               # Build convenience script
-├── reaper-sdk/            # REAPER SDK (submodule)
-└── WDL/                   # WDL library (submodule)
+├── src/
+│   ├── core/           # Main extension entry, state management
+│   ├── ui/             # ImGui windows (chat, settings, JSFX editor)
+│   ├── api/            # OpenAI client, HTTP handling
+│   ├── dsl/            # DSL parser and interpreters
+│   ├── analysis/       # Mix analysis, DSP
+│   └── plugins/        # Plugin scanning, drum mapping
+├── include/            # Public headers
+├── tests/
+│   ├── unit/           # Unit tests (CI-friendly)
+│   └── *.lua           # Integration tests (require REAPER)
+├── WDL/                # WDL library (submodule)
+└── reaper-sdk/         # REAPER SDK (submodule)
+```
+
+## Testing
+
+### Unit Tests (CI)
+
+Unit tests run without REAPER and are executed in GitHub Actions:
+
+```bash
+./tests/run_unit_tests.sh
+```
+
+### Integration Tests (Local)
+
+Integration tests require REAPER to be installed:
+
+```bash
+./tests/run_tests.sh
 ```
 
 ## Architecture
 
-This extension integrates with the MAGDA multi-agent system:
+MAGDA uses a multi-agent system with specialized agents for different tasks:
 
-- **DSL Parser**: Parses MAGDA DSL code (from `magda-dsl` repository)
-- **API Client**: Communicates with `magda-api` backend
-- **Action Executor**: Executes REAPER actions from DSL commands
-- **State Manager**: Tracks REAPER project state for AI context
-- **Plugin Scanner**: Scans installed plugins for AI awareness
-- **ReaImGui UI**: Modern immediate-mode GUI for all windows
+- **DAW Agent** - General DAW control (tracks, clips, effects)
+- **Drummer Agent** - Drum pattern generation
+- **Arranger Agent** - Song arrangement and structure
+- **JSFX Agent** - Audio effect code generation
+- **Mix Agent** - Mix analysis and suggestions
 
-## Dependencies
-
-### Build Dependencies
-
-- **REAPER SDK**: REAPER plugin API
-- **WDL**: REAPER's utility library (included as submodule)
-- **magda-dsl**: DSL parser (C++ implementation, included)
-
-### Runtime Dependencies
-
-- **ReaImGui**: Required for UI - install via ReaPack
-- **magda-api**: Backend API service (local or hosted)
-
-## Installing ReaImGui
-
-ReaImGui is required for MAGDA's user interface. Install it via ReaPack:
-
-1. Install [ReaPack](https://reapack.com/) if you haven't already
-2. In REAPER, go to **Extensions → ReaPack → Browse packages**
-3. Search for "ReaImGui" and install it
-4. Restart REAPER
+Each agent uses a domain-specific DSL that gets parsed and executed as REAPER actions.
 
 ## License
 
 AGPL v3 - See [LICENSE](LICENSE) file for details.
-
-## Related Repositories
-
-- [magda-api](https://github.com/Conceptual-Machines/magda-api) - Backend API service (stateless Go API with agents)
-- [magda-dsl](https://github.com/Conceptual-Machines/magda-dsl) - DSL specification and parsers
