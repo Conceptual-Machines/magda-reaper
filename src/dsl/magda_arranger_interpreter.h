@@ -2,6 +2,7 @@
 #define MAGDA_ARRANGER_INTERPRETER_H
 
 #include "../WDL/WDL/wdlstring.h"
+#include <vector>
 
 // Forward declarations
 class MediaTrack;
@@ -9,11 +10,19 @@ class MediaItem;
 
 namespace MagdaArranger {
 
+// Simple note data structure
+struct NoteData {
+    int pitch;
+    double start;   // in beats
+    double length;  // in beats
+    int velocity;
+};
+
 // ============================================================================
 // Arranger DSL Interpreter
 // ============================================================================
 // Executes Arranger DSL (note, chord, arpeggio, progression)
-// and creates MIDI notes on the selected track
+// and creates MIDI notes using the existing AddMIDI function
 
 class Interpreter {
 public:
@@ -21,7 +30,6 @@ public:
     ~Interpreter();
 
     // Execute Arranger DSL code
-    // Returns true on success
     bool Execute(const char* dsl_code);
 
     // Get error message
@@ -43,8 +51,11 @@ private:
     // Parameter parsing
     bool ParseParams(const char* params, struct ArrangerParams& out);
 
-    // MIDI note creation
-    bool CreateMIDINote(MediaItem* item, int pitch, double startBeat, double duration, int velocity);
+    // Build JSON and call AddMIDI
+    bool AddNotesToTrack(int trackIndex, const std::vector<NoteData>& notes, const char* name);
+
+    // Get selected track index
+    int GetSelectedTrackIndex();
 
     // Chord symbol to notes
     bool ChordToNotes(const char* symbol, int* notes, int& noteCount, int octave = 3);
@@ -52,14 +63,11 @@ private:
     // Note name to MIDI pitch
     int NoteToPitch(const char* noteName);
 
-    // Get or create target item
-    MediaItem* GetOrCreateTargetItem(double lengthBeats);
-
-    // Helper to get selected track
+    // Legacy stubs (not used, kept for interface compatibility)
     MediaTrack* GetSelectedTrack();
-
-    // Get project tempo
     double GetTempo();
+    MediaItem* GetOrCreateTargetItem(double lengthBeats);
+    bool CreateMIDINote(MediaItem* item, int pitch, double startBeat, double duration, int velocity);
 
     WDL_FastString m_error;
     MediaTrack* m_targetTrack;

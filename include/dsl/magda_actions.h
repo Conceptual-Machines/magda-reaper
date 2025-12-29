@@ -14,6 +14,24 @@ public:
   static bool ExecuteActions(const char *json, WDL_FastString &result,
                              WDL_FastString &error_msg);
 
+  // Public MIDI helpers - for use by arranger/drummer interpreters
+  static bool AddMIDI(int track_index, wdl_json_element *notes_array,
+                      const char *take_name, WDL_FastString &error_msg);
+
+  // Drum pattern handler - converts grid notation to MIDI notes
+  static bool AddDrumPattern(int track_index, const char *drum_name,
+                             const char *grid, int velocity,
+                             const char *plugin_key, WDL_FastString &error_msg);
+
+  // JSFX helper - saves code to file and optionally adds to track
+  static bool SaveAndApplyJSFX(const char *jsfx_code, const char *effect_name,
+                               int track_index, WDL_FastString &error_msg);
+
+  // Context for inter-command coordination
+  // When DAW creates a track, store index here so Arranger/Drummer can use it
+  static int GetLastCreatedTrackIndex();  // Returns -1 if none
+  static void ClearLastCreatedTrack();    // Call after processing all DSL
+
 private:
   // Execute a single action
   static bool ExecuteAction(const wdl_json_element *action,
@@ -45,13 +63,6 @@ private:
   static bool DeleteTrack(int track_index, WDL_FastString &error_msg);
   static bool DeleteClip(int track_index, int clip_index,
                          WDL_FastString &error_msg);
-  static bool AddMIDI(int track_index, wdl_json_element *notes_array,
-                      const char *take_name, WDL_FastString &error_msg);
-
-  // Drum pattern handler - converts grid notation to MIDI notes
-  static bool AddDrumPattern(int track_index, const char *drum_name,
-                             const char *grid, int velocity,
-                             const char *plugin_key, WDL_FastString &error_msg);
 
   // Resolve drum name to MIDI note using drum mapping
   static int ResolveDrumNote(const char *drum_name, const char *plugin_key);

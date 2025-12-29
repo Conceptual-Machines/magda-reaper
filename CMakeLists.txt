@@ -74,8 +74,11 @@ set(SOURCES
     src/api/magda_agents.cpp
     # DSL
     src/dsl/magda_actions.cpp
+    src/dsl/magda_dsl_context.cpp
     src/dsl/magda_dsl_interpreter.cpp
     src/dsl/magda_arranger_interpreter.cpp
+    src/dsl/magda_drummer_interpreter.cpp
+    src/dsl/magda_jsfx_interpreter.cpp
     # Analysis
     src/analysis/magda_dsp_analyzer.cpp
     src/analysis/magda_bounce_workflow.cpp

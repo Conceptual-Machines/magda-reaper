@@ -1,4 +1,5 @@
 #include "magda_dsl_interpreter.h"
+#include "magda_dsl_context.h"
 #include "reaper_plugin.h"
 #include <cstring>
 #include <cstdlib>
@@ -624,10 +625,14 @@ MediaTrack* Interpreter::CreateTrack(const Params& params) {
     m_ctx.current_track_idx = idx;
 
     // Set track name if provided
+    std::string trackName;
     if (params.Has("name") && GetSetMediaTrackInfo_String) {
-        std::string name = params.Get("name");
-        GetSetMediaTrackInfo_String(track, "P_NAME", (char*)name.c_str(), true);
+        trackName = params.Get("name");
+        GetSetMediaTrackInfo_String(track, "P_NAME", (char*)trackName.c_str(), true);
     }
+
+    // Store in global context for Arranger/Drummer to use
+    MagdaDSLContext::Get().SetCreatedTrack(idx, trackName.c_str());
 
     // Add instrument if provided
     if (params.Has("instrument") && TrackFX_AddByName) {
@@ -828,6 +833,16 @@ MediaItem* Interpreter::CreateClipAtBar(MediaTrack* track, int bar, int length_b
     }
 
     m_ctx.current_item = item;
+
+    // Get item index for context
+    int (*CountTrackMediaItems)(MediaTrack*) = (int (*)(MediaTrack*))g_rec->GetFunc("CountTrackMediaItems");
+    int itemIndex = -1;
+    if (CountTrackMediaItems) {
+        itemIndex = CountTrackMediaItems(track) - 1;  // Last item added
+    }
+
+    // Store in global context for Arranger/Drummer to use
+    MagdaDSLContext::Get().SetCreatedClip(m_ctx.current_track_idx, itemIndex);
 
     void (*ShowConsoleMsg)(const char*) = (void (*)(const char*))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {

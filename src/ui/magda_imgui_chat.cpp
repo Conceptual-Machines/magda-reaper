@@ -2,9 +2,13 @@
 #include "../WDL/WDL/jsonparse.h"
 #include "../api/magda_agents.h"
 #include "../api/magda_openai.h"
+#include "../dsl/magda_actions.h"
 #include "../dsl/magda_arranger_interpreter.h"
+#include "../dsl/magda_drummer_interpreter.h"
+#include "../dsl/magda_dsl_context.h"
 #include "../dsl/magda_dsl_grammar.h"
 #include "../dsl/magda_dsl_interpreter.h"
+#include "../dsl/magda_jsfx_interpreter.h"
 #include "magda_actions.h"
 #include "magda_api_client.h"
 #include "magda_bounce_workflow.h"
@@ -2353,11 +2357,18 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       std::string lastError;
       int successCount = 0;
 
-      // Split DSL by newlines and process each statement
+      // Clear DSL context before processing
+      MagdaDSLContext::Get().Clear();
+
+      // Split DSL by newlines and SORT: DAW commands first, then content commands
+      // This ensures track/clip creation happens before MIDI notes are added
       std::string dslCode = responseJson;
+      std::vector<std::string> dawCommands;     // track, clip, fx - execute first
+      std::vector<std::string> contentCommands; // arpeggio, chord, pattern - execute second
+      std::string jsfxCode; // JSFX is special - entire block
+
       size_t pos = 0;
       while (pos < dslCode.size()) {
-        // Find end of line
         size_t endPos = dslCode.find('\n', pos);
         if (endPos == std::string::npos) endPos = dslCode.size();
 
@@ -2366,57 +2377,76 @@ void MagdaImGuiChat::ProcessAsyncResult() {
 
         // Trim whitespace
         size_t start = line.find_first_not_of(" \t\r");
-        if (start == std::string::npos) continue; // Empty line
+        if (start == std::string::npos) continue;
         size_t end = line.find_last_not_of(" \t\r");
         line = line.substr(start, end - start + 1);
-
         if (line.empty()) continue;
 
-        // Determine which interpreter to use based on DSL type
+        // Categorize command
+        if (line.find("desc:") == 0 || line.find("@init") != std::string::npos ||
+            line.find("@sample") != std::string::npos) {
+          jsfxCode = dslCode; // JSFX is entire block
+          break;
+        } else if (line.find("track(") == 0 || line.find("clip(") == 0 ||
+                   line.find("fx(") == 0 || line.find("item(") == 0) {
+          dawCommands.push_back(line);
+        } else if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
+                   line.find("note(") == 0 || line.find("progression(") == 0 ||
+                   line.find("pattern(") == 0) {
+          contentCommands.push_back(line);
+        } else {
+          // Unknown - treat as DAW command (fallback)
+          dawCommands.push_back(line);
+        }
+      }
+
+      // Helper lambda to execute a line
+      auto executeLine = [&](const std::string& line) -> bool {
         bool lineSuccess = false;
-        if (line.find("arpeggio(") == 0 ||
-            line.find("chord(") == 0 ||
-            line.find("note(") == 0 ||
-            line.find("progression(") == 0) {
-          // Arranger DSL
+        if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
+            line.find("note(") == 0 || line.find("progression(") == 0) {
           MagdaArranger::Interpreter arrangerInterp;
           lineSuccess = arrangerInterp.Execute(line.c_str());
-          if (!lineSuccess) {
-            lastError = arrangerInterp.GetError();
-          }
+          if (!lineSuccess) lastError = arrangerInterp.GetError();
         } else if (line.find("pattern(") == 0) {
-          // Drummer DSL - TODO: implement drummer interpreter
-          // For now, log and skip
-          if (g_rec) {
-            void (*ShowConsoleMsg)(const char*) = (void (*)(const char*))g_rec->GetFunc("ShowConsoleMsg");
-            if (ShowConsoleMsg) {
-              ShowConsoleMsg("MAGDA: Drummer DSL not yet implemented\n");
-            }
-          }
-          lineSuccess = true; // Don't fail, just skip
-        } else if (line.find("track(") == 0 ||
-                   line.find("clip(") == 0 ||
-                   line.find("fx(") == 0 ||
-                   line.find("item(") == 0) {
-          // DAW DSL
-          MagdaDSL::Interpreter dawInterp;
-          lineSuccess = dawInterp.Execute(line.c_str());
-          if (!lineSuccess) {
-            lastError = dawInterp.GetError();
-          }
+          MagdaDrummer::Interpreter drummerInterp;
+          lineSuccess = drummerInterp.Execute(line.c_str());
+          if (!lineSuccess) lastError = drummerInterp.GetError();
         } else {
-          // Unknown DSL - try DAW interpreter as fallback
           MagdaDSL::Interpreter dawInterp;
           lineSuccess = dawInterp.Execute(line.c_str());
-          if (!lineSuccess) {
-            lastError = dawInterp.GetError();
+          if (!lineSuccess) lastError = dawInterp.GetError();
+        }
+        return lineSuccess;
+      };
+
+      // Handle JSFX separately
+      if (!jsfxCode.empty()) {
+        MagdaJSFX::Interpreter jsfxInterp;
+        jsfxInterp.SetTargetTrack(-1);
+        if (jsfxInterp.Execute(jsfxCode.c_str())) {
+          successCount++;
+        } else {
+          lastError = jsfxInterp.GetError();
+          dslSuccess = false;
+        }
+      } else {
+        // Execute DAW commands FIRST (creates tracks/clips)
+        for (const auto& cmd : dawCommands) {
+          if (executeLine(cmd)) {
+            successCount++;
+          } else {
+            dslSuccess = false;
           }
         }
 
-        if (lineSuccess) {
-          successCount++;
-        } else {
-          dslSuccess = false;
+        // Execute content commands SECOND (adds MIDI to created tracks)
+        for (const auto& cmd : contentCommands) {
+          if (executeLine(cmd)) {
+            successCount++;
+          } else {
+            dslSuccess = false;
+          }
         }
       }
 
@@ -2438,6 +2468,9 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         AddAssistantMessage(errorStr);
         SetAPIStatus("DSL Error", 0xFF6666FF); // Red
       }
+
+      // Clear DSL context after processing
+      MagdaDSLContext::Get().Clear();
     } else {
       // For streaming from Go backend: the buffer should contain formatted action messages
       // ClearStreamingBuffer adds buffer content to chat history
