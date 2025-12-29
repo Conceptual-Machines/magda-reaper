@@ -13,21 +13,17 @@ public:
 
   void Show(bool toggle = false);
   void Hide();
-  bool IsVisible() const {
-    return m_hwnd != nullptr && IsWindowVisible(m_hwnd);
-  }
+  bool IsVisible() const { return m_hwnd != nullptr && IsWindowVisible(m_hwnd); }
 
   HWND m_hwnd;
-  HWND m_hwndAliasList;     // List view or list box showing aliases
-  HWND m_hwndScanButton;    // Button to scan plugins
-  HWND m_hwndRefreshButton; // Button to refresh alias list
-  std::vector<std::string>
-      m_rowPluginKeys; // Maps row index to plugin ident/key
+  HWND m_hwndAliasList;                     // List view or list box showing aliases
+  HWND m_hwndScanButton;                    // Button to scan plugins
+  HWND m_hwndRefreshButton;                 // Button to refresh alias list
+  std::vector<std::string> m_rowPluginKeys; // Maps row index to plugin ident/key
 
 private:
   // SWS pattern: static proc that gets 'this' from GWLP_USERDATA
-  static INT_PTR WINAPI sDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
-                                    LPARAM lParam);
+  static INT_PTR WINAPI sDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
   // Instance proc that handles all messages
   INT_PTR DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam);

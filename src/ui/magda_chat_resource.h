@@ -23,8 +23,7 @@
 #define IDC_BTN_HOUSEKEEPING 1013
 
 // Define the dialog resource
-SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_CHAT, 0, "MAGDA Chat", 1000, 600,
-                                   1.0)
+SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_MAGDA_CHAT, 0, "MAGDA Chat", 1000, 600, 1.0)
 
 BEGIN
 // Request header (left column header)
@@ -55,10 +54,9 @@ LTEXT "REQUEST", IDC_REQUEST_HEADER, 10, 5, 300,
 
         // Controls buttons (right pane) - reduced set
         PUSHBUTTON "Mix Analysis",
-    IDC_BTN_MIX_ANALYSIS, 630, 30, 140, 28 PUSHBUTTON "Master Analysis",
-    IDC_BTN_MASTER_ANALYSIS, 630, 62, 140, 28 PUSHBUTTON "Gain Staging",
-    IDC_BTN_GAIN_STAGING, 630, 100, 140, 28 PUSHBUTTON "Housekeeping",
-    IDC_BTN_HOUSEKEEPING, 630, 138, 140,
+    IDC_BTN_MIX_ANALYSIS, 630, 30, 140, 28 PUSHBUTTON "Master Analysis", IDC_BTN_MASTER_ANALYSIS,
+    630, 62, 140, 28 PUSHBUTTON "Gain Staging", IDC_BTN_GAIN_STAGING, 630, 100, 140,
+    28 PUSHBUTTON "Housekeeping", IDC_BTN_HOUSEKEEPING, 630, 138, 140,
     28
 
     // Question input field (bottom, spans chat panes)

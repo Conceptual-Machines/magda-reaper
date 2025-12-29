@@ -1,10 +1,10 @@
 #include "magda_bounce_workflow.h"
+#include "../WDL/WDL/jsonparse.h"
+#include "../api/magda_openai.h"
 #include "magda_api_client.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_login.h"
-#include "../api/magda_openai.h"
 #include "reaper_plugin.h"
-#include "../WDL/WDL/jsonparse.h"
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
@@ -88,7 +88,7 @@ static MixStreamingState s_streamState;
 bool MagdaBounceWorkflow::GetStreamingState(MixStreamingState &state) {
   std::lock_guard<std::mutex> lock(s_streamMutex);
   if (!s_streamState.isStreaming && !s_streamState.streamComplete) {
-    return false;  // No streaming active or complete
+    return false; // No streaming active or complete
   }
   state = s_streamState;
   return true;
@@ -164,10 +164,8 @@ void MagdaBounceWorkflow::SetBounceModePreference(BounceMode mode) {
   (void)mode; // Suppress unused warning
 }
 
-bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
-                                          const char *trackType,
-                                          const char *userRequest,
-                                          WDL_FastString &error_msg) {
+bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode, const char *trackType,
+                                          const char *userRequest, WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -182,10 +180,8 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-  bool (*IsTrackSelected)(MediaTrack *) =
-      (bool (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
-  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *,
-                                             bool *) =
+  bool (*IsTrackSelected)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
+  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *, bool *) =
       (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
           "GetSetMediaTrackInfo_String");
 
@@ -230,10 +226,8 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
   }
 
   // Step 1: Handle bounce mode (set time selection if needed)
-  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *,
-                                bool) =
-      (void (*)(ReaProject *, bool, bool, double *, double *,
-                bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
+  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *, bool) = (void (*)(
+      ReaProject *, bool, bool, double *, double *, bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
   double (*GetProjectLength)(ReaProject *) =
       (double (*)(ReaProject *))g_rec->GetFunc("GetProjectLength");
 
@@ -245,8 +239,7 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
     if (GetSet_LoopTimeRange2) {
       bool hasTimeSel = false;
       double timeSelStart = 0, timeSelEnd = 0;
-      GetSet_LoopTimeRange2(nullptr, false, false, &timeSelStart, &timeSelEnd,
-                            false);
+      GetSet_LoopTimeRange2(nullptr, false, false, &timeSelStart, &timeSelEnd, false);
       hasTimeSel = (timeSelEnd - timeSelStart) > 0.1;
 
       if (bounceMode == BOUNCE_MODE_SELECTION && !hasTimeSel) {
@@ -263,8 +256,7 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
     }
 
     // For loop mode, if no time selection, check loop points
-    if (bounceMode == BOUNCE_MODE_LOOP && !needTimeSelection &&
-        GetSet_LoopTimeRange2) {
+    if (bounceMode == BOUNCE_MODE_LOOP && !needTimeSelection && GetSet_LoopTimeRange2) {
       double loopStart = 0, loopEnd = 0;
       GetSet_LoopTimeRange2(nullptr, false, true, &loopStart, &loopEnd, false);
       if ((loopEnd - loopStart) > 0.1) {
@@ -272,8 +264,7 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
         bounceEnd = loopEnd;
         needTimeSelection = true;
         // Set time selection to loop range for rendering
-        GetSet_LoopTimeRange2(nullptr, true, false, &bounceStart, &bounceEnd,
-                              false);
+        GetSet_LoopTimeRange2(nullptr, true, false, &bounceStart, &bounceEnd, false);
       }
     }
 
@@ -290,8 +281,7 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
       (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
   bool (*SetMediaItemSelected)(MediaItem *, bool) =
       (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
-  int (*CountMediaItems)(ReaProject *) =
-      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  int (*CountMediaItems)(ReaProject *) = (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
   MediaItem *(*GetMediaItem)(ReaProject *, int) =
       (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
 
@@ -326,8 +316,7 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode,
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg),
-             "MAGDA: Prepared track %d for rendering (render queued)\n",
+    snprintf(msg, sizeof(msg), "MAGDA: Prepared track %d for rendering (render queued)\n",
              selectedTrackIndex);
     ShowConsoleMsg(msg);
   }
@@ -395,28 +384,23 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
       (bool (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
   double (*GetProjectLength)(ReaProject *) =
       (double (*)(ReaProject *))g_rec->GetFunc("GetProjectLength");
-  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *,
-                                bool) =
-      (void (*)(ReaProject *, bool, bool, double *, double *,
-                bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
+  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *, bool) = (void (*)(
+      ReaProject *, bool, bool, double *, double *, bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
   int (*CreateTrackSend)(MediaTrack *, MediaTrack *) =
       (int (*)(MediaTrack *, MediaTrack *))g_rec->GetFunc("CreateTrackSend");
-  bool (*SetTrackSendInfo_Value)(MediaTrack *, int, int, const char *, double) =
-      (bool (*)(MediaTrack *, int, int, const char *, double))g_rec->GetFunc(
-          "SetTrackSendInfo_Value");
+  bool (*SetTrackSendInfo_Value)(MediaTrack *, int, int, const char *, double) = (bool (*)(
+      MediaTrack *, int, int, const char *, double))g_rec->GetFunc("SetTrackSendInfo_Value");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
-  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *,
-                                             bool *) =
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
+  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *, bool *) =
       (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
           "GetSetMediaTrackInfo_String");
   void (*Main_OnCommand)(int command, int flag) =
       (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
-  if (!GetNumTracks || !GetTrack || !GetMasterTrack || !InsertTrackInProject ||
-      !SetTrackSelected || !GetProjectLength || !GetSet_LoopTimeRange2) {
+  if (!GetNumTracks || !GetTrack || !GetMasterTrack || !InsertTrackInProject || !SetTrackSelected ||
+      !GetProjectLength || !GetSet_LoopTimeRange2) {
     error_msg.Set("Required REAPER functions not available");
     return false;
   }
@@ -430,14 +414,12 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
 
   // Save current time selection
   double savedTimeSelStart = 0, savedTimeSelEnd = 0;
-  GetSet_LoopTimeRange2(nullptr, false, false, &savedTimeSelStart,
-                        &savedTimeSelEnd, false);
+  GetSet_LoopTimeRange2(nullptr, false, false, &savedTimeSelStart, &savedTimeSelEnd, false);
 
   // Set time selection to full project
   double timeSelStart = 0.0;
   double timeSelEnd = projectLength;
-  GetSet_LoopTimeRange2(nullptr, true, false, &timeSelStart, &timeSelEnd,
-                        false);
+  GetSet_LoopTimeRange2(nullptr, true, false, &timeSelStart, &timeSelEnd, false);
 
   // Step 2: Create a new track at the end
   int numTracks = GetNumTracks();
@@ -447,8 +429,7 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
   MediaTrack *newTrack = GetTrack(nullptr, newTrackIndex);
   if (!newTrack) {
     // Restore time selection
-    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart,
-                          &savedTimeSelEnd, false);
+    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
     error_msg.Set("Failed to create temporary track");
     return false;
   }
@@ -457,22 +438,19 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
   if (GetSetMediaTrackInfo_String) {
     bool setValue = true;
     char trackName[] = "MAGDA_MASTER_ANALYSIS";
-    GetSetMediaTrackInfo_String((INT_PTR)newTrack, "P_NAME", trackName,
-                                &setValue);
+    GetSetMediaTrackInfo_String((INT_PTR)newTrack, "P_NAME", trackName, &setValue);
   }
 
   // Step 3: Create receive from master track
   MediaTrack *masterTrack = GetMasterTrack(nullptr);
   if (!masterTrack) {
     // Delete the temp track
-    bool (*DeleteTrack)(MediaTrack *) =
-        (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+    bool (*DeleteTrack)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
     if (DeleteTrack) {
       DeleteTrack(newTrack);
     }
     // Restore time selection
-    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart,
-                          &savedTimeSelEnd, false);
+    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
     error_msg.Set("Failed to get master track");
     return false;
   }
@@ -509,8 +487,7 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
 
   // Delete the temp track we created (we'll use the one created by the render
   // action)
-  bool (*DeleteTrack)(MediaTrack *) =
-      (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+  bool (*DeleteTrack)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
   if (DeleteTrack && newTrack) {
     DeleteTrack(newTrack);
   }
@@ -540,8 +517,7 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
   numTracks = GetNumTracks();
 
   if (ShowConsoleMsg) {
-    ShowConsoleMsg(
-        "MAGDA: Rendering master output (stem render of all tracks)...\n");
+    ShowConsoleMsg("MAGDA: Rendering master output (stem render of all tracks)...\n");
   }
 
   // Use action: "Track: Render selected area of tracks to stereo post-fader
@@ -568,22 +544,18 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
 
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA: Created master stem at track index %d\n",
-               stemTrackIndex);
+      snprintf(msg, sizeof(msg), "MAGDA: Created master stem at track index %d\n", stemTrackIndex);
       ShowConsoleMsg(msg);
     }
   } else {
     // Restore time selection
-    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart,
-                          &savedTimeSelEnd, false);
+    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
     error_msg.Set("Failed to create stem render - no new tracks created");
     return false;
   }
 
   // Restore time selection
-  GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart,
-                        &savedTimeSelEnd, false);
+  GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
 
   // Now we have a rendered stem track - queue it for analysis
   // Get track name for the API
@@ -666,10 +638,8 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-  bool (*IsTrackSelected)(MediaTrack *) =
-      (bool (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
-  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *,
-                                             bool *) =
+  bool (*IsTrackSelected)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("IsTrackSelected");
+  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *, bool *) =
       (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
           "GetSetMediaTrackInfo_String");
 
@@ -700,8 +670,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
     }
 
     if (trackIndices.empty()) {
-      error_msg.Set(
-          "No tracks selected. Please select at least two tracks to compare.");
+      error_msg.Set("No tracks selected. Please select at least two tracks to compare.");
       return false;
     }
 
@@ -716,8 +685,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
     std::string current;
     for (char c : args) {
       if (c == ' ' || c == ',' || c == '&' ||
-          (args.find(" and ") != std::string::npos &&
-           current.find("and") != std::string::npos)) {
+          (args.find(" and ") != std::string::npos && current.find("and") != std::string::npos)) {
         if (!current.empty()) {
           // Remove "and" keyword
           if (current != "and") {
@@ -743,8 +711,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
         int idx = (int)trackNum;
         int numTracks = GetNumTracks();
         if (idx < numTracks) {
-          if (std::find(trackIndices.begin(), trackIndices.end(), idx) ==
-              trackIndices.end()) {
+          if (std::find(trackIndices.begin(), trackIndices.end(), idx) == trackIndices.end()) {
             trackIndices.push_back(idx);
           }
         }
@@ -756,15 +723,12 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
           if (track && GetSetMediaTrackInfo_String) {
             char trackName[256] = {0};
             bool setValue = false;
-            GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", trackName,
-                                        &setValue);
+            GetSetMediaTrackInfo_String((INT_PTR)track, "P_NAME", trackName, &setValue);
             if (trackName[0]) {
               std::string name(trackName);
               std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-              if (name.find(ident) != std::string::npos ||
-                  ident.find(name) != std::string::npos) {
-                if (std::find(trackIndices.begin(), trackIndices.end(), i) ==
-                    trackIndices.end()) {
+              if (name.find(ident) != std::string::npos || ident.find(name) != std::string::npos) {
+                if (std::find(trackIndices.begin(), trackIndices.end(), i) == trackIndices.end()) {
                   trackIndices.push_back(i);
                   break; // Match first track with this name
                 }
@@ -782,17 +746,15 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
     }
 
     if (trackIndices.size() < 2) {
-      error_msg.Set(
-          "Please specify at least two tracks to compare (e.g., '@mix:compare "
-          "track1 and track2' or '@mix:compare selected').");
+      error_msg.Set("Please specify at least two tracks to compare (e.g., '@mix:compare "
+                    "track1 and track2' or '@mix:compare selected').");
       return false;
     }
   }
 
   if (ShowConsoleMsg) {
     char msg[512];
-    snprintf(msg, sizeof(msg), "MAGDA: Comparing %zu tracks...\n",
-             trackIndices.size());
+    snprintf(msg, sizeof(msg), "MAGDA: Comparing %zu tracks...\n", trackIndices.size());
     ShowConsoleMsg(msg);
   }
 
@@ -823,8 +785,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
   // tracks in one request
 
   if (trackIndices.size() > 2 && ShowConsoleMsg) {
-    ShowConsoleMsg(
-        "MAGDA: Comparing first 2 tracks (analyzing sequentially)\n");
+    ShowConsoleMsg("MAGDA: Comparing first 2 tracks (analyzing sequentially)\n");
   }
 
   // Queue each track for analysis - they'll be processed sequentially
@@ -870,8 +831,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
         if (otherTrack && GetSetMediaTrackInfo_String) {
           char otherName[256] = {0};
           bool setValue = false;
-          GetSetMediaTrackInfo_String((INT_PTR)otherTrack, "P_NAME", otherName,
-                                      &setValue);
+          GetSetMediaTrackInfo_String((INT_PTR)otherTrack, "P_NAME", otherName, &setValue);
           if (otherName[0]) {
             userReq += otherName;
           } else {
@@ -887,8 +847,8 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
 
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg), "MAGDA: Queued track %d (%s) for comparison\n",
-               trackIdx, trackName);
+      snprintf(msg, sizeof(msg), "MAGDA: Queued track %d (%s) for comparison\n", trackIdx,
+               trackName);
       ShowConsoleMsg(msg);
     }
   }
@@ -896,8 +856,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
   return true;
 }
 
-int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex,
-                                               BounceMode mode,
+int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex, BounceMode mode,
                                                WDL_FastString &error_msg) {
   // New approach: Copy track, hide it, render item, analyze, then delete
   // This avoids modifying the original track at all
@@ -969,19 +928,16 @@ int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex,
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA: Copied track to index %d\n",
-             copiedTrackIndex);
+    snprintf(msg, sizeof(msg), "MAGDA: Copied track to index %d\n", copiedTrackIndex);
     ShowConsoleMsg(msg);
   }
 
   // Step 4: Hide the copied track
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
   if (GetSetMediaTrackInfo) {
     double minHeight = -1.0; // Collapsed
-    GetSetMediaTrackInfo((INT_PTR)copiedTrack, "I_HEIGHTOVERRIDE", &minHeight,
-                         nullptr);
+    GetSetMediaTrackInfo((INT_PTR)copiedTrack, "I_HEIGHTOVERRIDE", &minHeight, nullptr);
   }
 
   // Step 5: Get the media item on the copied track
@@ -1012,8 +968,7 @@ int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex,
       (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
   if (SetMediaItemSelected) {
     // Deselect all items first
-    int (*CountMediaItems)(ReaProject *) =
-        (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+    int (*CountMediaItems)(ReaProject *) = (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
     MediaItem *(*GetMediaItem)(ReaProject *, int) =
         (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
     if (CountMediaItems && GetMediaItem) {
@@ -1039,8 +994,7 @@ int MagdaBounceWorkflow::BounceTrackToNewTrack(int sourceTrackIndex,
     MediaItem_Take *activeTake = GetActiveTake(copiedItem);
     if (!activeTake) {
       // No active take, try to get the first take
-      int (*CountTakes)(MediaItem *) =
-          (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+      int (*CountTakes)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
       MediaItem_Take *(*GetTake)(MediaItem *, int) =
           (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
       if (CountTakes && GetTake) {
@@ -1071,8 +1025,7 @@ bool MagdaBounceWorkflow::HideTrack(int trackIndex, WDL_FastString &error_msg) {
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo");
+      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
 
   if (!GetTrack || !GetSetMediaTrackInfo) {
     error_msg.Set("Required REAPER functions not available");
@@ -1100,16 +1053,14 @@ bool MagdaBounceWorkflow::HideTrack(int trackIndex, WDL_FastString &error_msg) {
 }
 
 bool MagdaBounceWorkflow::RunDSPAnalysis(int trackIndex, const char *trackName,
-                                         WDL_FastString &analysisJson,
-                                         WDL_FastString &fxJson,
+                                         WDL_FastString &analysisJson, WDL_FastString &fxJson,
                                          WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg),
-             "MAGDA: Running DSP analysis on track %d ('%s')...\n", trackIndex,
+    snprintf(msg, sizeof(msg), "MAGDA: Running DSP analysis on track %d ('%s')...\n", trackIndex,
              trackName);
     ShowConsoleMsg(msg);
   }
@@ -1151,10 +1102,10 @@ bool MagdaBounceWorkflow::RunDSPAnalysis(int trackIndex, const char *trackName,
   return true;
 }
 
-bool MagdaBounceWorkflow::SendToMixAPI(
-    const char *analysisJson, const char *fxJson, const char *trackType,
-    const char *userRequest, int trackIndex, const char *trackName,
-    WDL_FastString &responseJson, WDL_FastString &error_msg) {
+bool MagdaBounceWorkflow::SendToMixAPI(const char *analysisJson, const char *fxJson,
+                                       const char *trackType, const char *userRequest,
+                                       int trackIndex, const char *trackName,
+                                       WDL_FastString &responseJson, WDL_FastString &error_msg) {
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -1166,7 +1117,7 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   SetCurrentPhase(MIX_PHASE_API_CALL);
 
   // Check if OpenAI API key is available
-  MagdaOpenAI* openai = GetMagdaOpenAI();
+  MagdaOpenAI *openai = GetMagdaOpenAI();
   if (!openai || !openai->HasAPIKey()) {
     error_msg.Set("OpenAI API key not configured. Please set it in MAGDA > API Keys.");
     if (ShowConsoleMsg) {
@@ -1186,10 +1137,18 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   // Escape track name
   for (const char *p = trackName; p && *p; p++) {
     switch (*p) {
-    case '"':  contextJson.Append("\\\""); break;
-    case '\\': contextJson.Append("\\\\"); break;
-    case '\n': contextJson.Append("\\n"); break;
-    default:   contextJson.Append(p, 1); break;
+    case '"':
+      contextJson.Append("\\\"");
+      break;
+    case '\\':
+      contextJson.Append("\\\\");
+      break;
+    case '\n':
+      contextJson.Append("\\n");
+      break;
+    default:
+      contextJson.Append(p, 1);
+      break;
     }
   }
   contextJson.Append("\"");
@@ -1197,9 +1156,15 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     contextJson.Append(",\"track_type\":\"");
     for (const char *p = trackType; *p; p++) {
       switch (*p) {
-      case '"':  contextJson.Append("\\\""); break;
-      case '\\': contextJson.Append("\\\\"); break;
-      default:   contextJson.Append(p, 1); break;
+      case '"':
+        contextJson.Append("\\\"");
+        break;
+      case '\\':
+        contextJson.Append("\\\\");
+        break;
+      default:
+        contextJson.Append(p, 1);
+        break;
       }
     }
     contextJson.Append("\"");
@@ -1222,10 +1187,10 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   std::string localAccumulator;
 
   // Streaming callback that accumulates text both locally and to UI state
-  auto streamCallback = [&localAccumulator](const char* text, bool is_done) -> bool {
+  auto streamCallback = [&localAccumulator](const char *text, bool is_done) -> bool {
     if (text && *text) {
-      localAccumulator += text;  // Local accumulator (safe from UI clearing)
-      MagdaBounceWorkflow::AppendStreamText(text);  // For UI streaming display
+      localAccumulator += text;                    // Local accumulator (safe from UI clearing)
+      MagdaBounceWorkflow::AppendStreamText(text); // For UI streaming display
     }
     if (is_done) {
       MagdaBounceWorkflow::CompleteStreaming(true);
@@ -1234,12 +1199,8 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   };
 
   // Call OpenAI directly
-  bool success = openai->GenerateMixFeedback(
-      analysisJson,
-      contextJson.Get(),
-      userRequest,
-      streamCallback,
-      error_msg);
+  bool success = openai->GenerateMixFeedback(analysisJson, contextJson.Get(), userRequest,
+                                             streamCallback, error_msg);
 
   if (!success) {
     CompleteStreaming(false, error_msg.Get());
@@ -1289,8 +1250,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
   bool (*SetMediaItemSelected)(MediaItem *, bool) =
       (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
-  int (*CountMediaItems)(ReaProject *) =
-      (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
+  int (*CountMediaItems)(ReaProject *) = (int (*)(ReaProject *))g_rec->GetFunc("CountMediaItems");
   MediaItem *(*GetMediaItem)(ReaProject *, int) =
       (MediaItem * (*)(ReaProject *, int)) g_rec->GetFunc("GetMediaItem");
   MediaItem_Take *(*GetActiveTake)(MediaItem *) =
@@ -1304,8 +1264,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
   std::vector<ReaperCommand> commandsToAdd;
 
   // Process commands one at a time (to avoid blocking)
-  for (auto it = s_reaperCommandQueue.begin();
-       it != s_reaperCommandQueue.end();) {
+  for (auto it = s_reaperCommandQueue.begin(); it != s_reaperCommandQueue.end();) {
     ReaperCommand &cmd = *it;
 
     if (cmd.completed) {
@@ -1322,13 +1281,11 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       }
 
       // Get the track and item
-      MediaTrack *track =
-          GetTrack ? GetTrack(nullptr, cmd.trackIndex) : nullptr;
+      MediaTrack *track = GetTrack ? GetTrack(nullptr, cmd.trackIndex) : nullptr;
       if (!track) {
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA: Track %d not found for render\n",
-                   cmd.trackIndex);
+          snprintf(msg, sizeof(msg), "MAGDA: Track %d not found for render\n", cmd.trackIndex);
           ShowConsoleMsg(msg);
         }
         it = s_reaperCommandQueue.erase(it);
@@ -1340,16 +1297,14 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       if (itemCount == 0) {
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg),
-                   "MAGDA: Track %d has no items for render\n", cmd.trackIndex);
+          snprintf(msg, sizeof(msg), "MAGDA: Track %d has no items for render\n", cmd.trackIndex);
           ShowConsoleMsg(msg);
         }
         it = s_reaperCommandQueue.erase(it);
         continue;
       }
 
-      MediaItem *item =
-          GetTrackMediaItem ? GetTrackMediaItem(track, cmd.itemIndex) : nullptr;
+      MediaItem *item = GetTrackMediaItem ? GetTrackMediaItem(track, cmd.itemIndex) : nullptr;
       if (!item) {
         it = s_reaperCommandQueue.erase(it);
         continue;
@@ -1374,11 +1329,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       if (GetActiveTake && SetActiveTake) {
         MediaItem_Take *activeTake = GetActiveTake(item);
         if (!activeTake) {
-          int (*CountTakes)(MediaItem *) =
-              (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+          int (*CountTakes)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
           MediaItem_Take *(*GetTake)(MediaItem *, int) =
-              (MediaItem_Take * (*)(MediaItem *, int))
-                  g_rec->GetFunc("GetTake");
+              (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
           if (CountTakes && GetTake) {
             int takeCount = CountTakes(item);
             if (takeCount > 0) {
@@ -1392,24 +1345,22 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       }
 
       // Count takes BEFORE render so we know which one is new
-      int (*CountTakesFunc)(MediaItem *) =
-          (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+      int (*CountTakesFunc)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
       int takesBefore = CountTakesFunc ? CountTakesFunc(item) : 0;
 
-      // Ensure take has a valid name before rendering (prevents garbage filenames)
+      // Ensure take has a valid name before rendering (prevents garbage
+      // filenames)
       if (GetActiveTake) {
         MediaItem_Take *activeTake = GetActiveTake(item);
         if (activeTake) {
-          bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
-                                                  char *, bool) =
-              (bool (*)(MediaItem_Take *, const char *, char *,
-                        bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+          bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *, char *, bool) =
+              (bool (*)(MediaItem_Take *, const char *, char *, bool))g_rec->GetFunc(
+                  "GetSetMediaItemTakeInfo_String");
 
           if (GetSetMediaItemTakeInfo_String) {
             // Check if take has a name
             char takeName[512] = {0};
-            GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", takeName,
-                                           false);
+            GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", takeName, false);
 
             // If no name, set a default based on track name or generic name
             if (takeName[0] == '\0') {
@@ -1417,15 +1368,12 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               if (cmd.trackName[0] != '\0') {
                 snprintf(defaultName, sizeof(defaultName), "%s", cmd.trackName);
               } else {
-                snprintf(defaultName, sizeof(defaultName), "Track_%d",
-                         cmd.trackIndex + 1);
+                snprintf(defaultName, sizeof(defaultName), "Track_%d", cmd.trackIndex + 1);
               }
-              GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", defaultName,
-                                             true);
+              GetSetMediaItemTakeInfo_String(activeTake, "P_NAME", defaultName, true);
               if (ShowConsoleMsg) {
                 char msg[512];
-                snprintf(msg, sizeof(msg),
-                         "MAGDA: Set default take name: '%s'\n", defaultName);
+                snprintf(msg, sizeof(msg), "MAGDA: Set default take name: '%s'\n", defaultName);
                 ShowConsoleMsg(msg);
               }
             }
@@ -1443,8 +1391,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       if (ShowConsoleMsg) {
         char msg[256];
         int takesAfter = CountTakesFunc ? CountTakesFunc(item) : 0;
-        snprintf(msg, sizeof(msg),
-                 "MAGDA: Applied FX to item (takes: %d -> %d)\n", takesBefore,
+        snprintf(msg, sizeof(msg), "MAGDA: Applied FX to item (takes: %d -> %d)\n", takesBefore,
                  takesAfter);
         ShowConsoleMsg(msg);
       }
@@ -1474,8 +1421,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         dspCmd.trackName[sizeof(dspCmd.trackName) - 1] = '\0';
         strncpy(dspCmd.trackType, cmd.trackType, sizeof(dspCmd.trackType) - 1);
         dspCmd.trackType[sizeof(dspCmd.trackType) - 1] = '\0';
-        strncpy(dspCmd.userRequest, cmd.userRequest,
-                sizeof(dspCmd.userRequest) - 1);
+        strncpy(dspCmd.userRequest, cmd.userRequest, sizeof(dspCmd.userRequest) - 1);
         dspCmd.userRequest[sizeof(dspCmd.userRequest) - 1] = '\0';
         commandsToAdd.push_back(dspCmd);
       }
@@ -1484,12 +1430,10 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       ++it;
     } else if (cmd.type == CMD_DELETE_TRACK) {
       // Execute delete command
-      bool (*DeleteTrack)(MediaTrack *) =
-          (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+      bool (*DeleteTrack)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
 
       if (DeleteTrack) {
-        MediaTrack *track =
-            GetTrack ? GetTrack(nullptr, cmd.trackIndex) : nullptr;
+        MediaTrack *track = GetTrack ? GetTrack(nullptr, cmd.trackIndex) : nullptr;
         if (track) {
           DeleteTrack(track);
           if (UpdateArrange) {
@@ -1497,8 +1441,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
           }
           if (ShowConsoleMsg) {
             char msg[256];
-            snprintf(msg, sizeof(msg), "MAGDA: Deleted track %d\n",
-                     cmd.trackIndex);
+            snprintf(msg, sizeof(msg), "MAGDA: Deleted track %d\n", cmd.trackIndex);
             ShowConsoleMsg(msg);
           }
         }
@@ -1511,8 +1454,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       // Delete the rendered take from the item by index
       MediaItem *item = (MediaItem *)cmd.itemPtr;
       if (item) {
-        int (*CountTakes)(MediaItem *) =
-            (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+        int (*CountTakes)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
         MediaItem_Take *(*GetTake)(MediaItem *, int) =
             (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
         void (*SetActiveTake)(MediaItem_Take *) =
@@ -1524,8 +1466,8 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
 
           if (takeCount > 1 && takeToDelete < takeCount) {
             // Select only this item for the delete action
-            bool (*SetMediaItemSelected)(MediaItem *, bool) = (bool (*)(
-                MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
+            bool (*SetMediaItemSelected)(MediaItem *, bool) =
+                (bool (*)(MediaItem *, bool))g_rec->GetFunc("SetMediaItemSelected");
             if (SetMediaItemSelected && CountMediaItems && GetMediaItem) {
               int totalItems = CountMediaItems(nullptr);
               for (int i = 0; i < totalItems; i++) {
@@ -1551,8 +1493,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
               UpdateArrange();
             }
             if (ShowConsoleMsg) {
-              ShowConsoleMsg(
-                  "MAGDA: Deleted rendered take, restored original\n");
+              ShowConsoleMsg("MAGDA: Deleted rendered take, restored original\n");
             }
           } else {
             if (ShowConsoleMsg) {
@@ -1577,13 +1518,11 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         MediaItem_Take *(*GetActiveTake)(MediaItem *) =
             (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
         PCM_source *(*GetMediaItemTake_Source)(MediaItem_Take *) =
-            (PCM_source * (*)(MediaItem_Take *))
-                g_rec->GetFunc("GetMediaItemTake_Source");
-        void (*GetMediaSourceFileName)(PCM_source *, char *, int) = (void (*)(
-            PCM_source *, char *, int))g_rec->GetFunc("GetMediaSourceFileName");
+            (PCM_source * (*)(MediaItem_Take *)) g_rec->GetFunc("GetMediaItemTake_Source");
+        void (*GetMediaSourceFileName)(PCM_source *, char *, int) =
+            (void (*)(PCM_source *, char *, int))g_rec->GetFunc("GetMediaSourceFileName");
 
-        if (GetActiveTake && GetMediaItemTake_Source &&
-            GetMediaSourceFileName) {
+        if (GetActiveTake && GetMediaItemTake_Source && GetMediaSourceFileName) {
           MediaItem_Take *activeTake = GetActiveTake(dspItem);
           if (activeTake) {
             PCM_source *src = GetMediaItemTake_Source(activeTake);
@@ -1647,8 +1586,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       dspConfig.fftSize = 4096;
       dspConfig.analyzeFullItem = true;
 
-      RawAudioData audioData =
-          MagdaDSPAnalyzer::ReadTrackSamples(cmd.trackIndex, dspConfig);
+      RawAudioData audioData = MagdaDSPAnalyzer::ReadTrackSamples(cmd.trackIndex, dspConfig);
 
       if (!audioData.valid || audioData.samples.empty()) {
         if (ShowConsoleMsg) {
@@ -1665,8 +1603,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
       } else {
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg),
-                   "MAGDA: Read %zu samples, starting background analysis...\n",
+          snprintf(msg, sizeof(msg), "MAGDA: Read %zu samples, starting background analysis...\n",
                    audioData.samples.size());
           ShowConsoleMsg(msg);
         }
@@ -1692,20 +1629,17 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         userRequest[sizeof(userRequest) - 1] = '\0';
 
         // Move audio data to background thread for processing
-        std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex,
-                     trackName, trackType, userRequest, fxStr,
-                     audioData = std::move(audioData), dspConfig]() mutable {
+        std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex, trackName, trackType,
+                     userRequest, fxStr, audioData = std::move(audioData), dspConfig]() mutable {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
           // Run DSP analysis on background thread
           if (ShowConsoleMsg) {
-            ShowConsoleMsg(
-                "MAGDA: Running DSP analysis on background thread...\n");
+            ShowConsoleMsg("MAGDA: Running DSP analysis on background thread...\n");
           }
 
-          DSPAnalysisResult analysisResult =
-              MagdaDSPAnalyzer::AnalyzeSamples(audioData, dspConfig);
+          DSPAnalysisResult analysisResult = MagdaDSPAnalyzer::AnalyzeSamples(audioData, dspConfig);
 
           if (!analysisResult.success) {
             if (ShowConsoleMsg) {
@@ -1714,15 +1648,16 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                        analysisResult.errorMessage.Get());
               ShowConsoleMsg(msg);
             }
-            StoreResult(false, std::string("DSP analysis failed: ") +
-                                   analysisResult.errorMessage.Get());
+            StoreResult(false,
+                        std::string("DSP analysis failed: ") + analysisResult.errorMessage.Get());
           } else {
             // Convert to JSON
             WDL_FastString analysisJson;
             MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
 
             // Queue take deletion BEFORE API call (must be done on main thread)
-            // We delete the rendered take early to avoid holding onto temp audio
+            // We delete the rendered take early to avoid holding onto temp
+            // audio
             {
               std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
               ReaperCommand deleteCmd;
@@ -1739,27 +1674,24 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             }
 
             // Send to mix API with TRUE STREAMING
-            // Text is streamed to the UI in real-time via MagdaBounceWorkflow::AppendStreamText
+            // Text is streamed to the UI in real-time via
+            // MagdaBounceWorkflow::AppendStreamText
             WDL_FastString responseJson, error_msg;
-            if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(),
-                              trackType[0] ? trackType : "other",
-                              userRequest[0] ? userRequest : "",
-                              selectedTrackIndex, trackName, responseJson,
-                              error_msg)) {
+            if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(), trackType[0] ? trackType : "other",
+                              userRequest[0] ? userRequest : "", selectedTrackIndex, trackName,
+                              responseJson, error_msg)) {
               if (ShowConsoleMsg) {
                 char msg[512];
-                snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n",
-                         error_msg.Get());
+                snprintf(msg, sizeof(msg), "MAGDA: Mix API call failed: %s\n", error_msg.Get());
                 ShowConsoleMsg(msg);
               }
               // Error already reported via CompleteStreaming in SendToMixAPI
             } else {
               if (ShowConsoleMsg) {
-                ShowConsoleMsg(
-                    "MAGDA: Mix analysis streaming completed successfully!\n");
+                ShowConsoleMsg("MAGDA: Mix analysis streaming completed successfully!\n");
               }
-              // Success already handled by streaming - text was streamed to UI in real-time
-              // and CompleteStreaming was called
+              // Success already handled by streaming - text was streamed to UI
+              // in real-time and CompleteStreaming was called
             }
           }
           // Take deletion already queued before API call
@@ -1793,8 +1725,7 @@ bool MagdaBounceWorkflow::ProcessCleanupQueue() {
 
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-  bool (*DeleteTrack)(MediaTrack *) =
-      (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+  bool (*DeleteTrack)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");

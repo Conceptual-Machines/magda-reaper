@@ -35,8 +35,7 @@ public:
   static bool GetTrackSolo(MediaTrack *track, bool *solo);
 
   // FX operations
-  static int AddTrackFX(MediaTrack *track, const char *fxname,
-                        bool recFX = false);
+  static int AddTrackFX(MediaTrack *track, const char *fxname, bool recFX = false);
 
   // Time conversion
   static double BarToTime(int bar);
@@ -71,8 +70,8 @@ private:
 
   static int (*s_TrackFX_AddByName)(MediaTrack *, const char *, bool, int);
 
-  static double (*s_TimeMap_GetMeasureInfo)(ReaProject *, int, double *,
-                                            double *, int *, int *, double *);
+  static double (*s_TimeMap_GetMeasureInfo)(ReaProject *, int, double *, double *, int *, int *,
+                                            double *);
   static double (*s_TimeMap2_QNToTime)(ReaProject *, double);
   static double (*s_TimeMap2_timeToQN)(ReaProject *, double);
 

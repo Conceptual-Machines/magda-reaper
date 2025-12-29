@@ -34,13 +34,11 @@ public:
 
 private:
   // ReaImGui function pointers
-  void *(*m_ImGui_CreateContext)(const char *label,
-                                 int *config_flagsInOptional);
+  void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
   bool (*m_ImGui_Begin)(void *ctx, const char *name, bool *p_openInOutOptional,
                         int *flagsInOptional);
   void (*m_ImGui_End)(void *ctx);
-  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h,
-                                    int *condInOptional);
+  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h, int *condInOptional);
   void (*m_ImGui_Text)(void *ctx, const char *text);
   void (*m_ImGui_TextColored)(void *ctx, int col_rgba, const char *text);
   bool (*m_ImGui_Button)(void *ctx, const char *label, double *size_wInOptional,
@@ -50,23 +48,19 @@ private:
   void (*m_ImGui_Separator)(void *ctx);
   void (*m_ImGui_Spacing)(void *ctx);
   bool (*m_ImGui_Checkbox)(void *ctx, const char *label, bool *v);
-  bool (*m_ImGui_BeginCombo)(void *ctx, const char *label,
-                             const char *preview_value, int *flagsInOptional);
+  bool (*m_ImGui_BeginCombo)(void *ctx, const char *label, const char *preview_value,
+                             int *flagsInOptional);
   void (*m_ImGui_EndCombo)(void *ctx);
-  bool (*m_ImGui_Selectable)(void *ctx, const char *label,
-                             bool *p_selectedInOut, int *flagsInOptional,
-                             double *size_wInOptional,
+  bool (*m_ImGui_Selectable)(void *ctx, const char *label, bool *p_selectedInOut,
+                             int *flagsInOptional, double *size_wInOptional,
                              double *size_hInOptional);
-  bool (*m_ImGui_InputInt)(void *ctx, const char *label, int *v,
-                           int *stepInOptional, int *step_fastInOptional,
-                           int *flagsInOptional);
-  bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf,
-                            int buf_size, int *flagsInOptional,
-                            void *callbackInOptional, void *user_dataInOptional);
-  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label,
-                                    const char *hint, char *buf, int buf_size,
-                                    int *flagsInOptional,
-                                    void *callbackInOptional,
+  bool (*m_ImGui_InputInt)(void *ctx, const char *label, int *v, int *stepInOptional,
+                           int *step_fastInOptional, int *flagsInOptional);
+  bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf, int buf_size,
+                            int *flagsInOptional, void *callbackInOptional,
+                            void *user_dataInOptional);
+  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label, const char *hint, char *buf,
+                                    int buf_size, int *flagsInOptional, void *callbackInOptional,
                                     void *user_dataInOptional);
   void (*m_ImGui_PushItemWidth)(void *ctx, double item_width);
   void (*m_ImGui_PopItemWidth)(void *ctx);
@@ -79,7 +73,7 @@ private:
   // State
   bool m_available = false;
   bool m_visible = false;
-  bool m_shouldClose = false;  // Deferred close flag
+  bool m_shouldClose = false; // Deferred close flag
   void *m_ctx = nullptr;
 
   // Current preferences (editable in UI)

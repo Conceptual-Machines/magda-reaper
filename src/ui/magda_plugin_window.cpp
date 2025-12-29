@@ -9,8 +9,8 @@
 #include <cstring>
 
 #ifndef RGB
-#define RGB(r, g, b)                                                           \
-  ((int)(((unsigned char)(r) | ((unsigned short)((unsigned char)(g)) << 8)) |  \
+#define RGB(r, g, b)                                                                               \
+  ((int)(((unsigned char)(r) | ((unsigned short)((unsigned char)(g)) << 8)) |                      \
          (((unsigned int)(unsigned char)(b)) << 16)))
 #endif
 
@@ -46,8 +46,8 @@ void MagdaPluginWindow::Show(bool toggle) {
 
   if (!m_hwnd) {
     // Create a modeless dialog - SWS pattern
-    m_hwnd = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAGDA_PLUGIN), NULL,
-                               sDialogProc, (LPARAM)this);
+    m_hwnd = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAGDA_PLUGIN), NULL, sDialogProc,
+                               (LPARAM)this);
   }
 
   if (m_hwnd) {
@@ -100,13 +100,11 @@ void MagdaPluginWindow::Hide() {
   }
 }
 
-INT_PTR WINAPI MagdaPluginWindow::sDialogProc(HWND hwnd, UINT uMsg,
-                                              WPARAM wParam, LPARAM lParam) {
+INT_PTR WINAPI MagdaPluginWindow::sDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   if (uMsg == WM_INITDIALOG) {
     SetWindowLongPtr(hwnd, GWLP_USERDATA, lParam);
   }
-  MagdaPluginWindow *pThis =
-      (MagdaPluginWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+  MagdaPluginWindow *pThis = (MagdaPluginWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
   if (pThis) {
     pThis->m_hwnd = hwnd; // Store HWND in instance
     return pThis->DialogProc(uMsg, wParam, lParam);
@@ -130,10 +128,9 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(
-              msg, sizeof(msg),
-              "MAGDA: Failed to get controls: list=%p, scan=%p, refresh=%p\n",
-              m_hwndAliasList, m_hwndScanButton, m_hwndRefreshButton);
+          snprintf(msg, sizeof(msg),
+                   "MAGDA: Failed to get controls: list=%p, scan=%p, refresh=%p\n", m_hwndAliasList,
+                   m_hwndScanButton, m_hwndRefreshButton);
           ShowConsoleMsg(msg);
         }
       }
@@ -146,17 +143,14 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char msg[256];
-        snprintf(msg, sizeof(msg), "MAGDA: ListView handle: %p, IsWindow: %d\n",
-                 m_hwndAliasList,
+        snprintf(msg, sizeof(msg), "MAGDA: ListView handle: %p, IsWindow: %d\n", m_hwndAliasList,
                  m_hwndAliasList ? IsWindow(m_hwndAliasList) : 0);
         ShowConsoleMsg(msg);
 
         // Check if ListView is visible
         if (m_hwndAliasList) {
-          snprintf(msg, sizeof(msg),
-                   "MAGDA: ListView visible: %d, enabled: %d\n",
-                   IsWindowVisible(m_hwndAliasList),
-                   IsWindowEnabled(m_hwndAliasList));
+          snprintf(msg, sizeof(msg), "MAGDA: ListView visible: %d, enabled: %d\n",
+                   IsWindowVisible(m_hwndAliasList), IsWindowEnabled(m_hwndAliasList));
           ShowConsoleMsg(msg);
         }
       }
@@ -213,9 +207,8 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     ListView_InsertColumn(m_hwndAliasList, 2, &lvc);
 
     // Set extended ListView style with grid lines (following SWS pattern)
-    ListView_SetExtendedListViewStyleEx(
-        m_hwndAliasList, LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT,
-        LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT);
+    ListView_SetExtendedListViewStyleEx(m_hwndAliasList, LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT,
+                                        LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT);
 
     // Set ListView colors explicitly (white bg, black text for visibility)
     // This is needed on macOS where GetMainHwnd returns black
@@ -240,8 +233,7 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char msg[512];
-        snprintf(msg, sizeof(msg),
-                 "MAGDA: Dialog client: width=%d, height=%d\n", dialogWidth,
+        snprintf(msg, sizeof(msg), "MAGDA: Dialog client: width=%d, height=%d\n", dialogWidth,
                  dialogHeight);
         ShowConsoleMsg(msg);
       }
@@ -256,13 +248,11 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     const int buttonHeightResource = 30;
 
     // Compute rects in client coordinates
-    const int statusBottom = statusLabelTop + statusLabelHeight; // 25
-    const int listTop = statusBottom; // right after label
-    const int listWidth =
-        dialogWidth - listLeft - listRightPadding; // 860 at 900 width
-    const int buttonsTop =
-        dialogHeight - buttonHeightResource - padding;   // stick to bottom
-    int listViewHeight = buttonsTop - listTop - padding; // fill remaining space
+    const int statusBottom = statusLabelTop + statusLabelHeight;          // 25
+    const int listTop = statusBottom;                                     // right after label
+    const int listWidth = dialogWidth - listLeft - listRightPadding;      // 860 at 900 width
+    const int buttonsTop = dialogHeight - buttonHeightResource - padding; // stick to bottom
+    int listViewHeight = buttonsTop - listTop - padding;                  // fill remaining space
 
     if (g_rec) {
       void (*ShowConsoleMsg)(const char *msg) =
@@ -309,9 +299,8 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char msg[512];
-          snprintf(
-              msg, sizeof(msg),
-              "MAGDA: WARNING - ListView height too small, using minimum 50\n");
+          snprintf(msg, sizeof(msg),
+                   "MAGDA: WARNING - ListView height too small, using minimum 50\n");
           ShowConsoleMsg(msg);
         }
       }
@@ -322,8 +311,8 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // To flip: newY = dialogHeight - oldY - controlHeight
     // Add 2px adjustment to push ListView down slightly
     int flippedListTop = dialogHeight - listTop - listViewHeight + 2;
-    SetWindowPos(m_hwndAliasList, NULL, listViewX, flippedListTop,
-                 listViewWidth, listViewHeight, SWP_NOZORDER | SWP_SHOWWINDOW);
+    SetWindowPos(m_hwndAliasList, NULL, listViewX, flippedListTop, listViewWidth, listViewHeight,
+                 SWP_NOZORDER | SWP_SHOWWINDOW);
 
     // Verify final position
     RECT listRect2;
@@ -346,9 +335,8 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Position buttons - flip Y for macOS SWELL coordinate inversion
     int flippedButtonY = dialogHeight - buttonsTop - buttonHeightResource;
     if (scanButton) {
-      SetWindowPos(scanButton, NULL, scanButtonX, flippedButtonY,
-                   scanButtonWidth, buttonHeightResource,
-                   SWP_NOZORDER | SWP_SHOWWINDOW);
+      SetWindowPos(scanButton, NULL, scanButtonX, flippedButtonY, scanButtonWidth,
+                   buttonHeightResource, SWP_NOZORDER | SWP_SHOWWINDOW);
 
       // Verify button position
       RECT buttonRect2;
@@ -361,18 +349,15 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char msg[512];
-          snprintf(
-              msg, sizeof(msg),
-              "MAGDA: Scan button FINAL - targetTop=%d, actualClientY=%d\n",
-              flippedButtonY, buttonFinalTop.y);
+          snprintf(msg, sizeof(msg), "MAGDA: Scan button FINAL - targetTop=%d, actualClientY=%d\n",
+                   flippedButtonY, buttonFinalTop.y);
           ShowConsoleMsg(msg);
         }
       }
     }
     if (refreshButton) {
-      SetWindowPos(refreshButton, NULL, refreshButtonX, flippedButtonY,
-                   refreshButtonWidth, buttonHeightResource,
-                   SWP_NOZORDER | SWP_SHOWWINDOW);
+      SetWindowPos(refreshButton, NULL, refreshButtonX, flippedButtonY, refreshButtonWidth,
+                   buttonHeightResource, SWP_NOZORDER | SWP_SHOWWINDOW);
     }
 
     // Verify the position was set correctly
@@ -402,8 +387,7 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     lvi.iSubItem = 0;
     lvi.pszText = (char *)"TEST PLUGIN";
     int itemIndex = ListView_InsertItem(m_hwndAliasList, &lvi);
-    ListView_SetItemText(m_hwndAliasList, itemIndex, 1,
-                         (char *)"test, alias1, alias2");
+    ListView_SetItemText(m_hwndAliasList, itemIndex, 1, (char *)"test, alias1, alias2");
 
     // Log after inserting test row
     if (g_rec) {
@@ -434,10 +418,12 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
   case WM_ERASEBKGND:
     return TRUE; // Let SWELL handle background painting
   case WM_CTLCOLORDLG:
-  case WM_CTLCOLORSTATIC:
+  case WM_CTLCOLORSTATIC: {
     // Forward to REAPER main window for theme colors (exact SWS pattern)
     if (g_rec) {
-      HWND (*GetMainHwnd)() = (HWND (*)())g_rec->GetFunc("GetMainHwnd");
+      typedef HWND (*GetMainHwndFunc)();
+      GetMainHwndFunc GetMainHwnd =
+          reinterpret_cast<GetMainHwndFunc>(g_rec->GetFunc("GetMainHwnd"));
       if (GetMainHwnd) {
         HWND mainHwnd = GetMainHwnd();
         if (mainHwnd) {
@@ -446,6 +432,7 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
       }
     }
     return 0;
+  }
   case WM_COMMAND: {
     int command = LOWORD(wParam);
     int notifyCode = HIWORD(wParam);
@@ -457,19 +444,16 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (nmhdr && nmhdr->hwndFrom == m_hwndAliasList) {
       if (nmhdr->code == NM_DBLCLK) {
         // Double-click on ListView
-        int selectedRow =
-            ListView_GetNextItem(m_hwndAliasList, -1, LVNI_SELECTED);
+        int selectedRow = ListView_GetNextItem(m_hwndAliasList, -1, LVNI_SELECTED);
         if (selectedRow >= 0 && selectedRow < (int)m_rowPluginKeys.size()) {
           // Check if it's a drum plugin
           char pluginName[512] = {0};
-          ListView_GetItemText(m_hwndAliasList, selectedRow, 0, pluginName,
-                               sizeof(pluginName));
+          ListView_GetItemText(m_hwndAliasList, selectedRow, 0, pluginName, sizeof(pluginName));
 
           if (IsDrumPlugin(pluginName)) {
             // Open drum mapping window
             if (g_drumMappingWindow && g_drumMappingWindow->IsAvailable()) {
-              g_drumMappingWindow->Show(m_rowPluginKeys[selectedRow],
-                                        pluginName);
+              g_drumMappingWindow->Show(m_rowPluginKeys[selectedRow], pluginName);
             } else {
               // Fallback: edit alias
               EditAliasAtRow(selectedRow);
@@ -494,12 +478,10 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (statusLabel) {
       if (wParam > 0) {
         char msg[256];
-        snprintf(msg, sizeof(msg),
-                 "Scan complete: %d plugins, aliases generated", (int)wParam);
+        snprintf(msg, sizeof(msg), "Scan complete: %d plugins, aliases generated", (int)wParam);
         SetWindowText(statusLabel, msg);
       } else {
-        SetWindowText(statusLabel,
-                      lParam ? (const char *)lParam : "Scan failed");
+        SetWindowText(statusLabel, lParam ? (const char *)lParam : "Scan failed");
       }
     }
 
@@ -535,16 +517,14 @@ void MagdaPluginWindow::OnCommand(int command, int notifyCode) {
 // Static callback function for async scan - must be a plain C function pointer
 // This is called from the background thread, so it uses PostMessage to update
 // UI
-static void ScanAsyncCallback(bool success, int plugin_count,
-                              const char *error) {
+static void ScanAsyncCallback(bool success, int plugin_count, const char *error) {
   // Post message to update UI on main thread
   if (g_rec && g_pluginWindow) {
     void (*PostMessage)(HWND, UINT, WPARAM, LPARAM) =
         (void (*)(HWND, UINT, WPARAM, LPARAM))g_rec->GetFunc("PostMessage");
     if (PostMessage && g_pluginWindow->m_hwnd) {
       // Use WM_USER + 1 as custom message for scan completion
-      PostMessage(g_pluginWindow->m_hwnd, WM_USER + 1,
-                  success ? plugin_count : 0,
+      PostMessage(g_pluginWindow->m_hwnd, WM_USER + 1, success ? plugin_count : 0,
                   (LPARAM)(error ? strdup(error) : nullptr));
     }
   }
@@ -631,10 +611,8 @@ void MagdaPluginWindow::RefreshAliasList() {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA: RefreshAliasList: %d plugins, %d aliases\n",
-               (int)plugins.size(),
-               (int)g_pluginScanner->GetAliasesByPlugin().size());
+      snprintf(msg, sizeof(msg), "MAGDA: RefreshAliasList: %d plugins, %d aliases\n",
+               (int)plugins.size(), (int)g_pluginScanner->GetAliasesByPlugin().size());
       ShowConsoleMsg(msg);
     }
   }
@@ -661,8 +639,7 @@ void MagdaPluginWindow::RefreshAliasList() {
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char msg[256];
-        snprintf(msg, sizeof(msg),
-                 "MAGDA: Inserted empty message, ListView_GetItemCount=%d\n",
+        snprintf(msg, sizeof(msg), "MAGDA: Inserted empty message, ListView_GetItemCount=%d\n",
                  ListView_GetItemCount(m_hwndAliasList));
         ShowConsoleMsg(msg);
       }
@@ -706,8 +683,7 @@ void MagdaPluginWindow::RefreshAliasList() {
     // Set single alias in column 1 (use shortest alias for autocomplete, filter
     // out x64)
     // Use ident as key (matches how aliases are stored), fall back to full_name
-    const std::string &plugin_key =
-        plugin.ident.empty() ? plugin.full_name : plugin.ident;
+    const std::string &plugin_key = plugin.ident.empty() ? plugin.full_name : plugin.ident;
 
     // Store the plugin key for this row (used when editing)
     m_rowPluginKeys.push_back(plugin_key);
@@ -778,8 +754,7 @@ void MagdaPluginWindow::RefreshAliasList() {
     }
 
     // Use ListView_SetItemText for subitem (single alias)
-    ListView_SetItemText(m_hwndAliasList, itemIndex, 1,
-                         (char *)aliasStr.c_str());
+    ListView_SetItemText(m_hwndAliasList, itemIndex, 1, (char *)aliasStr.c_str());
 
     // Column 2: Type indicator for drum plugins
     if (IsDrumPlugin(displayNameStr)) {
@@ -803,8 +778,7 @@ void MagdaPluginWindow::RefreshAliasList() {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA: Added %d rows to listview, ListView_GetItemCount=%d\n",
+      snprintf(msg, sizeof(msg), "MAGDA: Added %d rows to listview, ListView_GetItemCount=%d\n",
                row, ListView_GetItemCount(m_hwndAliasList));
       ShowConsoleMsg(msg);
     }
@@ -847,8 +821,7 @@ void MagdaPluginWindow::EditAliasAtRow(int row) {
 
   // Get current alias text from column 1
   char currentAlias[512] = {0};
-  ListView_GetItemText(m_hwndAliasList, row, 1, currentAlias,
-                       sizeof(currentAlias));
+  ListView_GetItemText(m_hwndAliasList, row, 1, currentAlias, sizeof(currentAlias));
 
   // Get plugin name from column 0 for the dialog title
   char pluginName[512] = {0};
@@ -856,8 +829,7 @@ void MagdaPluginWindow::EditAliasAtRow(int row) {
 
   // Use REAPER's GetUserInputs for a simple edit dialog
   bool (*GetUserInputs)(const char *, int, const char *, char *, int) =
-      (bool (*)(const char *, int, const char *, char *, int))g_rec->GetFunc(
-          "GetUserInputs");
+      (bool (*)(const char *, int, const char *, char *, int))g_rec->GetFunc("GetUserInputs");
 
   if (GetUserInputs) {
     char inputBuffer[512];

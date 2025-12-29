@@ -93,8 +93,7 @@ void MagdaState::GetPlayState(WDL_FastString &json) {
 
     char buf[128];
     snprintf(buf, sizeof(buf), "\"playing\":%s,\"paused\":%s,\"recording\":%s",
-             playing ? "true" : "false", paused ? "true" : "false",
-             recording ? "true" : "false");
+             playing ? "true" : "false", paused ? "true" : "false", recording ? "true" : "false");
     json.Append(buf);
   } else {
     json.Append("\"playing\":false,\"paused\":false,\"recording\":false");
@@ -112,8 +111,7 @@ void MagdaState::GetPlayState(WDL_FastString &json) {
   }
 
   // Get cursor position
-  double (*GetCursorPosition)() =
-      (double (*)())g_rec->GetFunc("GetCursorPosition");
+  double (*GetCursorPosition)() = (double (*)())g_rec->GetFunc("GetCursorPosition");
   if (GetCursorPosition) {
     double pos = GetCursorPosition();
     char buf[64];
@@ -129,10 +127,8 @@ void MagdaState::GetPlayState(WDL_FastString &json) {
 void MagdaState::GetTimeSelection(WDL_FastString &json) {
   json.Append("\"time_selection\":{");
 
-  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *,
-                                bool) =
-      (void (*)(ReaProject *, bool, bool, double *, double *,
-                bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
+  void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *, bool) = (void (*)(
+      ReaProject *, bool, bool, double *, double *, bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
   if (GetSet_LoopTimeRange2) {
     double start = 0, end = 0;
     GetSet_LoopTimeRange2(nullptr, false, false, &start, &end, false);
@@ -150,8 +146,7 @@ StateFilterPreferences MagdaState::LoadStateFilterPreferences() {
   return MagdaImGuiSettings::GetPreferences();
 }
 
-bool MagdaState::ShouldIncludeTrack(int trackIndex, bool isSelected,
-                                    int clipCount,
+bool MagdaState::ShouldIncludeTrack(int trackIndex, bool isSelected, int clipCount,
                                     const StateFilterPreferences *prefs) {
   // Always include all tracks - filtering only applies to clips
   // Tracks provide context even if they have no clips
@@ -187,8 +182,7 @@ bool MagdaState::ShouldIncludeClip(bool trackSelected, bool clipSelected,
   }
 }
 
-void MagdaState::GetTracksInfo(WDL_FastString &json,
-                               const StateFilterPreferences *prefs) {
+void MagdaState::GetTracksInfo(WDL_FastString &json, const StateFilterPreferences *prefs) {
   json.Append("\"tracks\":[");
 
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
@@ -212,8 +206,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char log_msg[256];
-      snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: GetNumTracks() returned %d tracks\n", numTracks);
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: GetNumTracks() returned %d tracks\n", numTracks);
       ShowConsoleMsg(log_msg);
     }
   }
@@ -223,8 +216,8 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
   const char *(*GetTrackInfo)(INT_PTR, int *) =
       (const char *(*)(INT_PTR, int *))g_rec->GetFunc("GetTrackInfo");
-  bool (*GetTrackUIVolPan)(MediaTrack *, double *, double *) = (bool (*)(
-      MediaTrack *, double *, double *))g_rec->GetFunc("GetTrackUIVolPan");
+  bool (*GetTrackUIVolPan)(MediaTrack *, double *, double *) =
+      (bool (*)(MediaTrack *, double *, double *))g_rec->GetFunc("GetTrackUIVolPan");
   bool (*GetTrackUIMute)(MediaTrack *, bool *) =
       (bool (*)(MediaTrack *, bool *))g_rec->GetFunc("GetTrackUIMute");
 
@@ -293,9 +286,9 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
       snprintf(buf, sizeof(buf),
                ",\"folder\":%s,\"selected\":%s,\"has_fx\":%s,\"muted\":%s,"
                "\"soloed\":%s,\"rec_armed\":%s",
-               isFolder ? "true" : "false", isSelected ? "true" : "false",
-               hasFX ? "true" : "false", isMuted ? "true" : "false",
-               isSoloed ? "true" : "false", isRecArmed ? "true" : "false");
+               isFolder ? "true" : "false", isSelected ? "true" : "false", hasFX ? "true" : "false",
+               isMuted ? "true" : "false", isSoloed ? "true" : "false",
+               isRecArmed ? "true" : "false");
       json.Append(buf);
     }
 
@@ -307,8 +300,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
         if (GetTrackUIVolPan(track, &vol, &pan)) {
           // Convert volume to dB
           double vol_db = 20.0 * log10(vol);
-          snprintf(buf, sizeof(buf), ",\"volume_db\":%.2f,\"pan\":%.2f", vol_db,
-                   pan);
+          snprintf(buf, sizeof(buf), ",\"volume_db\":%.2f,\"pan\":%.2f", vol_db, pan);
           json.Append(buf);
         }
       }
@@ -321,8 +313,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
       if (track) {
         bool muted = false;
         if (GetTrackUIMute(track, &muted)) {
-          snprintf(buf, sizeof(buf), ",\"ui_muted\":%s",
-                   muted ? "true" : "false");
+          snprintf(buf, sizeof(buf), ",\"ui_muted\":%s", muted ? "true" : "false");
           json.Append(buf);
         }
       }
@@ -335,22 +326,18 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
         int (*CountTrackMediaItems)(MediaTrack *) =
             (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
         MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
-            (MediaItem * (*)(MediaTrack *, int))
-                g_rec->GetFunc("GetTrackMediaItem");
+            (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
         double (*GetMediaItemInfo_Value)(MediaItem *, const char *) =
-            (double (*)(MediaItem *, const char *))g_rec->GetFunc(
-                "GetMediaItemInfo_Value");
+            (double (*)(MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
         // Get take info functions for item names (items don't have names, takes
         // do)
         MediaItem_Take *(*GetActiveTake)(MediaItem *) =
             (MediaItem_Take * (*)(MediaItem *)) g_rec->GetFunc("GetActiveTake");
-        bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
-                                               char *, bool) =
-            (bool (*)(MediaItem_Take *, const char *, char *,
-                      bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+        bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *, char *, bool) =
+            (bool (*)(MediaItem_Take *, const char *, char *, bool))g_rec->GetFunc(
+                "GetSetMediaItemTakeInfo_String");
 
-        if (CountTrackMediaItems && GetTrackMediaItem &&
-            GetMediaItemInfo_Value) {
+        if (CountTrackMediaItems && GetTrackMediaItem && GetMediaItemInfo_Value) {
           int numItems = CountTrackMediaItems(track);
           json.Append(",\"clips\":[");
 
@@ -359,8 +346,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
 
           for (int clipIdx = 0; clipIdx < numItems; clipIdx++) {
             // Check max clips per track limit
-            if (prefs && prefs->maxClipsPerTrack > 0 &&
-                clipsAdded >= prefs->maxClipsPerTrack) {
+            if (prefs && prefs->maxClipsPerTrack > 0 && clipsAdded >= prefs->maxClipsPerTrack) {
               break;
             }
 
@@ -411,8 +397,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
             json.Append(buf);
 
             // Selected state
-            snprintf(buf, sizeof(buf), ",\"selected\":%s",
-                     clipSelected ? "true" : "false");
+            snprintf(buf, sizeof(buf), ",\"selected\":%s", clipSelected ? "true" : "false");
             json.Append(buf);
 
             // Clip name (from active take, if available)
@@ -435,8 +420,7 @@ void MagdaState::GetTracksInfo(WDL_FastString &json,
                 if (take && GetSetMediaItemTakeInfo_String) {
                   // Allocate buffer for take name
                   char takeNameBuf[512] = {0};
-                  bool success = GetSetMediaItemTakeInfo_String(
-                      take, "P_NAME", takeNameBuf, false);
+                  bool success = GetSetMediaItemTakeInfo_String(take, "P_NAME", takeNameBuf, false);
                   if (success && takeNameBuf[0]) {
                     json.Append(",\"name\":");
                     EscapeJSONString(takeNameBuf, json);

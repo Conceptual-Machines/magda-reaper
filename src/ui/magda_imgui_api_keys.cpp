@@ -35,7 +35,7 @@ constexpr int TitleBgCollapsed = 12;
 constexpr int Button = 21;
 constexpr int ButtonHovered = 22;
 constexpr int ButtonActive = 23;
-}
+} // namespace ImGuiCol
 
 // Theme colors
 #define THEME_RGBA(r, g, b) (((r) << 24) | ((g) << 16) | ((b) << 8) | 0xFF)
@@ -73,45 +73,32 @@ bool MagdaImGuiApiKeys::Initialize(reaper_plugin_info_t *rec) {
     return false;
 
   // Load ReaImGui function pointers
-  m_ImGui_CreateContext =
-      (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
-  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc(
-      "ImGui_Begin");
+  m_ImGui_CreateContext = (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
+  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc("ImGui_Begin");
   m_ImGui_End = (void (*)(void *))rec->GetFunc("ImGui_End");
-  m_ImGui_SetNextWindowSize = (void (*)(void *, double, double,
-                                        int *))rec->GetFunc("ImGui_SetNextWindowSize");
+  m_ImGui_SetNextWindowSize =
+      (void (*)(void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
   m_ImGui_Text = (void (*)(void *, const char *))rec->GetFunc("ImGui_Text");
-  m_ImGui_TextColored =
-      (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
-  m_ImGui_Button = (bool (*)(void *, const char *, double *,
-                             double *))rec->GetFunc("ImGui_Button");
-  m_ImGui_SameLine =
-      (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
+  m_ImGui_TextColored = (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
+  m_ImGui_Button = (bool (*)(void *, const char *, double *, double *))rec->GetFunc("ImGui_Button");
+  m_ImGui_SameLine = (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
   m_ImGui_Separator = (void (*)(void *))rec->GetFunc("ImGui_Separator");
   m_ImGui_Spacing = (void (*)(void *))rec->GetFunc("ImGui_Spacing");
-  m_ImGui_Checkbox =
-      (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
+  m_ImGui_Checkbox = (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
   m_ImGui_InputText =
-      (bool (*)(void *, const char *, char *, int, int *,
-                void *))rec->GetFunc("ImGui_InputText");
-  m_ImGui_InputTextWithHint =
-      (bool (*)(void *, const char *, const char *, char *, int, int *,
-                void *))rec->GetFunc("ImGui_InputTextWithHint");
-  m_ImGui_PushItemWidth =
-      (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
+      (bool (*)(void *, const char *, char *, int, int *, void *))rec->GetFunc("ImGui_InputText");
+  m_ImGui_InputTextWithHint = (bool (*)(void *, const char *, const char *, char *, int, int *,
+                                        void *))rec->GetFunc("ImGui_InputTextWithHint");
+  m_ImGui_PushItemWidth = (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
   m_ImGui_PopItemWidth = (void (*)(void *))rec->GetFunc("ImGui_PopItemWidth");
-  m_ImGui_PushStyleColor =
-      (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
-  m_ImGui_PopStyleColor =
-      (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
+  m_ImGui_PushStyleColor = (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
+  m_ImGui_PopStyleColor = (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
 
   // Load constant getter functions
-  m_ImGui_InputTextFlags_Password =
-      (int (*)())rec->GetFunc("ImGui_InputTextFlags_Password");
+  m_ImGui_InputTextFlags_Password = (int (*)())rec->GetFunc("ImGui_InputTextFlags_Password");
 
-  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
-                m_ImGui_Text && m_ImGui_Button && m_ImGui_InputText &&
-                m_ImGui_InputTextFlags_Password;
+  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End && m_ImGui_Text &&
+                m_ImGui_Button && m_ImGui_InputText && m_ImGui_InputTextFlags_Password;
 
   return m_available;
 }
@@ -136,11 +123,11 @@ void MagdaImGuiApiKeys::LoadSettings() {
     m_statusMessage = "Key loaded from settings";
 
     // Initialize OpenAI client and agent manager with saved key
-    MagdaOpenAI* openai = GetMagdaOpenAI();
+    MagdaOpenAI *openai = GetMagdaOpenAI();
     if (openai) {
       openai->SetAPIKey(m_openaiApiKey);
     }
-    MagdaAgentManager* agentMgr = GetMagdaAgentManager();
+    MagdaAgentManager *agentMgr = GetMagdaAgentManager();
     if (agentMgr) {
       agentMgr->SetAPIKey(m_openaiApiKey);
     }
@@ -151,10 +138,8 @@ void MagdaImGuiApiKeys::SaveSettings() {
   if (!g_rec)
     return;
 
-  void (*SetExtState)(const char *section, const char *key, const char *value,
-                      bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
-          "SetExtState");
+  void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
   if (!SetExtState)
     return;
 
@@ -163,18 +148,18 @@ void MagdaImGuiApiKeys::SaveSettings() {
     SetExtState("MAGDA", "openai_api_key", m_openaiApiKey, true);
 
     // Update OpenAI client and agent manager
-    MagdaOpenAI* openai = GetMagdaOpenAI();
+    MagdaOpenAI *openai = GetMagdaOpenAI();
     if (openai) {
       openai->SetAPIKey(m_openaiApiKey);
     }
-    MagdaAgentManager* agentMgr = GetMagdaAgentManager();
+    MagdaAgentManager *agentMgr = GetMagdaAgentManager();
     if (agentMgr) {
       agentMgr->SetAPIKey(m_openaiApiKey);
     }
   }
 }
 
-const char* MagdaImGuiApiKeys::GetOpenAIApiKey() {
+const char *MagdaImGuiApiKeys::GetOpenAIApiKey() {
   if (!g_rec)
     return "";
 
@@ -187,14 +172,12 @@ const char* MagdaImGuiApiKeys::GetOpenAIApiKey() {
   return key ? key : "";
 }
 
-void MagdaImGuiApiKeys::SetOpenAIApiKey(const char* key) {
+void MagdaImGuiApiKeys::SetOpenAIApiKey(const char *key) {
   if (!g_rec)
     return;
 
-  void (*SetExtState)(const char *section, const char *key_name, const char *value,
-                      bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
-          "SetExtState");
+  void (*SetExtState)(const char *section, const char *key_name, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
   if (!SetExtState)
     return;
 
@@ -211,7 +194,9 @@ void MagdaImGuiApiKeys::Show() {
   LoadSettings();
 }
 
-void MagdaImGuiApiKeys::Hide() { m_visible = false; }
+void MagdaImGuiApiKeys::Hide() {
+  m_visible = false;
+}
 
 void MagdaImGuiApiKeys::Toggle() {
   if (m_visible) {
@@ -249,7 +234,7 @@ void MagdaImGuiApiKeys::ValidateOpenAIKey() {
 
   // Validate in background thread
   std::thread([this, keyCopy]() {
-    MagdaOpenAI* openai = GetMagdaOpenAI();
+    MagdaOpenAI *openai = GetMagdaOpenAI();
     if (!openai) {
       OnValidationComplete(false, "OpenAI client not available");
       return;
@@ -259,7 +244,7 @@ void MagdaImGuiApiKeys::ValidateOpenAIKey() {
     openai->SetAPIKey(keyCopy);
 
     // Also set on agent manager
-    MagdaAgentManager* agentMgr = GetMagdaAgentManager();
+    MagdaAgentManager *agentMgr = GetMagdaAgentManager();
     if (agentMgr) {
       agentMgr->SetAPIKey(keyCopy);
     }
@@ -276,7 +261,7 @@ void MagdaImGuiApiKeys::ValidateOpenAIKey() {
   }).detach();
 }
 
-void MagdaImGuiApiKeys::OnValidationComplete(bool success, const char* message) {
+void MagdaImGuiApiKeys::OnValidationComplete(bool success, const char *message) {
   m_openaiKeyStatus = success ? ApiKeyStatus::Valid : ApiKeyStatus::Invalid;
   m_statusMessage = message ? message : "";
 
@@ -384,8 +369,8 @@ void MagdaImGuiApiKeys::Render() {
   m_ImGui_Text(m_ctx, "API Key:");
   int inputFlags = m_ImGui_InputTextFlags_Password();
   if (m_ImGui_InputText) {
-    m_ImGui_InputText(m_ctx, "##apikey", m_openaiApiKey,
-                      sizeof(m_openaiApiKey), &inputFlags, nullptr);
+    m_ImGui_InputText(m_ctx, "##apikey", m_openaiApiKey, sizeof(m_openaiApiKey), &inputFlags,
+                      nullptr);
   }
 
   if (m_ImGui_PopItemWidth) {
@@ -399,18 +384,18 @@ void MagdaImGuiApiKeys::Render() {
   if (!m_statusMessage.empty()) {
     int statusColor = g_theme.dimText;
     switch (m_openaiKeyStatus) {
-      case ApiKeyStatus::Valid:
-        statusColor = g_theme.success;
-        break;
-      case ApiKeyStatus::Invalid:
-      case ApiKeyStatus::Error:
-        statusColor = g_theme.error;
-        break;
-      case ApiKeyStatus::Checking:
-        statusColor = g_theme.warning;
-        break;
-      default:
-        break;
+    case ApiKeyStatus::Valid:
+      statusColor = g_theme.success;
+      break;
+    case ApiKeyStatus::Invalid:
+    case ApiKeyStatus::Error:
+      statusColor = g_theme.error;
+      break;
+    case ApiKeyStatus::Checking:
+      statusColor = g_theme.warning;
+      break;
+    default:
+      break;
     }
 
     if (m_ImGui_TextColored) {
@@ -436,7 +421,7 @@ void MagdaImGuiApiKeys::Render() {
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ButtonActive, g_theme.accentActive);
   }
 
-  const char* validateLabel = isChecking ? "Validating..." : "Validate & Save";
+  const char *validateLabel = isChecking ? "Validating..." : "Validate & Save";
   if (m_ImGui_Button(m_ctx, validateLabel, nullptr, nullptr) && !isChecking) {
     ValidateOpenAIKey();
   }

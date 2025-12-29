@@ -12,10 +12,10 @@ namespace MagdaArranger {
 
 // Simple note data structure
 struct NoteData {
-    int pitch;
-    double start;   // in beats
-    double length;  // in beats
-    int velocity;
+  int pitch;
+  double start;  // in beats
+  double length; // in beats
+  int velocity;
 };
 
 // ============================================================================
@@ -26,52 +26,52 @@ struct NoteData {
 
 class Interpreter {
 public:
-    Interpreter();
-    ~Interpreter();
+  Interpreter();
+  ~Interpreter();
 
-    // Execute Arranger DSL code
-    bool Execute(const char* dsl_code);
+  // Execute Arranger DSL code
+  bool Execute(const char *dsl_code);
 
-    // Get error message
-    const char* GetError() const { return m_error.Get(); }
+  // Get error message
+  const char *GetError() const { return m_error.Get(); }
 
-    // Set target track (uses selected track if not set)
-    void SetTargetTrack(MediaTrack* track) { m_targetTrack = track; }
+  // Set target track (uses selected track if not set)
+  void SetTargetTrack(MediaTrack *track) { m_targetTrack = track; }
 
-    // Set start position in beats (default 0)
-    void SetStartBeat(double beat) { m_startBeat = beat; }
+  // Set start position in beats (default 0)
+  void SetStartBeat(double beat) { m_startBeat = beat; }
 
 private:
-    // Parse and execute individual calls
-    bool ExecuteNote(const char* params);
-    bool ExecuteChord(const char* params);
-    bool ExecuteArpeggio(const char* params);
-    bool ExecuteProgression(const char* params);
+  // Parse and execute individual calls
+  bool ExecuteNote(const char *params);
+  bool ExecuteChord(const char *params);
+  bool ExecuteArpeggio(const char *params);
+  bool ExecuteProgression(const char *params);
 
-    // Parameter parsing
-    bool ParseParams(const char* params, struct ArrangerParams& out);
+  // Parameter parsing
+  bool ParseParams(const char *params, struct ArrangerParams &out);
 
-    // Build JSON and call AddMIDI
-    bool AddNotesToTrack(int trackIndex, const std::vector<NoteData>& notes, const char* name);
+  // Build JSON and call AddMIDI
+  bool AddNotesToTrack(int trackIndex, const std::vector<NoteData> &notes, const char *name);
 
-    // Get selected track index
-    int GetSelectedTrackIndex();
+  // Get selected track index
+  int GetSelectedTrackIndex();
 
-    // Chord symbol to notes
-    bool ChordToNotes(const char* symbol, int* notes, int& noteCount, int octave = 3);
+  // Chord symbol to notes
+  bool ChordToNotes(const char *symbol, int *notes, int &noteCount, int octave = 3);
 
-    // Note name to MIDI pitch
-    int NoteToPitch(const char* noteName);
+  // Note name to MIDI pitch
+  int NoteToPitch(const char *noteName);
 
-    // Legacy stubs (not used, kept for interface compatibility)
-    MediaTrack* GetSelectedTrack();
-    double GetTempo();
-    MediaItem* GetOrCreateTargetItem(double lengthBeats);
-    bool CreateMIDINote(MediaItem* item, int pitch, double startBeat, double duration, int velocity);
+  // Legacy stubs (not used, kept for interface compatibility)
+  MediaTrack *GetSelectedTrack();
+  double GetTempo();
+  MediaItem *GetOrCreateTargetItem(double lengthBeats);
+  bool CreateMIDINote(MediaItem *item, int pitch, double startBeat, double duration, int velocity);
 
-    WDL_FastString m_error;
-    MediaTrack* m_targetTrack;
-    double m_startBeat;
+  WDL_FastString m_error;
+  MediaTrack *m_targetTrack;
+  double m_startBeat;
 };
 
 } // namespace MagdaArranger

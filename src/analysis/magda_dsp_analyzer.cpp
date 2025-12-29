@@ -20,23 +20,19 @@ static const float kThirdOctaveFreqs[] = {
     125.0f,  160.0f,  200.0f,  250.0f,   315.0f,   400.0f,   500.0f,  630.0f,
     800.0f,  1000.0f, 1250.0f, 1600.0f,  2000.0f,  2500.0f,  3150.0f, 4000.0f,
     5000.0f, 6300.0f, 8000.0f, 10000.0f, 12500.0f, 16000.0f, 20000.0f};
-static const int kNumThirdOctaveBands =
-    sizeof(kThirdOctaveFreqs) / sizeof(kThirdOctaveFreqs[0]);
+static const int kNumThirdOctaveBands = sizeof(kThirdOctaveFreqs) / sizeof(kThirdOctaveFreqs[0]);
 
 // Helper: Show console message
 static void LogMessage(const char *msg) {
   if (g_rec) {
-    void (*ShowConsoleMsg)(const char *) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+    void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       ShowConsoleMsg(msg);
     }
   }
 }
 
-DSPAnalysisResult
-MagdaDSPAnalyzer::AnalyzeTrack(int trackIndex,
-                               const DSPAnalysisConfig &config) {
+DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeTrack(int trackIndex, const DSPAnalysisConfig &config) {
   DSPAnalysisResult result;
 
   if (!g_rec) {
@@ -80,9 +76,7 @@ MagdaDSPAnalyzer::AnalyzeTrack(int trackIndex,
   return AnalyzeItem(item, config);
 }
 
-DSPAnalysisResult
-MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
-                              const DSPAnalysisConfig &config) {
+DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item, const DSPAnalysisConfig &config) {
   DSPAnalysisResult result;
 
   if (!g_rec || !item) {
@@ -105,8 +99,7 @@ MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
   }
 
   // Log which take is active
-  int (*CountTakes)(MediaItem *) =
-      (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
+  int (*CountTakes)(MediaItem *) = (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
   MediaItem_Take *(*GetTake)(MediaItem *, int) =
       (MediaItem_Take * (*)(MediaItem *, int)) g_rec->GetFunc("GetTake");
   if (CountTakes && GetTake) {
@@ -119,8 +112,8 @@ MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
       }
     }
     char logBuf[128];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Active take index: %d of %d\n",
-             activeTakeIdx, numTakes);
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Active take index: %d of %d\n", activeTakeIdx,
+             numTakes);
     LogMessage(logBuf);
   }
 
@@ -144,23 +137,20 @@ MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
   result.lengthSeconds = (double)samples.size() / (sampleRate * channels);
 
   char logBuf[256];
-  snprintf(logBuf, sizeof(logBuf),
-           "MAGDA DSP: Analyzing %zu samples, %d Hz, %d ch, %.2f sec\n",
+  snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Analyzing %zu samples, %d Hz, %d ch, %.2f sec\n",
            samples.size(), sampleRate, channels, result.lengthSeconds);
   LogMessage(logBuf);
 
   // Perform FFT analysis
   if (config.analyzeFrequency) {
-    PerformFFT(samples, sampleRate, config.fftSize, result.fftFrequencies,
-               result.fftMagnitudes);
+    PerformFFT(samples, sampleRate, config.fftSize, result.fftFrequencies, result.fftMagnitudes);
 
     // Calculate frequency bands
-    CalculateFrequencyBands(result.fftFrequencies, result.fftMagnitudes,
-                            result.bands);
+    CalculateFrequencyBands(result.fftFrequencies, result.fftMagnitudes, result.bands);
 
     // Calculate EQ profile (1/3 octave)
-    CalculateEQProfile(result.fftFrequencies, result.fftMagnitudes,
-                       result.eqProfileFreqs, result.eqProfileMags);
+    CalculateEQProfile(result.fftFrequencies, result.fftMagnitudes, result.eqProfileFreqs,
+                       result.eqProfileMags);
 
     // Detect peaks
     DetectPeaks(result.fftFrequencies, result.fftMagnitudes, result.peaks);
@@ -202,17 +192,14 @@ MagdaDSPAnalyzer::AnalyzeItem(MediaItem *item,
   return result;
 }
 
-DSPAnalysisResult
-MagdaDSPAnalyzer::AnalyzeMaster(const DSPAnalysisConfig &config) {
+DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeMaster(const DSPAnalysisConfig &config) {
   DSPAnalysisResult result;
   result.errorMessage.Set("Master track analysis not yet implemented");
   // TODO: Implement master track analysis using render or audio accessor
   return result;
 }
 
-RawAudioData
-MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
-                                   const DSPAnalysisConfig &config) {
+RawAudioData MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex, const DSPAnalysisConfig &config) {
   RawAudioData data;
 
   if (!g_rec) {
@@ -260,17 +247,15 @@ MagdaDSPAnalyzer::ReadTrackSamples(int trackIndex,
     return data;
   }
 
-  if (GetAudioSamples(take, data.samples, data.sampleRate, data.channels,
-                      config)) {
+  if (GetAudioSamples(take, data.samples, data.sampleRate, data.channels, config)) {
     data.valid = true;
   }
 
   return data;
 }
 
-DSPAnalysisResult
-MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
-                                 const DSPAnalysisConfig &config) {
+DSPAnalysisResult MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
+                                                   const DSPAnalysisConfig &config) {
   DSPAnalysisResult result;
 
   if (!audioData.valid || audioData.samples.empty()) {
@@ -280,23 +265,21 @@ MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
 
   result.sampleRate = audioData.sampleRate;
   result.channels = audioData.channels;
-  result.lengthSeconds = (double)audioData.samples.size() /
-                         (audioData.sampleRate * audioData.channels);
+  result.lengthSeconds =
+      (double)audioData.samples.size() / (audioData.sampleRate * audioData.channels);
 
   char logBuf[256];
-  snprintf(logBuf, sizeof(logBuf),
-           "MAGDA DSP: Analyzing %zu samples, %d Hz, %d ch, %.2f sec\n",
+  snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Analyzing %zu samples, %d Hz, %d ch, %.2f sec\n",
            audioData.samples.size(), audioData.sampleRate, audioData.channels,
            result.lengthSeconds);
   LogMessage(logBuf);
 
   if (config.analyzeFrequency) {
-    PerformFFT(audioData.samples, audioData.sampleRate, config.fftSize,
-               result.fftFrequencies, result.fftMagnitudes);
-    CalculateFrequencyBands(result.fftFrequencies, result.fftMagnitudes,
-                            result.bands);
-    CalculateEQProfile(result.fftFrequencies, result.fftMagnitudes,
-                       result.eqProfileFreqs, result.eqProfileMags);
+    PerformFFT(audioData.samples, audioData.sampleRate, config.fftSize, result.fftFrequencies,
+               result.fftMagnitudes);
+    CalculateFrequencyBands(result.fftFrequencies, result.fftMagnitudes, result.bands);
+    CalculateEQProfile(result.fftFrequencies, result.fftMagnitudes, result.eqProfileFreqs,
+                       result.eqProfileMags);
     DetectPeaks(result.fftFrequencies, result.fftMagnitudes, result.peaks);
   }
 
@@ -310,8 +293,8 @@ MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
   }
 
   if (config.analyzeLoudness) {
-    result.loudness = CalculateLoudness(audioData.samples, audioData.sampleRate,
-                                        audioData.channels);
+    result.loudness =
+        CalculateLoudness(audioData.samples, audioData.sampleRate, audioData.channels);
   }
 
   if (config.analyzeDynamics) {
@@ -323,8 +306,8 @@ MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
   }
 
   if (config.analyzeTransients) {
-    result.transients = CalculateTransients(
-        audioData.samples, audioData.sampleRate, audioData.channels);
+    result.transients =
+        CalculateTransients(audioData.samples, audioData.sampleRate, audioData.channels);
   }
 
   result.success = true;
@@ -332,8 +315,7 @@ MagdaDSPAnalyzer::AnalyzeSamples(const RawAudioData &audioData,
   return result;
 }
 
-bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
-                                       std::vector<float> &samples,
+bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take, std::vector<float> &samples,
                                        int &sampleRate, int &channels,
                                        const DSPAnalysisConfig &config) {
   if (!g_rec || !take) {
@@ -342,30 +324,25 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   // Get audio accessor
   AudioAccessor *(*CreateTakeAudioAccessor)(MediaItem_Take *) =
-      (AudioAccessor * (*)(MediaItem_Take *))
-          g_rec->GetFunc("CreateTakeAudioAccessor");
+      (AudioAccessor * (*)(MediaItem_Take *)) g_rec->GetFunc("CreateTakeAudioAccessor");
   void (*DestroyAudioAccessor)(AudioAccessor *) =
       (void (*)(AudioAccessor *))g_rec->GetFunc("DestroyAudioAccessor");
-  int (*GetAudioAccessorSamples)(AudioAccessor *, int, int, double, int,
-                                 double *) =
-      (int (*)(AudioAccessor *, int, int, double, int, double *))g_rec->GetFunc(
-          "GetAudioAccessorSamples");
+  int (*GetAudioAccessorSamples)(AudioAccessor *, int, int, double, int, double *) = (int (*)(
+      AudioAccessor *, int, int, double, int, double *))g_rec->GetFunc("GetAudioAccessorSamples");
   double (*GetAudioAccessorStartTime)(AudioAccessor *) =
       (double (*)(AudioAccessor *))g_rec->GetFunc("GetAudioAccessorStartTime");
   double (*GetAudioAccessorEndTime)(AudioAccessor *) =
       (double (*)(AudioAccessor *))g_rec->GetFunc("GetAudioAccessorEndTime");
 
-  if (!CreateTakeAudioAccessor || !DestroyAudioAccessor ||
-      !GetAudioAccessorSamples || !GetAudioAccessorStartTime ||
-      !GetAudioAccessorEndTime) {
+  if (!CreateTakeAudioAccessor || !DestroyAudioAccessor || !GetAudioAccessorSamples ||
+      !GetAudioAccessorStartTime || !GetAudioAccessorEndTime) {
     LogMessage("MAGDA DSP: Audio accessor functions not available\n");
     return false;
   }
 
   // Get take source info
   PCM_source *(*GetMediaItemTake_Source)(MediaItem_Take *) =
-      (PCM_source * (*)(MediaItem_Take *))
-          g_rec->GetFunc("GetMediaItemTake_Source");
+      (PCM_source * (*)(MediaItem_Take *)) g_rec->GetFunc("GetMediaItemTake_Source");
   if (!GetMediaItemTake_Source) {
     LogMessage("MAGDA DSP: GetMediaItemTake_Source not available\n");
     return false;
@@ -379,8 +356,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   // Get source filename
   const char *(*GetMediaSourceFileName)(PCM_source *, char *, int) =
-      (const char *(*)(PCM_source *, char *, int))g_rec->GetFunc(
-          "GetMediaSourceFileName");
+      (const char *(*)(PCM_source *, char *, int))g_rec->GetFunc("GetMediaSourceFileName");
   char filename[512] = {0};
   if (GetMediaSourceFileName) {
     GetMediaSourceFileName(originalSource, filename, sizeof(filename));
@@ -393,10 +369,9 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
   // Create a FRESH source from the file and swap it into the take
   // This forces REAPER to fully load the audio data
   PCM_source *(*PCM_Source_CreateFromFile)(const char *) =
-      (PCM_source * (*)(const char *))
-          g_rec->GetFunc("PCM_Source_CreateFromFile");
-  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) = (bool (*)(
-      MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
+      (PCM_source * (*)(const char *)) g_rec->GetFunc("PCM_Source_CreateFromFile");
+  bool (*SetMediaItemTake_Source)(MediaItem_Take *, PCM_source *) =
+      (bool (*)(MediaItem_Take *, PCM_source *))g_rec->GetFunc("SetMediaItemTake_Source");
   void (*PCM_Source_Destroy)(PCM_source *) =
       (void (*)(PCM_source *))g_rec->GetFunc("PCM_Source_Destroy");
 
@@ -447,8 +422,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   {
     char logBuf[256];
-    snprintf(logBuf, sizeof(logBuf),
-             "MAGDA DSP: Source reports: %.2f sec, %d Hz, %d ch\n",
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Source reports: %.2f sec, %d Hz, %d ch\n",
              sourceLength, sampleRate, channels);
     LogMessage(logBuf);
   }
@@ -484,8 +458,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
   }
 
   // Limit analysis length if configured
-  if (!config.analyzeFullItem && config.analysisLength > 0 &&
-      duration > config.analysisLength) {
+  if (!config.analyzeFullItem && config.analysisLength > 0 && duration > config.analysisLength) {
     duration = config.analysisLength;
   }
 
@@ -506,8 +479,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   {
     char logBuf[256];
-    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Requesting %d samples\n",
-             totalSamples);
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Requesting %d samples\n", totalSamples);
     LogMessage(logBuf);
   }
 
@@ -517,8 +489,8 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
   // Read samples
   // NOTE: Return value is status (0=no audio, 1=success, -1=error), NOT sample
   // count!
-  int status = GetAudioAccessorSamples(accessor, sampleRate, channels,
-                                       startTime, totalSamples, buffer.data());
+  int status = GetAudioAccessorSamples(accessor, sampleRate, channels, startTime, totalSamples,
+                                       buffer.data());
 
   DestroyAudioAccessor(accessor);
 
@@ -544,8 +516,7 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
 
   if (status != 1) {
     char logBuf[128];
-    snprintf(logBuf, sizeof(logBuf),
-             "MAGDA DSP: Failed to read samples (status=%d)\n", status);
+    snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Failed to read samples (status=%d)\n", status);
     LogMessage(logBuf);
     return false;
   }
@@ -558,15 +529,13 @@ bool MagdaDSPAnalyzer::GetAudioSamples(MediaItem_Take *take,
   }
 
   char logBuf[128];
-  snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Read %d samples successfully\n",
-           totalSamples);
+  snprintf(logBuf, sizeof(logBuf), "MAGDA DSP: Read %d samples successfully\n", totalSamples);
   LogMessage(logBuf);
 
   return true;
 }
 
-void MagdaDSPAnalyzer::SimpleDFT(const float *input, int N, float *realOut,
-                                 float *imagOut) {
+void MagdaDSPAnalyzer::SimpleDFT(const float *input, int N, float *realOut, float *imagOut) {
   // Simple DFT - O(N^2) but works for small windows
   for (int k = 0; k < N / 2 + 1; k++) {
     float sumReal = 0.0f;
@@ -581,10 +550,8 @@ void MagdaDSPAnalyzer::SimpleDFT(const float *input, int N, float *realOut,
   }
 }
 
-void MagdaDSPAnalyzer::PerformFFT(const std::vector<float> &samples,
-                                  int sampleRate, int fftSize,
-                                  std::vector<float> &frequencies,
-                                  std::vector<float> &magnitudes) {
+void MagdaDSPAnalyzer::PerformFFT(const std::vector<float> &samples, int sampleRate, int fftSize,
+                                  std::vector<float> &frequencies, std::vector<float> &magnitudes) {
   if (samples.empty() || fftSize <= 0) {
     return;
   }
@@ -657,9 +624,9 @@ void MagdaDSPAnalyzer::PerformFFT(const std::vector<float> &samples,
   }
 }
 
-void MagdaDSPAnalyzer::CalculateFrequencyBands(
-    const std::vector<float> &frequencies, const std::vector<float> &magnitudes,
-    FrequencyBands &bands) {
+void MagdaDSPAnalyzer::CalculateFrequencyBands(const std::vector<float> &frequencies,
+                                               const std::vector<float> &magnitudes,
+                                               FrequencyBands &bands) {
 
   if (frequencies.empty() || magnitudes.empty()) {
     return;
@@ -702,26 +669,18 @@ void MagdaDSPAnalyzer::CalculateFrequencyBands(
 
   // Convert to RMS dB
   bands.sub = subCount > 0 ? LinearToDb(sqrtf(subEnergy / subCount)) : -96.0f;
-  bands.bass =
-      bassCount > 0 ? LinearToDb(sqrtf(bassEnergy / bassCount)) : -96.0f;
-  bands.lowMid =
-      lowMidCount > 0 ? LinearToDb(sqrtf(lowMidEnergy / lowMidCount)) : -96.0f;
+  bands.bass = bassCount > 0 ? LinearToDb(sqrtf(bassEnergy / bassCount)) : -96.0f;
+  bands.lowMid = lowMidCount > 0 ? LinearToDb(sqrtf(lowMidEnergy / lowMidCount)) : -96.0f;
   bands.mid = midCount > 0 ? LinearToDb(sqrtf(midEnergy / midCount)) : -96.0f;
-  bands.highMid = highMidCount > 0
-                      ? LinearToDb(sqrtf(highMidEnergy / highMidCount))
-                      : -96.0f;
-  bands.presence = presenceCount > 0
-                       ? LinearToDb(sqrtf(presenceEnergy / presenceCount))
-                       : -96.0f;
-  bands.brilliance = brillianceCount > 0
-                         ? LinearToDb(sqrtf(brillianceEnergy / brillianceCount))
-                         : -96.0f;
+  bands.highMid = highMidCount > 0 ? LinearToDb(sqrtf(highMidEnergy / highMidCount)) : -96.0f;
+  bands.presence = presenceCount > 0 ? LinearToDb(sqrtf(presenceEnergy / presenceCount)) : -96.0f;
+  bands.brilliance =
+      brillianceCount > 0 ? LinearToDb(sqrtf(brillianceEnergy / brillianceCount)) : -96.0f;
 }
 
 void MagdaDSPAnalyzer::CalculateEQProfile(const std::vector<float> &frequencies,
                                           const std::vector<float> &magnitudes,
-                                          std::vector<float> &eqFreqs,
-                                          std::vector<float> &eqMags) {
+                                          std::vector<float> &eqFreqs, std::vector<float> &eqMags) {
 
   eqFreqs.resize(kNumThirdOctaveBands);
   eqMags.resize(kNumThirdOctaveBands, -96.0f);
@@ -754,8 +713,7 @@ void MagdaDSPAnalyzer::CalculateEQProfile(const std::vector<float> &frequencies,
 
 void MagdaDSPAnalyzer::DetectPeaks(const std::vector<float> &frequencies,
                                    const std::vector<float> &magnitudes,
-                                   std::vector<FrequencyPeak> &peaks,
-                                   float thresholdDb) {
+                                   std::vector<FrequencyPeak> &peaks, float thresholdDb) {
   peaks.clear();
 
   if (frequencies.size() < 3) {
@@ -779,8 +737,7 @@ void MagdaDSPAnalyzer::DetectPeaks(const std::vector<float> &frequencies,
       while (leftIdx > 0 && magnitudes[leftIdx] > targetLevel) {
         leftIdx--;
       }
-      while (rightIdx < (int)magnitudes.size() - 1 &&
-             magnitudes[rightIdx] > targetLevel) {
+      while (rightIdx < (int)magnitudes.size() - 1 && magnitudes[rightIdx] > targetLevel) {
         rightIdx++;
       }
 
@@ -796,10 +753,9 @@ void MagdaDSPAnalyzer::DetectPeaks(const std::vector<float> &frequencies,
   }
 
   // Sort by magnitude (loudest first)
-  std::sort(peaks.begin(), peaks.end(),
-            [](const FrequencyPeak &a, const FrequencyPeak &b) {
-              return a.magnitude > b.magnitude;
-            });
+  std::sort(peaks.begin(), peaks.end(), [](const FrequencyPeak &a, const FrequencyPeak &b) {
+    return a.magnitude > b.magnitude;
+  });
 
   // Limit to top 20 peaks
   if (peaks.size() > 20) {
@@ -861,9 +817,8 @@ void MagdaDSPAnalyzer::DetectResonances(const std::vector<FrequencyPeak> &peaks,
   }
 }
 
-SpectralFeatures MagdaDSPAnalyzer::CalculateSpectralFeatures(
-    const std::vector<float> &frequencies,
-    const std::vector<float> &magnitudes) {
+SpectralFeatures MagdaDSPAnalyzer::CalculateSpectralFeatures(const std::vector<float> &frequencies,
+                                                             const std::vector<float> &magnitudes) {
 
   SpectralFeatures features = {};
 
@@ -931,8 +886,7 @@ SpectralFeatures MagdaDSPAnalyzer::CalculateSpectralFeatures(
       }
     }
     if (n > 2) {
-      features.spectralSlope =
-          (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      features.spectralSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     }
   }
 
@@ -958,9 +912,8 @@ SpectralFeatures MagdaDSPAnalyzer::CalculateSpectralFeatures(
   return features;
 }
 
-LoudnessAnalysis
-MagdaDSPAnalyzer::CalculateLoudness(const std::vector<float> &samples,
-                                    int sampleRate, int channels) {
+LoudnessAnalysis MagdaDSPAnalyzer::CalculateLoudness(const std::vector<float> &samples,
+                                                     int sampleRate, int channels) {
 
   LoudnessAnalysis result = {};
 
@@ -1004,9 +957,8 @@ MagdaDSPAnalyzer::CalculateLoudness(const std::vector<float> &samples,
   return result;
 }
 
-DynamicsAnalysis
-MagdaDSPAnalyzer::CalculateDynamics(const std::vector<float> &samples,
-                                    int channels) {
+DynamicsAnalysis MagdaDSPAnalyzer::CalculateDynamics(const std::vector<float> &samples,
+                                                     int channels) {
   DynamicsAnalysis result = {};
 
   if (samples.empty()) {
@@ -1049,9 +1001,7 @@ MagdaDSPAnalyzer::CalculateDynamics(const std::vector<float> &samples,
   return result;
 }
 
-StereoAnalysis
-MagdaDSPAnalyzer::CalculateStereo(const std::vector<float> &samples,
-                                  int channels) {
+StereoAnalysis MagdaDSPAnalyzer::CalculateStereo(const std::vector<float> &samples, int channels) {
   StereoAnalysis result = {};
 
   if (channels < 2 || samples.empty()) {
@@ -1101,9 +1051,8 @@ MagdaDSPAnalyzer::CalculateStereo(const std::vector<float> &samples,
   return result;
 }
 
-TransientAnalysis
-MagdaDSPAnalyzer::CalculateTransients(const std::vector<float> &samples,
-                                      int sampleRate, int channels) {
+TransientAnalysis MagdaDSPAnalyzer::CalculateTransients(const std::vector<float> &samples,
+                                                        int sampleRate, int channels) {
   TransientAnalysis result = {};
 
   if (samples.empty()) {
@@ -1169,8 +1118,7 @@ MagdaDSPAnalyzer::CalculateTransients(const std::vector<float> &samples,
 }
 
 void MagdaDSPAnalyzer::AppendFloatArray(WDL_FastString &json, const char *name,
-                                        const std::vector<float> &arr,
-                                        bool first) {
+                                        const std::vector<float> &arr, bool first) {
   if (!first) {
     json.Append(",");
   }
@@ -1185,8 +1133,7 @@ void MagdaDSPAnalyzer::AppendFloatArray(WDL_FastString &json, const char *name,
   json.Append("]");
 }
 
-void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
-                              WDL_FastString &json) {
+void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result, WDL_FastString &json) {
   json.Append("{");
 
   // Success status
@@ -1203,14 +1150,12 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
   }
 
   // Sample info
-  json.AppendFormatted(
-      128, ",\"sample_rate\":%d,\"channels\":%d,\"length\":%.3f",
-      result.sampleRate, result.channels, result.lengthSeconds);
+  json.AppendFormatted(128, ",\"sample_rate\":%d,\"channels\":%d,\"length\":%.3f",
+                       result.sampleRate, result.channels, result.lengthSeconds);
 
   // Frequency spectrum
   json.Append(",\"frequency_spectrum\":{");
-  json.AppendFormatted(64, "\"fft_size\":%d",
-                       (int)result.fftFrequencies.size() * 2);
+  json.AppendFormatted(64, "\"fft_size\":%d", (int)result.fftFrequencies.size() * 2);
 
   // Frequency bands
   json.Append(",\"bands\":{");
@@ -1234,20 +1179,13 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
 
   // Spectral features
   json.Append(",\"spectral_features\":{");
-  json.AppendFormatted(64, "\"spectral_centroid\":%.2f",
-                       result.spectralFeatures.spectralCentroid);
-  json.AppendFormatted(64, ",\"spectral_rolloff\":%.2f",
-                       result.spectralFeatures.spectralRolloff);
-  json.AppendFormatted(64, ",\"spectral_slope\":%.3f",
-                       result.spectralFeatures.spectralSlope);
-  json.AppendFormatted(64, ",\"spectral_flatness\":%.4f",
-                       result.spectralFeatures.spectralFlatness);
-  json.AppendFormatted(64, ",\"low_freq_energy\":%.2f",
-                       result.spectralFeatures.lowFreqEnergy);
-  json.AppendFormatted(64, ",\"mid_freq_energy\":%.2f",
-                       result.spectralFeatures.midFreqEnergy);
-  json.AppendFormatted(64, ",\"high_freq_energy\":%.2f",
-                       result.spectralFeatures.highFreqEnergy);
+  json.AppendFormatted(64, "\"spectral_centroid\":%.2f", result.spectralFeatures.spectralCentroid);
+  json.AppendFormatted(64, ",\"spectral_rolloff\":%.2f", result.spectralFeatures.spectralRolloff);
+  json.AppendFormatted(64, ",\"spectral_slope\":%.3f", result.spectralFeatures.spectralSlope);
+  json.AppendFormatted(64, ",\"spectral_flatness\":%.4f", result.spectralFeatures.spectralFlatness);
+  json.AppendFormatted(64, ",\"low_freq_energy\":%.2f", result.spectralFeatures.lowFreqEnergy);
+  json.AppendFormatted(64, ",\"mid_freq_energy\":%.2f", result.spectralFeatures.midFreqEnergy);
+  json.AppendFormatted(64, ",\"high_freq_energy\":%.2f", result.spectralFeatures.highFreqEnergy);
   json.Append("}");
 
   // Peaks (top 10)
@@ -1257,10 +1195,8 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
     for (int i = 0; i < peakCount; i++) {
       if (i > 0)
         json.Append(",");
-      json.AppendFormatted(128,
-                           "{\"frequency\":%.2f,\"magnitude\":%.2f,\"q\":%.2f}",
-                           result.peaks[i].frequency, result.peaks[i].magnitude,
-                           result.peaks[i].q);
+      json.AppendFormatted(128, "{\"frequency\":%.2f,\"magnitude\":%.2f,\"q\":%.2f}",
+                           result.peaks[i].frequency, result.peaks[i].magnitude, result.peaks[i].q);
     }
     json.Append("]");
   }
@@ -1273,13 +1209,12 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
     for (size_t i = 0; i < result.resonances.size(); i++) {
       if (i > 0)
         json.Append(",");
-      json.AppendFormatted(
-          256,
-          "{\"frequency\":%.2f,\"magnitude\":%.2f,\"q\":%.2f,\"severity\":\"%"
-          "s\",\"type\":\"%s\"}",
-          result.resonances[i].frequency, result.resonances[i].magnitude,
-          result.resonances[i].q, result.resonances[i].severity,
-          result.resonances[i].type);
+      json.AppendFormatted(256,
+                           "{\"frequency\":%.2f,\"magnitude\":%.2f,\"q\":%.2f,\"severity\":\"%"
+                           "s\",\"type\":\"%s\"}",
+                           result.resonances[i].frequency, result.resonances[i].magnitude,
+                           result.resonances[i].q, result.resonances[i].severity,
+                           result.resonances[i].type);
     }
     json.Append("]}");
   }
@@ -1288,20 +1223,16 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
   json.Append(",\"loudness\":{");
   json.AppendFormatted(64, "\"rms\":%.2f", result.loudness.rms);
   json.AppendFormatted(64, ",\"lufs\":%.2f", result.loudness.lufs);
-  json.AppendFormatted(64, ",\"lufs_short_term\":%.2f",
-                       result.loudness.lufsShortTerm);
+  json.AppendFormatted(64, ",\"lufs_short_term\":%.2f", result.loudness.lufsShortTerm);
   json.AppendFormatted(64, ",\"peak\":%.2f", result.loudness.peak);
   json.AppendFormatted(64, ",\"true_peak\":%.2f", result.loudness.truePeak);
   json.Append("}");
 
   // Dynamics
   json.Append(",\"dynamics\":{");
-  json.AppendFormatted(64, "\"dynamic_range\":%.2f",
-                       result.dynamics.dynamicRange);
-  json.AppendFormatted(64, ",\"crest_factor\":%.2f",
-                       result.dynamics.crestFactor);
-  json.AppendFormatted(64, ",\"compression_ratio\":%.1f",
-                       result.dynamics.compressionRatio);
+  json.AppendFormatted(64, "\"dynamic_range\":%.2f", result.dynamics.dynamicRange);
+  json.AppendFormatted(64, ",\"crest_factor\":%.2f", result.dynamics.crestFactor);
+  json.AppendFormatted(64, ",\"compression_ratio\":%.1f", result.dynamics.compressionRatio);
   json.Append("}");
 
   // Stereo
@@ -1313,10 +1244,8 @@ void MagdaDSPAnalyzer::ToJSON(const DSPAnalysisResult &result,
 
   // Transients
   json.Append(",\"transients\":{");
-  json.AppendFormatted(64, "\"attack_time\":%.4f",
-                       result.transients.attackTime);
-  json.AppendFormatted(64, ",\"transient_energy\":%.3f",
-                       result.transients.transientEnergy);
+  json.AppendFormatted(64, "\"attack_time\":%.4f", result.transients.attackTime);
+  json.AppendFormatted(64, ",\"transient_energy\":%.3f", result.transients.transientEnergy);
   json.Append("}");
 
   json.Append("}");
@@ -1333,20 +1262,17 @@ void MagdaDSPAnalyzer::GetTrackFXInfo(int trackIndex, WDL_FastString &json) {
 
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-  int (*TrackFX_GetCount)(MediaTrack *) =
-      (int (*)(MediaTrack *))g_rec->GetFunc("TrackFX_GetCount");
-  bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) = (bool (*)(
-      MediaTrack *, int, char *, int))g_rec->GetFunc("TrackFX_GetFXName");
+  int (*TrackFX_GetCount)(MediaTrack *) = (int (*)(MediaTrack *))g_rec->GetFunc("TrackFX_GetCount");
+  bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
+      (bool (*)(MediaTrack *, int, char *, int))g_rec->GetFunc("TrackFX_GetFXName");
   bool (*TrackFX_GetEnabled)(MediaTrack *, int) =
       (bool (*)(MediaTrack *, int))g_rec->GetFunc("TrackFX_GetEnabled");
   int (*TrackFX_GetNumParams)(MediaTrack *, int) =
       (int (*)(MediaTrack *, int))g_rec->GetFunc("TrackFX_GetNumParams");
   double (*TrackFX_GetParam)(MediaTrack *, int, int, double *, double *) =
-      (double (*)(MediaTrack *, int, int, double *, double *))g_rec->GetFunc(
-          "TrackFX_GetParam");
+      (double (*)(MediaTrack *, int, int, double *, double *))g_rec->GetFunc("TrackFX_GetParam");
   bool (*TrackFX_GetParamName)(MediaTrack *, int, int, char *, int) =
-      (bool (*)(MediaTrack *, int, int, char *, int))g_rec->GetFunc(
-          "TrackFX_GetParamName");
+      (bool (*)(MediaTrack *, int, int, char *, int))g_rec->GetFunc("TrackFX_GetParamName");
 
   if (!GetTrack || !TrackFX_GetCount || !TrackFX_GetFXName) {
     json.Append("]");
@@ -1407,9 +1333,8 @@ void MagdaDSPAnalyzer::GetTrackFXInfo(int trackIndex, WDL_FastString &json) {
 
         json.Append("{\"name\":\"");
         json.Append(paramName);
-        json.AppendFormatted(128,
-                             "\",\"value\":%.4f,\"min\":%.4f,\"max\":%.4f}",
-                             value, minVal, maxVal);
+        json.AppendFormatted(128, "\",\"value\":%.4f,\"min\":%.4f,\"max\":%.4f}", value, minVal,
+                             maxVal);
       }
 
       json.Append("]");

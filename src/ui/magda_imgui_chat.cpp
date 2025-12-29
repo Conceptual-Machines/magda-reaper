@@ -136,9 +136,8 @@ static std::string FormatAction(wdl_json_element *action, int index) {
   bool first = true;
 
   // Common parameters to show
-  const char *params[] = {"track",       "name",       "index", "bar",
-                          "length_bars", "instrument", "fx",    "position",
-                          "color",       "selected",   nullptr};
+  const char *params[] = {"track", "name",     "index", "bar",      "length_bars", "instrument",
+                          "fx",    "position", "color", "selected", nullptr};
 
   for (int i = 0; params[i]; i++) {
     const char *val = action->get_string_by_name(params[i], true);
@@ -176,8 +175,7 @@ static std::string FormatAllActions(const char *response_json) {
   }
 
   wdl_json_parser parser;
-  wdl_json_element *root =
-      parser.parse(response_json, (int)strlen(response_json));
+  wdl_json_element *root = parser.parse(response_json, (int)strlen(response_json));
   if (parser.m_err || !root) {
     return "Done";
   }
@@ -288,16 +286,15 @@ bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
   }
 
   // Get ShowConsoleMsg for logging
-  void (*ShowConsoleMsg)(const char *msg) =
-      (void (*)(const char *))rec->GetFunc("ShowConsoleMsg");
+  void (*ShowConsoleMsg)(const char *msg) = (void (*)(const char *))rec->GetFunc("ShowConsoleMsg");
 
-#define LOAD_IMGUI_FUNC(name, sig)                                             \
-  m_##name = (sig)rec->GetFunc(#name);                                         \
-  if (!m_##name) {                                                             \
-    if (ShowConsoleMsg) {                                                      \
-      ShowConsoleMsg("MAGDA ImGui: Failed to load " #name "\n");               \
-    }                                                                          \
-    return false;                                                              \
+#define LOAD_IMGUI_FUNC(name, sig)                                                                 \
+  m_##name = (sig)rec->GetFunc(#name);                                                             \
+  if (!m_##name) {                                                                                 \
+    if (ShowConsoleMsg) {                                                                          \
+      ShowConsoleMsg("MAGDA ImGui: Failed to load " #name "\n");                                   \
+    }                                                                                              \
+    return false;                                                                                  \
   }
 
   if (ShowConsoleMsg) {
@@ -309,26 +306,23 @@ bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
   LOAD_IMGUI_FUNC(ImGui_ConfigFlags_DockingEnable, int (*)());
   LOAD_IMGUI_FUNC(ImGui_Begin, bool (*)(void *, const char *, bool *, int *));
   LOAD_IMGUI_FUNC(ImGui_End, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize,
-                  void (*)(void *, double, double, int *));
+  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize, void (*)(void *, double, double, int *));
   LOAD_IMGUI_FUNC(ImGui_Text, void (*)(void *, const char *));
   LOAD_IMGUI_FUNC(ImGui_TextColored, void (*)(void *, int, const char *));
   LOAD_IMGUI_FUNC(ImGui_TextWrapped, void (*)(void *, const char *));
-  LOAD_IMGUI_FUNC(ImGui_InputText,
-                  bool (*)(void *, const char *, char *, int, int *, void *));
-  LOAD_IMGUI_FUNC(ImGui_Button,
-                  bool (*)(void *, const char *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_InputText, bool (*)(void *, const char *, char *, int, int *, void *));
+  LOAD_IMGUI_FUNC(ImGui_Button, bool (*)(void *, const char *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_SameLine, void (*)(void *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_Separator, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_BeginChild, bool (*)(void *, const char *, double *,
-                                             double *, int *, int *));
+  LOAD_IMGUI_FUNC(ImGui_BeginChild,
+                  bool (*)(void *, const char *, double *, double *, int *, int *));
   LOAD_IMGUI_FUNC(ImGui_EndChild, void (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_BeginPopup, bool (*)(void *, const char *, int *));
   LOAD_IMGUI_FUNC(ImGui_EndPopup, void (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_OpenPopup, void (*)(void *, const char *, int *));
   LOAD_IMGUI_FUNC(ImGui_CloseCurrentPopup, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_Selectable, bool (*)(void *, const char *, bool *,
-                                             int *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_Selectable,
+                  bool (*)(void *, const char *, bool *, int *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_IsWindowAppearing, bool (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_SetKeyboardFocusHere, void (*)(void *, int *));
   LOAD_IMGUI_FUNC(ImGui_GetScrollY, double (*)(void *));
@@ -338,22 +332,18 @@ bool MagdaImGuiChat::Initialize(reaper_plugin_info_t *rec) {
   LOAD_IMGUI_FUNC(ImGui_IsKeyPressed, bool (*)(void *, int, bool *));
   LOAD_IMGUI_FUNC(ImGui_PushStyleColor, void (*)(void *, int, int));
   LOAD_IMGUI_FUNC(ImGui_PopStyleColor, void (*)(void *, int *));
-  LOAD_IMGUI_FUNC(ImGui_BeginPopupContextWindow,
-                  bool (*)(void *, const char *, int *));
+  LOAD_IMGUI_FUNC(ImGui_BeginPopupContextWindow, bool (*)(void *, const char *, int *));
   LOAD_IMGUI_FUNC(ImGui_IsWindowDocked, bool (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_SetNextWindowDockID, void (*)(void *, int, int *));
-  LOAD_IMGUI_FUNC(ImGui_MenuItem,
-                  bool (*)(void *, const char *, const char *, bool *, bool *));
-  LOAD_IMGUI_FUNC(ImGui_BeginTable, bool (*)(void *, const char *, int, int *,
-                                             double *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_MenuItem, bool (*)(void *, const char *, const char *, bool *, bool *));
+  LOAD_IMGUI_FUNC(ImGui_BeginTable,
+                  bool (*)(void *, const char *, int, int *, double *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_EndTable, void (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_TableNextRow, void (*)(void *, int *, double *));
   LOAD_IMGUI_FUNC(ImGui_TableNextColumn, bool (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_TableSetupColumn,
-                  void (*)(void *, const char *, int *, double *, int *));
+  LOAD_IMGUI_FUNC(ImGui_TableSetupColumn, void (*)(void *, const char *, int *, double *, int *));
   LOAD_IMGUI_FUNC(ImGui_TableHeadersRow, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_GetContentRegionAvail,
-                  void (*)(void *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_GetContentRegionAvail, void (*)(void *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_Dummy, void (*)(void *, double, double));
 
 #undef LOAD_IMGUI_FUNC
@@ -378,7 +368,9 @@ void MagdaImGuiChat::Show() {
   SetAPIStatus("Ready", 0x88FF88FF); // Green in 0xRRGGBBAA format
 }
 
-void MagdaImGuiChat::Hide() { m_visible = false; }
+void MagdaImGuiChat::Hide() {
+  m_visible = false;
+}
 
 void MagdaImGuiChat::Toggle() {
   m_visible = !m_visible;
@@ -442,20 +434,15 @@ void MagdaImGuiChat::Render() {
   int (*Col_ChildBg)() = (int (*)())g_rec->GetFunc("ImGui_Col_ChildBg");
   int (*Col_Text)() = (int (*)())g_rec->GetFunc("ImGui_Col_Text");
   int (*Col_FrameBg)() = (int (*)())g_rec->GetFunc("ImGui_Col_FrameBg");
-  int (*Col_FrameBgHovered)() =
-      (int (*)())g_rec->GetFunc("ImGui_Col_FrameBgHovered");
-  int (*Col_FrameBgActive)() =
-      (int (*)())g_rec->GetFunc("ImGui_Col_FrameBgActive");
+  int (*Col_FrameBgHovered)() = (int (*)())g_rec->GetFunc("ImGui_Col_FrameBgHovered");
+  int (*Col_FrameBgActive)() = (int (*)())g_rec->GetFunc("ImGui_Col_FrameBgActive");
   int (*Col_Button)() = (int (*)())g_rec->GetFunc("ImGui_Col_Button");
-  int (*Col_ButtonHovered)() =
-      (int (*)())g_rec->GetFunc("ImGui_Col_ButtonHovered");
-  int (*Col_ButtonActive)() =
-      (int (*)())g_rec->GetFunc("ImGui_Col_ButtonActive");
+  int (*Col_ButtonHovered)() = (int (*)())g_rec->GetFunc("ImGui_Col_ButtonHovered");
+  int (*Col_ButtonActive)() = (int (*)())g_rec->GetFunc("ImGui_Col_ButtonActive");
   int (*Col_Border)() = (int (*)())g_rec->GetFunc("ImGui_Col_Border");
   int (*Col_Separator)() = (int (*)())g_rec->GetFunc("ImGui_Col_Separator");
   int (*Col_ScrollbarBg)() = (int (*)())g_rec->GetFunc("ImGui_Col_ScrollbarBg");
-  int (*Col_ScrollbarGrab)() =
-      (int (*)())g_rec->GetFunc("ImGui_Col_ScrollbarGrab");
+  int (*Col_ScrollbarGrab)() = (int (*)())g_rec->GetFunc("ImGui_Col_ScrollbarGrab");
 
   int styleColorCount = 0;
   if (Col_WindowBg) {
@@ -527,8 +514,7 @@ void MagdaImGuiChat::Render() {
     } else {
       m_ImGui_Text(m_ctx, "Dock to:");
       // ReaImGui uses negative dock IDs for REAPER's native dockers
-      if (m_ImGui_MenuItem(m_ctx, "Docker 1 (Bottom)", nullptr, nullptr,
-                           nullptr)) {
+      if (m_ImGui_MenuItem(m_ctx, "Docker 1 (Bottom)", nullptr, nullptr, nullptr)) {
         m_pendingDockID = -1;
         m_hasPendingDock = true;
       }
@@ -554,13 +540,11 @@ void MagdaImGuiChat::Render() {
   // Only render content if window is visible (not collapsed)
   if (visible) {
     // Header
-    m_ImGui_TextColored(m_ctx, g_theme.headerText,
-                        "MAGDA - AI Music Production Assistant");
+    m_ImGui_TextColored(m_ctx, g_theme.headerText, "MAGDA - AI Music Production Assistant");
     m_ImGui_Separator(m_ctx);
 
     // Input area
-    m_ImGui_InputText(m_ctx, "##input", m_inputBuffer, sizeof(m_inputBuffer),
-                      nullptr, nullptr);
+    m_ImGui_InputText(m_ctx, "##input", m_inputBuffer, sizeof(m_inputBuffer), nullptr, nullptr);
 
     // Detect @ trigger for autocomplete
     DetectAtTrigger();
@@ -579,20 +563,16 @@ void MagdaImGuiChat::Render() {
 
       if (selectableCount > 0) {
         // Up arrow - navigate up
-        if (m_ImGui_IsKeyPressed &&
-            m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
-          m_autocompleteIndex =
-              (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
+        if (m_ImGui_IsKeyPressed && m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
+          m_autocompleteIndex = (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
         }
         // Down arrow - navigate down
-        if (m_ImGui_IsKeyPressed &&
-            m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
+        if (m_ImGui_IsKeyPressed && m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
           m_autocompleteIndex = (m_autocompleteIndex + 1) % selectableCount;
         }
         // Tab or Enter - accept completion
-        if (m_ImGui_IsKeyPressed &&
-            (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
-             m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse))) {
+        if (m_ImGui_IsKeyPressed && (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Tab, &repeatFalse) ||
+                                     m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Enter, &repeatFalse))) {
           // Find the nth selectable item
           int idx = 0;
           for (const auto &s : m_suggestions) {
@@ -608,8 +588,7 @@ void MagdaImGuiChat::Render() {
         }
       }
       // Escape - close autocomplete
-      if (m_ImGui_IsKeyPressed &&
-          m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Escape, &repeatFalse)) {
+      if (m_ImGui_IsKeyPressed && m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::Escape, &repeatFalse)) {
         m_showAutocomplete = false;
       }
 
@@ -621,7 +600,8 @@ void MagdaImGuiChat::Render() {
     double zero = 0;
     m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    // Hide Send/Cancel button when autocomplete is showing to prevent accidental clicks
+    // Hide Send/Cancel button when autocomplete is showing to prevent
+    // accidental clicks
     if (!m_showAutocomplete) {
       if (m_busy) {
         // Red Cancel button when busy
@@ -696,11 +676,10 @@ void MagdaImGuiChat::Render() {
 
     // Single-column chat area
     double chatW = col1W + colSpacing + col2W;
-    int userColor = g_theme.accent;       // Blue for user
+    int userColor = g_theme.accent;          // Blue for user
     int assistantColor = g_theme.normalText; // Normal for assistant
 
-    if (m_ImGui_BeginChild(m_ctx, "##chat_scroll", &chatW, &paneH, &borderFlags,
-                           &scrollFlags)) {
+    if (m_ImGui_BeginChild(m_ctx, "##chat_scroll", &chatW, &paneH, &borderFlags, &scrollFlags)) {
       // Render all messages in chronological order
       for (const auto &msg : m_history) {
         if (msg.is_user) {
@@ -738,22 +717,28 @@ void MagdaImGuiChat::Render() {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       } else if (m_busy && !m_isMixAnalysisStreaming) {
         const char *spinnerFrames[] = {
-            "\xe2\xa0\x8b", "\xe2\xa0\x99", "\xe2\xa0\xb9", "\xe2\xa0\xb8",
-            "\xe2\xa0\xbc", "\xe2\xa0\xb4", "\xe2\xa0\xa6", "\xe2\xa0\xa7",
-            "\xe2\xa0\x87", "\xe2\xa0\x8f"
-        };
+            "\xe2\xa0\x8b", "\xe2\xa0\x99", "\xe2\xa0\xb9", "\xe2\xa0\xb8", "\xe2\xa0\xbc",
+            "\xe2\xa0\xb4", "\xe2\xa0\xa6", "\xe2\xa0\xa7", "\xe2\xa0\x87", "\xe2\xa0\x8f"};
         double elapsed = ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
         int frameIndex = ((int)(elapsed * 10.0)) % 10;
 
-        // Only show phase-specific messages for mix analysis (when phase != IDLE)
+        // Only show phase-specific messages for mix analysis (when phase !=
+        // IDLE)
         const char *phaseMsg = "Processing request...";
         MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
         if (phase != MIX_PHASE_IDLE) {
           switch (phase) {
-            case MIX_PHASE_RENDERING: phaseMsg = "Rendering audio..."; break;
-            case MIX_PHASE_DSP_ANALYSIS: phaseMsg = "Running DSP analysis..."; break;
-            case MIX_PHASE_API_CALL: phaseMsg = "Analyzing with AI..."; break;
-            default: break;
+          case MIX_PHASE_RENDERING:
+            phaseMsg = "Rendering audio...";
+            break;
+          case MIX_PHASE_DSP_ANALYSIS:
+            phaseMsg = "Running DSP analysis...";
+            break;
+          case MIX_PHASE_API_CALL:
+            phaseMsg = "Analyzing with AI...";
+            break;
+          default:
+            break;
           }
         }
         char loadingMsg[128];
@@ -773,8 +758,7 @@ void MagdaImGuiChat::Render() {
     m_ImGui_SameLine(m_ctx, &zero, &colSpacing);
 
     // Column 3: CONTROLS (on right)
-    if (m_ImGui_BeginChild(m_ctx, "##controls", &col3W, &paneH, &borderFlags,
-                           nullptr)) {
+    if (m_ImGui_BeginChild(m_ctx, "##controls", &col3W, &paneH, &borderFlags, nullptr)) {
       m_ImGui_TextColored(m_ctx, g_theme.headerText, "ACTIONS");
       m_ImGui_Separator(m_ctx);
       if (m_ImGui_Button(m_ctx, "Mix Analysis", nullptr, nullptr)) {
@@ -834,8 +818,7 @@ void MagdaImGuiChat::Render() {
 }
 
 void MagdaImGuiChat::RenderHeader() {
-  m_ImGui_TextColored(m_ctx, Colors::HeaderText,
-                      "MAGDA - AI Music Production Assistant");
+  m_ImGui_TextColored(m_ctx, Colors::HeaderText, "MAGDA - AI Music Production Assistant");
 }
 
 void MagdaImGuiChat::RenderMainContent() {
@@ -850,18 +833,15 @@ void MagdaImGuiChat::RenderMainContent() {
   double outerSizeH = contentHeight;
   double innerWidth = 0;
 
-  if (m_ImGui_BeginTable(m_ctx, "##main_layout", 3, &tableFlags, &outerSizeW,
-                         &outerSizeH, &innerWidth)) {
+  if (m_ImGui_BeginTable(m_ctx, "##main_layout", 3, &tableFlags, &outerSizeW, &outerSizeH,
+                         &innerWidth)) {
     int stretchFlags = ImGuiTableColumnFlags::WidthStretch;
     double col1Weight = 0.5; // Request (narrower)
     double col2Weight = 1.0; // Response (wider)
     double col3Weight = 0.5; // Controls (narrower)
-    m_ImGui_TableSetupColumn(m_ctx, "REQUEST", &stretchFlags, &col1Weight,
-                             nullptr);
-    m_ImGui_TableSetupColumn(m_ctx, "RESPONSE", &stretchFlags, &col2Weight,
-                             nullptr);
-    m_ImGui_TableSetupColumn(m_ctx, "CONTROLS", &stretchFlags, &col3Weight,
-                             nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "REQUEST", &stretchFlags, &col1Weight, nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "RESPONSE", &stretchFlags, &col2Weight, nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "CONTROLS", &stretchFlags, &col3Weight, nullptr);
     m_ImGui_TableHeadersRow(m_ctx);
 
     m_ImGui_TableNextRow(m_ctx, nullptr, nullptr);
@@ -885,8 +865,7 @@ void MagdaImGuiChat::RenderRequestColumn() {
   int childFlags = 0;
   int windowFlags = ImGuiWindowFlags::AlwaysVerticalScrollbar;
 
-  if (m_ImGui_BeginChild(m_ctx, "##request_scroll", &zero, &negSpace,
-                         &childFlags, &windowFlags)) {
+  if (m_ImGui_BeginChild(m_ctx, "##request_scroll", &zero, &negSpace, &childFlags, &windowFlags)) {
     for (const auto &msg : m_history) {
       if (!msg.is_user)
         continue;
@@ -895,8 +874,7 @@ void MagdaImGuiChat::RenderRequestColumn() {
       std::string msgId = "##req_" + std::to_string(&msg - m_history.data());
       int msgChildFlags = 1;
       int msgWindowFlags = 0;
-      if (m_ImGui_BeginChild(m_ctx, msgId.c_str(), &zero, &zero, &msgChildFlags,
-                             &msgWindowFlags)) {
+      if (m_ImGui_BeginChild(m_ctx, msgId.c_str(), &zero, &zero, &msgChildFlags, &msgWindowFlags)) {
         RenderMessageWithHighlighting(msg.content);
       }
       m_ImGui_EndChild(m_ctx);
@@ -920,8 +898,7 @@ void MagdaImGuiChat::RenderResponseColumn() {
   int childFlags = 0;
   int windowFlags = ImGuiWindowFlags::AlwaysVerticalScrollbar;
 
-  if (m_ImGui_BeginChild(m_ctx, "##response_scroll", &zero, &negSpace,
-                         &childFlags, &windowFlags)) {
+  if (m_ImGui_BeginChild(m_ctx, "##response_scroll", &zero, &negSpace, &childFlags, &windowFlags)) {
     for (const auto &msg : m_history) {
       if (msg.is_user)
         continue;
@@ -930,8 +907,7 @@ void MagdaImGuiChat::RenderResponseColumn() {
       std::string msgId = "##resp_" + std::to_string(&msg - m_history.data());
       int msgChildFlags = 1;
       int msgWindowFlags = 0;
-      if (m_ImGui_BeginChild(m_ctx, msgId.c_str(), &zero, &zero, &msgChildFlags,
-                             &msgWindowFlags)) {
+      if (m_ImGui_BeginChild(m_ctx, msgId.c_str(), &zero, &zero, &msgChildFlags, &msgWindowFlags)) {
         RenderMessageWithHighlighting(msg.content);
       }
       m_ImGui_EndChild(m_ctx);
@@ -963,8 +939,8 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_PushStyleColor(m_ctx, ImGuiCol::ChildBg, g_theme.assistantBg);
       int streamChildFlags = 1;
       int streamWindowFlags = 0;
-      if (m_ImGui_BeginChild(m_ctx, "##streaming", &zero, &zero,
-                             &streamChildFlags, &streamWindowFlags)) {
+      if (m_ImGui_BeginChild(m_ctx, "##streaming", &zero, &zero, &streamChildFlags,
+                             &streamWindowFlags)) {
         m_ImGui_TextWrapped(m_ctx, m_streamingBuffer.c_str());
       }
       m_ImGui_EndChild(m_ctx);
@@ -972,8 +948,8 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_PopStyleColor(m_ctx, &popCount);
     }
 
-    // TODO: "Apply Changes" UI disabled for now - needs refinement (compact view)
-    // if (m_hasPendingMixActions) { ... }
+    // TODO: "Apply Changes" UI disabled for now - needs refinement (compact
+    // view) if (m_hasPendingMixActions) { ... }
 
     // Show loading spinner while busy
     if (m_busy) {
@@ -995,28 +971,28 @@ void MagdaImGuiChat::RenderResponseColumn() {
       int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
       // Build loading message with spinner - show phase-specific message
-      // Show spinner if NOT streaming, OR if streaming but buffer is still empty
-      // (buffer empty means we're waiting for the synchronous HTTP request to complete)
+      // Show spinner if NOT streaming, OR if streaming but buffer is still
+      // empty (buffer empty means we're waiting for the synchronous HTTP
+      // request to complete)
       if (!m_isMixAnalysisStreaming || m_lastMixStreamBuffer.empty()) {
         const char *phaseMsg = "Processing request...";
         MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
         switch (phase) {
-          case MIX_PHASE_RENDERING:
-            phaseMsg = "Rendering audio...";
-            break;
-          case MIX_PHASE_DSP_ANALYSIS:
-            phaseMsg = "Running DSP analysis...";
-            break;
-          case MIX_PHASE_API_CALL:
-            phaseMsg = "Analyzing with AI...";
-            break;
-          default:
-            phaseMsg = "Processing request...";
-            break;
+        case MIX_PHASE_RENDERING:
+          phaseMsg = "Rendering audio...";
+          break;
+        case MIX_PHASE_DSP_ANALYSIS:
+          phaseMsg = "Running DSP analysis...";
+          break;
+        case MIX_PHASE_API_CALL:
+          phaseMsg = "Analyzing with AI...";
+          break;
+        default:
+          phaseMsg = "Processing request...";
+          break;
         }
         char loadingMsg[128];
-        snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
-                 spinnerFrames[frameIndex], phaseMsg);
+        snprintf(loadingMsg, sizeof(loadingMsg), "%s %s", spinnerFrames[frameIndex], phaseMsg);
         m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
       }
       m_scrollToBottom = true; // Keep scrolling to show new content
@@ -1104,17 +1080,14 @@ void MagdaImGuiChat::RenderControlsColumn() {
     // Export chat to file
     if (g_rec) {
       char filename[1024] = {0};
-      bool (*GetUserFileNameForRead)(char *, int, const char *, const char *) =
-          (bool (*)(char *, int, const char *, const char *))g_rec->GetFunc(
-              "GetUserFileNameForWrite");
+      bool (*GetUserFileNameForRead)(char *, int, const char *, const char *) = (bool (*)(
+          char *, int, const char *, const char *))g_rec->GetFunc("GetUserFileNameForWrite");
       if (GetUserFileNameForRead &&
-          GetUserFileNameForRead(filename, sizeof(filename), "",
-                                 "Text Files (*.txt)\0*.txt\0")) {
+          GetUserFileNameForRead(filename, sizeof(filename), "", "Text Files (*.txt)\0*.txt\0")) {
         FILE *f = fopen(filename, "w");
         if (f) {
           for (const auto &msg : m_history) {
-            fprintf(f, "%s: %s\n\n", msg.is_user ? "USER" : "ASSISTANT",
-                    msg.content.c_str());
+            fprintf(f, "%s: %s\n\n", msg.is_user ? "USER" : "ASSISTANT", msg.content.c_str());
           }
           fclose(f);
         }
@@ -1134,8 +1107,8 @@ void MagdaImGuiChat::RenderFooter() {
 void MagdaImGuiChat::RenderInputArea() {
   int flags = ImGuiInputTextFlags::EnterReturnsTrue;
 
-  bool submitted = m_ImGui_InputText(m_ctx, "##input", m_inputBuffer,
-                                     sizeof(m_inputBuffer), &flags, nullptr);
+  bool submitted =
+      m_ImGui_InputText(m_ctx, "##input", m_inputBuffer, sizeof(m_inputBuffer), &flags, nullptr);
 
   DetectAtTrigger();
 
@@ -1153,8 +1126,7 @@ void MagdaImGuiChat::RenderInputArea() {
     if (selectableCount > 0) {
       // Autocomplete navigation
       if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::UpArrow, &repeatTrue)) {
-        m_autocompleteIndex =
-            (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
+        m_autocompleteIndex = (m_autocompleteIndex - 1 + selectableCount) % selectableCount;
       }
       if (m_ImGui_IsKeyPressed(m_ctx, ImGuiKey::DownArrow, &repeatTrue)) {
         m_autocompleteIndex = (m_autocompleteIndex + 1) % selectableCount;
@@ -1189,8 +1161,7 @@ void MagdaImGuiChat::RenderInputArea() {
       } else if (m_inputHistoryIndex > 0) {
         m_inputHistoryIndex--;
       }
-      if (m_inputHistoryIndex >= 0 &&
-          m_inputHistoryIndex < (int)m_inputHistory.size()) {
+      if (m_inputHistoryIndex >= 0 && m_inputHistoryIndex < (int)m_inputHistory.size()) {
         strncpy(m_inputBuffer, m_inputHistory[m_inputHistoryIndex].c_str(),
                 sizeof(m_inputBuffer) - 1);
         m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
@@ -1202,8 +1173,7 @@ void MagdaImGuiChat::RenderInputArea() {
         if (m_inputHistoryIndex >= (int)m_inputHistory.size()) {
           // Restore saved input
           m_inputHistoryIndex = -1;
-          strncpy(m_inputBuffer, m_savedInput.c_str(),
-                  sizeof(m_inputBuffer) - 1);
+          strncpy(m_inputBuffer, m_savedInput.c_str(), sizeof(m_inputBuffer) - 1);
           m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
         } else {
           strncpy(m_inputBuffer, m_inputHistory[m_inputHistoryIndex].c_str(),
@@ -1286,8 +1256,8 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
   std::string selectedAlias;
   bool wasSelected = false;
 
-  if (m_ImGui_BeginChild(m_ctx, "##autocomplete_list", &acWidth, &acHeight,
-                         &childFlags, &windowFlags)) {
+  if (m_ImGui_BeginChild(m_ctx, "##autocomplete_list", &acWidth, &acHeight, &childFlags,
+                         &windowFlags)) {
     int selectableIdx = 0; // Index excluding separators
     for (const auto &suggestion : localSuggestions) {
       // Handle separator
@@ -1306,11 +1276,9 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         m_ImGui_PushStyleColor(m_ctx, 24, g_theme.buttonBg); // Col_Header
       }
 
-      std::string label =
-          "@" + suggestion.alias + " - " + suggestion.plugin_name;
+      std::string label = "@" + suggestion.alias + " - " + suggestion.plugin_name;
 
-      if (m_ImGui_Selectable(m_ctx, label.c_str(), &isSelected, nullptr,
-                             nullptr, nullptr)) {
+      if (m_ImGui_Selectable(m_ctx, label.c_str(), &isSelected, nullptr, nullptr, nullptr)) {
         selectedAlias = suggestion.alias;
         wasSelected = true;
       }
@@ -1428,14 +1396,10 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
 
   // Add mix analysis types
   static const std::vector<std::pair<std::string, std::string>> mixTypes = {
-      {"mix:drums", "Analyze drums/percussion track"},
-      {"mix:bass", "Analyze bass track"},
-      {"mix:synth", "Analyze synth/pad track"},
-      {"mix:vocals", "Analyze vocal track"},
-      {"mix:guitar", "Analyze guitar track"},
-      {"mix:piano", "Analyze piano/keys track"},
-      {"mix:strings", "Analyze strings track"},
-      {"mix:fx", "Analyze FX/sound design track"},
+      {"mix:drums", "Analyze drums/percussion track"}, {"mix:bass", "Analyze bass track"},
+      {"mix:synth", "Analyze synth/pad track"},        {"mix:vocals", "Analyze vocal track"},
+      {"mix:guitar", "Analyze guitar track"},          {"mix:piano", "Analyze piano/keys track"},
+      {"mix:strings", "Analyze strings track"},        {"mix:fx", "Analyze FX/sound design track"},
   };
 
   for (const auto &pair : mixTypes) {
@@ -1443,8 +1407,7 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
     const std::string &desc = pair.second;
 
     std::string aliasLower = alias;
-    std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(),
-                   ::tolower);
+    std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
 
     if (query.empty() || aliasLower.find(query) == 0) {
       AutocompleteSuggestion suggestion;
@@ -1466,8 +1429,7 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
       // Create prefixed alias for matching
       std::string prefixedAlias = "plugin:" + alias;
       std::string prefixedLower = prefixedAlias;
-      std::transform(prefixedLower.begin(), prefixedLower.end(),
-                     prefixedLower.begin(), ::tolower);
+      std::transform(prefixedLower.begin(), prefixedLower.end(), prefixedLower.begin(), ::tolower);
 
       if (query.empty() || prefixedLower.find(query) == 0) {
         AutocompleteSuggestion suggestion;
@@ -1480,8 +1442,7 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
   }
 
   std::sort(m_suggestions.begin(), m_suggestions.end(),
-            [&query](const AutocompleteSuggestion &a,
-                     const AutocompleteSuggestion &b) {
+            [&query](const AutocompleteSuggestion &a, const AutocompleteSuggestion &b) {
               // Mix types first, then plugins
               if (a.plugin_type != b.plugin_type) {
                 return a.plugin_type == "mix";
@@ -1597,8 +1558,7 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char logMsg[512];
-      snprintf(logMsg, sizeof(logMsg), "MAGDA: Master analysis - query: '%s'\n",
-               userQuery.c_str());
+      snprintf(logMsg, sizeof(logMsg), "MAGDA: Master analysis - query: '%s'\n", userQuery.c_str());
       ShowConsoleMsg(logMsg);
     }
 
@@ -1607,8 +1567,7 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
 
     // Execute the master analysis workflow
     WDL_FastString error_msg;
-    bool success = MagdaBounceWorkflow::ExecuteMasterWorkflow(userQuery.c_str(),
-                                                              error_msg);
+    bool success = MagdaBounceWorkflow::ExecuteMasterWorkflow(userQuery.c_str(), error_msg);
 
     if (!success) {
       std::string errorStr = "Master analysis failed: ";
@@ -1636,9 +1595,8 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
   // Trim leading spaces
   size_t cmdStart = afterMix.find_first_not_of(" ");
   if (cmdStart == std::string::npos) {
-    AddAssistantMessage(
-        "Error: Please specify a track type or comparison after @mix: (e.g., "
-        "@mix:synth make it brighter or @mix:compare drums bass)");
+    AddAssistantMessage("Error: Please specify a track type or comparison after @mix: (e.g., "
+                        "@mix:synth make it brighter or @mix:compare drums bass)");
     return true;
   }
   afterMix = afterMix.substr(cmdStart);
@@ -1659,8 +1617,7 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char logMsg[512];
-      snprintf(logMsg, sizeof(logMsg),
-               "MAGDA: Multi-track comparison - args: '%s'\n",
+      snprintf(logMsg, sizeof(logMsg), "MAGDA: Multi-track comparison - args: '%s'\n",
                compareArgs.c_str());
       ShowConsoleMsg(logMsg);
     }
@@ -1670,8 +1627,7 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
 
     // Execute the multi-track comparison workflow
     WDL_FastString error_msg;
-    bool success = MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(
-        compareArgs.c_str(), error_msg);
+    bool success = MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(compareArgs.c_str(), error_msg);
 
     if (!success) {
       std::string errorStr = "Multi-track comparison failed: ";
@@ -1710,8 +1666,7 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char logMsg[512];
-    snprintf(logMsg, sizeof(logMsg),
-             "MAGDA: Mix analysis - type: '%s', query: '%s'\n",
+    snprintf(logMsg, sizeof(logMsg), "MAGDA: Mix analysis - type: '%s', query: '%s'\n",
              trackType.c_str(), userQuery.c_str());
     ShowConsoleMsg(logMsg);
   }
@@ -1721,8 +1676,8 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
 
   // Execute the mix analysis workflow
   WDL_FastString error_msg;
-  bool success = MagdaBounceWorkflow::ExecuteWorkflow(
-      BOUNCE_MODE_FULL_TRACK, trackType.c_str(), userQuery.c_str(), error_msg);
+  bool success = MagdaBounceWorkflow::ExecuteWorkflow(BOUNCE_MODE_FULL_TRACK, trackType.c_str(),
+                                                      userQuery.c_str(), error_msg);
 
   if (!success) {
     std::string errorStr = "Mix analysis failed: ";
@@ -1782,7 +1737,7 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
     m_asyncResultReady = false;
     m_asyncSuccess = false;
     m_cancelRequested = false;
-    m_directOpenAI = true;  // Mark as direct OpenAI (DSL result)
+    m_directOpenAI = true; // Mark as direct OpenAI (DSL result)
     m_asyncResponseJson.clear();
     m_asyncErrorMsg.clear();
     m_streamingActions.clear();
@@ -1810,8 +1765,8 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
 
       // Use simple DAW-only mode via OpenAI client
       WDL_FastString dslCode, errorMsg;
-      bool success = openai->GenerateDSLWithState(
-          question.c_str(), MAGDA_DSL_TOOL_DESCRIPTION, stateStr.c_str(), dslCode, errorMsg);
+      bool success = openai->GenerateDSLWithState(question.c_str(), MAGDA_DSL_TOOL_DESCRIPTION,
+                                                  stateStr.c_str(), dslCode, errorMsg);
 
       std::lock_guard<std::mutex> lock(m_asyncMutex);
       m_asyncSuccess = success && dslCode.GetLength() > 0;
@@ -1830,9 +1785,10 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
     if (success && !results.empty()) {
       // Combine all DSL results
       std::string combinedDSL;
-      for (const auto& result : results) {
+      for (const auto &result : results) {
         if (result.success && !result.dslCode.empty()) {
-          if (!combinedDSL.empty()) combinedDSL += "\n";
+          if (!combinedDSL.empty())
+            combinedDSL += "\n";
           combinedDSL += result.dslCode;
         }
       }
@@ -1865,13 +1821,14 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Set busy state and start spinner animation
   m_busy = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-  ClearStreamingBuffer();                // Clear any previous streaming content
+  ClearStreamingBuffer(); // Clear any previous streaming content
 
-  // Reset mix analysis phase for regular chat requests (show generic "Processing...")
+  // Reset mix analysis phase for regular chat requests (show generic
+  // "Processing...")
   MagdaBounceWorkflow::SetCurrentPhase(MIX_PHASE_IDLE);
 
   // Check if OpenAI API key is configured - use direct OpenAI if available
-  MagdaOpenAI* openai = GetMagdaOpenAI();
+  MagdaOpenAI *openai = GetMagdaOpenAI();
   if (openai && openai->HasAPIKey()) {
     // Use direct OpenAI API
     SetAPIStatus("OpenAI Direct", 0x88FF88FF); // Green
@@ -1946,7 +1903,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     m_asyncPending = true;
     m_asyncResultReady = false;
     m_asyncSuccess = false;
-    m_cancelRequested = false;  // Reset cancel flag for new request
+    m_cancelRequested = false; // Reset cancel flag for new request
     m_asyncResponseJson.clear();
     m_asyncErrorMsg.clear();
     m_streamingActions.clear(); // Clear any pending actions
@@ -1979,14 +1936,13 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
       {
         std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
         if (ctx->chat->m_cancelRequested) {
-          return;  // Stop processing if cancelled
+          return; // Stop processing if cancelled
         }
       }
 
       // Parse event JSON
       wdl_json_parser parser;
-      wdl_json_element *root =
-          parser.parse(event_json, (int)strlen(event_json));
+      wdl_json_element *root = parser.parse(event_json, (int)strlen(event_json));
 
       if (!parser.m_err && root) {
         // Check event type
@@ -2006,10 +1962,8 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
                   (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
               if (ShowConsoleMsg) {
                 char log_msg[512];
-                snprintf(
-                    log_msg, sizeof(log_msg),
-                    "MAGDA: Chat callback received action type event: %.200s\n",
-                    event_json);
+                snprintf(log_msg, sizeof(log_msg),
+                         "MAGDA: Chat callback received action type event: %.200s\n", event_json);
                 ShowConsoleMsg(log_msg);
               }
             }
@@ -2033,26 +1987,25 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
                 // extracted by API client) e.g.
                 // {"action":"create_track","index":0,"name":"bass"}
                 wdl_json_parser actionParser;
-                wdl_json_element *actionObj = actionParser.parse(
-                    actionEventJson.c_str(), (int)actionEventJson.length());
+                wdl_json_element *actionObj =
+                    actionParser.parse(actionEventJson.c_str(), (int)actionEventJson.length());
                 if (!actionParser.m_err && actionObj) {
                   // Format the action object directly
-                  std::string formatted =
-                      FormatAction(actionObj, ctx->actionCount - 1);
+                  std::string formatted = FormatAction(actionObj, ctx->actionCount - 1);
                   if (!formatted.empty()) {
                     ctx->chat->m_streamingBuffer += formatted + "\n";
                   } else {
                     // Fallback to progress message
                     char progress_msg[256];
-                    snprintf(progress_msg, sizeof(progress_msg),
-                             "Received action %d...\n", ctx->actionCount);
+                    snprintf(progress_msg, sizeof(progress_msg), "Received action %d...\n",
+                             ctx->actionCount);
                     ctx->chat->m_streamingBuffer += progress_msg;
                   }
                 } else {
                   // Fallback to progress message
                   char progress_msg[256];
-                  snprintf(progress_msg, sizeof(progress_msg),
-                           "Received action %d...\n", ctx->actionCount);
+                  snprintf(progress_msg, sizeof(progress_msg), "Received action %d...\n",
+                           ctx->actionCount);
                   ctx->chat->m_streamingBuffer += progress_msg;
                 }
               }
@@ -2071,8 +2024,8 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
                   ctx->chat->m_asyncResponseJson += ",";
                 // Extract action from event JSON
                 wdl_json_parser p;
-                wdl_json_element *r = p.parse(ctx->allActions[i].c_str(),
-                                              (int)ctx->allActions[i].length());
+                wdl_json_element *r =
+                    p.parse(ctx->allActions[i].c_str(), (int)ctx->allActions[i].length());
                 if (!p.m_err && r) {
                   wdl_json_element *a = r->get_item_by_name("action");
                   if (a && a->m_value_string) {
@@ -2118,11 +2071,9 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
               ctx->chat->m_streamingBuffer += formatted + "\n";
             } else {
               char progress_msg[256];
-              snprintf(progress_msg, sizeof(progress_msg), "Action %d: %s\n",
-                       ctx->actionCount + 1,
-                       root->get_string_by_name("action")
-                           ? root->get_string_by_name("action")
-                           : "unknown");
+              snprintf(progress_msg, sizeof(progress_msg), "Action %d: %s\n", ctx->actionCount + 1,
+                       root->get_string_by_name("action") ? root->get_string_by_name("action")
+                                                          : "unknown");
               ctx->chat->m_streamingBuffer += progress_msg;
             }
           }
@@ -2147,9 +2098,8 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     };
 
     // Make streaming request to /api/v1/chat/stream
-    bool success = s_httpClient.SendPOSTStream(
-        "/api/v1/chat/stream", requestJsonStr.c_str(), streamCallback, ctx,
-        error_msg, 60);
+    bool success = s_httpClient.SendPOSTStream("/api/v1/chat/stream", requestJsonStr.c_str(),
+                                               streamCallback, ctx, error_msg, 60);
 
     // If streaming failed completely (not just an error event)
     if (!success) {
@@ -2176,8 +2126,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       // Update the assistant message with streamed content
       if (streamState.isStreaming || streamState.streamComplete) {
         // Create or update streaming message
-        if (m_history.empty() || m_history.back().is_user ||
-            !m_isMixAnalysisStreaming) {
+        if (m_history.empty() || m_history.back().is_user || !m_isMixAnalysisStreaming) {
           // Start new message
           AddAssistantMessage("");
           m_isMixAnalysisStreaming = true;
@@ -2272,16 +2221,15 @@ void MagdaImGuiChat::ProcessAsyncResult() {
     }
 
     WDL_FastString execution_result, execution_error;
-    if (!MagdaActions::ExecuteActions(singleActionJson.c_str(),
-                                      execution_result, execution_error)) {
+    if (!MagdaActions::ExecuteActions(singleActionJson.c_str(), execution_result,
+                                      execution_error)) {
       // Log error
       if (g_rec) {
         void (*ShowConsoleMsg)(const char *msg) =
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char log_msg[512];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Action execution failed: %s\n",
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: Action execution failed: %s\n",
                    execution_error.Get());
           ShowConsoleMsg(log_msg);
         }
@@ -2334,7 +2282,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
   {
     std::lock_guard<std::mutex> lock(m_asyncMutex);
     isDSL = m_directOpenAI;
-    m_directOpenAI = false;  // Reset for next request
+    m_directOpenAI = false; // Reset for next request
   }
 
   // Process final result on the MAIN thread
@@ -2362,35 +2310,39 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       // Clear DSL context before processing
       MagdaDSLContext::Get().Clear();
 
-      // Split DSL by newlines and SORT: DAW commands first, then content commands
-      // This ensures track/clip creation happens before MIDI notes are added
+      // Split DSL by newlines and SORT: DAW commands first, then content
+      // commands This ensures track/clip creation happens before MIDI notes are
+      // added
       std::string dslCode = responseJson;
       std::vector<std::string> dawCommands;     // track, clip, fx - execute first
       std::vector<std::string> contentCommands; // arpeggio, chord, pattern - execute second
-      std::string jsfxCode; // JSFX is special - entire block
+      std::string jsfxCode;                     // JSFX is special - entire block
 
       size_t pos = 0;
       while (pos < dslCode.size()) {
         size_t endPos = dslCode.find('\n', pos);
-        if (endPos == std::string::npos) endPos = dslCode.size();
+        if (endPos == std::string::npos)
+          endPos = dslCode.size();
 
         std::string line = dslCode.substr(pos, endPos - pos);
         pos = endPos + 1;
 
         // Trim whitespace
         size_t start = line.find_first_not_of(" \t\r");
-        if (start == std::string::npos) continue;
+        if (start == std::string::npos)
+          continue;
         size_t end = line.find_last_not_of(" \t\r");
         line = line.substr(start, end - start + 1);
-        if (line.empty()) continue;
+        if (line.empty())
+          continue;
 
         // Categorize command
         if (line.find("desc:") == 0 || line.find("@init") != std::string::npos ||
             line.find("@sample") != std::string::npos) {
           jsfxCode = dslCode; // JSFX is entire block
           break;
-        } else if (line.find("track(") == 0 || line.find("clip(") == 0 ||
-                   line.find("fx(") == 0 || line.find("item(") == 0) {
+        } else if (line.find("track(") == 0 || line.find("clip(") == 0 || line.find("fx(") == 0 ||
+                   line.find("item(") == 0) {
           dawCommands.push_back(line);
         } else if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
                    line.find("note(") == 0 || line.find("progression(") == 0 ||
@@ -2403,7 +2355,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       }
 
       // Helper to extract a human-readable summary from a DSL command
-      auto getActionSummary = [](const std::string& line) -> std::string {
+      auto getActionSummary = [](const std::string &line) -> std::string {
         // Extract key info from common patterns
         if (line.find("track(") == 0) {
           // track(name="X").new() or track(name="X").new_clip(...)
@@ -2458,21 +2410,24 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       };
 
       // Helper lambda to execute a line
-      auto executeLine = [&](const std::string& line) -> bool {
+      auto executeLine = [&](const std::string &line) -> bool {
         bool lineSuccess = false;
-        if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
-            line.find("note(") == 0 || line.find("progression(") == 0) {
+        if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 || line.find("note(") == 0 ||
+            line.find("progression(") == 0) {
           MagdaArranger::Interpreter arrangerInterp;
           lineSuccess = arrangerInterp.Execute(line.c_str());
-          if (!lineSuccess) lastError = arrangerInterp.GetError();
+          if (!lineSuccess)
+            lastError = arrangerInterp.GetError();
         } else if (line.find("pattern(") == 0) {
           MagdaDrummer::Interpreter drummerInterp;
           lineSuccess = drummerInterp.Execute(line.c_str());
-          if (!lineSuccess) lastError = drummerInterp.GetError();
+          if (!lineSuccess)
+            lastError = drummerInterp.GetError();
         } else {
           MagdaDSL::Interpreter dawInterp;
           lineSuccess = dawInterp.Execute(line.c_str());
-          if (!lineSuccess) lastError = dawInterp.GetError();
+          if (!lineSuccess)
+            lastError = dawInterp.GetError();
         }
         // Add action summary if successful
         if (lineSuccess) {
@@ -2497,7 +2452,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         }
       } else {
         // Execute DAW commands FIRST (creates tracks/clips)
-        for (const auto& cmd : dawCommands) {
+        for (const auto &cmd : dawCommands) {
           if (executeLine(cmd)) {
             successCount++;
           } else {
@@ -2506,7 +2461,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         }
 
         // Execute content commands SECOND (adds MIDI to created tracks)
-        for (const auto& cmd : contentCommands) {
+        for (const auto &cmd : contentCommands) {
           if (executeLine(cmd)) {
             successCount++;
           } else {
@@ -2518,7 +2473,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       if (successCount > 0 && !dslSuccess) {
         // Partial success - show what worked and the error
         std::string msg;
-        for (const auto& summary : actionSummaries) {
+        for (const auto &summary : actionSummaries) {
           msg += "✓ " + summary + "\n";
         }
         msg += "⚠ Error: " + lastError;
@@ -2529,7 +2484,8 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         std::string msg;
         for (size_t i = 0; i < actionSummaries.size(); i++) {
           msg += "✓ " + actionSummaries[i];
-          if (i < actionSummaries.size() - 1) msg += "\n";
+          if (i < actionSummaries.size() - 1)
+            msg += "\n";
         }
         AddAssistantMessage(msg);
         SetAPIStatus("Done", 0x88FF88FF); // Green
@@ -2546,8 +2502,9 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       // Clear DSL context after processing
       MagdaDSLContext::Get().Clear();
     } else {
-      // For streaming from Go backend: the buffer should contain formatted action messages
-      // ClearStreamingBuffer adds buffer content to chat history
+      // For streaming from Go backend: the buffer should contain formatted
+      // action messages ClearStreamingBuffer adds buffer content to chat
+      // history
       bool hadStreamingContent = !m_streamingBuffer.empty();
       ClearStreamingBuffer();
 
@@ -2563,8 +2520,8 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           char summary_msg[256];
           int action_count = 0;
           if (!responseJson.empty()) {
-            char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
-                responseJson.c_str(), (int)responseJson.length());
+            char *actions_json = MagdaHTTPClient::ExtractActionsJSON(responseJson.c_str(),
+                                                                     (int)responseJson.length());
             if (actions_json) {
               // Count actions (rough estimate)
               for (const char *p = actions_json; *p; p++) {
@@ -2576,8 +2533,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
             }
           }
           if (action_count > 0) {
-            snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).",
-                     action_count);
+            snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).", action_count);
             AddAssistantMessage(summary_msg);
           } else {
             AddAssistantMessage("Done.");

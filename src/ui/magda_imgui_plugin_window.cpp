@@ -22,9 +22,9 @@ constexpr int DrumHighlight = 0x88AAFFFF;
 } // namespace PluginTheme
 
 // Helper macro for loading ImGui functions
-#define LOAD_IMGUI_FUNC(name, type)                                            \
-  m_##name = (type)rec->GetFunc(#name);                                        \
-  if (!m_##name)                                                               \
+#define LOAD_IMGUI_FUNC(name, type)                                                                \
+  m_##name = (type)rec->GetFunc(#name);                                                            \
+  if (!m_##name)                                                                                   \
     return false;
 
 MagdaImGuiPluginWindow::MagdaImGuiPluginWindow() {
@@ -33,7 +33,9 @@ MagdaImGuiPluginWindow::MagdaImGuiPluginWindow() {
   m_ImGui_End = nullptr;
 }
 
-MagdaImGuiPluginWindow::~MagdaImGuiPluginWindow() { m_ctx = nullptr; }
+MagdaImGuiPluginWindow::~MagdaImGuiPluginWindow() {
+  m_ctx = nullptr;
+}
 
 bool MagdaImGuiPluginWindow::Initialize(reaper_plugin_info_t *rec) {
   if (!rec)
@@ -43,31 +45,27 @@ bool MagdaImGuiPluginWindow::Initialize(reaper_plugin_info_t *rec) {
   LOAD_IMGUI_FUNC(ImGui_CreateContext, void *(*)(const char *, int *));
   LOAD_IMGUI_FUNC(ImGui_Begin, bool (*)(void *, const char *, bool *, int *));
   LOAD_IMGUI_FUNC(ImGui_End, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize,
-                  void (*)(void *, double, double, int *));
+  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize, void (*)(void *, double, double, int *));
   LOAD_IMGUI_FUNC(ImGui_Text, void (*)(void *, const char *));
   LOAD_IMGUI_FUNC(ImGui_TextColored, void (*)(void *, int, const char *));
-  LOAD_IMGUI_FUNC(ImGui_InputText,
-                  bool (*)(void *, const char *, char *, int, int *, void *));
-  LOAD_IMGUI_FUNC(ImGui_Button,
-                  bool (*)(void *, const char *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_InputText, bool (*)(void *, const char *, char *, int, int *, void *));
+  LOAD_IMGUI_FUNC(ImGui_Button, bool (*)(void *, const char *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_SameLine, void (*)(void *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_Separator, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_BeginChild, bool (*)(void *, const char *, double *,
-                                             double *, int *, int *));
+  LOAD_IMGUI_FUNC(ImGui_BeginChild,
+                  bool (*)(void *, const char *, double *, double *, int *, int *));
   LOAD_IMGUI_FUNC(ImGui_EndChild, void (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_PushStyleColor, void (*)(void *, int, int));
   LOAD_IMGUI_FUNC(ImGui_PopStyleColor, void (*)(void *, int *));
-  LOAD_IMGUI_FUNC(ImGui_BeginTable, bool (*)(void *, const char *, int, int *,
-                                             double *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_BeginTable,
+                  bool (*)(void *, const char *, int, int *, double *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_EndTable, void (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_TableNextRow, void (*)(void *, int *, double *));
   LOAD_IMGUI_FUNC(ImGui_TableNextColumn, bool (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_TableSetupColumn,
-                  void (*)(void *, const char *, int *, double *, int *));
+  LOAD_IMGUI_FUNC(ImGui_TableSetupColumn, void (*)(void *, const char *, int *, double *, int *));
   LOAD_IMGUI_FUNC(ImGui_TableHeadersRow, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_Selectable, bool (*)(void *, const char *, bool *,
-                                             int *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_Selectable,
+                  bool (*)(void *, const char *, bool *, int *, double *, double *));
 
   m_available = true;
   return true;
@@ -78,7 +76,9 @@ void MagdaImGuiPluginWindow::Show() {
   m_needsRefresh = true;
 }
 
-void MagdaImGuiPluginWindow::Hide() { m_visible = false; }
+void MagdaImGuiPluginWindow::Hide() {
+  m_visible = false;
+}
 
 void MagdaImGuiPluginWindow::Toggle() {
   m_visible = !m_visible;
@@ -96,8 +96,7 @@ void MagdaImGuiPluginWindow::RefreshPluginList() {
   std::string searchLower;
   if (m_searchBuffer[0]) {
     searchLower = m_searchBuffer;
-    std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(),
-                   ::tolower);
+    std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
   }
 
   // Get deduplicated plugins
@@ -105,12 +104,10 @@ void MagdaImGuiPluginWindow::RefreshPluginList() {
   const auto &aliasesByPlugin = m_pluginScanner->GetAliasesByPlugin();
 
   for (const auto &plugin : plugins) {
-    const std::string &plugin_key =
-        plugin.ident.empty() ? plugin.full_name : plugin.ident;
+    const std::string &plugin_key = plugin.ident.empty() ? plugin.full_name : plugin.ident;
 
     // Build display name
-    std::string displayName =
-        plugin.name.empty() ? plugin.full_name : plugin.name;
+    std::string displayName = plugin.name.empty() ? plugin.full_name : plugin.name;
     if (!plugin.manufacturer.empty()) {
       displayName += " (" + plugin.manufacturer + ")";
     }
@@ -123,8 +120,7 @@ void MagdaImGuiPluginWindow::RefreshPluginList() {
       for (const auto &a : it->second) {
         std::string aLower = a;
         std::transform(aLower.begin(), aLower.end(), aLower.begin(), ::tolower);
-        if (aLower.find("x64") == std::string::npos &&
-            aLower.find("x86") == std::string::npos) {
+        if (aLower.find("x64") == std::string::npos && aLower.find("x86") == std::string::npos) {
           if (alias.empty() || a.length() < alias.length()) {
             alias = a;
           }
@@ -138,11 +134,9 @@ void MagdaImGuiPluginWindow::RefreshPluginList() {
     // Apply search filter
     if (!searchLower.empty()) {
       std::string nameLower = displayName;
-      std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(),
-                     ::tolower);
+      std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
       std::string aliasLower = alias;
-      std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(),
-                     ::tolower);
+      std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
 
       if (nameLower.find(searchLower) == std::string::npos &&
           aliasLower.find(searchLower) == std::string::npos) {
@@ -157,13 +151,11 @@ void MagdaImGuiPluginWindow::RefreshPluginList() {
     row.is_instrument = plugin.is_instrument;
     // Check if this plugin has a drum mapping defined
     row.has_drum_mapping =
-        (g_drumMappingManager &&
-         g_drumMappingManager->GetMappingForPlugin(plugin_key) != nullptr);
+        (g_drumMappingManager && g_drumMappingManager->GetMappingForPlugin(plugin_key) != nullptr);
     // Count param mappings
     row.param_mapping_count = 0;
     if (g_paramMappingManager) {
-      const ParamMapping *pm =
-          g_paramMappingManager->GetMappingForPlugin(plugin_key);
+      const ParamMapping *pm = g_paramMappingManager->GetMappingForPlugin(plugin_key);
       if (pm) {
         row.param_mapping_count = (int)pm->aliases.size();
       }
@@ -234,8 +226,8 @@ void MagdaImGuiPluginWindow::RenderHeader() {
   char oldSearch[256];
   strncpy(oldSearch, m_searchBuffer, sizeof(oldSearch));
 
-  if (m_ImGui_InputText(m_ctx, "##search", m_searchBuffer,
-                        sizeof(m_searchBuffer), nullptr, nullptr)) {
+  if (m_ImGui_InputText(m_ctx, "##search", m_searchBuffer, sizeof(m_searchBuffer), nullptr,
+                        nullptr)) {
     // Search changed - refresh
     if (strcmp(oldSearch, m_searchBuffer) != 0) {
       m_needsRefresh = true;
@@ -253,8 +245,7 @@ void MagdaImGuiPluginWindow::RenderHeader() {
 
   // Stats
   char stats[128];
-  snprintf(stats, sizeof(stats), "Showing %d plugins",
-           (int)m_filteredPlugins.size());
+  snprintf(stats, sizeof(stats), "Showing %d plugins", (int)m_filteredPlugins.size());
   m_ImGui_SameLine(m_ctx, nullptr, &spacing);
   m_ImGui_Text(m_ctx, stats);
 }
@@ -263,8 +254,7 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
   // Table flags: Resizable | BordersInnerV | RowBg | ScrollY
   int tableFlags = (1 << 1) | (1 << 8) | (1 << 6) | (1 << 12);
 
-  if (m_ImGui_BeginTable(m_ctx, "##plugins", 6, &tableFlags, nullptr, nullptr,
-                         nullptr)) {
+  if (m_ImGui_BeginTable(m_ctx, "##plugins", 6, &tableFlags, nullptr, nullptr, nullptr)) {
     // Setup columns
     int colFlagsStretch = 1 << 3; // WidthStretch
     int colFlagsFixed = 1 << 4;   // WidthFixed
@@ -275,18 +265,12 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
     double colParamsWidth = 55;   // Fixed for params
     double colDrumsWidth = 55;    // Fixed for drums
 
-    m_ImGui_TableSetupColumn(m_ctx, "Plugin Name", &colFlagsStretch,
-                             &colNameWidth, nullptr);
-    m_ImGui_TableSetupColumn(m_ctx, "Type", &colFlagsFixed, &colTypeWidth,
-                             nullptr);
-    m_ImGui_TableSetupColumn(m_ctx, "Alias", &colFlagsStretch, &colAliasWidth,
-                             nullptr);
-    m_ImGui_TableSetupColumn(m_ctx, "Actions", &colFlagsFixed, &colActionsWidth,
-                             nullptr);
-    m_ImGui_TableSetupColumn(m_ctx, "Params", &colFlagsFixed, &colParamsWidth,
-                             nullptr);
-    m_ImGui_TableSetupColumn(m_ctx, "Drums", &colFlagsFixed, &colDrumsWidth,
-                             nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "Plugin Name", &colFlagsStretch, &colNameWidth, nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "Type", &colFlagsFixed, &colTypeWidth, nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "Alias", &colFlagsStretch, &colAliasWidth, nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "Actions", &colFlagsFixed, &colActionsWidth, nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "Params", &colFlagsFixed, &colParamsWidth, nullptr);
+    m_ImGui_TableSetupColumn(m_ctx, "Drums", &colFlagsFixed, &colDrumsWidth, nullptr);
     m_ImGui_TableHeadersRow(m_ctx);
 
     for (size_t i = 0; i < m_filteredPlugins.size(); i++) {
@@ -311,8 +295,8 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
       m_ImGui_TableNextColumn(m_ctx);
       if (isEditing) {
         std::string aliasId = "##alias_" + std::to_string(i);
-        m_ImGui_InputText(m_ctx, aliasId.c_str(), m_editAliasBuffer,
-                          sizeof(m_editAliasBuffer), nullptr, nullptr);
+        m_ImGui_InputText(m_ctx, aliasId.c_str(), m_editAliasBuffer, sizeof(m_editAliasBuffer),
+                          nullptr, nullptr);
       } else {
         std::string aliasDisplay = row.alias.empty() ? "-" : row.alias;
         m_ImGui_Text(m_ctx, aliasDisplay.c_str());
@@ -327,8 +311,7 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
           // Save the alias
           row.alias = m_editAliasBuffer;
           if (m_pluginScanner) {
-            m_pluginScanner->SetAliasForPlugin(row.plugin_key,
-                                               m_editAliasBuffer);
+            m_pluginScanner->SetAliasForPlugin(row.plugin_key, m_editAliasBuffer);
             m_pluginScanner->SaveToCache();
           }
           m_editingRowIndex = -1; // Exit edit mode
@@ -345,8 +328,7 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
         std::string editId = "Edit##edit_" + std::to_string(i);
         if (m_ImGui_Button(m_ctx, editId.c_str(), nullptr, nullptr)) {
           m_editingRowIndex = (int)i;
-          strncpy(m_editAliasBuffer, row.alias.c_str(),
-                  sizeof(m_editAliasBuffer) - 1);
+          strncpy(m_editAliasBuffer, row.alias.c_str(), sizeof(m_editAliasBuffer) - 1);
           m_editAliasBuffer[sizeof(m_editAliasBuffer) - 1] = '\0';
         }
       }
@@ -359,8 +341,7 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
       if (row.param_mapping_count > 0) {
         m_ImGui_PushStyleColor(m_ctx, 0, 0x88FF88FF); // Green text
       }
-      if (m_ImGui_Selectable(m_ctx, paramsId.c_str(), &paramsSelected, nullptr,
-                             nullptr, nullptr)) {
+      if (m_ImGui_Selectable(m_ctx, paramsId.c_str(), &paramsSelected, nullptr, nullptr, nullptr)) {
         if (g_paramMappingWindow && g_paramMappingWindow->IsAvailable()) {
           g_paramMappingWindow->Show(row.plugin_key, row.name);
         }
@@ -379,8 +360,7 @@ void MagdaImGuiPluginWindow::RenderPluginTable() {
         if (row.has_drum_mapping) {
           m_ImGui_PushStyleColor(m_ctx, 0, 0x88FF88FF); // Green text
         }
-        if (m_ImGui_Selectable(m_ctx, drumsId.c_str(), &drumsSelected, nullptr,
-                               nullptr, nullptr)) {
+        if (m_ImGui_Selectable(m_ctx, drumsId.c_str(), &drumsSelected, nullptr, nullptr, nullptr)) {
           if (g_drumMappingWindow && g_drumMappingWindow->IsAvailable()) {
             g_drumMappingWindow->Show(row.plugin_key, row.name);
           }

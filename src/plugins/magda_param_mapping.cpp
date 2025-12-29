@@ -42,9 +42,13 @@ std::string ParamMappingManager::GetMappingsFilePath() {
   return GetConfigDirectory() + "/param_mappings.json";
 }
 
-ParamMappingManager::ParamMappingManager() { LoadMappings(); }
+ParamMappingManager::ParamMappingManager() {
+  LoadMappings();
+}
 
-ParamMappingManager::~ParamMappingManager() { SaveMappings(); }
+ParamMappingManager::~ParamMappingManager() {
+  SaveMappings();
+}
 
 bool ParamMappingManager::LoadMappings() {
   std::string filepath = GetMappingsFilePath();
@@ -72,18 +76,15 @@ bool ParamMappingManager::LoadMappings() {
     size_t keyStart = content.find(':', pos) + 1;
     size_t keyQuoteStart = content.find('"', keyStart) + 1;
     size_t keyQuoteEnd = content.find('"', keyQuoteStart);
-    mapping.plugin_key =
-        content.substr(keyQuoteStart, keyQuoteEnd - keyQuoteStart);
+    mapping.plugin_key = content.substr(keyQuoteStart, keyQuoteEnd - keyQuoteStart);
 
     // Find plugin_name value
     size_t namePos = content.find("\"plugin_name\"", keyQuoteEnd);
-    if (namePos != std::string::npos &&
-        namePos < content.find('}', keyQuoteEnd) + 100) {
+    if (namePos != std::string::npos && namePos < content.find('}', keyQuoteEnd) + 100) {
       size_t nameStart = content.find(':', namePos) + 1;
       size_t nameQuoteStart = content.find('"', nameStart) + 1;
       size_t nameQuoteEnd = content.find('"', nameQuoteStart);
-      mapping.plugin_name =
-          content.substr(nameQuoteStart, nameQuoteEnd - nameQuoteStart);
+      mapping.plugin_name = content.substr(nameQuoteStart, nameQuoteEnd - nameQuoteStart);
     }
 
     // Find aliases object
@@ -91,8 +92,7 @@ bool ParamMappingManager::LoadMappings() {
     if (aliasesPos != std::string::npos) {
       size_t aliasesStart = content.find('{', aliasesPos);
       size_t aliasesEnd = content.find('}', aliasesStart);
-      std::string aliasesStr =
-          content.substr(aliasesStart, aliasesEnd - aliasesStart + 1);
+      std::string aliasesStr = content.substr(aliasesStart, aliasesEnd - aliasesStart + 1);
 
       // Parse alias entries
       size_t aliasPos = 0;
@@ -102,8 +102,7 @@ bool ParamMappingManager::LoadMappings() {
         if (aliasNameEnd == std::string::npos)
           break;
 
-        std::string aliasName =
-            aliasesStr.substr(aliasNameStart, aliasNameEnd - aliasNameStart);
+        std::string aliasName = aliasesStr.substr(aliasNameStart, aliasNameEnd - aliasNameStart);
 
         size_t colonPos = aliasesStr.find(':', aliasNameEnd);
         if (colonPos == std::string::npos)
@@ -111,9 +110,8 @@ bool ParamMappingManager::LoadMappings() {
 
         // Parse integer value
         size_t valueStart = colonPos + 1;
-        while (
-            valueStart < aliasesStr.length() &&
-            (aliasesStr[valueStart] == ' ' || aliasesStr[valueStart] == '\t')) {
+        while (valueStart < aliasesStr.length() &&
+               (aliasesStr[valueStart] == ' ' || aliasesStr[valueStart] == '\t')) {
           valueStart++;
         }
         size_t valueEnd = valueStart;
@@ -123,8 +121,7 @@ bool ParamMappingManager::LoadMappings() {
         }
 
         if (valueEnd > valueStart) {
-          int paramIndex =
-              std::stoi(aliasesStr.substr(valueStart, valueEnd - valueStart));
+          int paramIndex = std::stoi(aliasesStr.substr(valueStart, valueEnd - valueStart));
           mapping.aliases[aliasName] = paramIndex;
         }
 
@@ -186,8 +183,7 @@ bool ParamMappingManager::SaveMappings() const {
   return true;
 }
 
-const ParamMapping *
-ParamMappingManager::GetMappingForPlugin(const std::string &plugin_key) const {
+const ParamMapping *ParamMappingManager::GetMappingForPlugin(const std::string &plugin_key) const {
   auto it = m_mappings.find(plugin_key);
   if (it != m_mappings.end()) {
     return &it->second;
@@ -214,13 +210,11 @@ int ParamMappingManager::ResolveParamAlias(const std::string &plugin_key,
 
   // Case-insensitive lookup
   std::string aliasLower = alias;
-  std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(),
-                 ::tolower);
+  std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
 
   for (const auto &pair : mapping->aliases) {
     std::string keyLower = pair.first;
-    std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(),
-                   ::tolower);
+    std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(), ::tolower);
     if (keyLower == aliasLower) {
       return pair.second;
     }

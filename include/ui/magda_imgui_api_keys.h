@@ -5,11 +5,11 @@
 
 // API Key validation status
 enum class ApiKeyStatus {
-  Unknown,    // Not yet validated
-  Checking,   // Currently validating
-  Valid,      // Key is valid
-  Invalid,    // Key is invalid
-  Error       // Validation failed (network error, etc.)
+  Unknown,  // Not yet validated
+  Checking, // Currently validating
+  Valid,    // Key is valid
+  Invalid,  // Key is invalid
+  Error     // Validation failed (network error, etc.)
 };
 
 class MagdaImGuiApiKeys {
@@ -33,8 +33,8 @@ public:
   void Render();
 
   // Static methods to get/set API keys
-  static const char* GetOpenAIApiKey();
-  static void SetOpenAIApiKey(const char* key);
+  static const char *GetOpenAIApiKey();
+  static void SetOpenAIApiKey(const char *key);
 
 private:
   // ReaImGui function pointers
@@ -42,8 +42,7 @@ private:
   bool (*m_ImGui_Begin)(void *ctx, const char *name, bool *p_openInOutOptional,
                         int *flagsInOptional);
   void (*m_ImGui_End)(void *ctx);
-  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h,
-                                    int *condInOptional);
+  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h, int *condInOptional);
   void (*m_ImGui_Text)(void *ctx, const char *text);
   void (*m_ImGui_TextColored)(void *ctx, int col_rgba, const char *text);
   bool (*m_ImGui_Button)(void *ctx, const char *label, double *size_wInOptional,
@@ -53,13 +52,10 @@ private:
   void (*m_ImGui_Separator)(void *ctx);
   void (*m_ImGui_Spacing)(void *ctx);
   bool (*m_ImGui_Checkbox)(void *ctx, const char *label, bool *v);
-  bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf,
-                            int buf_size, int *flagsInOptional,
-                            void *callbackInOptional);
-  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label,
-                                    const char *hint, char *buf, int buf_size,
-                                    int *flagsInOptional,
-                                    void *callbackInOptional);
+  bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf, int buf_size,
+                            int *flagsInOptional, void *callbackInOptional);
+  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label, const char *hint, char *buf,
+                                    int buf_size, int *flagsInOptional, void *callbackInOptional);
   void (*m_ImGui_PushItemWidth)(void *ctx, double item_width);
   void (*m_ImGui_PopItemWidth)(void *ctx);
   void (*m_ImGui_PushStyleColor)(void *ctx, int idx, int col_rgba);
@@ -81,7 +77,7 @@ private:
 
   // Validation
   void ValidateOpenAIKey();
-  void OnValidationComplete(bool success, const char* message);
+  void OnValidationComplete(bool success, const char *message);
 
   // Internal methods
   void LoadSettings();

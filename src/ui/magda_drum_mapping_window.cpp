@@ -17,14 +17,16 @@ constexpr int ButtonBg = 0x4A4A4AFF;
 } // namespace DrumTheme
 
 // Helper macro
-#define LOAD_IMGUI_FUNC(name, type)                                            \
-  m_##name = (type)rec->GetFunc(#name);                                        \
-  if (!m_##name)                                                               \
+#define LOAD_IMGUI_FUNC(name, type)                                                                \
+  m_##name = (type)rec->GetFunc(#name);                                                            \
+  if (!m_##name)                                                                                   \
     return false;
 
 MagdaDrumMappingWindow::MagdaDrumMappingWindow() {}
 
-MagdaDrumMappingWindow::~MagdaDrumMappingWindow() { m_ctx = nullptr; }
+MagdaDrumMappingWindow::~MagdaDrumMappingWindow() {
+  m_ctx = nullptr;
+}
 
 bool MagdaDrumMappingWindow::Initialize(reaper_plugin_info_t *rec) {
   if (!rec)
@@ -34,36 +36,31 @@ bool MagdaDrumMappingWindow::Initialize(reaper_plugin_info_t *rec) {
   LOAD_IMGUI_FUNC(ImGui_CreateContext, void *(*)(const char *, int *));
   LOAD_IMGUI_FUNC(ImGui_Begin, bool (*)(void *, const char *, bool *, int *));
   LOAD_IMGUI_FUNC(ImGui_End, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize,
-                  void (*)(void *, double, double, int *));
+  LOAD_IMGUI_FUNC(ImGui_SetNextWindowSize, void (*)(void *, double, double, int *));
   LOAD_IMGUI_FUNC(ImGui_Text, void (*)(void *, const char *));
   LOAD_IMGUI_FUNC(ImGui_TextColored, void (*)(void *, int, const char *));
-  LOAD_IMGUI_FUNC(ImGui_InputText,
-                  bool (*)(void *, const char *, char *, int, int *, void *));
-  LOAD_IMGUI_FUNC(ImGui_Button,
-                  bool (*)(void *, const char *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_InputText, bool (*)(void *, const char *, char *, int, int *, void *));
+  LOAD_IMGUI_FUNC(ImGui_Button, bool (*)(void *, const char *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_SameLine, void (*)(void *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_Separator, void (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_BeginChild, bool (*)(void *, const char *, double *,
-                                             double *, int *, int *));
+  LOAD_IMGUI_FUNC(ImGui_BeginChild,
+                  bool (*)(void *, const char *, double *, double *, int *, int *));
   LOAD_IMGUI_FUNC(ImGui_EndChild, void (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_PushStyleColor, void (*)(void *, int, int));
   LOAD_IMGUI_FUNC(ImGui_PopStyleColor, void (*)(void *, int *));
-  LOAD_IMGUI_FUNC(ImGui_BeginTable, bool (*)(void *, const char *, int, int *,
-                                             double *, double *, double *));
+  LOAD_IMGUI_FUNC(ImGui_BeginTable,
+                  bool (*)(void *, const char *, int, int *, double *, double *, double *));
   LOAD_IMGUI_FUNC(ImGui_EndTable, void (*)(void *));
   LOAD_IMGUI_FUNC(ImGui_TableNextRow, void (*)(void *, int *, double *));
   LOAD_IMGUI_FUNC(ImGui_TableNextColumn, bool (*)(void *));
-  LOAD_IMGUI_FUNC(ImGui_TableSetupColumn,
-                  void (*)(void *, const char *, int *, double *, int *));
+  LOAD_IMGUI_FUNC(ImGui_TableSetupColumn, void (*)(void *, const char *, int *, double *, int *));
   LOAD_IMGUI_FUNC(ImGui_TableHeadersRow, void (*)(void *));
 
   m_available = true;
   return true;
 }
 
-void MagdaDrumMappingWindow::Show(const std::string &plugin_key,
-                                  const std::string &plugin_name) {
+void MagdaDrumMappingWindow::Show(const std::string &plugin_key, const std::string &plugin_name) {
   m_pluginKey = plugin_key;
   m_pluginName = plugin_name;
   m_visible = true;
@@ -72,21 +69,22 @@ void MagdaDrumMappingWindow::Show(const std::string &plugin_key,
   LoadMappingForPlugin();
 }
 
-void MagdaDrumMappingWindow::Hide() { m_visible = false; }
+void MagdaDrumMappingWindow::Hide() {
+  m_visible = false;
+}
 
 void MagdaDrumMappingWindow::LoadMappingForPlugin() {
   if (!g_drumMappingManager) {
     g_drumMappingManager = new DrumMappingManager();
   }
 
-  const DrumMapping *existing =
-      g_drumMappingManager->GetMappingForPlugin(m_pluginKey);
+  const DrumMapping *existing = g_drumMappingManager->GetMappingForPlugin(m_pluginKey);
   if (existing) {
     m_editingMapping = *existing;
   } else {
     // Create new from General MIDI preset
-    m_editingMapping = g_drumMappingManager->CreateMappingFromPreset(
-        "general_midi", m_pluginKey, m_pluginName);
+    m_editingMapping =
+        g_drumMappingManager->CreateMappingFromPreset("general_midi", m_pluginKey, m_pluginName);
   }
 }
 
@@ -161,8 +159,7 @@ void MagdaDrumMappingWindow::Render() {
 
   if (m_ImGui_Begin(m_ctx, title.c_str(), &open, &windowFlags)) {
     // Header
-    m_ImGui_TextColored(m_ctx, DrumTheme::HeaderText,
-                        "Map canonical drum names to MIDI notes");
+    m_ImGui_TextColored(m_ctx, DrumTheme::HeaderText, "Map canonical drum names to MIDI notes");
     m_ImGui_Separator(m_ctx);
 
     // Get drum names
@@ -170,16 +167,13 @@ void MagdaDrumMappingWindow::Render() {
 
     // Table
     int tableFlags = (1 << 1) | (1 << 8) | (1 << 6) | (1 << 12);
-    if (m_ImGui_BeginTable(m_ctx, "##drums", 2, &tableFlags, nullptr, nullptr,
-                           nullptr)) {
+    if (m_ImGui_BeginTable(m_ctx, "##drums", 2, &tableFlags, nullptr, nullptr, nullptr)) {
       int colFlagsStretch = 1 << 3;
       double col0Width = 0.6;
       double col1Width = 0.4;
 
-      m_ImGui_TableSetupColumn(m_ctx, "Drum Name", &colFlagsStretch, &col0Width,
-                               nullptr);
-      m_ImGui_TableSetupColumn(m_ctx, "MIDI Note", &colFlagsStretch, &col1Width,
-                               nullptr);
+      m_ImGui_TableSetupColumn(m_ctx, "Drum Name", &colFlagsStretch, &col0Width, nullptr);
+      m_ImGui_TableSetupColumn(m_ctx, "MIDI Note", &colFlagsStretch, &col1Width, nullptr);
       m_ImGui_TableHeadersRow(m_ctx);
 
       for (size_t i = 0; i < drumNames.size(); i++) {
@@ -201,8 +195,7 @@ void MagdaDrumMappingWindow::Render() {
         snprintf(noteBuf, sizeof(noteBuf), "%d", note);
 
         std::string inputId = "##note_" + std::to_string(i);
-        if (m_ImGui_InputText(m_ctx, inputId.c_str(), noteBuf, sizeof(noteBuf),
-                              nullptr, nullptr)) {
+        if (m_ImGui_InputText(m_ctx, inputId.c_str(), noteBuf, sizeof(noteBuf), nullptr, nullptr)) {
           int newNote = atoi(noteBuf);
           if (newNote >= 0 && newNote <= 127) {
             m_editingMapping.SetNote(drumName, newNote);

@@ -65,7 +65,9 @@ bool IsDrumPlugin(const std::string &plugin_name) {
 // DrumMappingManager Implementation
 // ============================================================================
 
-DrumMappingManager::DrumMappingManager() { LoadFromCache(); }
+DrumMappingManager::DrumMappingManager() {
+  LoadFromCache();
+}
 
 DrumMappingManager::~DrumMappingManager() {}
 
@@ -107,8 +109,7 @@ bool DrumMappingManager::LoadFromCache() {
   }
 
   // Simple JSON parsing for drum mappings
-  std::string content((std::istreambuf_iterator<char>(file)),
-                      std::istreambuf_iterator<char>());
+  std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   file.close();
 
   m_mappings.clear();
@@ -190,20 +191,17 @@ bool DrumMappingManager::LoadFromCache() {
       size_t notes_start = obj.find('{', notes_pos);
       size_t notes_end = obj.find('}', notes_start);
       if (notes_start != std::string::npos && notes_end != std::string::npos) {
-        std::string notes_obj =
-            obj.substr(notes_start + 1, notes_end - notes_start - 1);
+        std::string notes_obj = obj.substr(notes_start + 1, notes_end - notes_start - 1);
 
         // Parse each note: "drum_name":midi_note
         size_t note_pos = 0;
-        while ((note_pos = notes_obj.find('"', note_pos)) !=
-               std::string::npos) {
+        while ((note_pos = notes_obj.find('"', note_pos)) != std::string::npos) {
           size_t key_start = note_pos + 1;
           size_t key_end = notes_obj.find('"', key_start);
           if (key_end == std::string::npos)
             break;
 
-          std::string drum_name =
-              notes_obj.substr(key_start, key_end - key_start);
+          std::string drum_name = notes_obj.substr(key_start, key_end - key_start);
 
           size_t colon_pos = notes_obj.find(':', key_end);
           if (colon_pos == std::string::npos)
@@ -307,8 +305,7 @@ const DrumMapping *DrumMappingManager::GetMapping(const std::string &id) const {
   return nullptr;
 }
 
-const DrumMapping *
-DrumMappingManager::GetMappingForPlugin(const std::string &plugin_key) const {
+const DrumMapping *DrumMappingManager::GetMappingForPlugin(const std::string &plugin_key) const {
   for (const auto &m : m_mappings) {
     if (m.plugin_key == plugin_key) {
       return &m;
@@ -331,22 +328,19 @@ void DrumMappingManager::SetMapping(const DrumMapping &mapping) {
 }
 
 void DrumMappingManager::RemoveMapping(const std::string &id) {
-  m_mappings.erase(
-      std::remove_if(m_mappings.begin(), m_mappings.end(),
-                     [&id](const DrumMapping &m) { return m.id == id; }),
-      m_mappings.end());
+  m_mappings.erase(std::remove_if(m_mappings.begin(), m_mappings.end(),
+                                  [&id](const DrumMapping &m) { return m.id == id; }),
+                   m_mappings.end());
   SaveToCache();
 }
 
-bool DrumMappingManager::HasMappingForPlugin(
-    const std::string &plugin_key) const {
+bool DrumMappingManager::HasMappingForPlugin(const std::string &plugin_key) const {
   return GetMappingForPlugin(plugin_key) != nullptr;
 }
 
-DrumMapping
-DrumMappingManager::CreateMappingFromPreset(const std::string &preset_id,
-                                            const std::string &plugin_key,
-                                            const std::string &name) {
+DrumMapping DrumMappingManager::CreateMappingFromPreset(const std::string &preset_id,
+                                                        const std::string &plugin_key,
+                                                        const std::string &name) {
   DrumMapping mapping;
   mapping.id = plugin_key; // Use plugin key as unique ID
   mapping.name = name;
@@ -380,14 +374,13 @@ std::vector<DrumMapping> DrumMappingManager::GetPresetMappings() {
     gm.id = "general_midi";
     gm.name = "General MIDI";
     gm.is_preset = true;
-    gm.notes = {
-        {CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
-        {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
-        {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
-        {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 50},
-        {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 45},
-        {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
-        {CanonicalDrums::RIDE_BELL, 53}};
+    gm.notes = {{CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
+                {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
+                {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
+                {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 50},
+                {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 45},
+                {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
+                {CanonicalDrums::RIDE_BELL, 53}};
     presets.push_back(gm);
   }
 
@@ -397,14 +390,13 @@ std::vector<DrumMapping> DrumMappingManager::GetPresetMappings() {
     ad2.id = "addictive_drums_v2";
     ad2.name = "Addictive Drums 2";
     ad2.is_preset = true;
-    ad2.notes = {
-        {CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
-        {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
-        {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
-        {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 50},
-        {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 45},
-        {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
-        {CanonicalDrums::RIDE_BELL, 53}};
+    ad2.notes = {{CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
+                 {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
+                 {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
+                 {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 50},
+                 {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 45},
+                 {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
+                 {CanonicalDrums::RIDE_BELL, 53}};
     presets.push_back(ad2);
   }
 
@@ -414,14 +406,13 @@ std::vector<DrumMapping> DrumMappingManager::GetPresetMappings() {
     sd3.id = "superior_drummer_v3";
     sd3.name = "Superior Drummer 3";
     sd3.is_preset = true;
-    sd3.notes = {
-        {CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
-        {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
-        {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
-        {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 50},
-        {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 41},
-        {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
-        {CanonicalDrums::RIDE_BELL, 53}};
+    sd3.notes = {{CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
+                 {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
+                 {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
+                 {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 50},
+                 {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 41},
+                 {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
+                 {CanonicalDrums::RIDE_BELL, 53}};
     presets.push_back(sd3);
   }
 
@@ -431,14 +422,13 @@ std::vector<DrumMapping> DrumMappingManager::GetPresetMappings() {
     ezd.id = "ezdrummer_v3";
     ezd.name = "EZdrummer 3";
     ezd.is_preset = true;
-    ezd.notes = {
-        {CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
-        {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
-        {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
-        {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 48},
-        {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 45},
-        {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
-        {CanonicalDrums::RIDE_BELL, 53}};
+    ezd.notes = {{CanonicalDrums::KICK, 36},         {CanonicalDrums::SNARE, 38},
+                 {CanonicalDrums::SNARE_RIM, 40},    {CanonicalDrums::SNARE_XSTICK, 37},
+                 {CanonicalDrums::HI_HAT, 42},       {CanonicalDrums::HI_HAT_OPEN, 46},
+                 {CanonicalDrums::HI_HAT_PEDAL, 44}, {CanonicalDrums::TOM_HIGH, 48},
+                 {CanonicalDrums::TOM_MID, 47},      {CanonicalDrums::TOM_LOW, 45},
+                 {CanonicalDrums::CRASH, 49},        {CanonicalDrums::RIDE, 51},
+                 {CanonicalDrums::RIDE_BELL, 53}};
     presets.push_back(ezd);
   }
 

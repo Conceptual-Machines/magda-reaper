@@ -55,21 +55,17 @@ public:
 
 private:
   // ReaImGui function pointers (same pattern as MagdaImGuiChat)
-  void *(*m_ImGui_CreateContext)(const char *label,
-                                 int *config_flagsInOptional);
+  void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
   bool (*m_ImGui_Begin)(void *ctx, const char *name, bool *p_openInOutOptional,
                         int *flagsInOptional);
   void (*m_ImGui_End)(void *ctx);
-  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h,
-                                    int *condInOptional);
+  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h, int *condInOptional);
   void (*m_ImGui_Text)(void *ctx, const char *text);
   void (*m_ImGui_TextColored)(void *ctx, int col_rgba, const char *text);
   bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf, int buf_sz,
                             int *flagsInOptional, void *callbackInOptional);
-  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label,
-                                    const char *hint, char *buf, int buf_sz,
-                                    int *flagsInOptional,
-                                    void *callbackInOptional);
+  bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label, const char *hint, char *buf,
+                                    int buf_sz, int *flagsInOptional, void *callbackInOptional);
   bool (*m_ImGui_Button)(void *ctx, const char *label, double *size_wInOptional,
                          double *size_hInOptional);
   void (*m_ImGui_SameLine)(void *ctx, double *offset_from_start_xInOptional,

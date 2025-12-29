@@ -45,8 +45,7 @@ const char *MagdaPluginScanner::GetConfigDirectory() {
 #ifdef _WIN32
   // Windows: %APPDATA%/MAGDA
   char appdata[256];
-  if (SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT,
-                       appdata) == S_OK) {
+  if (SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appdata) == S_OK) {
     snprintf(config_dir, sizeof(config_dir), "%s\\MAGDA", appdata);
   } else {
     strcpy(config_dir, "C:\\Users\\Public\\MAGDA");
@@ -113,18 +112,13 @@ bool MagdaPluginScanner::IsInstrument(const char *full_name) const {
   // The 'i' suffix indicates instrument
   return (strstr(full_name, "VSTi:") != nullptr) ||
          (strstr(full_name, "VSTi ") != nullptr) || // Some formats use space
-         (strstr(full_name, "VST3i:") != nullptr) ||
-         (strstr(full_name, "VST3i ") != nullptr) ||
-         (strstr(full_name, "AUi:") != nullptr) ||
-         (strstr(full_name, "AUi ") != nullptr) ||
-         (strstr(full_name, "CLAPi:") != nullptr) ||
-         (strstr(full_name, "CLAPi ") != nullptr) ||
-         (strstr(full_name, "DXi:") != nullptr) ||
-         (strstr(full_name, "DXi ") != nullptr);
+         (strstr(full_name, "VST3i:") != nullptr) || (strstr(full_name, "VST3i ") != nullptr) ||
+         (strstr(full_name, "AUi:") != nullptr) || (strstr(full_name, "AUi ") != nullptr) ||
+         (strstr(full_name, "CLAPi:") != nullptr) || (strstr(full_name, "CLAPi ") != nullptr) ||
+         (strstr(full_name, "DXi:") != nullptr) || (strstr(full_name, "DXi ") != nullptr);
 }
 
-bool MagdaPluginScanner::ParsePluginName(const char *full_name,
-                                         PluginInfo &info) const {
+bool MagdaPluginScanner::ParsePluginName(const char *full_name, PluginInfo &info) const {
   if (!full_name || full_name[0] == '\0') {
     return false;
   }
@@ -163,9 +157,9 @@ bool MagdaPluginScanner::ParsePluginName(const char *full_name,
       for (char c : paren_content) {
         paren_lower += (char)std::tolower(c);
       }
-      bool is_bitness = (paren_lower == "x64" || paren_lower == "x86" ||
-                         paren_lower == "64bit" || paren_lower == "32bit" ||
-                         paren_lower == "64-bit" || paren_lower == "32-bit");
+      bool is_bitness =
+          (paren_lower == "x64" || paren_lower == "x86" || paren_lower == "64bit" ||
+           paren_lower == "32bit" || paren_lower == "64-bit" || paren_lower == "32-bit");
 
       // Extract name (everything before opening paren, trimmed)
       int name_len = open_paren - name_start;
@@ -220,10 +214,8 @@ int MagdaPluginScanner::ScanPlugins() {
   }
 
   // Get EnumInstalledFX function
-  bool (*EnumInstalledFX)(int index, const char **nameOut,
-                          const char **identOut) =
-      (bool (*)(int, const char **, const char **))g_rec->GetFunc(
-          "EnumInstalledFX");
+  bool (*EnumInstalledFX)(int index, const char **nameOut, const char **identOut) =
+      (bool (*)(int, const char **, const char **))g_rec->GetFunc("EnumInstalledFX");
 
   if (!EnumInstalledFX) {
     // Log error
@@ -231,8 +223,7 @@ int MagdaPluginScanner::ScanPlugins() {
       void (*ShowConsoleMsg)(const char *msg) =
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
-        ShowConsoleMsg(
-            "MAGDA: ERROR - EnumInstalledFX function not available\n");
+        ShowConsoleMsg("MAGDA: ERROR - EnumInstalledFX function not available\n");
       }
     }
     return 0;
@@ -271,8 +262,7 @@ int MagdaPluginScanner::ScanPlugins() {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg), "MAGDA: Scanned %d plugins\n",
-               (int)m_plugins.size());
+      snprintf(msg, sizeof(msg), "MAGDA: Scanned %d plugins\n", (int)m_plugins.size());
       ShowConsoleMsg(msg);
     }
   }
@@ -287,13 +277,11 @@ const PluginInfo *MagdaPluginScanner::FindPlugin(const char *name) const {
 
   // Case-insensitive search
   std::string search_name = name;
-  std::transform(search_name.begin(), search_name.end(), search_name.begin(),
-                 ::tolower);
+  std::transform(search_name.begin(), search_name.end(), search_name.begin(), ::tolower);
 
   for (const auto &plugin : m_plugins) {
     std::string plugin_name = plugin.name;
-    std::transform(plugin_name.begin(), plugin_name.end(), plugin_name.begin(),
-                   ::tolower);
+    std::transform(plugin_name.begin(), plugin_name.end(), plugin_name.begin(), ::tolower);
 
     if (plugin_name == search_name) {
       return &plugin;
@@ -303,8 +291,7 @@ const PluginInfo *MagdaPluginScanner::FindPlugin(const char *name) const {
   return nullptr;
 }
 
-std::vector<const PluginInfo *>
-MagdaPluginScanner::SearchPlugins(const char *query) const {
+std::vector<const PluginInfo *> MagdaPluginScanner::SearchPlugins(const char *query) const {
   std::vector<const PluginInfo *> results;
 
   if (!query || query[0] == '\0') {
@@ -313,17 +300,14 @@ MagdaPluginScanner::SearchPlugins(const char *query) const {
 
   // Case-insensitive search
   std::string search_query = query;
-  std::transform(search_query.begin(), search_query.end(), search_query.begin(),
-                 ::tolower);
+  std::transform(search_query.begin(), search_query.end(), search_query.begin(), ::tolower);
 
   for (const auto &plugin : m_plugins) {
     std::string plugin_name = plugin.name;
-    std::transform(plugin_name.begin(), plugin_name.end(), plugin_name.begin(),
-                   ::tolower);
+    std::transform(plugin_name.begin(), plugin_name.end(), plugin_name.begin(), ::tolower);
 
     std::string full_name = plugin.full_name;
-    std::transform(full_name.begin(), full_name.end(), full_name.begin(),
-                   ::tolower);
+    std::transform(full_name.begin(), full_name.end(), full_name.begin(), ::tolower);
 
     // Check if query matches name or full name
     if (plugin_name.find(search_query) != std::string::npos ||
@@ -419,10 +403,8 @@ bool MagdaPluginScanner::SaveToCache() const {
     fprintf(f, "      \"name\": \"%s\",\n", name_escaped.c_str());
     fprintf(f, "      \"full_name\": \"%s\",\n", full_name_escaped.c_str());
     fprintf(f, "      \"format\": \"%s\",\n", format_escaped.c_str());
-    fprintf(f, "      \"manufacturer\": \"%s\",\n",
-            manufacturer_escaped.c_str());
-    fprintf(f, "      \"is_instrument\": %s,\n",
-            plugin.is_instrument ? "true" : "false");
+    fprintf(f, "      \"manufacturer\": \"%s\",\n", manufacturer_escaped.c_str());
+    fprintf(f, "      \"is_instrument\": %s,\n", plugin.is_instrument ? "true" : "false");
     fprintf(f, "      \"ident\": \"%s\"\n", ident_escaped.c_str());
     fprintf(f, "    }%s\n", (i < m_plugins.size() - 1) ? "," : "");
   }
@@ -459,8 +441,8 @@ void MagdaPluginScanner::Refresh() {
   SaveToCache();
 }
 
-std::vector<PluginInfo> MagdaPluginScanner::DeduplicatePlugins(
-    const std::vector<std::string> &format_order) const {
+std::vector<PluginInfo>
+MagdaPluginScanner::DeduplicatePlugins(const std::vector<std::string> &format_order) const {
   std::vector<PluginInfo> result;
 
   if (m_plugins.empty()) {
@@ -508,55 +490,53 @@ std::vector<PluginInfo> MagdaPluginScanner::DeduplicatePlugins(
 
     // Sort by format priority
     std::vector<const PluginInfo *> sorted = group;
-    std::sort(
-        sorted.begin(), sorted.end(),
-        [&format_priority](const PluginInfo *a, const PluginInfo *b) {
-          int priority_a = 999;
-          int priority_b = 999;
+    std::sort(sorted.begin(), sorted.end(),
+              [&format_priority](const PluginInfo *a, const PluginInfo *b) {
+                int priority_a = 999;
+                int priority_b = 999;
 
-          // Get priority for format
-          auto it_a = format_priority.find(a->format);
-          if (it_a != format_priority.end()) {
-            priority_a = it_a->second;
-          } else {
-            // Check base format (remove 'i' suffix)
-            if (a->format.size() > 1 && a->format.back() == 'i') {
-              std::string base = a->format.substr(0, a->format.size() - 1);
-              auto it_base = format_priority.find(base);
-              if (it_base != format_priority.end()) {
-                priority_a = it_base->second;
-              }
-            }
-          }
+                // Get priority for format
+                auto it_a = format_priority.find(a->format);
+                if (it_a != format_priority.end()) {
+                  priority_a = it_a->second;
+                } else {
+                  // Check base format (remove 'i' suffix)
+                  if (a->format.size() > 1 && a->format.back() == 'i') {
+                    std::string base = a->format.substr(0, a->format.size() - 1);
+                    auto it_base = format_priority.find(base);
+                    if (it_base != format_priority.end()) {
+                      priority_a = it_base->second;
+                    }
+                  }
+                }
 
-          auto it_b = format_priority.find(b->format);
-          if (it_b != format_priority.end()) {
-            priority_b = it_b->second;
-          } else {
-            // Check base format (remove 'i' suffix)
-            if (b->format.size() > 1 && b->format.back() == 'i') {
-              std::string base = b->format.substr(0, b->format.size() - 1);
-              auto it_base = format_priority.find(base);
-              if (it_base != format_priority.end()) {
-                priority_b = it_base->second;
-              }
-            }
-          }
+                auto it_b = format_priority.find(b->format);
+                if (it_b != format_priority.end()) {
+                  priority_b = it_b->second;
+                } else {
+                  // Check base format (remove 'i' suffix)
+                  if (b->format.size() > 1 && b->format.back() == 'i') {
+                    std::string base = b->format.substr(0, b->format.size() - 1);
+                    auto it_base = format_priority.find(base);
+                    if (it_base != format_priority.end()) {
+                      priority_b = it_base->second;
+                    }
+                  }
+                }
 
-          if (priority_a != priority_b) {
-            return priority_a <
-                   priority_b; // Lower priority number = higher preference
-          }
+                if (priority_a != priority_b) {
+                  return priority_a < priority_b; // Lower priority number = higher preference
+                }
 
-          // If same priority, prefer instrument if available
-          if (a->is_instrument != b->is_instrument) {
-            return a->is_instrument;
-          }
+                // If same priority, prefer instrument if available
+                if (a->is_instrument != b->is_instrument) {
+                  return a->is_instrument;
+                }
 
-          // If still tied, prefer shorter ident (newer versions often have
-          // longer paths)
-          return a->ident.length() < b->ident.length();
-        });
+                // If still tied, prefer shorter ident (newer versions often have
+                // longer paths)
+                return a->ident.length() < b->ident.length();
+              });
 
     // Add the best plugin (first in sorted list)
     result.push_back(*sorted[0]);
@@ -583,8 +563,7 @@ std::string MagdaPluginScanner::Trim(const std::string &str) {
 
 // Extract base name from full plugin name
 // Examples: "VST3: Serum (Xfer Records)" -> "Serum"
-std::string
-MagdaPluginScanner::ExtractBaseName(const std::string &full_name) const {
+std::string MagdaPluginScanner::ExtractBaseName(const std::string &full_name) const {
   std::string name = full_name;
 
   // Remove format prefix (VST3:, VST:, JS:, etc.)
@@ -601,13 +580,11 @@ MagdaPluginScanner::ExtractBaseName(const std::string &full_name) const {
     if (paren_start != std::string::npos) {
       size_t paren_end = name.find(')', paren_start);
       if (paren_end != std::string::npos) {
-        std::string paren_content =
-            name.substr(paren_start + 1, paren_end - paren_start - 1);
+        std::string paren_content = name.substr(paren_start + 1, paren_end - paren_start - 1);
         // Remove common patterns like "(x64)", "(x86)", "(64bit)", etc.
         std::string paren_lower = ToLower(paren_content);
-        if (paren_lower == "x64" || paren_lower == "x86" ||
-            paren_lower == "64bit" || paren_lower == "32bit" ||
-            paren_lower == "64-bit" || paren_lower == "32-bit") {
+        if (paren_lower == "x64" || paren_lower == "x86" || paren_lower == "64bit" ||
+            paren_lower == "32bit" || paren_lower == "64-bit" || paren_lower == "32-bit") {
           // Remove this parentheses group
           name = name.substr(0, paren_start) + name.substr(paren_end + 1);
           name = Trim(name);
@@ -638,9 +615,8 @@ MagdaPluginScanner::GenerateVersionAliases(const std::string &base_name) const {
     if (base_name[i] == ' ' && i + 1 < base_name.length()) {
       // Check if next char is digit or 'v'/'V' followed by digit
       char next = base_name[i + 1];
-      if (std::isdigit(next) ||
-          (std::tolower(next) == 'v' && i + 2 < base_name.length() &&
-           std::isdigit(base_name[i + 2]))) {
+      if (std::isdigit(next) || (std::tolower(next) == 'v' && i + 2 < base_name.length() &&
+                                 std::isdigit(base_name[i + 2]))) {
         std::string name_part = Trim(base_name.substr(0, i));
         std::string version_part = base_name.substr(i + 1);
         version_part = Trim(version_part);
@@ -681,8 +657,7 @@ MagdaPluginScanner::GenerateVersionAliases(const std::string &base_name) const {
 
 // Split camelCase/PascalCase and generate aliases
 // Examples: "ReaEQ" -> ["reaeq", "rea-eq", "rea eq", "eq"]
-std::vector<std::string>
-MagdaPluginScanner::SplitCamelCase(const std::string &name) const {
+std::vector<std::string> MagdaPluginScanner::SplitCamelCase(const std::string &name) const {
   std::vector<std::string> aliases;
   std::vector<std::string> words;
   std::string current_word;
@@ -748,8 +723,9 @@ MagdaPluginScanner::SplitCamelCase(const std::string &name) const {
 }
 
 // Generate manufacturer-prefixed aliases
-std::vector<std::string> MagdaPluginScanner::GenerateManufacturerAliases(
-    const std::string &base_name, const std::string &manufacturer) const {
+std::vector<std::string>
+MagdaPluginScanner::GenerateManufacturerAliases(const std::string &base_name,
+                                                const std::string &manufacturer) const {
   std::vector<std::string> aliases;
 
   if (manufacturer.empty()) {
@@ -776,8 +752,8 @@ std::vector<std::string> MagdaPluginScanner::GenerateManufacturerAliases(
   }
 
   // Filter out common words
-  std::set<std::string> common_words = {
-      "records", "inc", "ltd", "llc", "audio", "music", "technologies"};
+  std::set<std::string> common_words = {"records", "inc",   "ltd",         "llc",
+                                        "audio",   "music", "technologies"};
   std::vector<std::string> key_words;
 
   for (const auto &word : words) {
@@ -800,22 +776,20 @@ std::vector<std::string> MagdaPluginScanner::GenerateManufacturerAliases(
 }
 
 // Generate abbreviation aliases (e.g., "ReaEQ" -> ["eq"])
-std::vector<std::string> MagdaPluginScanner::GenerateAbbreviationAliases(
-    const std::string &base_name) const {
+std::vector<std::string>
+MagdaPluginScanner::GenerateAbbreviationAliases(const std::string &base_name) const {
   std::vector<std::string> aliases;
   std::string base_lower = ToLower(base_name);
 
   // Common suffix patterns
   std::map<std::string, std::string> suffix_patterns = {
-      {"eq", "eq"},         {"comp", "comp"},        {"compressor", "comp"},
-      {"verb", "verb"},     {"reverb", "verb"},      {"delay", "delay"},
-      {"limiter", "limit"}, {"gate", "gate"},        {"filter", "filter"},
-      {"synth", "synth"},   {"synthesizer", "synth"}};
+      {"eq", "eq"},         {"comp", "comp"},   {"compressor", "comp"},  {"verb", "verb"},
+      {"reverb", "verb"},   {"delay", "delay"}, {"limiter", "limit"},    {"gate", "gate"},
+      {"filter", "filter"}, {"synth", "synth"}, {"synthesizer", "synth"}};
 
   for (const auto &pattern : suffix_patterns) {
     if (base_lower.length() >= pattern.first.length() &&
-        base_lower.substr(base_lower.length() - pattern.first.length()) ==
-            pattern.first) {
+        base_lower.substr(base_lower.length() - pattern.first.length()) == pattern.first) {
       aliases.push_back(pattern.second);
       break;
     }
@@ -831,8 +805,7 @@ MagdaPluginScanner::GenerateAliasesForPlugin(const PluginInfo &plugin) const {
   std::vector<std::string> aliases;
 
   // Use plugin.name if available (cleaner), otherwise extract from full_name
-  std::string base_name =
-      plugin.name.empty() ? ExtractBaseName(plugin.full_name) : plugin.name;
+  std::string base_name = plugin.name.empty() ? ExtractBaseName(plugin.full_name) : plugin.name;
   if (base_name.empty()) {
     return aliases;
   }
@@ -880,8 +853,7 @@ bool MagdaPluginScanner::GenerateAliases() {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA: Generating aliases for %d deduplicated plugins...\n",
+      snprintf(msg, sizeof(msg), "MAGDA: Generating aliases for %d deduplicated plugins...\n",
                (int)deduplicated.size());
       ShowConsoleMsg(msg);
     }
@@ -896,8 +868,7 @@ bool MagdaPluginScanner::GenerateAliases() {
   int skipped_count = 0;
   for (const auto &plugin : deduplicated) {
     // Use ident as the unique key, fall back to full_name
-    const std::string &plugin_key =
-        plugin.ident.empty() ? plugin.full_name : plugin.ident;
+    const std::string &plugin_key = plugin.ident.empty() ? plugin.full_name : plugin.ident;
 
     auto plugin_aliases = GenerateAliasesForPlugin(plugin);
 
@@ -965,8 +936,7 @@ bool MagdaPluginScanner::GenerateAliases() {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA: %d plugins had no aliases generated (added fallback)\n",
+      snprintf(msg, sizeof(msg), "MAGDA: %d plugins had no aliases generated (added fallback)\n",
                skipped_count);
       ShowConsoleMsg(msg);
     }
@@ -1002,8 +972,7 @@ bool MagdaPluginScanner::GenerateAliasesFromAPI() {
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char msg[256];
-      snprintf(msg, sizeof(msg),
-               "MAGDA: Deduplicated %d plugins to %d unique plugins\n",
+      snprintf(msg, sizeof(msg), "MAGDA: Deduplicated %d plugins to %d unique plugins\n",
                (int)m_plugins.size(), (int)deduplicated.size());
       ShowConsoleMsg(msg);
     }
@@ -1111,8 +1080,8 @@ bool MagdaPluginScanner::GenerateAliasesFromAPI() {
   WDL_FastString response;
   WDL_FastString error_msg;
 
-  bool success = g_apiClient->SendPOSTRequest(
-      "/api/v1/plugins/process", json.Get(), response, error_msg, 120);
+  bool success =
+      g_apiClient->SendPOSTRequest("/api/v1/plugins/process", json.Get(), response, error_msg, 120);
 
   if (!success) {
     if (g_rec) {
@@ -1120,8 +1089,7 @@ bool MagdaPluginScanner::GenerateAliasesFromAPI() {
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char msg[512];
-        snprintf(msg, sizeof(msg), "MAGDA: Failed to generate aliases: %s\n",
-                 error_msg.Get());
+        snprintf(msg, sizeof(msg), "MAGDA: Failed to generate aliases: %s\n", error_msg.Get());
         ShowConsoleMsg(msg);
       }
     }
@@ -1157,8 +1125,7 @@ bool MagdaPluginScanner::GenerateAliasesFromAPI() {
           std::string alias(key_start, p - key_start);
           p++;
 
-          while (*p && (*p == ' ' || *p == ':' || *p == '\n' || *p == '\r' ||
-                        *p == '\t'))
+          while (*p && (*p == ' ' || *p == ':' || *p == '\n' || *p == '\r' || *p == '\t'))
             p++;
           if (*p != '"')
             break;
@@ -1314,8 +1281,7 @@ bool MagdaPluginScanner::LoadAliasesFromCache() {
   }
 
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc(
-          "GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
   if (!GetExtState) {
     return false;
   }
@@ -1353,8 +1319,7 @@ bool MagdaPluginScanner::LoadAliasesFromCache() {
       std::string alias(key_start, p - key_start);
       p++;
 
-      while (*p &&
-             (*p == ' ' || *p == ':' || *p == '\n' || *p == '\r' || *p == '\t'))
+      while (*p && (*p == ' ' || *p == ':' || *p == '\n' || *p == '\r' || *p == '\t'))
         p++;
       if (*p != '"')
         break;
@@ -1385,10 +1350,8 @@ bool MagdaPluginScanner::SaveAliasesToCache() const {
     return false;
   }
 
-  void (*SetExtState)(const char *section, const char *key, const char *value,
-                      bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
-          "SetExtState");
+  void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
   if (!SetExtState) {
     return false;
   }
@@ -1443,19 +1406,16 @@ std::string MagdaPluginScanner::ResolveAlias(const char *alias) const {
   }
 
   // Also strip trailing whitespace
-  while (!alias_str.empty() &&
-         (alias_str.back() == ' ' || alias_str.back() == '\t')) {
+  while (!alias_str.empty() && (alias_str.back() == ' ' || alias_str.back() == '\t')) {
     alias_str.pop_back();
   }
 
   std::string alias_lower = alias_str;
-  std::transform(alias_lower.begin(), alias_lower.end(), alias_lower.begin(),
-                 ::tolower);
+  std::transform(alias_lower.begin(), alias_lower.end(), alias_lower.begin(), ::tolower);
 
   for (const auto &pair : m_aliases) {
     std::string key_lower = pair.first;
-    std::transform(key_lower.begin(), key_lower.end(), key_lower.begin(),
-                   ::tolower);
+    std::transform(key_lower.begin(), key_lower.end(), key_lower.begin(), ::tolower);
     if (key_lower == alias_lower) {
       return pair.second;
     }
@@ -1464,8 +1424,8 @@ std::string MagdaPluginScanner::ResolveAlias(const char *alias) const {
   return alias; // Return original if not found
 }
 
-void MagdaPluginScanner::SetPluginAliases(
-    const char *full_name, const std::vector<std::string> &aliases) {
+void MagdaPluginScanner::SetPluginAliases(const char *full_name,
+                                          const std::vector<std::string> &aliases) {
   if (!full_name) {
     return;
   }
@@ -1487,8 +1447,7 @@ void MagdaPluginScanner::SetPluginAliases(
   SaveAliasesToCache();
 }
 
-void MagdaPluginScanner::AddPluginAlias(const char *full_name,
-                                        const char *alias) {
+void MagdaPluginScanner::AddPluginAlias(const char *full_name, const char *alias) {
   if (!full_name || !alias) {
     return;
   }
@@ -1498,8 +1457,7 @@ void MagdaPluginScanner::AddPluginAlias(const char *full_name,
   SaveAliasesToCache();
 }
 
-void MagdaPluginScanner::RemovePluginAlias(const char *full_name,
-                                           const char *alias) {
+void MagdaPluginScanner::RemovePluginAlias(const char *full_name, const char *alias) {
   if (!full_name || !alias) {
     return;
   }
@@ -1507,8 +1465,7 @@ void MagdaPluginScanner::RemovePluginAlias(const char *full_name,
   m_aliases.erase(alias);
   auto it = m_aliasesByPlugin.find(full_name);
   if (it != m_aliasesByPlugin.end()) {
-    it->second.erase(std::remove(it->second.begin(), it->second.end(), alias),
-                     it->second.end());
+    it->second.erase(std::remove(it->second.begin(), it->second.end(), alias), it->second.end());
     if (it->second.empty()) {
       m_aliasesByPlugin.erase(it);
     }

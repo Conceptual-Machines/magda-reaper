@@ -23,18 +23,17 @@ constexpr const char *RIDE_BELL = "ride_bell";
 
 // Get list of all canonical drum names
 inline std::vector<std::string> GetAllDrumNames() {
-  return {KICK,        SNARE,        SNARE_RIM, SNARE_XSTICK, HI_HAT,
-          HI_HAT_OPEN, HI_HAT_PEDAL, TOM_HIGH,  TOM_MID,      TOM_LOW,
-          CRASH,       RIDE,         RIDE_BELL};
+  return {KICK,     SNARE,   SNARE_RIM, SNARE_XSTICK, HI_HAT, HI_HAT_OPEN, HI_HAT_PEDAL,
+          TOM_HIGH, TOM_MID, TOM_LOW,   CRASH,        RIDE,   RIDE_BELL};
 }
 } // namespace CanonicalDrums
 
 // A drum mapping maps canonical drum names to MIDI note numbers
 struct DrumMapping {
-  std::string id;         // Unique identifier (e.g., "addictive_drums_v2")
-  std::string name;       // Display name (e.g., "Addictive Drums 2")
-  std::string plugin_key; // Associated plugin (ident or full_name)
-  bool is_preset;         // True for built-in presets, false for user-created
+  std::string id;                   // Unique identifier (e.g., "addictive_drums_v2")
+  std::string name;                 // Display name (e.g., "Addictive Drums 2")
+  std::string plugin_key;           // Associated plugin (ident or full_name)
+  bool is_preset;                   // True for built-in presets, false for user-created
   std::map<std::string, int> notes; // drum_name -> MIDI note
 
   // Get MIDI note for a canonical drum name, returns -1 if not found
@@ -44,9 +43,7 @@ struct DrumMapping {
   }
 
   // Set MIDI note for a canonical drum name
-  void SetNote(const std::string &drum_name, int note) {
-    notes[drum_name] = note;
-  }
+  void SetNote(const std::string &drum_name, int note) { notes[drum_name] = note; }
 };
 
 // Manages drum mappings - loading, saving, presets
@@ -80,8 +77,7 @@ public:
   static std::vector<DrumMapping> GetPresetMappings();
 
   // Create a new mapping from a preset for a specific plugin
-  DrumMapping CreateMappingFromPreset(const std::string &preset_id,
-                                      const std::string &plugin_key,
+  DrumMapping CreateMappingFromPreset(const std::string &preset_id, const std::string &plugin_key,
                                       const std::string &name);
 
   // Check if a plugin has a drum mapping

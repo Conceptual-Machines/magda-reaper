@@ -6,7 +6,7 @@
 // ============================================================================
 // Validates raw JSFX/EEL2 output structure
 
-static const char* JSFX_GRAMMAR = R"GRAMMAR(
+static const char *JSFX_GRAMMAR = R"GRAMMAR(
 // JSFX Direct Grammar - validates raw JSFX effect structure
 // The LLM outputs actual JSFX code that REAPER can load directly
 
@@ -67,7 +67,7 @@ COMMENT: /\/\/[^\n]*/
 %ignore COMMENT
 )GRAMMAR";
 
-static const char* JSFX_TOOL_DESCRIPTION = R"DESC(
+static const char *JSFX_TOOL_DESCRIPTION = R"DESC(
 Generate a complete JSFX effect for REAPER.
 
 OUTPUT FORMAT - Raw JSFX code:
@@ -102,7 +102,8 @@ REQUIREMENTS:
 )DESC";
 
 // Comprehensive JSFX system prompt (verbatim from Go API)
-static const char* JSFX_SYSTEM_PROMPT = R"PROMPT(You are a JSFX expert. Generate complete, working REAPER JSFX effects.
+static const char *JSFX_SYSTEM_PROMPT =
+    R"PROMPT(You are a JSFX expert. Generate complete, working REAPER JSFX effects.
 Output raw JSFX code that can be saved directly as a .jsfx file.
 
 ════════════════════════════════════════════════════════════════════════════════

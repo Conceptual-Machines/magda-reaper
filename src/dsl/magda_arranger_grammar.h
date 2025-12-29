@@ -7,7 +7,7 @@
 // Chord symbol-based musical composition for melodic/harmonic content
 // Supports: note(), arpeggio(), chord(), progression()
 
-static const char* ARRANGER_DSL_GRAMMAR = R"GRAMMAR(
+static const char *ARRANGER_DSL_GRAMMAR = R"GRAMMAR(
 // Arranger DSL Grammar - Chord symbol-based musical composition
 // SIMPLE SYNTAX ONLY - one call per statement:
 //   note(pitch=E1, duration=4) - single note
@@ -97,7 +97,7 @@ STRING: /"[^"]*"/
 NUMBER: /-?\d+(\.\d+)?/
 )GRAMMAR";
 
-static const char* ARRANGER_TOOL_DESCRIPTION = R"DESC(
+static const char *ARRANGER_TOOL_DESCRIPTION = R"DESC(
 Generate ONE musical call. Choose exactly ONE:
 
 1. NOTE (single sustained note): note(pitch="E1", duration=4)

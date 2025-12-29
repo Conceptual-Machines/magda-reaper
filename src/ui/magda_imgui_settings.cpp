@@ -56,12 +56,14 @@ static ThemeColors g_theme;
 static const int COLOR_DIM = THEME_RGBA(0x80, 0x80, 0x80);
 
 // Filter mode names for combo box
-static const char *FILTER_MODE_NAMES[] = {
-    "All tracks and clips", "Selected tracks only",
-    "Selected tracks + selected clips", "Selected clips only"};
+static const char *FILTER_MODE_NAMES[] = {"All tracks and clips", "Selected tracks only",
+                                          "Selected tracks + selected clips",
+                                          "Selected clips only"};
 static const int FILTER_MODE_COUNT = 4;
 
-MagdaImGuiSettings::MagdaImGuiSettings() { LoadSettings(); }
+MagdaImGuiSettings::MagdaImGuiSettings() {
+  LoadSettings();
+}
 
 MagdaImGuiSettings::~MagdaImGuiSettings() {}
 
@@ -70,55 +72,43 @@ bool MagdaImGuiSettings::Initialize(reaper_plugin_info_t *rec) {
     return false;
 
   // Load ReaImGui function pointers
-  m_ImGui_CreateContext =
-      (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
-  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc(
-      "ImGui_Begin");
+  m_ImGui_CreateContext = (void *(*)(const char *, int *))rec->GetFunc("ImGui_CreateContext");
+  m_ImGui_Begin = (bool (*)(void *, const char *, bool *, int *))rec->GetFunc("ImGui_Begin");
   m_ImGui_End = (void (*)(void *))rec->GetFunc("ImGui_End");
-  m_ImGui_SetNextWindowSize = (void (*)(
-      void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
+  m_ImGui_SetNextWindowSize =
+      (void (*)(void *, double, double, int *))rec->GetFunc("ImGui_SetNextWindowSize");
   m_ImGui_Text = (void (*)(void *, const char *))rec->GetFunc("ImGui_Text");
-  m_ImGui_TextColored =
-      (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
-  m_ImGui_Button = (bool (*)(void *, const char *, double *,
-                             double *))rec->GetFunc("ImGui_Button");
-  m_ImGui_SameLine =
-      (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
+  m_ImGui_TextColored = (void (*)(void *, int, const char *))rec->GetFunc("ImGui_TextColored");
+  m_ImGui_Button = (bool (*)(void *, const char *, double *, double *))rec->GetFunc("ImGui_Button");
+  m_ImGui_SameLine = (void (*)(void *, double *, double *))rec->GetFunc("ImGui_SameLine");
   m_ImGui_Separator = (void (*)(void *))rec->GetFunc("ImGui_Separator");
   m_ImGui_Spacing = (void (*)(void *))rec->GetFunc("ImGui_Spacing");
-  m_ImGui_Checkbox =
-      (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
-  m_ImGui_BeginCombo = (bool (*)(void *, const char *, const char *,
-                                 int *))rec->GetFunc("ImGui_BeginCombo");
+  m_ImGui_Checkbox = (bool (*)(void *, const char *, bool *))rec->GetFunc("ImGui_Checkbox");
+  m_ImGui_BeginCombo =
+      (bool (*)(void *, const char *, const char *, int *))rec->GetFunc("ImGui_BeginCombo");
   m_ImGui_EndCombo = (void (*)(void *))rec->GetFunc("ImGui_EndCombo");
   m_ImGui_Selectable = (bool (*)(void *, const char *, bool *, int *, double *,
                                  double *))rec->GetFunc("ImGui_Selectable");
-  m_ImGui_InputInt = (bool (*)(void *, const char *, int *, int *, int *,
-                               int *))rec->GetFunc("ImGui_InputInt");
-  m_ImGui_InputText =
-      (bool (*)(void *, const char *, char *, int, int *, void *,
-                void *))rec->GetFunc("ImGui_InputText");
-  m_ImGui_InputTextWithHint =
-      (bool (*)(void *, const char *, const char *, char *, int, int *, void *,
-                void *))rec->GetFunc("ImGui_InputTextWithHint");
-  m_ImGui_PushItemWidth =
-      (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
+  m_ImGui_InputInt =
+      (bool (*)(void *, const char *, int *, int *, int *, int *))rec->GetFunc("ImGui_InputInt");
+  m_ImGui_InputText = (bool (*)(void *, const char *, char *, int, int *, void *,
+                                void *))rec->GetFunc("ImGui_InputText");
+  m_ImGui_InputTextWithHint = (bool (*)(void *, const char *, const char *, char *, int, int *,
+                                        void *, void *))rec->GetFunc("ImGui_InputTextWithHint");
+  m_ImGui_PushItemWidth = (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
   m_ImGui_PopItemWidth = (void (*)(void *))rec->GetFunc("ImGui_PopItemWidth");
-  m_ImGui_GetContentRegionAvail = (void (*)(
-      void *, double *, double *))rec->GetFunc("ImGui_GetContentRegionAvail");
-  m_ImGui_IsWindowAppearing =
-      (bool (*)(void *))rec->GetFunc("ImGui_IsWindowAppearing");
+  m_ImGui_GetContentRegionAvail =
+      (void (*)(void *, double *, double *))rec->GetFunc("ImGui_GetContentRegionAvail");
+  m_ImGui_IsWindowAppearing = (bool (*)(void *))rec->GetFunc("ImGui_IsWindowAppearing");
   m_ImGui_SetKeyboardFocusHere =
       (void (*)(void *, int *))rec->GetFunc("ImGui_SetKeyboardFocusHere");
-  m_ImGui_PushStyleColor =
-      (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
-  m_ImGui_PopStyleColor =
-      (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
+  m_ImGui_PushStyleColor = (void (*)(void *, int, int))rec->GetFunc("ImGui_PushStyleColor");
+  m_ImGui_PopStyleColor = (void (*)(void *, int *))rec->GetFunc("ImGui_PopStyleColor");
 
   // Check if essential functions are available
-  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End &&
-                m_ImGui_Text && m_ImGui_Button && m_ImGui_Checkbox &&
-                m_ImGui_BeginCombo && m_ImGui_EndCombo && m_ImGui_Selectable;
+  m_available = m_ImGui_CreateContext && m_ImGui_Begin && m_ImGui_End && m_ImGui_Text &&
+                m_ImGui_Button && m_ImGui_Checkbox && m_ImGui_BeginCombo && m_ImGui_EndCombo &&
+                m_ImGui_Selectable;
 
   return m_available;
 }
@@ -128,8 +118,7 @@ void MagdaImGuiSettings::LoadSettings() {
     return;
 
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc(
-          "GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
   if (!GetExtState)
     return;
 
@@ -143,8 +132,7 @@ void MagdaImGuiSettings::LoadSettings() {
   }
 
   // Load include empty tracks
-  const char *includeEmptyStr =
-      GetExtState("MAGDA", "state_filter_include_empty");
+  const char *includeEmptyStr = GetExtState("MAGDA", "state_filter_include_empty");
   if (includeEmptyStr) {
     m_includeEmptyTracks = (atoi(includeEmptyStr) != 0);
   }
@@ -166,10 +154,8 @@ void MagdaImGuiSettings::SaveSettings() {
   if (!g_rec)
     return;
 
-  void (*SetExtState)(const char *section, const char *key, const char *value,
-                      bool persist) =
-      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc(
-          "SetExtState");
+  void (*SetExtState)(const char *section, const char *key, const char *value, bool persist) =
+      (void (*)(const char *, const char *, const char *, bool))g_rec->GetFunc("SetExtState");
   if (!SetExtState)
     return;
 
@@ -179,8 +165,7 @@ void MagdaImGuiSettings::SaveSettings() {
   SetExtState("MAGDA", "state_filter_mode", modeStr, true);
 
   // Save include empty tracks
-  SetExtState("MAGDA", "state_filter_include_empty",
-              m_includeEmptyTracks ? "1" : "0", true);
+  SetExtState("MAGDA", "state_filter_include_empty", m_includeEmptyTracks ? "1" : "0", true);
 
   // Save max clips per track
   char maxClipsStr[32];
@@ -188,8 +173,7 @@ void MagdaImGuiSettings::SaveSettings() {
   SetExtState("MAGDA", "state_filter_max_clips", maxClipsStr, true);
 
   // Save JSFX include description setting
-  SetExtState("MAGDA", "jsfx_include_description",
-              m_jsfxIncludeDescription ? "1" : "0", true);
+  SetExtState("MAGDA", "jsfx_include_description", m_jsfxIncludeDescription ? "1" : "0", true);
 }
 
 StateFilterPreferences MagdaImGuiSettings::GetPreferences() {
@@ -199,8 +183,7 @@ StateFilterPreferences MagdaImGuiSettings::GetPreferences() {
     return prefs;
 
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc(
-          "GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
   if (!GetExtState)
     return prefs;
 
@@ -214,8 +197,7 @@ StateFilterPreferences MagdaImGuiSettings::GetPreferences() {
   }
 
   // Load include empty tracks
-  const char *includeEmptyStr =
-      GetExtState("MAGDA", "state_filter_include_empty");
+  const char *includeEmptyStr = GetExtState("MAGDA", "state_filter_include_empty");
   if (includeEmptyStr) {
     prefs.includeEmptyTracks = (atoi(includeEmptyStr) != 0);
   }
@@ -234,8 +216,7 @@ bool MagdaImGuiSettings::GetJSFXIncludeDescription() {
     return true; // Default to including description
 
   const char *(*GetExtState)(const char *section, const char *key) =
-      (const char *(*)(const char *, const char *))g_rec->GetFunc(
-          "GetExtState");
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
   if (!GetExtState)
     return true;
 
@@ -255,7 +236,7 @@ void MagdaImGuiSettings::Show() {
 }
 
 void MagdaImGuiSettings::Hide() {
-  m_shouldClose = true;  // Will close on next frame
+  m_shouldClose = true; // Will close on next frame
 }
 
 void MagdaImGuiSettings::Toggle() {
@@ -295,8 +276,7 @@ void MagdaImGuiSettings::Render() {
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBg, g_theme.inputBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered,
-                           g_theme.buttonHover);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgHovered, g_theme.buttonHover);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::FrameBgActive, g_theme.buttonBg);
     styleColorCount++;
@@ -311,8 +291,7 @@ void MagdaImGuiSettings::Render() {
     // Title bar colors
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBg, g_theme.titleBg);
     styleColorCount++;
-    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive,
-                           g_theme.titleBgActive);
+    m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgActive, g_theme.titleBgActive);
     styleColorCount++;
     m_ImGui_PushStyleColor(m_ctx, ImGuiCol::TitleBgCollapsed, g_theme.titleBg);
     styleColorCount++;
@@ -324,8 +303,8 @@ void MagdaImGuiSettings::Render() {
 
   // Begin window
   int flags = ImGuiWindowFlags::NoCollapse;
-  bool open = !m_shouldClose;  // If should close, start with open=false
-  m_shouldClose = false;  // Reset flag
+  bool open = !m_shouldClose; // If should close, start with open=false
+  m_shouldClose = false;      // Reset flag
   if (!m_ImGui_Begin(m_ctx, "MAGDA Settings", &open, &flags)) {
     m_ImGui_End(m_ctx);
     if (m_ImGui_PopStyleColor) {
@@ -359,8 +338,7 @@ void MagdaImGuiSettings::Render() {
 
   // Help text
   if (m_ImGui_TextColored) {
-    m_ImGui_TextColored(m_ctx, COLOR_DIM,
-                        "Control what REAPER state is sent to the API");
+    m_ImGui_TextColored(m_ctx, COLOR_DIM, "Control what REAPER state is sent to the API");
   }
   if (m_ImGui_Spacing)
     m_ImGui_Spacing(m_ctx);
@@ -376,17 +354,15 @@ void MagdaImGuiSettings::Render() {
   }
 
   // Filter mode dropdown using BeginCombo/EndCombo
-  const char *currentModeName =
-      (m_filterModeIndex >= 0 && m_filterModeIndex < FILTER_MODE_COUNT)
-          ? FILTER_MODE_NAMES[m_filterModeIndex]
-          : "Unknown";
+  const char *currentModeName = (m_filterModeIndex >= 0 && m_filterModeIndex < FILTER_MODE_COUNT)
+                                    ? FILTER_MODE_NAMES[m_filterModeIndex]
+                                    : "Unknown";
 
   // Use ## to hide label (it's explained by the section header)
   if (m_ImGui_BeginCombo(m_ctx, "##filter_mode", currentModeName, nullptr)) {
     for (int i = 0; i < FILTER_MODE_COUNT; i++) {
       bool isSelected = (m_filterModeIndex == i);
-      if (m_ImGui_Selectable(m_ctx, FILTER_MODE_NAMES[i], &isSelected, nullptr,
-                             nullptr, nullptr)) {
+      if (m_ImGui_Selectable(m_ctx, FILTER_MODE_NAMES[i], &isSelected, nullptr, nullptr, nullptr)) {
         m_filterModeIndex = i;
       }
     }
@@ -416,8 +392,7 @@ void MagdaImGuiSettings::Render() {
   if (m_ImGui_InputInt) {
     int step = 1;
     int stepFast = 10;
-    m_ImGui_InputInt(m_ctx, "##maxclips", &m_maxClipsPerTrack, &step, &stepFast,
-                     nullptr);
+    m_ImGui_InputInt(m_ctx, "##maxclips", &m_maxClipsPerTrack, &step, &stepFast, nullptr);
     if (m_maxClipsPerTrack < 0)
       m_maxClipsPerTrack = 0;
   }
@@ -441,12 +416,10 @@ void MagdaImGuiSettings::Render() {
 
   // Include description in AI-generated JSFX
   if (m_ImGui_Checkbox) {
-    m_ImGui_Checkbox(m_ctx, "Include description in AI-generated JSFX",
-                     &m_jsfxIncludeDescription);
+    m_ImGui_Checkbox(m_ctx, "Include description in AI-generated JSFX", &m_jsfxIncludeDescription);
   }
   if (m_ImGui_TextColored) {
-    m_ImGui_TextColored(m_ctx, COLOR_DIM,
-                        "When enabled, AI explains the generated code");
+    m_ImGui_TextColored(m_ctx, COLOR_DIM, "When enabled, AI explains the generated code");
   }
 
   if (m_ImGui_Separator)

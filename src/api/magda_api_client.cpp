@@ -112,8 +112,7 @@ char *MagdaHTTPClient::BuildRequestJSON(const char *question) {
         int state_len = (int)strlen(state_json);
         int preview_len = state_len > 500 ? 500 : state_len;
         char log_msg[1024];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: State JSON (%d bytes): %.*s%s\n", state_len,
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: State JSON (%d bytes): %.*s%s\n", state_len,
                  preview_len, state_json, state_len > 500 ? "..." : "");
         ShowConsoleMsg(log_msg);
       }
@@ -147,9 +146,8 @@ char *MagdaHTTPClient::BuildRequestJSON(const char *question) {
       if (ShowConsoleMsg) {
         int preview_len = len > 1000 ? 1000 : len;
         char log_msg[2048];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: Request JSON (%d bytes): %.*s%s\n", len, preview_len,
-                 result, len > 1000 ? "..." : "");
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Request JSON (%d bytes): %.*s%s\n", len,
+                 preview_len, result, len > 1000 ? "..." : "");
         ShowConsoleMsg(log_msg);
       }
     }
@@ -180,8 +178,7 @@ char *MagdaHTTPClient::ExtractActionsJSON(const char *json_str, int json_len) {
       if (p < end && *p == ':') {
         p++;
         // Skip whitespace after colon
-        while (p < end &&
-               (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+        while (p < end && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
           p++;
         }
         // Now p points to the start of the actions value
@@ -253,10 +250,8 @@ char *MagdaHTTPClient::ExtractActionsJSON(const char *json_str, int json_len) {
 // These must be defined before SendQuestion which uses them
 #ifdef _WIN32
 // Windows: WinHTTP implementation
-static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
-                                     int post_data_len,
-                                     WDL_FastString &response,
-                                     WDL_FastString &error_msg,
+static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data, int post_data_len,
+                                     WDL_FastString &response, WDL_FastString &error_msg,
                                      const char *auth_token = nullptr) {
   HINTERNET hSession = nullptr;
   HINTERNET hConnect = nullptr;
@@ -284,8 +279,7 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
   }
 
   // Initialize WinHTTP
-  hSession = WinHttpOpen(L"MAGDA Reaper Extension/1.0",
-                         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+  hSession = WinHttpOpen(L"MAGDA Reaper Extension/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                          WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
   if (!hSession) {
     error_msg.Set("Failed to initialize WinHTTP");
@@ -297,9 +291,8 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
   WinHttpSetTimeouts(hSession, 30000, 30000, timeout_ms, timeout_ms);
 
   // Connect to server
-  int port = urlComp.nScheme == INTERNET_SCHEME_HTTPS
-                 ? INTERNET_DEFAULT_HTTPS_PORT
-                 : INTERNET_DEFAULT_HTTP_PORT;
+  int port = urlComp.nScheme == INTERNET_SCHEME_HTTPS ? INTERNET_DEFAULT_HTTPS_PORT
+                                                      : INTERNET_DEFAULT_HTTP_PORT;
   if (urlComp.nPort != 0) {
     port = urlComp.nPort;
   }
@@ -323,10 +316,9 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
   wchar_t *path_w = new wchar_t[path_len];
   MultiByteToWideChar(CP_UTF8, 0, path, -1, path_w, path_len);
 
-  hRequest = WinHttpOpenRequest(
-      hConnect, L"POST", path_w, nullptr, WINHTTP_NO_REFERER,
-      WINHTTP_DEFAULT_ACCEPT_TYPES,
-      urlComp.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0);
+  hRequest = WinHttpOpenRequest(hConnect, L"POST", path_w, nullptr, WINHTTP_NO_REFERER,
+                                WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                urlComp.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0);
   delete[] path_w;
 
   if (!hRequest) {
@@ -347,20 +339,17 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
     int auth_len = MultiByteToWideChar(CP_UTF8, 0, auth_token, -1, nullptr, 0);
     wchar_t *auth_w = new wchar_t[auth_len + 100];
     swprintf(auth_w, auth_len + 100,
-             L"Content-Type: application/json\r\nAuthorization: Bearer %S\r\n",
-             auth_token);
-    WinHttpAddRequestHeaders(hRequest, auth_w, (DWORD)-1,
-                             WINHTTP_ADDREQ_FLAG_ADD);
+             L"Content-Type: application/json\r\nAuthorization: Bearer %S\r\n", auth_token);
+    WinHttpAddRequestHeaders(hRequest, auth_w, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
     delete[] auth_w;
   } else {
     wcscpy(headers, L"Content-Type: application/json\r\n");
-    WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1,
-                             WINHTTP_ADDREQ_FLAG_ADD);
+    WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
   }
 
   // Send request
-  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                          (LPVOID)post_data, post_data_len, post_data_len, 0)) {
+  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)post_data,
+                          post_data_len, post_data_len, 0)) {
     error_msg.Set("Failed to send request");
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
@@ -380,10 +369,9 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
   // Read response data
   DWORD statusCode = 0;
   DWORD statusCodeSize = sizeof(statusCode);
-  WinHttpQueryHeaders(hRequest,
-                      WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode,
-                      &statusCodeSize, WINHTTP_NO_HEADER_INDEX);
+  WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize,
+                      WINHTTP_NO_HEADER_INDEX);
 
   if (statusCode != 200) {
     // Read response body for error details
@@ -391,14 +379,11 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
     char *error_buffer = nullptr;
     DWORD bytesRead = 0;
 
-    while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) &&
-           bytesAvailable > 0) {
-      error_buffer =
-          (char *)realloc(error_buffer, bytesRead + bytesAvailable + 1);
+    while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
+      error_buffer = (char *)realloc(error_buffer, bytesRead + bytesAvailable + 1);
       if (!error_buffer)
         break;
-      if (!WinHttpReadData(hRequest, error_buffer + bytesRead, bytesAvailable,
-                           &bytesRead)) {
+      if (!WinHttpReadData(hRequest, error_buffer + bytesRead, bytesAvailable, &bytesRead)) {
         break;
       }
       bytesRead += bytesAvailable;
@@ -408,8 +393,7 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
     if (error_buffer && bytesRead > 0) {
       error_buffer[bytesRead] = '\0';
       int len = bytesRead > 200 ? 200 : bytesRead;
-      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu: %.200s",
-               statusCode, error_buffer);
+      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu: %.200s", statusCode, error_buffer);
       free(error_buffer);
     } else {
       snprintf(error_buf, sizeof(error_buf), "HTTP error %lu", statusCode);
@@ -426,15 +410,13 @@ static bool SendHTTPSRequest_WinHTTP(const char *url, const char *post_data,
   char *buffer = nullptr;
   DWORD bytesRead = 0;
 
-  while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) &&
-         bytesAvailable > 0) {
+  while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
     buffer = (char *)realloc(buffer, bytesRead + bytesAvailable + 1);
     if (!buffer) {
       error_msg.Set("Failed to allocate memory");
       break;
     }
-    if (!WinHttpReadData(hRequest, buffer + bytesRead, bytesAvailable,
-                         &bytesRead)) {
+    if (!WinHttpReadData(hRequest, buffer + bytesRead, bytesAvailable, &bytesRead)) {
       error_msg.Set("Failed to read response data");
       break;
     }
@@ -459,8 +441,7 @@ struct CurlWriteData {
   WDL_FastString *response;
 };
 
-static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb,
-                                void *userp) {
+static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
   size_t realsize = size * nmemb;
   CurlWriteData *data = (CurlWriteData *)userp;
   if (data->response) {
@@ -469,11 +450,9 @@ static size_t CurlWriteCallback(void *contents, size_t size, size_t nmemb,
   return realsize;
 }
 
-static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
-                                  int post_data_len, WDL_FastString &response,
-                                  WDL_FastString &error_msg,
-                                  const char *auth_token = nullptr,
-                                  int timeout_seconds = 30) {
+static bool SendHTTPSRequest_Curl(const char *url, const char *post_data, int post_data_len,
+                                  WDL_FastString &response, WDL_FastString &error_msg,
+                                  const char *auth_token = nullptr, int timeout_seconds = 30) {
   CURL *curl = curl_easy_init();
   if (!curl) {
     error_msg.Set("Failed to initialize curl");
@@ -497,8 +476,7 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
   headers = curl_slist_append(headers, "Content-Type: application/json");
   if (auth_token && strlen(auth_token) > 0) {
     char auth_header[512];
-    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
-             auth_token);
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", auth_token);
     headers = curl_slist_append(headers, auth_header);
 
     // Log the Authorization header (first 50 chars of token for debugging)
@@ -507,10 +485,9 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char log_msg[512];
-        int token_preview_len =
-            strlen(auth_token) > 50 ? 50 : (int)strlen(auth_token);
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: Authorization header: Bearer %.50s...\n", auth_token);
+        int token_preview_len = strlen(auth_token) > 50 ? 50 : (int)strlen(auth_token);
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Authorization header: Bearer %.50s...\n",
+                 auth_token);
         ShowConsoleMsg(log_msg);
       }
     }
@@ -540,11 +517,9 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
     if (ShowConsoleMsg) {
       char log_msg[512];
       if (res == CURLE_OK) {
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: curl_easy_perform succeeded\n");
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: curl_easy_perform succeeded\n");
       } else {
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: curl_easy_perform failed: %s\n",
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: curl_easy_perform failed: %s\n",
                  curl_easy_strerror(res));
       }
       ShowConsoleMsg(log_msg);
@@ -561,8 +536,7 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: HTTP response code: %ld, body size: %d bytes\n",
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: HTTP response code: %ld, body size: %d bytes\n",
                  response_code, (int)response.GetLength());
         ShowConsoleMsg(log_msg);
       }
@@ -572,10 +546,9 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
       // Response body is already in 'response' from the write callback
       char error_buf[512];
       if (response.GetLength() > 0) {
-        int body_len =
-            response.GetLength() > 200 ? 200 : (int)response.GetLength();
-        snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.200s",
-                 response_code, response.Get());
+        int body_len = response.GetLength() > 200 ? 200 : (int)response.GetLength();
+        snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.200s", response_code,
+                 response.Get());
       } else {
         snprintf(error_buf, sizeof(error_buf), "HTTP error %ld", response_code);
       }
@@ -597,10 +570,8 @@ static bool SendHTTPSRequest_Curl(const char *url, const char *post_data,
 }
 #endif
 
-bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint,
-                                      const char *json_data,
-                                      WDL_FastString &response,
-                                      WDL_FastString &error_msg,
+bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint, const char *json_data,
+                                      WDL_FastString &response, WDL_FastString &error_msg,
                                       int timeout_seconds) {
   if (!endpoint || !json_data) {
     error_msg.Set("Invalid parameters");
@@ -613,8 +584,7 @@ bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint,
   url.Append(endpoint);
 
   // Get auth token (try to get from storage if not set)
-  const char *auth_token =
-      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+  const char *auth_token = m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
   if (!auth_token) {
     auth_token = MagdaAuth::GetStoredToken();
     if (auth_token && strlen(auth_token) > 0) {
@@ -630,13 +600,11 @@ bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint,
   // Use platform-specific HTTPS implementation
   bool success;
 #ifdef _WIN32
-  success = SendHTTPSRequest_WinHTTP(url.Get(), json_data,
-                                     (int)strlen(json_data), response,
+  success = SendHTTPSRequest_WinHTTP(url.Get(), json_data, (int)strlen(json_data), response,
                                      error_msg, auth_token, timeout_seconds);
 #else
-  success =
-      SendHTTPSRequest_Curl(url.Get(), json_data, (int)strlen(json_data),
-                            response, error_msg, auth_token, timeout_seconds);
+  success = SendHTTPSRequest_Curl(url.Get(), json_data, (int)strlen(json_data), response, error_msg,
+                                  auth_token, timeout_seconds);
 #endif
 
   // If we got 401, try refreshing token and retry once
@@ -660,12 +628,10 @@ bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint,
 
         // Retry the request
 #ifdef _WIN32
-        success = SendHTTPSRequest_WinHTTP(
-            url.Get(), json_data, (int)strlen(json_data), response, error_msg,
-            new_token, timeout_seconds);
+        success = SendHTTPSRequest_WinHTTP(url.Get(), json_data, (int)strlen(json_data), response,
+                                           error_msg, new_token, timeout_seconds);
 #else
-        success = SendHTTPSRequest_Curl(url.Get(), json_data,
-                                        (int)strlen(json_data), response,
+        success = SendHTTPSRequest_Curl(url.Get(), json_data, (int)strlen(json_data), response,
                                         error_msg, new_token, timeout_seconds);
 #endif
         if (success && g_rec) {
@@ -682,8 +648,7 @@ bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char msg[512];
-          snprintf(msg, sizeof(msg), "MAGDA: Token refresh failed: %s\n",
-                   refresh_error.Get());
+          snprintf(msg, sizeof(msg), "MAGDA: Token refresh failed: %s\n", refresh_error.Get());
           ShowConsoleMsg(msg);
         }
       }
@@ -693,8 +658,7 @@ bool MagdaHTTPClient::SendPOSTRequest(const char *endpoint,
   return success;
 }
 
-bool MagdaHTTPClient::SendQuestion(const char *question,
-                                   WDL_FastString &response_json,
+bool MagdaHTTPClient::SendQuestion(const char *question, WDL_FastString &response_json,
                                    WDL_FastString &error_msg) {
   if (!question || !question[0]) {
     error_msg.Set("Empty question");
@@ -718,8 +682,7 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
   // Use platform-specific HTTPS implementation
   WDL_FastString response;
   // Get auth token (try to get from storage if not set)
-  const char *auth_token =
-      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+  const char *auth_token = m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
   if (!auth_token) {
     auth_token = MagdaAuth::GetStoredToken();
     if (auth_token && strlen(auth_token) > 0) {
@@ -733,12 +696,10 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
       char log_msg[1024];
-      snprintf(log_msg, sizeof(log_msg), "MAGDA: Sending request to %s\n",
-               url.Get());
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Sending request to %s\n", url.Get());
       ShowConsoleMsg(log_msg);
       if (auth_token) {
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: Using JWT token (length: %d)\n",
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Using JWT token (length: %d)\n",
                  (int)m_jwt_token.GetLength());
         ShowConsoleMsg(log_msg);
       } else {
@@ -749,20 +710,19 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
       if (body_len > 500) {
         body_len = 500;
       }
-      snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: Request body (%d bytes): %.500s%s\n", request_json_len,
-               request_json, body_len < request_json_len ? "..." : "");
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Request body (%d bytes): %.500s%s\n",
+               request_json_len, request_json, body_len < request_json_len ? "..." : "");
       ShowConsoleMsg(log_msg);
     }
   }
 
   bool success;
 #ifdef _WIN32
-  success = SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len,
-                                     response, error_msg, auth_token);
+  success = SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len, response, error_msg,
+                                     auth_token);
 #else
-  success = SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len,
-                                  response, error_msg, auth_token);
+  success = SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len, response, error_msg,
+                                  auth_token);
 #endif
 
   // If we got 401, try refreshing token and retry once
@@ -786,13 +746,11 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
 
         // Retry the request
 #ifdef _WIN32
-        success =
-            SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len,
-                                     response, error_msg, new_token);
+        success = SendHTTPSRequest_WinHTTP(url.Get(), request_json, request_json_len, response,
+                                           error_msg, new_token);
 #else
-        success =
-            SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len,
-                                  response, error_msg, new_token);
+        success = SendHTTPSRequest_Curl(url.Get(), request_json, request_json_len, response,
+                                        error_msg, new_token);
 #endif
         if (success && g_rec) {
           void (*ShowConsoleMsg)(const char *msg) =
@@ -808,8 +766,7 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char msg[512];
-          snprintf(msg, sizeof(msg), "MAGDA: Token refresh failed: %s\n",
-                   refresh_error.Get());
+          snprintf(msg, sizeof(msg), "MAGDA: Token refresh failed: %s\n", refresh_error.Get());
           ShowConsoleMsg(msg);
         }
       }
@@ -829,16 +786,14 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
     if (ShowConsoleMsg) {
       if (error_msg.GetLength() > 0) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg), "MAGDA: Request failed: %s\n",
-                 error_msg.Get());
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Request failed: %s\n", error_msg.Get());
         ShowConsoleMsg(log_msg);
       } else if (response.GetLength() > 0) {
         char log_msg[512];
         int len = response.GetLength();
         if (len > 200)
           len = 200;
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: Response received (%d bytes): %.200s...\n",
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Response received (%d bytes): %.200s...\n",
                  (int)response.GetLength(), response.Get());
         ShowConsoleMsg(log_msg);
       }
@@ -860,8 +815,7 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
     WDL_FastString execution_result, execution_error;
 
     // Try to extract actions JSON from response
-    char *actions_json =
-        ExtractActionsJSON(response_json.Get(), (int)response_json.GetLength());
+    char *actions_json = ExtractActionsJSON(response_json.Get(), (int)response_json.GetLength());
 
     if (actions_json) {
       // Log extracted actions for debugging
@@ -870,23 +824,20 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char log_msg[512];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Extracted actions JSON: %s\n", actions_json);
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: Extracted actions JSON: %s\n", actions_json);
           ShowConsoleMsg(log_msg);
         }
       }
 
       // Execute the extracted actions
-      if (!MagdaActions::ExecuteActions(actions_json, execution_result,
-                                        execution_error)) {
+      if (!MagdaActions::ExecuteActions(actions_json, execution_result, execution_error)) {
         // Log error
         if (g_rec) {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
           if (ShowConsoleMsg) {
             char log_msg[512];
-            snprintf(log_msg, sizeof(log_msg),
-                     "MAGDA: Action execution failed: %s\n",
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Action execution failed: %s\n",
                      execution_error.Get());
             ShowConsoleMsg(log_msg);
           }
@@ -898,8 +849,7 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
           if (ShowConsoleMsg) {
             char log_msg[512];
-            snprintf(log_msg, sizeof(log_msg),
-                     "MAGDA: Actions executed successfully: %s\n",
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Actions executed successfully: %s\n",
                      execution_result.Get());
             ShowConsoleMsg(log_msg);
           }
@@ -910,19 +860,16 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
       // No "actions" field found - maybe the response IS the actions
       // array/object Try executing the whole response
       wdl_json_parser parser;
-      wdl_json_element *root =
-          parser.parse(response_json.Get(), (int)response_json.GetLength());
+      wdl_json_element *root = parser.parse(response_json.Get(), (int)response_json.GetLength());
       if (!parser.m_err && root && (root->is_array() || root->is_object())) {
-        if (!MagdaActions::ExecuteActions(response_json.Get(), execution_result,
-                                          execution_error)) {
+        if (!MagdaActions::ExecuteActions(response_json.Get(), execution_result, execution_error)) {
           // Log error
           if (g_rec) {
             void (*ShowConsoleMsg)(const char *msg) =
                 (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
             if (ShowConsoleMsg) {
               char log_msg[512];
-              snprintf(log_msg, sizeof(log_msg),
-                       "MAGDA: Action execution failed (fallback): %s\n",
+              snprintf(log_msg, sizeof(log_msg), "MAGDA: Action execution failed (fallback): %s\n",
                        execution_error.Get());
               ShowConsoleMsg(log_msg);
             }
@@ -949,8 +896,7 @@ bool MagdaHTTPClient::SendQuestion(const char *question,
 }
 
 bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
-                                       WDL_FastString &jwt_token_out,
-                                       WDL_FastString &error_msg) {
+                                       WDL_FastString &jwt_token_out, WDL_FastString &error_msg) {
   if (!email || !email[0] || !password || !password[0]) {
     error_msg.Set("Email and password are required.");
     return false;
@@ -986,13 +932,13 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
   // Use platform-specific HTTPS implementation
   WDL_FastString response;
 #ifdef _WIN32
-  if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json.Get(), request_json_len,
-                                response, error_msg, nullptr)) {
+  if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json.Get(), request_json_len, response,
+                                error_msg, nullptr)) {
     return false;
   }
 #else
-  if (!SendHTTPSRequest_Curl(url.Get(), request_json.Get(), request_json_len,
-                             response, error_msg, nullptr)) {
+  if (!SendHTTPSRequest_Curl(url.Get(), request_json.Get(), request_json_len, response, error_msg,
+                             nullptr)) {
     return false;
   }
 #endif
@@ -1007,8 +953,7 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
   // Extract JWT token from response
   // Response format: {"access_token": "...", "refresh_token": "..."}
   wdl_json_parser parser;
-  wdl_json_element *root =
-      parser.parse(response_str, (int)strlen(response_str));
+  wdl_json_element *root = parser.parse(response_str, (int)strlen(response_str));
   if (parser.m_err || !root) {
     error_msg.Set("Failed to parse response JSON");
     return false;
@@ -1035,8 +980,7 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
 
   // Also extract and store refresh_token if present
   wdl_json_element *refresh_elem = root->get_item_by_name("refresh_token");
-  if (refresh_elem && refresh_elem->m_value_string &&
-      refresh_elem->m_value[0]) {
+  if (refresh_elem && refresh_elem->m_value_string && refresh_elem->m_value[0]) {
     // Store refresh token via MagdaAuth
     MagdaAuth::StoreRefreshToken(refresh_elem->m_value);
   }
@@ -1044,8 +988,7 @@ bool MagdaHTTPClient::SendLoginRequest(const char *email, const char *password,
   return true;
 }
 
-bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token,
-                                         WDL_FastString &jwt_token_out,
+bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token, WDL_FastString &jwt_token_out,
                                          WDL_FastString &error_msg) {
   if (!refresh_token || !refresh_token[0]) {
     error_msg.Set("Refresh token is required");
@@ -1074,13 +1017,13 @@ bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token,
   // Use platform-specific HTTPS implementation
   WDL_FastString response;
 #ifdef _WIN32
-  if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json.Get(), request_json_len,
-                                response, error_msg, nullptr)) {
+  if (!SendHTTPSRequest_WinHTTP(url.Get(), request_json.Get(), request_json_len, response,
+                                error_msg, nullptr)) {
     return false;
   }
 #else
-  if (!SendHTTPSRequest_Curl(url.Get(), request_json.Get(), request_json_len,
-                             response, error_msg, nullptr)) {
+  if (!SendHTTPSRequest_Curl(url.Get(), request_json.Get(), request_json_len, response, error_msg,
+                             nullptr)) {
     return false;
   }
 #endif
@@ -1106,11 +1049,9 @@ bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token,
     void (*ShowConsoleMsg)(const char *msg) =
         (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
     if (ShowConsoleMsg) {
-      int preview_len =
-          strlen(response_str) > 200 ? 200 : (int)strlen(response_str);
+      int preview_len = strlen(response_str) > 200 ? 200 : (int)strlen(response_str);
       char log_msg[512];
-      snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: Refresh response (%d bytes): %.*s%s\n",
+      snprintf(log_msg, sizeof(log_msg), "MAGDA: Refresh response (%d bytes): %.*s%s\n",
                (int)strlen(response_str), preview_len, response_str,
                strlen(response_str) > 200 ? "..." : "");
       ShowConsoleMsg(log_msg);
@@ -1120,12 +1061,10 @@ bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token,
   // Extract new tokens from response
   // Response format: {"access_token": "...", "refresh_token": "..."}
   wdl_json_parser parser;
-  wdl_json_element *root =
-      parser.parse(response_str, (int)strlen(response_str));
+  wdl_json_element *root = parser.parse(response_str, (int)strlen(response_str));
   if (parser.m_err || !root) {
     char parse_error[256];
-    snprintf(parse_error, sizeof(parse_error),
-             "Failed to parse response JSON: %s",
+    snprintf(parse_error, sizeof(parse_error), "Failed to parse response JSON: %s",
              parser.m_err ? parser.m_err : "unknown error");
     error_msg.Set(parse_error);
 
@@ -1135,8 +1074,7 @@ bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token,
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg), "MAGDA: JSON parse error: %s\n",
-                 parse_error);
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: JSON parse error: %s\n", parse_error);
         ShowConsoleMsg(log_msg);
       }
     }
@@ -1160,8 +1098,7 @@ bool MagdaHTTPClient::SendRefreshRequest(const char *refresh_token,
 
   // Also extract and store new refresh_token if present
   wdl_json_element *refresh_elem = root->get_item_by_name("refresh_token");
-  if (refresh_elem && refresh_elem->m_value_string &&
-      refresh_elem->m_value[0]) {
+  if (refresh_elem && refresh_elem->m_value_string && refresh_elem->m_value[0]) {
     MagdaAuth::StoreRefreshToken(refresh_elem->m_value);
   }
 
@@ -1181,8 +1118,7 @@ struct CurlStreamData {
   WDL_FastString accumulated_data; // For storing response body on errors
 };
 
-static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
-                                         void *userdata) {
+static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
   if (!userdata || !ptr) {
     return 0; // Safety check
   }
@@ -1193,8 +1129,7 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
   data->accumulated_data.Append(ptr, (int)total_size);
 
   for (size_t i = 0; i < total_size; i++) {
-    if (ptr[i] == '\n' ||
-        data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
+    if (ptr[i] == '\n' || data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
       data->line_buffer[data->line_pos] = '\0';
       if (data->line_pos > 0) {
         // Process SSE line
@@ -1206,11 +1141,9 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
             void (*ShowConsoleMsg)(const char *msg) =
                 (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
             if (ShowConsoleMsg) {
-              int preview_len =
-                  strlen(json_data) > 150 ? 150 : (int)strlen(json_data);
+              int preview_len = strlen(json_data) > 150 ? 150 : (int)strlen(json_data);
               char log_msg[256];
-              snprintf(log_msg, sizeof(log_msg),
-                       "MAGDA: SSE data (%d bytes): %.*s%s\n",
+              snprintf(log_msg, sizeof(log_msg), "MAGDA: SSE data (%d bytes): %.*s%s\n",
                        (int)strlen(json_data), preview_len, json_data,
                        strlen(json_data) > 150 ? "..." : "");
               ShowConsoleMsg(log_msg);
@@ -1221,8 +1154,7 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
           // "action": {...} Check if it's a control event (done/error) or an
           // action
           wdl_json_parser parser;
-          wdl_json_element *root =
-              parser.parse(json_data, (int)strlen(json_data));
+          wdl_json_element *root = parser.parse(json_data, (int)strlen(json_data));
           if (!parser.m_err && root) {
             wdl_json_element *type_elem = root->get_item_by_name("type");
             if (type_elem && type_elem->m_value_string) {
@@ -1230,8 +1162,7 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
 
               if (strcmp(event_type, "action") == 0) {
                 // This is an action - extract the "action" field
-                wdl_json_element *action_elem =
-                    root->get_item_by_name("action");
+                wdl_json_element *action_elem = root->get_item_by_name("action");
                 if (action_elem) {
                   // Serialize the action object back to JSON string
                   // We need to get the raw JSON for the action object
@@ -1260,8 +1191,7 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
 
                               if (g_rec) {
                                 void (*ShowConsoleMsg)(const char *msg) =
-                                    (void (*)(const char *))g_rec->GetFunc(
-                                        "ShowConsoleMsg");
+                                    (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
                                 if (ShowConsoleMsg) {
                                   ShowConsoleMsg("MAGDA: Extracted action "
                                                  "JSON, calling callback\n");
@@ -1296,8 +1226,7 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
                   data->callback(json_data, data->user_data);
                 }
                 data->success = true;
-              } else if (strcmp(event_type, "chunk") == 0 ||
-                         strcmp(event_type, "line") == 0 ||
+              } else if (strcmp(event_type, "chunk") == 0 || strcmp(event_type, "line") == 0 ||
                          strcmp(event_type, "start") == 0) {
                 // Streaming events - forward to callback for processing
                 if (data->callback) {
@@ -1328,8 +1257,7 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
                 void (*ShowConsoleMsg)(const char *msg) =
                     (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
                 if (ShowConsoleMsg) {
-                  ShowConsoleMsg(
-                      "MAGDA: No type field, treating as raw action JSON\n");
+                  ShowConsoleMsg("MAGDA: No type field, treating as raw action JSON\n");
                 }
               }
               if (data->callback) {
@@ -1360,14 +1288,11 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
             void (*ShowConsoleMsg)(const char *msg) =
                 (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
             if (ShowConsoleMsg) {
-              int preview_len = strlen(data->line_buffer) > 50
-                                    ? 50
-                                    : (int)strlen(data->line_buffer);
+              int preview_len =
+                  strlen(data->line_buffer) > 50 ? 50 : (int)strlen(data->line_buffer);
               char log_msg[256];
-              snprintf(log_msg, sizeof(log_msg),
-                       "MAGDA: SSE line (not data:): %.*s%s\n", preview_len,
-                       data->line_buffer,
-                       strlen(data->line_buffer) > 50 ? "..." : "");
+              snprintf(log_msg, sizeof(log_msg), "MAGDA: SSE line (not data:): %.*s%s\n",
+                       preview_len, data->line_buffer, strlen(data->line_buffer) > 50 ? "..." : "");
               ShowConsoleMsg(log_msg);
             }
           }
@@ -1384,11 +1309,10 @@ static size_t curl_stream_write_callback(char *ptr, size_t size, size_t nmemb,
 #endif
 
 // Shared SSE POST helper used by streaming endpoints
-static bool SendSSEPostRequest(const char *url, const char *post_data,
-                               int post_data_len, const char *auth_token,
-                               MagdaHTTPClient::StreamActionCallback callback,
-                               void *user_data, WDL_FastString &error_msg,
-                               int timeout_seconds) {
+static bool SendSSEPostRequest(const char *url, const char *post_data, int post_data_len,
+                               const char *auth_token,
+                               MagdaHTTPClient::StreamActionCallback callback, void *user_data,
+                               WDL_FastString &error_msg, int timeout_seconds) {
 #ifdef _WIN32
   // Windows: WinHTTP streaming implementation
   HINTERNET hSession = nullptr;
@@ -1421,8 +1345,7 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
   }
 
   // Initialize WinHTTP
-  hSession = WinHttpOpen(L"MAGDA Reaper Extension/1.0",
-                         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+  hSession = WinHttpOpen(L"MAGDA Reaper Extension/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                          WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
   if (!hSession) {
     error_msg.Set("Failed to initialize WinHTTP");
@@ -1434,9 +1357,8 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
   WinHttpSetTimeouts(hSession, 30000, 30000, timeout_ms, timeout_ms);
 
   // Connect to server
-  int port = urlComp.nScheme == INTERNET_SCHEME_HTTPS
-                 ? INTERNET_DEFAULT_HTTPS_PORT
-                 : INTERNET_DEFAULT_HTTP_PORT;
+  int port = urlComp.nScheme == INTERNET_SCHEME_HTTPS ? INTERNET_DEFAULT_HTTPS_PORT
+                                                      : INTERNET_DEFAULT_HTTP_PORT;
   if (urlComp.nPort != 0) {
     port = urlComp.nPort;
   }
@@ -1459,10 +1381,9 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
   wchar_t *path_w = new wchar_t[path_len];
   MultiByteToWideChar(CP_UTF8, 0, path, -1, path_w, path_len);
 
-  hRequest = WinHttpOpenRequest(
-      hConnect, L"POST", path_w, nullptr, WINHTTP_NO_REFERER,
-      WINHTTP_DEFAULT_ACCEPT_TYPES,
-      urlComp.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0);
+  hRequest = WinHttpOpenRequest(hConnect, L"POST", path_w, nullptr, WINHTTP_NO_REFERER,
+                                WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                urlComp.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0);
   delete[] path_w;
 
   if (!hRequest) {
@@ -1484,19 +1405,16 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
              L"%S\r\nAccept: "
              L"text/event-stream\r\n",
              auth_token);
-    WinHttpAddRequestHeaders(hRequest, auth_w, (DWORD)-1,
-                             WINHTTP_ADDREQ_FLAG_ADD);
+    WinHttpAddRequestHeaders(hRequest, auth_w, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
     delete[] auth_w;
   } else {
-    wchar_t headers[] =
-        L"Content-Type: application/json\r\nAccept: text/event-stream\r\n";
-    WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1,
-                             WINHTTP_ADDREQ_FLAG_ADD);
+    wchar_t headers[] = L"Content-Type: application/json\r\nAccept: text/event-stream\r\n";
+    WinHttpAddRequestHeaders(hRequest, headers, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
   }
 
   // Send request
-  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                          (LPVOID)post_data, post_data_len, post_data_len, 0)) {
+  if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)post_data,
+                          post_data_len, post_data_len, 0)) {
     error_msg.Set("Failed to send request");
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
@@ -1516,17 +1434,15 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
   // Check status code
   DWORD statusCode = 0;
   DWORD statusCodeSize = sizeof(statusCode);
-  WinHttpQueryHeaders(hRequest,
-                      WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode,
-                      &statusCodeSize, WINHTTP_NO_HEADER_INDEX);
+  WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                      WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize,
+                      WINHTTP_NO_HEADER_INDEX);
 
   if (statusCode != 200) {
     // Read response body for error details
     DWORD bytesAvailable = 0;
     WDL_FastString error_response_body;
-    while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) &&
-           bytesAvailable > 0) {
+    while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
       char *buffer = (char *)malloc(bytesAvailable + 1);
       if (!buffer)
         break;
@@ -1540,8 +1456,8 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
 
     char error_buf[1024];
     if (error_response_body.GetLength() > 0) {
-      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu: %.500s",
-               statusCode, error_response_body.Get());
+      snprintf(error_buf, sizeof(error_buf), "HTTP error %lu: %.500s", statusCode,
+               error_response_body.Get());
     } else {
       snprintf(error_buf, sizeof(error_buf), "HTTP error %lu", statusCode);
     }
@@ -1570,8 +1486,7 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
   char read_buffer[4096];
   DWORD bytesRead = 0;
 
-  while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) &&
-         bytesAvailable > 0) {
+  while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0) {
     if (bytesAvailable > sizeof(read_buffer)) {
       bytesAvailable = sizeof(read_buffer);
     }
@@ -1593,8 +1508,7 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
             // parsing work Check if it's a control event (has "type" field) or
             // an action (raw action JSON)
             wdl_json_parser parser;
-            wdl_json_element *root =
-                parser.parse(json_data, (int)strlen(json_data));
+            wdl_json_element *root = parser.parse(json_data, (int)strlen(json_data));
             if (!parser.m_err && root) {
               wdl_json_element *type_elem = root->get_item_by_name("type");
               if (type_elem && type_elem->m_value_string) {
@@ -1604,8 +1518,7 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
                   success = true;
                   break;
                 } else if (strcmp(event_type, "error") == 0) {
-                  wdl_json_element *msg_elem =
-                      root->get_item_by_name("message");
+                  wdl_json_element *msg_elem = root->get_item_by_name("message");
                   if (msg_elem && msg_elem->m_value_string) {
                     error_msg.Set(msg_elem->m_value);
                   }
@@ -1674,8 +1587,7 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
   headers = curl_slist_append(headers, "Accept: text/event-stream");
   if (auth_token && strlen(auth_token) > 0) {
     char auth_header[512];
-    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
-             auth_token);
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", auth_token);
     headers = curl_slist_append(headers, auth_header);
 
     // Log token usage for debugging
@@ -1696,8 +1608,7 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
       void (*ShowConsoleMsg)(const char *msg) =
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
       if (ShowConsoleMsg) {
-        ShowConsoleMsg(
-            "MAGDA: WARNING - No JWT token set for streaming request\n");
+        ShowConsoleMsg("MAGDA: WARNING - No JWT token set for streaming request\n");
       }
     }
   }
@@ -1721,25 +1632,23 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
           wdl_json_element *error_elem = root->get_item_by_name("error");
           if (error_elem && error_elem->m_value_string) {
             char error_buf[1024];
-            snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %s",
-                     response_code, error_elem->m_value);
+            snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %s", response_code,
+                     error_elem->m_value);
             error_msg.Set(error_buf);
           } else {
             // No "error" field, use full response body (truncated)
             int preview_len = error_body_len > 500 ? 500 : error_body_len;
             char error_buf[1024];
-            snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.*s%s",
-                     response_code, preview_len, error_body,
-                     error_body_len > 500 ? "..." : "");
+            snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.*s%s", response_code,
+                     preview_len, error_body, error_body_len > 500 ? "..." : "");
             error_msg.Set(error_buf);
           }
         } else {
           // Not JSON or parse failed, use raw response (truncated)
           int preview_len = error_body_len > 500 ? 500 : error_body_len;
           char error_buf[1024];
-          snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.*s%s",
-                   response_code, preview_len, error_body,
-                   error_body_len > 500 ? "..." : "");
+          snprintf(error_buf, sizeof(error_buf), "HTTP error %ld: %.*s%s", response_code,
+                   preview_len, error_body, error_body_len > 500 ? "..." : "");
           error_msg.Set(error_buf);
         }
       } else {
@@ -1754,15 +1663,13 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char log_msg[2048];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Request failed with HTTP %ld\n", response_code);
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: Request failed with HTTP %ld\n",
+                   response_code);
           ShowConsoleMsg(log_msg);
           if (error_body && error_body_len > 0) {
             int preview_len = error_body_len > 1000 ? 1000 : error_body_len;
-            snprintf(log_msg, sizeof(log_msg),
-                     "MAGDA: Error response (%d bytes): %.*s%s\n",
-                     error_body_len, preview_len, error_body,
-                     error_body_len > 1000 ? "..." : "");
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Error response (%d bytes): %.*s%s\n",
+                     error_body_len, preview_len, error_body, error_body_len > 1000 ? "..." : "");
             ShowConsoleMsg(log_msg);
           }
         }
@@ -1785,10 +1692,8 @@ static bool SendSSEPostRequest(const char *url, const char *post_data,
 #endif
 }
 
-bool MagdaHTTPClient::SendQuestionStream(const char *question,
-                                         StreamActionCallback callback,
-                                         void *user_data,
-                                         WDL_FastString &error_msg) {
+bool MagdaHTTPClient::SendQuestionStream(const char *question, StreamActionCallback callback,
+                                         void *user_data, WDL_FastString &error_msg) {
   if (!question || !question[0]) {
     error_msg.Set("Empty question");
     return false;
@@ -1813,21 +1718,17 @@ bool MagdaHTTPClient::SendQuestionStream(const char *question,
   url.Set(m_backend_url.Get());
   url.Append("/api/v1/chat"); // Use non-streaming endpoint with CFG
 
-  const char *auth_token =
-      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+  const char *auth_token = m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
 
-  bool success =
-      SendSSEPostRequest(url.Get(), request_json, request_json_len, auth_token,
-                         callback, user_data, error_msg, 60);
+  bool success = SendSSEPostRequest(url.Get(), request_json, request_json_len, auth_token, callback,
+                                    user_data, error_msg, 60);
   free(request_json);
   return success;
 }
 
-bool MagdaHTTPClient::SendPOSTStream(const char *endpoint,
-                                     const char *json_data,
-                                     StreamActionCallback callback,
-                                     void *user_data, WDL_FastString &error_msg,
-                                     int timeout_seconds) {
+bool MagdaHTTPClient::SendPOSTStream(const char *endpoint, const char *json_data,
+                                     StreamActionCallback callback, void *user_data,
+                                     WDL_FastString &error_msg, int timeout_seconds) {
   if (!endpoint || !endpoint[0]) {
     error_msg.Set("Endpoint required for streaming");
     return false;
@@ -1845,16 +1746,13 @@ bool MagdaHTTPClient::SendPOSTStream(const char *endpoint,
   url.Set(m_backend_url.Get());
   url.Append(endpoint);
 
-  const char *auth_token =
-      m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
+  const char *auth_token = m_jwt_token.GetLength() > 0 ? m_jwt_token.Get() : nullptr;
 
-  return SendSSEPostRequest(url.Get(), json_data, (int)strlen(json_data),
-                            auth_token, callback, user_data, error_msg,
-                            timeout_seconds > 0 ? timeout_seconds : 60);
+  return SendSSEPostRequest(url.Get(), json_data, (int)strlen(json_data), auth_token, callback,
+                            user_data, error_msg, timeout_seconds > 0 ? timeout_seconds : 60);
 }
 
-bool MagdaHTTPClient::CheckHealth(WDL_FastString &error_msg,
-                                  int timeout_seconds) {
+bool MagdaHTTPClient::CheckHealth(WDL_FastString &error_msg, int timeout_seconds) {
 #ifndef _WIN32
   // Use curl for macOS/Linux
   CURL *curl = curl_easy_init();
@@ -1869,16 +1767,14 @@ bool MagdaHTTPClient::CheckHealth(WDL_FastString &error_msg,
   url.Append("/health");
 
   curl_easy_setopt(curl, CURLOPT_URL, url.Get());
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT,
-                   timeout_seconds > 0 ? timeout_seconds : 5);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout_seconds > 0 ? timeout_seconds : 5);
   curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3);
   curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
   // We don't care about the response body, just if we can connect
   curl_easy_setopt(curl, CURLOPT_NOBODY, 0L);
   curl_easy_setopt(
-      curl, CURLOPT_WRITEFUNCTION,
-      +[](char *, size_t size, size_t nmemb, void *) -> size_t {
+      curl, CURLOPT_WRITEFUNCTION, +[](char *, size_t size, size_t nmemb, void *) -> size_t {
         return size * nmemb; // Discard body
       });
 

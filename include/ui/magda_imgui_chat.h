@@ -51,9 +51,7 @@ public:
   void Render();
 
   // Set plugin scanner for autocomplete
-  void SetPluginScanner(MagdaPluginScanner *scanner) {
-    m_pluginScanner = scanner;
-  }
+  void SetPluginScanner(MagdaPluginScanner *scanner) { m_pluginScanner = scanner; }
 
   // Callbacks
   using SendCallback = std::function<void(const std::string &message)>;
@@ -82,14 +80,12 @@ public:
 
 private:
   // ReaImGui function pointers
-  void *(*m_ImGui_CreateContext)(const char *label,
-                                 int *config_flagsInOptional);
+  void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
   int (*m_ImGui_ConfigFlags_DockingEnable)();
   bool (*m_ImGui_Begin)(void *ctx, const char *name, bool *p_openInOutOptional,
                         int *flagsInOptional);
   void (*m_ImGui_End)(void *ctx);
-  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h,
-                                    int *condInOptional);
+  void (*m_ImGui_SetNextWindowSize)(void *ctx, double size_w, double size_h, int *condInOptional);
   void (*m_ImGui_Text)(void *ctx, const char *text);
   void (*m_ImGui_TextColored)(void *ctx, int col_rgba, const char *text);
   void (*m_ImGui_TextWrapped)(void *ctx, const char *text);
@@ -100,19 +96,15 @@ private:
   void (*m_ImGui_SameLine)(void *ctx, double *offset_from_start_xInOptional,
                            double *spacingInOptional);
   void (*m_ImGui_Separator)(void *ctx);
-  bool (*m_ImGui_BeginChild)(void *ctx, const char *str_id,
-                             double *size_wInOptional, double *size_hInOptional,
-                             int *child_flagsInOptional,
+  bool (*m_ImGui_BeginChild)(void *ctx, const char *str_id, double *size_wInOptional,
+                             double *size_hInOptional, int *child_flagsInOptional,
                              int *window_flagsInOptional);
   void (*m_ImGui_EndChild)(void *ctx);
-  bool (*m_ImGui_BeginPopup)(void *ctx, const char *str_id,
-                             int *flagsInOptional);
+  bool (*m_ImGui_BeginPopup)(void *ctx, const char *str_id, int *flagsInOptional);
   void (*m_ImGui_EndPopup)(void *ctx);
-  void (*m_ImGui_OpenPopup)(void *ctx, const char *str_id,
-                            int *flagsInOptional);
+  void (*m_ImGui_OpenPopup)(void *ctx, const char *str_id, int *flagsInOptional);
   void (*m_ImGui_CloseCurrentPopup)(void *ctx);
-  bool (*m_ImGui_Selectable)(void *ctx, const char *label,
-                             bool *p_selectedInOutOptional,
+  bool (*m_ImGui_Selectable)(void *ctx, const char *label, bool *p_selectedInOutOptional,
                              int *flagsInOptional, double *size_wInOptional,
                              double *size_hInOptional);
   bool (*m_ImGui_IsWindowAppearing)(void *ctx);
@@ -125,29 +117,22 @@ private:
   void (*m_ImGui_PushStyleColor)(void *ctx, int idx, int col_rgba);
   void (*m_ImGui_PopStyleColor)(void *ctx, int *countInOptional);
   // Dock-related functions
-  bool (*m_ImGui_BeginPopupContextWindow)(void *ctx,
-                                          const char *str_idInOptional,
+  bool (*m_ImGui_BeginPopupContextWindow)(void *ctx, const char *str_idInOptional,
                                           int *popup_flagsInOptional);
   bool (*m_ImGui_IsWindowDocked)(void *ctx);
-  void (*m_ImGui_SetNextWindowDockID)(void *ctx, int dock_id,
-                                      int *condInOptional);
-  bool (*m_ImGui_MenuItem)(void *ctx, const char *label,
-                           const char *shortcutInOptional,
+  void (*m_ImGui_SetNextWindowDockID)(void *ctx, int dock_id, int *condInOptional);
+  bool (*m_ImGui_MenuItem)(void *ctx, const char *label, const char *shortcutInOptional,
                            bool *p_selectedInOptional, bool *enabledInOptional);
   // Table/column functions
-  bool (*m_ImGui_BeginTable)(void *ctx, const char *str_id, int column,
-                             int *flagsInOptional,
-                             double *outer_size_wInOptional,
-                             double *outer_size_hInOptional,
+  bool (*m_ImGui_BeginTable)(void *ctx, const char *str_id, int column, int *flagsInOptional,
+                             double *outer_size_wInOptional, double *outer_size_hInOptional,
                              double *inner_widthInOptional);
   void (*m_ImGui_EndTable)(void *ctx);
   void (*m_ImGui_TableNextRow)(void *ctx, int *row_flagsInOptional,
                                double *min_row_heightInOptional);
   bool (*m_ImGui_TableNextColumn)(void *ctx);
-  void (*m_ImGui_TableSetupColumn)(void *ctx, const char *label,
-                                   int *flagsInOptional,
-                                   double *init_width_or_weightInOptional,
-                                   int *user_idInOptional);
+  void (*m_ImGui_TableSetupColumn)(void *ctx, const char *label, int *flagsInOptional,
+                                   double *init_width_or_weightInOptional, int *user_idInOptional);
   void (*m_ImGui_TableHeadersRow)(void *ctx);
   // Layout helpers
   void (*m_ImGui_GetContentRegionAvail)(void *ctx, double *wOut, double *hOut);
@@ -170,10 +155,10 @@ private:
   bool m_scrollToBottom = false;
 
   // Streaming text display (for typewriter effect on responses)
-  std::string m_streamingFullText;      // Full text to stream
-  size_t m_streamingCharIndex = 0;      // Current position in text
-  double m_lastStreamCharTime = 0.0;    // Last time we added a character
-  bool m_isStreamingText = false;       // Whether we're currently streaming
+  std::string m_streamingFullText;   // Full text to stream
+  size_t m_streamingCharIndex = 0;   // Current position in text
+  double m_lastStreamCharTime = 0.0; // Last time we added a character
+  bool m_isStreamingText = false;    // Whether we're currently streaming
 
   // TRUE streaming state for mix analysis (SSE streaming from API)
   bool m_isMixAnalysisStreaming = false;
@@ -217,8 +202,8 @@ private:
   bool m_asyncPending = false;
   bool m_asyncResultReady = false;
   bool m_asyncSuccess = false;
-  bool m_cancelRequested = false;  // Flag to cancel ongoing request
-  bool m_directOpenAI = false;     // True when using direct OpenAI (DSL result)
+  bool m_cancelRequested = false; // Flag to cancel ongoing request
+  bool m_directOpenAI = false;    // True when using direct OpenAI (DSL result)
   std::string m_asyncResponseJson;
   std::string m_asyncErrorMsg;
   std::string m_pendingQuestion;               // Question being processed

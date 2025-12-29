@@ -136,19 +136,16 @@ struct DSPAnalysisResult {
 class MagdaDSPAnalyzer {
 public:
   // Analyze a specific track (pre-FX or post-FX audio)
-  static DSPAnalysisResult AnalyzeTrack(int trackIndex,
-                                        const DSPAnalysisConfig &config);
+  static DSPAnalysisResult AnalyzeTrack(int trackIndex, const DSPAnalysisConfig &config);
 
   // Analyze a specific media item
-  static DSPAnalysisResult AnalyzeItem(MediaItem *item,
-                                       const DSPAnalysisConfig &config);
+  static DSPAnalysisResult AnalyzeItem(MediaItem *item, const DSPAnalysisConfig &config);
 
   // Analyze the master track
   static DSPAnalysisResult AnalyzeMaster(const DSPAnalysisConfig &config);
 
   // Read raw audio samples from track (MUST be called from main thread)
-  static RawAudioData ReadTrackSamples(int trackIndex,
-                                       const DSPAnalysisConfig &config);
+  static RawAudioData ReadTrackSamples(int trackIndex, const DSPAnalysisConfig &config);
 
   // Analyze pre-loaded samples (can be called from background thread)
   static DSPAnalysisResult AnalyzeSamples(const RawAudioData &audioData,
@@ -162,34 +159,28 @@ public:
 
 private:
   // Audio buffer helpers
-  static bool GetAudioSamples(MediaItem_Take *take, std::vector<float> &samples,
-                              int &sampleRate, int &channels,
-                              const DSPAnalysisConfig &config);
+  static bool GetAudioSamples(MediaItem_Take *take, std::vector<float> &samples, int &sampleRate,
+                              int &channels, const DSPAnalysisConfig &config);
 
   // FFT analysis
-  static void PerformFFT(const std::vector<float> &samples, int sampleRate,
-                         int fftSize, std::vector<float> &frequencies,
-                         std::vector<float> &magnitudes);
+  static void PerformFFT(const std::vector<float> &samples, int sampleRate, int fftSize,
+                         std::vector<float> &frequencies, std::vector<float> &magnitudes);
 
   // Simple DFT for when REAPER FFT isn't available
-  static void SimpleDFT(const float *input, int N, float *realOut,
-                        float *imagOut);
+  static void SimpleDFT(const float *input, int N, float *realOut, float *imagOut);
 
   // Calculate frequency bands from FFT
   static void CalculateFrequencyBands(const std::vector<float> &frequencies,
-                                      const std::vector<float> &magnitudes,
-                                      FrequencyBands &bands);
+                                      const std::vector<float> &magnitudes, FrequencyBands &bands);
 
   // Calculate 1/3 octave EQ profile
   static void CalculateEQProfile(const std::vector<float> &frequencies,
-                                 const std::vector<float> &magnitudes,
-                                 std::vector<float> &eqFreqs,
+                                 const std::vector<float> &magnitudes, std::vector<float> &eqFreqs,
                                  std::vector<float> &eqMags);
 
   // Detect peaks in spectrum
   static void DetectPeaks(const std::vector<float> &frequencies,
-                          const std::vector<float> &magnitudes,
-                          std::vector<FrequencyPeak> &peaks,
+                          const std::vector<float> &magnitudes, std::vector<FrequencyPeak> &peaks,
                           float thresholdDb = -60.0f);
 
   // Detect resonances (problematic peaks)
@@ -198,26 +189,22 @@ private:
                                std::vector<Resonance> &resonances);
 
   // Calculate spectral features
-  static SpectralFeatures
-  CalculateSpectralFeatures(const std::vector<float> &frequencies,
-                            const std::vector<float> &magnitudes);
+  static SpectralFeatures CalculateSpectralFeatures(const std::vector<float> &frequencies,
+                                                    const std::vector<float> &magnitudes);
 
   // Calculate loudness metrics
-  static LoudnessAnalysis CalculateLoudness(const std::vector<float> &samples,
-                                            int sampleRate, int channels);
-
-  // Calculate dynamics metrics
-  static DynamicsAnalysis CalculateDynamics(const std::vector<float> &samples,
+  static LoudnessAnalysis CalculateLoudness(const std::vector<float> &samples, int sampleRate,
                                             int channels);
 
+  // Calculate dynamics metrics
+  static DynamicsAnalysis CalculateDynamics(const std::vector<float> &samples, int channels);
+
   // Calculate stereo metrics
-  static StereoAnalysis CalculateStereo(const std::vector<float> &samples,
-                                        int channels);
+  static StereoAnalysis CalculateStereo(const std::vector<float> &samples, int channels);
 
   // Calculate transient metrics
-  static TransientAnalysis
-  CalculateTransients(const std::vector<float> &samples, int sampleRate,
-                      int channels);
+  static TransientAnalysis CalculateTransients(const std::vector<float> &samples, int sampleRate,
+                                               int channels);
 
   // Utility: dB conversion
   static float LinearToDb(float linear) {
@@ -229,12 +216,9 @@ private:
   static float DbToLinear(float db) { return powf(10.0f, db / 20.0f); }
 
   // Utility: Hann window
-  static float HannWindow(int n, int N) {
-    return 0.5f * (1.0f - cosf(2.0f * M_PI * n / (N - 1)));
-  }
+  static float HannWindow(int n, int N) { return 0.5f * (1.0f - cosf(2.0f * M_PI * n / (N - 1))); }
 
   // JSON helpers
   static void AppendFloatArray(WDL_FastString &json, const char *name,
-                               const std::vector<float> &arr,
-                               bool first = false);
+                               const std::vector<float> &arr, bool first = false);
 };

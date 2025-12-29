@@ -53,18 +53,13 @@ public:
 
   // Resolve a canonical parameter name to an index for a plugin
   // Returns -1 if not found
-  int ResolveParamAlias(const std::string &plugin_key,
-                        const std::string &alias) const;
+  int ResolveParamAlias(const std::string &plugin_key, const std::string &alias) const;
 
   // Get all mappings
-  const std::map<std::string, ParamMapping> &GetAllMappings() const {
-    return m_mappings;
-  }
+  const std::map<std::string, ParamMapping> &GetAllMappings() const { return m_mappings; }
 
   // Get canonical param names for suggestions
-  static const std::vector<std::string> &GetCanonicalParamNames() {
-    return CANONICAL_PARAM_NAMES;
-  }
+  static const std::vector<std::string> &GetCanonicalParamNames() { return CANONICAL_PARAM_NAMES; }
 
 private:
   std::map<std::string, ParamMapping> m_mappings; // plugin_key -> mapping
