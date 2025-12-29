@@ -1,8 +1,11 @@
 #include "magda_imgui_chat.h"
 #include "../WDL/WDL/jsonparse.h"
+#include "../api/magda_openai.h"
+#include "../dsl/magda_dsl_interpreter.h"
 #include "magda_actions.h"
 #include "magda_api_client.h"
 #include "magda_bounce_workflow.h"
+#include "magda_imgui_api_keys.h"
 #include "magda_imgui_login.h"
 #include "magda_imgui_settings.h"
 #include "magda_plugin_scanner.h"
@@ -1755,6 +1758,82 @@ void MagdaImGuiChat::ClearStreamingBuffer() {
   }
 }
 
+void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
+  // Get REAPER state snapshot on main thread
+  char *stateJson = MagdaState::GetStateSnapshot();
+  std::string stateStr = stateJson ? stateJson : "{}";
+  if (stateJson) {
+    free(stateJson);
+  }
+
+  // Store the pending state
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    m_pendingQuestion = question;
+    m_asyncPending = true;
+    m_asyncResultReady = false;
+    m_asyncSuccess = false;
+    m_cancelRequested = false;
+    m_directOpenAI = true;  // Mark as direct OpenAI (DSL result)
+    m_asyncResponseJson.clear();
+    m_asyncErrorMsg.clear();
+    m_streamingActions.clear();
+  }
+
+  // Wait for any previous thread to finish
+  if (m_asyncThread.joinable()) {
+    m_asyncThread.join();
+  }
+
+  // Start async thread for OpenAI request
+  m_asyncThread = std::thread([this, question, stateStr]() {
+    MagdaOpenAI *openai = GetMagdaOpenAI();
+    if (!openai) {
+      std::lock_guard<std::mutex> lock(m_asyncMutex);
+      m_asyncSuccess = false;
+      m_asyncErrorMsg = "OpenAI client not available";
+      m_asyncResultReady = true;
+      m_asyncPending = false;
+      return;
+    }
+
+    // System prompt for REAPER DSL generation
+    const char *systemPrompt =
+        "You are MAGDA, an AI assistant for REAPER DAW. Generate DSL commands "
+        "to control REAPER based on the user's request. The DSL syntax is:\n"
+        "- track(name=\"...\").new() - Create a new track\n"
+        "- track(name=\"...\").insert_item(start=<bar>, length=<bars>) - Insert a media item\n"
+        "- track(index=N).select() - Select a track by index\n"
+        "- track(name=\"...\").set_volume(db=<value>) - Set track volume\n"
+        "- track(name=\"...\").set_pan(value=<-1 to 1>) - Set track pan\n"
+        "- track(name=\"...\").mute() / .unmute() / .solo() / .unsolo()\n"
+        "Output ONLY valid DSL commands, one per line.";
+
+    // Generate DSL using OpenAI with grammar constraints
+    WDL_FastString dslCode;
+    WDL_FastString errorMsg;
+    bool success = openai->GenerateDSLWithState(
+        question.c_str(), systemPrompt, stateStr.c_str(), dslCode, errorMsg);
+
+    if (success && dslCode.GetLength() > 0) {
+      // Store the DSL for execution on main thread
+      {
+        std::lock_guard<std::mutex> lock(m_asyncMutex);
+        m_asyncSuccess = true;
+        m_asyncResponseJson = dslCode.Get();  // Store DSL code
+        m_asyncResultReady = true;
+        m_asyncPending = false;
+      }
+    } else {
+      std::lock_guard<std::mutex> lock(m_asyncMutex);
+      m_asyncSuccess = false;
+      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Failed to generate DSL";
+      m_asyncResultReady = true;
+      m_asyncPending = false;
+    }
+  });
+}
+
 void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Don't start a new request if one is already pending
   {
@@ -1767,11 +1846,22 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Set busy state and start spinner animation
   m_busy = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-  SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
   ClearStreamingBuffer();                // Clear any previous streaming content
 
   // Reset mix analysis phase for regular chat requests (show generic "Processing...")
   MagdaBounceWorkflow::SetCurrentPhase(MIX_PHASE_IDLE);
+
+  // Check if OpenAI API key is configured - use direct OpenAI if available
+  MagdaOpenAI* openai = GetMagdaOpenAI();
+  if (openai && openai->HasAPIKey()) {
+    // Use direct OpenAI API
+    SetAPIStatus("OpenAI Direct", 0x88FF88FF); // Green
+    StartDirectOpenAIRequest(question);
+    return;
+  }
+
+  // Fall back to Go backend
+  SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
 
   // Set backend URL from settings
   const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
@@ -2220,47 +2310,84 @@ void MagdaImGuiChat::ProcessAsyncResult() {
     m_asyncThread.join();
   }
 
+  // Check if this is a direct OpenAI (DSL) result
+  bool isDSL = false;
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    isDSL = m_directOpenAI;
+    m_directOpenAI = false;  // Reset for next request
+  }
+
   // Process final result on the MAIN thread
   if (success) {
-    // For streaming: the buffer should contain formatted action messages
-    // ClearStreamingBuffer adds buffer content to chat history
-    bool hadStreamingContent = !m_streamingBuffer.empty();
-    ClearStreamingBuffer();
-
-    // Only add summary if streaming buffer was empty (non-streaming response)
-    // For streaming, the actions were already formatted and displayed
-    if (!hadStreamingContent) {
-      // Extract summary of what was done from the response JSON
-      std::string summary = ExtractActionSummary(responseJson.c_str());
-      if (!summary.empty()) {
-        AddAssistantMessage(summary);
-      } else {
-        // Fallback: show action count
-        char summary_msg[256];
-        int action_count = 0;
-        if (!responseJson.empty()) {
-          char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
-              responseJson.c_str(), (int)responseJson.length());
-          if (actions_json) {
-            // Count actions (rough estimate)
-            for (const char *p = actions_json; *p; p++) {
-              if (strncmp(p, "\"action\":", 9) == 0) {
-                action_count++;
-              }
-            }
-            free(actions_json);
-          }
-        }
-        if (action_count > 0) {
-          snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).",
-                   action_count);
-          AddAssistantMessage(summary_msg);
-        } else {
-          AddAssistantMessage("Done.");
+    // For direct OpenAI: execute DSL code
+    if (isDSL && !responseJson.empty()) {
+      // Log the DSL code we received
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[2048];
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: OpenAI generated DSL:\n%s\n",
+                   responseJson.c_str());
+          ShowConsoleMsg(log_msg);
         }
       }
+
+      // Execute the DSL code
+      MagdaDSL::Interpreter interpreter;
+      bool dslSuccess = interpreter.Execute(responseJson.c_str());
+
+      if (dslSuccess) {
+        AddAssistantMessage("Done (via OpenAI Direct).");
+        SetAPIStatus("OpenAI Direct", 0x88FF88FF); // Green
+      } else {
+        std::string errorStr = "DSL Error: ";
+        errorStr += interpreter.GetError();
+        AddAssistantMessage(errorStr);
+        SetAPIStatus("DSL Error", 0xFF6666FF); // Red
+      }
+    } else {
+      // For streaming from Go backend: the buffer should contain formatted action messages
+      // ClearStreamingBuffer adds buffer content to chat history
+      bool hadStreamingContent = !m_streamingBuffer.empty();
+      ClearStreamingBuffer();
+
+      // Only add summary if streaming buffer was empty (non-streaming response)
+      // For streaming, the actions were already formatted and displayed
+      if (!hadStreamingContent) {
+        // Extract summary of what was done from the response JSON
+        std::string summary = ExtractActionSummary(responseJson.c_str());
+        if (!summary.empty()) {
+          AddAssistantMessage(summary);
+        } else {
+          // Fallback: show action count
+          char summary_msg[256];
+          int action_count = 0;
+          if (!responseJson.empty()) {
+            char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
+                responseJson.c_str(), (int)responseJson.length());
+            if (actions_json) {
+              // Count actions (rough estimate)
+              for (const char *p = actions_json; *p; p++) {
+                if (strncmp(p, "\"action\":", 9) == 0) {
+                  action_count++;
+                }
+              }
+              free(actions_json);
+            }
+          }
+          if (action_count > 0) {
+            snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).",
+                     action_count);
+            AddAssistantMessage(summary_msg);
+          } else {
+            AddAssistantMessage("Done.");
+          }
+        }
+      }
+      SetAPIStatus("Connected", 0x88FF88FF); // Green
     }
-    SetAPIStatus("Connected", 0x88FF88FF); // Green
   } else {
     // Error - show more context
     ClearStreamingBuffer();
