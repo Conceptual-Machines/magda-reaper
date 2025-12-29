@@ -54,16 +54,9 @@ jobs:
 
   build:
     name: Build Extension
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            artifact_name: reaper_magda.so
-          - os: macos-latest
-            artifact_name: reaper_magda.dylib
+    # Only build on macOS - Linux has SWELL min/max macro conflicts with STL
+    # Windows support can be added later with proper NOMINMAX handling
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository
@@ -71,14 +64,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install dependencies (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential libcurl4-openssl-dev
-
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
+      - name: Install dependencies
         run: |
           brew install cmake
 
@@ -93,6 +79,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: build/${{ matrix.artifact_name }}
+          name: reaper_magda.dylib
+          path: build/reaper_magda.dylib
           if-no-files-found: warn
