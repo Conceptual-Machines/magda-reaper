@@ -1,53 +1,87 @@
-# MAGDA REAPER Integration Tests
+# MAGDA REAPER Tests
 
-Integration tests for the MAGDA REAPER plugin using REAPER's CLI and Lua scripting.
+This directory contains both unit tests and integration tests for the MAGDA REAPER plugin.
 
-## Overview
+## Test Types
 
-These tests run REAPER in headless mode and execute Lua scripts that test plugin functionality. This allows for automated testing without manual interaction.
+### Unit Tests (`tests/unit/`)
 
-## Running Tests
+Unit tests run **without REAPER** and can be executed in CI environments (GitHub Actions).
 
-### Quick Start
+**What's tested:**
+- DSL Tokenizer - parsing DSL input into tokens
+- Params class - parameter map functionality
+- JSON parsing - WDL JSON parser for API responses
+
+**Running unit tests:**
 
 ```bash
-cd magda-reaper
+cd tests/unit
+cmake -B build .
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Or use the convenience script:
+```bash
+./tests/run_unit_tests.sh
+```
+
+### Integration Tests (`tests/*.lua`)
+
+Integration tests run **inside REAPER** and test actual plugin functionality.
+
+**What's tested:**
+- REAPER API interactions
+- MAGDA action execution
+- DSL interpretation with real tracks/clips
+
+**Running integration tests:**
+
+```bash
 ./tests/run_tests.sh
 ```
 
-### Manual Execution
+This will:
+1. Open REAPER (window appears on macOS/Windows)
+2. Execute test Lua scripts
+3. Close REAPER when tests complete
 
-You can also run tests manually:
+## CI/CD
 
-```bash
-# Run a specific test script
-/Applications/REAPER.app/Contents/MacOS/REAPER \
-  -nosplash \
-  -new \
-  -ReaScript tests/integration_test.lua \
-  -close:save:exit
+Unit tests run automatically on every push/PR via GitHub Actions:
+- Tests run on Ubuntu and macOS
+- No REAPER required
+- Fast feedback (~1-2 minutes)
+
+Integration tests are intended for local development only (require REAPER installation).
+
+## Writing Tests
+
+### Unit Tests
+
+Add new test files to `tests/unit/`:
+
+```cpp
+#include <gtest/gtest.h>
+
+TEST(MyFeature, DoesExpectedBehavior) {
+    // Arrange
+    MyClass obj;
+
+    // Act
+    auto result = obj.DoSomething();
+
+    // Assert
+    EXPECT_EQ(result, expected);
+}
 ```
 
-## Test Structure
+Update `tests/unit/CMakeLists.txt` to include new test executables.
 
-- `integration_test.lua` - Basic REAPER API tests (direct API calls)
-- `magda_integration_test.lua` - **MAGDA action tests** (tests plugin functionality)
-- `run_tests.sh` - Test runner script that handles setup and execution
-- `test_projects/` - Directory for test project files (created automatically)
+### Integration Tests
 
-## Testing MAGDA Commands Headlessly
-
-The plugin exposes a test command (`MAGDA: Test Execute Action`) that allows Lua scripts to execute MAGDA actions:
-
-1. **Store action JSON** in project state: `reaper.SetProjExtState(0, "MAGDA_TEST", "ACTION_JSON", json)`
-2. **Execute command**: `reaper.Main_OnCommand(cmd_id, 0)`
-3. **Read result**: `reaper.GetProjExtState(0, "MAGDA_TEST", "RESULT")` or `"ERROR"`
-
-This allows full headless testing of MAGDA functionality without UI interaction.
-
-## Writing New Tests
-
-Add test functions to `integration_test.lua`:
+Add test functions to `magda_integration_test.lua`:
 
 ```lua
 function test_my_new_action()
@@ -56,51 +90,24 @@ function test_my_new_action()
   -- Setup
   local track = reaper.GetTrack(0, 0)
 
-  -- Execute action (via plugin or direct API)
-  -- ...
+  -- Execute MAGDA action via plugin
+  local json = '{"action": "my_action", "params": {...}}'
+  reaper.SetProjExtState(0, "MAGDA_TEST", "ACTION_JSON", json)
+  reaper.Main_OnCommand(cmd_id, 0)
+
+  -- Read result
+  local _, result = reaper.GetProjExtState(0, "MAGDA_TEST", "RESULT")
 
   -- Assert
-  assert(condition, "Test description")
-
-  -- Cleanup
-  -- ...
+  assert(result == "OK", "Expected OK")
 end
 ```
 
-Then call it in the test runner section.
+## Test Coverage Goals
 
-## REAPER CLI Options
-
-Key options for headless testing:
-
-- `-nosplash` - Don't show splash screen
-- `-new` - Start with new project
-- `-ReaScript script.lua` - Run Lua script
-- `-close:save:exit` - Save and exit after script
-- `-cfgfile file.ini` - Use alternate config (for isolated testing)
-
-## Limitations
-
-- **macOS/Windows**: REAPER will show a GUI window (no true headless mode on these platforms)
-  - Tests still run automatically and REAPER closes when script completes
-  - Window appears briefly during test execution
-- **Linux**: Can run truly headless with custom libSwell build
-- Some tests may require audio device (can be configured to use dummy driver)
-- Plugin must be installed in UserPlugins directory
-
-## Running Tests
-
-The test script will:
-1. Open REAPER (window will appear on macOS/Windows)
-2. Execute test Lua scripts automatically
-3. Close REAPER when tests complete (via `os.exit()` in scripts)
-
-You can minimize the REAPER window - tests will still run in the background.
-
-## Future Enhancements
-
-- [ ] Test plugin API directly (not just REAPER API)
-- [ ] Test MAGDA action execution end-to-end
-- [ ] Test DSL parsing and execution
-- [ ] Test HTTP client communication
-- [ ] CI/CD integration (GitHub Actions)
+- [x] DSL Tokenizer
+- [x] Params class
+- [x] JSON parsing
+- [ ] DSL Interpreter (with REAPER mocks)
+- [ ] API client (with HTTP mocks)
+- [ ] OpenAI streaming parser
