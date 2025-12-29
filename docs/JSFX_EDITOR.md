@@ -108,7 +108,7 @@ New endpoint needed: `POST /api/v1/jsfx/assist`
 ```json
 {
   "code": "current file content",
-  "filename": "my_effect.jsfx", 
+  "filename": "my_effect.jsfx",
   "message": "Add soft knee compression",
   "history": [...]
 }
@@ -128,6 +128,3 @@ Response:
   ]
 }
 ```
-
-
-

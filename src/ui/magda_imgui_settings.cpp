@@ -95,6 +95,12 @@ bool MagdaImGuiSettings::Initialize(reaper_plugin_info_t *rec) {
                                  double *))rec->GetFunc("ImGui_Selectable");
   m_ImGui_InputInt = (bool (*)(void *, const char *, int *, int *, int *,
                                int *))rec->GetFunc("ImGui_InputInt");
+  m_ImGui_InputText =
+      (bool (*)(void *, const char *, char *, int, int *, void *,
+                void *))rec->GetFunc("ImGui_InputText");
+  m_ImGui_InputTextWithHint =
+      (bool (*)(void *, const char *, const char *, char *, int, int *, void *,
+                void *))rec->GetFunc("ImGui_InputTextWithHint");
   m_ImGui_PushItemWidth =
       (void (*)(void *, double))rec->GetFunc("ImGui_PushItemWidth");
   m_ImGui_PopItemWidth = (void (*)(void *))rec->GetFunc("ImGui_PopItemWidth");
@@ -240,7 +246,13 @@ bool MagdaImGuiSettings::GetJSFXIncludeDescription() {
   return true; // Default to including description
 }
 
-void MagdaImGuiSettings::Show() { m_visible = true; }
+void MagdaImGuiSettings::Show() {
+  m_visible = true;
+  // Recreate context if it was destroyed (e.g., when window was closed)
+  if (!m_ctx && m_available) {
+    m_ctx = m_ImGui_CreateContext("MAGDA Settings", nullptr);
+  }
+}
 
 void MagdaImGuiSettings::Hide() { m_visible = false; }
 
