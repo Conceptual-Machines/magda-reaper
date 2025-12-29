@@ -75,6 +75,7 @@ set(SOURCES
     # DSL
     src/dsl/magda_actions.cpp
     src/dsl/magda_dsl_interpreter.cpp
+    src/dsl/magda_arranger_interpreter.cpp
     # Analysis
     src/analysis/magda_dsp_analyzer.cpp
     src/analysis/magda_bounce_workflow.cpp

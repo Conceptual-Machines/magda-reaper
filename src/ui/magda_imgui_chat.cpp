@@ -2,6 +2,7 @@
 #include "../WDL/WDL/jsonparse.h"
 #include "../api/magda_agents.h"
 #include "../api/magda_openai.h"
+#include "../dsl/magda_arranger_interpreter.h"
 #include "../dsl/magda_dsl_grammar.h"
 #include "../dsl/magda_dsl_interpreter.h"
 #include "magda_actions.h"
@@ -2347,16 +2348,93 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         }
       }
 
-      // Execute the DSL code
-      MagdaDSL::Interpreter interpreter;
-      bool dslSuccess = interpreter.Execute(responseJson.c_str());
+      // Execute the DSL code - route each line to appropriate interpreter
+      bool dslSuccess = true;
+      std::string lastError;
+      int successCount = 0;
 
-      if (dslSuccess) {
-        AddAssistantMessage("Done (via OpenAI Direct).");
+      // Split DSL by newlines and process each statement
+      std::string dslCode = responseJson;
+      size_t pos = 0;
+      while (pos < dslCode.size()) {
+        // Find end of line
+        size_t endPos = dslCode.find('\n', pos);
+        if (endPos == std::string::npos) endPos = dslCode.size();
+
+        std::string line = dslCode.substr(pos, endPos - pos);
+        pos = endPos + 1;
+
+        // Trim whitespace
+        size_t start = line.find_first_not_of(" \t\r");
+        if (start == std::string::npos) continue; // Empty line
+        size_t end = line.find_last_not_of(" \t\r");
+        line = line.substr(start, end - start + 1);
+
+        if (line.empty()) continue;
+
+        // Determine which interpreter to use based on DSL type
+        bool lineSuccess = false;
+        if (line.find("arpeggio(") == 0 ||
+            line.find("chord(") == 0 ||
+            line.find("note(") == 0 ||
+            line.find("progression(") == 0) {
+          // Arranger DSL
+          MagdaArranger::Interpreter arrangerInterp;
+          lineSuccess = arrangerInterp.Execute(line.c_str());
+          if (!lineSuccess) {
+            lastError = arrangerInterp.GetError();
+          }
+        } else if (line.find("pattern(") == 0) {
+          // Drummer DSL - TODO: implement drummer interpreter
+          // For now, log and skip
+          if (g_rec) {
+            void (*ShowConsoleMsg)(const char*) = (void (*)(const char*))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+              ShowConsoleMsg("MAGDA: Drummer DSL not yet implemented\n");
+            }
+          }
+          lineSuccess = true; // Don't fail, just skip
+        } else if (line.find("track(") == 0 ||
+                   line.find("clip(") == 0 ||
+                   line.find("fx(") == 0 ||
+                   line.find("item(") == 0) {
+          // DAW DSL
+          MagdaDSL::Interpreter dawInterp;
+          lineSuccess = dawInterp.Execute(line.c_str());
+          if (!lineSuccess) {
+            lastError = dawInterp.GetError();
+          }
+        } else {
+          // Unknown DSL - try DAW interpreter as fallback
+          MagdaDSL::Interpreter dawInterp;
+          lineSuccess = dawInterp.Execute(line.c_str());
+          if (!lineSuccess) {
+            lastError = dawInterp.GetError();
+          }
+        }
+
+        if (lineSuccess) {
+          successCount++;
+        } else {
+          dslSuccess = false;
+        }
+      }
+
+      if (successCount > 0 && !dslSuccess) {
+        // Partial success
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Partial success (%d commands). Last error: %s",
+                 successCount, lastError.c_str());
+        AddAssistantMessage(msg);
+        SetAPIStatus("Partial", 0xFFAA44FF); // Orange
+      } else if (dslSuccess) {
+        char msg[64];
+        snprintf(msg, sizeof(msg), "Done (via OpenAI Direct) - %d commands.", successCount);
+        AddAssistantMessage(msg);
         SetAPIStatus("OpenAI Direct", 0x88FF88FF); // Green
       } else {
         std::string errorStr = "DSL Error: ";
-        errorStr += interpreter.GetError();
+        errorStr += lastError;
         AddAssistantMessage(errorStr);
         SetAPIStatus("DSL Error", 0xFF6666FF); // Red
       }
