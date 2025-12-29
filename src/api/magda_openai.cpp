@@ -1,5 +1,5 @@
 #include "magda_openai.h"
-#include "magda_dsl_grammar.h"
+#include "../dsl/magda_dsl_grammar.h"
 #include "reaper_plugin.h"
 #include "../WDL/WDL/jsonparse.h"
 #include <cstring>
@@ -35,7 +35,7 @@ MagdaOpenAI* GetMagdaOpenAI() {
 MagdaOpenAI::MagdaOpenAI()
     : m_timeout_seconds(60)
 {
-    m_model.Set("gpt-4.1");  // Default model
+    m_model.Set("gpt-5.1");  // GPT-5.1 for DSL generation (CFG)
 }
 
 MagdaOpenAI::~MagdaOpenAI() {
@@ -107,10 +107,10 @@ char* MagdaOpenAI::BuildRequestJSON(const char* question,
     json.Append(escaped.Get());
     json.Append("\",");
 
-    // Text format - plain text for CFG
+    // Text format - plain text for CFG output
     json.Append("\"text\":{\"format\":{\"type\":\"text\"}},");
 
-    // Tools array with CFG grammar tool
+    // Tools array with CFG grammar tool (custom type with grammar format)
     json.Append("\"tools\":[{");
     json.Append("\"type\":\"custom\",");
     json.Append("\"name\":\"magda_dsl\",");
@@ -120,14 +120,13 @@ char* MagdaOpenAI::BuildRequestJSON(const char* question,
     json.Append("\",");
     json.Append("\"format\":{");
     json.Append("\"type\":\"grammar\",");
-    json.Append("\"grammar\":\"");
+    json.Append("\"syntax\":\"lark\",");
+    json.Append("\"definition\":\"");
     EscapeJSONString(MAGDA_DSL_GRAMMAR, escaped);
     json.Append(escaped.Get());
-    json.Append("\",");
-    json.Append("\"syntax\":\"lark\"");
-    json.Append("}}],");
+    json.Append("\"}}],");
 
-    // Disable parallel tool calls
+    // Disable parallel tool calls (CFG tools don't support it)
     json.Append("\"parallel_tool_calls\":false");
 
     json.Append("}");
@@ -180,7 +179,7 @@ bool MagdaOpenAI::ExtractDSLFromResponse(const char* response_json,
         return false;
     }
 
-    // Search for custom_tool_call in output items
+    // Search for custom_tool_call in output items (CFG grammar response)
     int output_count = output->m_array ? output->m_array->GetSize() : 0;
     for (int i = 0; i < output_count; i++) {
         wdl_json_element* item = output->enum_item(i);
@@ -191,11 +190,16 @@ bool MagdaOpenAI::ExtractDSLFromResponse(const char* response_json,
 
         // CFG tool calls have type "custom_tool_call"
         if (strcmp(type_elem->m_value, "custom_tool_call") == 0) {
-            // DSL code is in the "input" field
-            wdl_json_element* input_elem = item->get_item_by_name("input");
-            if (input_elem && input_elem->m_value_string && input_elem->m_value[0]) {
-                out_dsl.Set(input_elem->m_value);
-                return true;
+            // Check if this is our magda_dsl tool
+            wdl_json_element* name_elem = item->get_item_by_name("name");
+            if (name_elem && name_elem->m_value_string &&
+                strcmp(name_elem->m_value, "magda_dsl") == 0) {
+                // DSL code is directly in the "input" field (raw text, not JSON)
+                wdl_json_element* input_elem = item->get_item_by_name("input");
+                if (input_elem && input_elem->m_value_string && input_elem->m_value[0]) {
+                    out_dsl.Set(input_elem->m_value);
+                    return true;
+                }
             }
         }
     }
@@ -424,6 +428,18 @@ bool MagdaOpenAI::SendHTTPSRequest(const char* url,
         long response_code = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
+        // Log response for debugging
+        if (g_rec) {
+            void (*ShowConsoleMsg)(const char *msg) =
+                (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+            if (ShowConsoleMsg) {
+                char log_msg[2048];
+                snprintf(log_msg, sizeof(log_msg), "MAGDA OpenAI: HTTP %ld, Response: %.1500s\n",
+                         response_code, response.Get());
+                ShowConsoleMsg(log_msg);
+            }
+        }
+
         if (response_code == 200) {
             success = true;
         } else {
@@ -481,6 +497,17 @@ bool MagdaOpenAI::GenerateDSLWithState(const char* question,
     if (!request_json) {
         error_msg.Set("Failed to build request JSON");
         return false;
+    }
+
+    // Log request for debugging (truncated)
+    if (g_rec) {
+        void (*ShowConsoleMsg)(const char*) = (void (*)(const char*))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+            char msg[2048];
+            snprintf(msg, sizeof(msg), "MAGDA OpenAI: Request JSON (first 1000 chars): %.1000s%s\n",
+                    request_json, strlen(request_json) > 1000 ? "..." : "");
+            ShowConsoleMsg(msg);
+        }
     }
 
     // Make API request
