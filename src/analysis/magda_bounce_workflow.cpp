@@ -2,6 +2,7 @@
 #include "magda_api_client.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_login.h"
+#include "../api/magda_openai.h"
 #include "reaper_plugin.h"
 #include "../WDL/WDL/jsonparse.h"
 #include <chrono>
@@ -1158,180 +1159,113 @@ bool MagdaBounceWorkflow::SendToMixAPI(
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
   if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Sending analysis to mix agent API...\n");
+    ShowConsoleMsg("MAGDA: Sending analysis to OpenAI directly...\n");
   }
 
   // Set phase to API call
   SetCurrentPhase(MIX_PHASE_API_CALL);
 
-  // Set backend URL from settings
-  const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
-  if (backendUrl && backendUrl[0]) {
-    s_httpClient.SetBackendURL(backendUrl);
+  // Check if OpenAI API key is available
+  MagdaOpenAI* openai = GetMagdaOpenAI();
+  if (!openai || !openai->HasAPIKey()) {
+    error_msg.Set("OpenAI API key not configured. Please set it in MAGDA > API Keys.");
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: OpenAI API key not configured\n");
+    }
+    return false;
   }
 
-  // Set JWT token if available
-  const char *token = MagdaImGuiLogin::GetStoredToken();
-  if (token && token[0]) {
-    s_httpClient.SetJWTToken(token);
-  }
-
-  // Build request JSON for /api/v1/mix/analyze endpoint
-  // Format: { "mode": "single_track", "analysis_data": {...}, "context": {...},
-  // "user_request": "..." }
-  WDL_FastString requestJson;
-
-  requestJson.Append("{\"mode\":\"single_track\",");
-
-  // Add analysis data
-  requestJson.Append("\"analysis_data\":");
-  requestJson.Append(analysisJson);
-  requestJson.Append(",");
-
-  // Add context
-  requestJson.Append("\"context\":{");
-  requestJson.Append("\"track_index\":");
+  // Build track context JSON
+  WDL_FastString contextJson;
+  contextJson.Set("{");
+  contextJson.Append("\"track_index\":");
   char trackIdxStr[32];
   snprintf(trackIdxStr, sizeof(trackIdxStr), "%d", trackIndex);
-  requestJson.Append(trackIdxStr);
-  requestJson.Append(",\"track_name\":\"");
-  for (const char *p = trackName; *p; p++) {
+  contextJson.Append(trackIdxStr);
+  contextJson.Append(",\"track_name\":\"");
+  // Escape track name
+  for (const char *p = trackName; p && *p; p++) {
     switch (*p) {
-    case '"':
-      requestJson.Append("\\\"");
-      break;
-    case '\\':
-      requestJson.Append("\\\\");
-      break;
-    default:
-      requestJson.Append(p, 1);
-      break;
+    case '"':  contextJson.Append("\\\""); break;
+    case '\\': contextJson.Append("\\\\"); break;
+    case '\n': contextJson.Append("\\n"); break;
+    default:   contextJson.Append(p, 1); break;
     }
   }
-  requestJson.Append("\"");
+  contextJson.Append("\"");
   if (trackType && trackType[0]) {
-    requestJson.Append(",\"track_type\":\"");
+    contextJson.Append(",\"track_type\":\"");
     for (const char *p = trackType; *p; p++) {
       switch (*p) {
-      case '"':
-        requestJson.Append("\\\"");
-        break;
-      case '\\':
-        requestJson.Append("\\\\");
-        break;
-      default:
-        requestJson.Append(p, 1);
-        break;
+      case '"':  contextJson.Append("\\\""); break;
+      case '\\': contextJson.Append("\\\\"); break;
+      default:   contextJson.Append(p, 1); break;
       }
     }
-    requestJson.Append("\"");
+    contextJson.Append("\"");
   }
   if (fxJson && fxJson[0]) {
-    requestJson.Append(",\"existing_fx\":");
-    requestJson.Append(fxJson);
+    contextJson.Append(",\"existing_fx\":");
+    contextJson.Append(fxJson);
   }
-  requestJson.Append("}"); // close context
-
-  // Add user request
-  if (userRequest && userRequest[0]) {
-    requestJson.Append(",\"user_request\":\"");
-    for (const char *p = userRequest; *p; p++) {
-      switch (*p) {
-      case '"':
-        requestJson.Append("\\\"");
-        break;
-      case '\\':
-        requestJson.Append("\\\\");
-        break;
-      default:
-        requestJson.Append(p, 1);
-        break;
-      }
-    }
-    requestJson.Append("\"");
-  }
-
-  requestJson.Append("}"); // close request
+  contextJson.Append("}");
 
   // Start streaming state
   StartStreaming();
 
   if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Starting streaming mix analysis...\n");
+    ShowConsoleMsg("MAGDA: Calling OpenAI for mix analysis...\n");
   }
 
-  // SSE streaming callback - called for each event from the API
-  auto sseCallback = [](const char *event_json, void *user_data) {
-    (void)user_data; // Unused
+  // Local accumulator to avoid race condition with UI clearing streaming state
+  // The UI polls and clears the state, so we need our own copy
+  std::string localAccumulator;
 
-    wdl_json_parser parser;
-    wdl_json_element *root =
-        parser.parse(event_json, (int)strlen(event_json));
-
-    if (!parser.m_err && root) {
-      const char *eventType = nullptr;
-      if (wdl_json_element *type_elem = root->get_item_by_name("type")) {
-        if (type_elem->m_value_string) {
-          eventType = type_elem->m_value;
-        }
-      }
-
-      if (eventType && strcmp(eventType, "chunk") == 0) {
-        // TRUE STREAMING: receive text chunks as they arrive from LLM
-        if (wdl_json_element *chunk_elem = root->get_item_by_name("chunk")) {
-          if (chunk_elem->m_value_string && chunk_elem->m_value[0]) {
-            MagdaBounceWorkflow::AppendStreamText(chunk_elem->m_value);
-          }
-        }
-      } else if (eventType && strcmp(eventType, "start") == 0) {
-        // Stream started
-      } else if (eventType && strcmp(eventType, "complete") == 0) {
-        // Stream complete
-        MagdaBounceWorkflow::CompleteStreaming(true);
-      } else if (eventType && strcmp(eventType, "error") == 0) {
-        // Stream error
-        const char *msg = "Streaming error";
-        if (wdl_json_element *msg_elem = root->get_item_by_name("message")) {
-          if (msg_elem->m_value_string) {
-            msg = msg_elem->m_value;
-          }
-        }
-        MagdaBounceWorkflow::CompleteStreaming(false, msg);
-      }
+  // Streaming callback that accumulates text both locally and to UI state
+  auto streamCallback = [&localAccumulator](const char* text, bool is_done) -> bool {
+    if (text && *text) {
+      localAccumulator += text;  // Local accumulator (safe from UI clearing)
+      MagdaBounceWorkflow::AppendStreamText(text);  // For UI streaming display
     }
+    if (is_done) {
+      MagdaBounceWorkflow::CompleteStreaming(true);
+    }
+    return true; // Continue streaming
   };
 
-  // Send streaming POST request to /api/v1/mix/analyze/stream endpoint
-  s_httpClient.SendPOSTStream(
-      "/api/v1/mix/analyze/stream", requestJson.Get(), sseCallback, nullptr,
-      error_msg, 180); // 3 minute timeout for streaming
+  // Call OpenAI directly
+  bool success = openai->GenerateMixFeedback(
+      analysisJson,
+      contextJson.Get(),
+      userRequest,
+      streamCallback,
+      error_msg);
 
-  // Check streaming state - if we have content, it's a success
-  // (SendPOSTStream returns false when connection closes, which is expected)
-  MixStreamingState state;
-  if (GetStreamingState(state)) {
-    // If we have accumulated text, streaming worked
-    if (!state.streamBuffer.empty()) {
-      if (!state.streamComplete) {
-        // Connection closed but we got content - mark as complete
-        CompleteStreaming(true);
-      }
-      if (ShowConsoleMsg) {
-        ShowConsoleMsg("MAGDA: Mix analysis streaming completed\n");
-      }
-      responseJson.Set(state.streamBuffer.c_str());
-      return true;
+  if (!success) {
+    CompleteStreaming(false, error_msg.Get());
+    if (ShowConsoleMsg) {
+      char msg[512];
+      snprintf(msg, sizeof(msg), "MAGDA: OpenAI mix analysis error: %s\n", error_msg.Get());
+      ShowConsoleMsg(msg);
     }
+    return false;
   }
 
-  // No content received - actual error
-  CompleteStreaming(false, error_msg.Get());
-  if (ShowConsoleMsg) {
-    char msg[512];
-    snprintf(msg, sizeof(msg), "MAGDA: Mix API error: %s\n", error_msg.Get());
-    ShowConsoleMsg(msg);
+  // Use local accumulator (avoids race with UI clearing streaming state)
+  if (!localAccumulator.empty()) {
+    responseJson.Set(localAccumulator.c_str());
+    // Also store result for chat polling
+    StoreResult(true, localAccumulator);
+    if (ShowConsoleMsg) {
+      char msg[256];
+      snprintf(msg, sizeof(msg), "MAGDA: Mix analysis completed (%zu chars)\n",
+               localAccumulator.size());
+      ShowConsoleMsg(msg);
+    }
+    return true;
   }
 
+  error_msg.Set("No response received from OpenAI");
   return false;
 }
 

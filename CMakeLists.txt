@@ -24,6 +24,19 @@ endif()
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/api
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/dsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/analysis
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/plugins
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/api
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/analysis
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/plugins
     ${CMAKE_CURRENT_SOURCE_DIR}/WDL/WDL
 )
 
@@ -35,30 +48,44 @@ if(REAPER_SDK_FOUND)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-# Source files
+# Source files organized by folder
 set(SOURCES
-    src/main.cpp
-    src/magda_chat_window.cpp
-    src/magda_imgui_chat.cpp
-    src/magda_imgui_plugin_window.cpp
-    src/magda_param_mapping.cpp
-    src/magda_param_mapping_window.cpp
-    src/magda_api_client.cpp
-    src/magda_state.cpp
-    src/magda_plugin_window.cpp
-    src/magda_auth.cpp
-    src/magda_env.cpp
-    src/magda_executor.cpp
-    src/magda_actions.cpp
-    src/magda_plugin_scanner.cpp
-    src/magda_dsp_analyzer.cpp
-    src/magda_drum_mapping.cpp
-    src/magda_drum_mapping_window.cpp
-    src/magda_bounce_workflow.cpp
-    src/magda_imgui_mix_analysis_dialog.cpp
-    src/magda_imgui_login.cpp
-    src/magda_imgui_settings.cpp
-    src/magda_jsfx_editor.cpp
+    # Core
+    src/core/main.cpp
+    src/core/magda_state.cpp
+    src/core/magda_env.cpp
+    src/core/magda_executor.cpp
+    # UI
+    src/ui/magda_chat_window.cpp
+    src/ui/magda_imgui_chat.cpp
+    src/ui/magda_imgui_login.cpp
+    src/ui/magda_imgui_settings.cpp
+    src/ui/magda_imgui_api_keys.cpp
+    src/ui/magda_imgui_plugin_window.cpp
+    src/ui/magda_imgui_mix_analysis_dialog.cpp
+    src/ui/magda_jsfx_editor.cpp
+    src/ui/magda_plugin_window.cpp
+    src/ui/magda_param_mapping_window.cpp
+    src/ui/magda_drum_mapping_window.cpp
+    # API
+    src/api/magda_api_client.cpp
+    src/api/magda_auth.cpp
+    src/api/magda_openai.cpp
+    src/api/magda_agents.cpp
+    # DSL
+    src/dsl/magda_actions.cpp
+    src/dsl/magda_dsl_context.cpp
+    src/dsl/magda_dsl_interpreter.cpp
+    src/dsl/magda_arranger_interpreter.cpp
+    src/dsl/magda_drummer_interpreter.cpp
+    src/dsl/magda_jsfx_interpreter.cpp
+    # Analysis
+    src/analysis/magda_dsp_analyzer.cpp
+    src/analysis/magda_bounce_workflow.cpp
+    # Plugins
+    src/plugins/magda_plugin_scanner.cpp
+    src/plugins/magda_param_mapping.cpp
+    src/plugins/magda_drum_mapping.cpp
     # WDL networking implementation
     WDL/WDL/jnetlib/httpget.cpp
     WDL/WDL/jnetlib/connection.cpp

@@ -1,5 +1,6 @@
 #include "magda_actions.h"
 #include "magda_drum_mapping.h"
+#include "magda_dsl_context.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_plugin_scanner.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
@@ -9,9 +10,20 @@ typedef ReaProject Reaproject;
 #include "reaper_plugin_functions.h"
 #include <cmath>
 #include <cstring>
+#include <fstream>
 #include <string>
+#include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#endif
 
 extern reaper_plugin_info_t *g_rec;
+
+// Use the centralized DSL context system
+int MagdaActions::GetLastCreatedTrackIndex() {
+  return MagdaDSLContext::Get().GetCreatedTrackIndex();
+}
+void MagdaActions::ClearLastCreatedTrack() { MagdaDSLContext::Get().Clear(); }
 
 bool MagdaActions::CreateTrack(int index, const char *name,
                                const char *instrument,
@@ -46,6 +58,9 @@ bool MagdaActions::CreateTrack(int index, const char *name,
     error_msg.Set("Failed to get created track");
     return false;
   }
+
+  // Store in context for inter-command coordination (Arranger/Drummer will use this)
+  MagdaDSLContext::Get().SetCreatedTrack(index, name);
 
   // Set track name if provided
   if (name && name[0]) {
@@ -97,16 +112,15 @@ bool MagdaActions::CreateClip(int track_index, double position, double length,
 
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-  MediaItem *(*AddMediaItemToTrack)(MediaTrack *) =
-      (MediaItem * (*)(MediaTrack *)) g_rec->GetFunc("AddMediaItemToTrack");
-  bool (*SetMediaItemPosition)(MediaItem *, double, bool) = (bool (*)(
-      MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemPosition");
-  bool (*SetMediaItemLength)(MediaItem *, double, bool) =
-      (bool (*)(MediaItem *, double, bool))g_rec->GetFunc("SetMediaItemLength");
+  int (*CountTrackMediaItems)(MediaTrack *) =
+      (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
+  MediaItem *(*CreateNewMIDIItemInProj)(MediaTrack *, double, double,
+                                        const bool *) =
+      (MediaItem * (*)(MediaTrack *, double, double, const bool *))
+          g_rec->GetFunc("CreateNewMIDIItemInProj");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
 
-  if (!GetTrack || !AddMediaItemToTrack || !SetMediaItemPosition ||
-      !SetMediaItemLength) {
+  if (!GetTrack || !CreateNewMIDIItemInProj) {
     error_msg.Set("Required REAPER API functions not available");
     return false;
   }
@@ -117,16 +131,20 @@ bool MagdaActions::CreateClip(int track_index, double position, double length,
     return false;
   }
 
-  // Create media item
-  MediaItem *item = AddMediaItemToTrack(track);
+  // Create MIDI item directly (ready for notes)
+  // Using CreateNewMIDIItemInProj so it's immediately usable for MIDI
+  MediaItem *item = CreateNewMIDIItemInProj(track, position, position + length, nullptr);
   if (!item) {
-    error_msg.Set("Failed to create media item");
+    error_msg.Set("Failed to create MIDI item");
     return false;
   }
 
-  // Set position and length
-  SetMediaItemPosition(item, position, false);
-  SetMediaItemLength(item, length, false);
+  // Store in context so Arranger/Drummer can find it
+  int itemIndex = -1;
+  if (CountTrackMediaItems) {
+    itemIndex = CountTrackMediaItems(track) - 1; // Last item added
+  }
+  MagdaDSLContext::Get().SetCreatedClip(track_index, itemIndex);
 
   // Update UI
   if (UpdateArrange) {
@@ -1973,9 +1991,10 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     ShowConsoleMsg(log_msg);
   }
 
-  // Find the rightmost clip on the track (by position, not index)
+  // Check context for a recently created clip on this track
   MediaItem *item = nullptr;
   int num_items = CountTrackMediaItems(track);
+  MagdaDSLContext &ctx = MagdaDSLContext::Get();
 
   if (ShowConsoleMsg) {
     char log_msg[512];
@@ -1984,9 +2003,23 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     ShowConsoleMsg(log_msg);
   }
 
-  if (num_items > 0) {
-    // Find the rightmost item by position (not by index!)
-    // Use GetMediaItemInfo_Value as a more reliable way to get position
+  // FIRST: Check if there's a clip in context for this track
+  if (ctx.HasCreatedClip() && ctx.GetCreatedClipTrackIndex() == track_index) {
+    int clipItemIndex = ctx.GetCreatedClipItemIndex();
+    if (clipItemIndex >= 0 && clipItemIndex < num_items) {
+      item = GetTrackMediaItem(track, clipItemIndex);
+      if (item && ShowConsoleMsg) {
+        char log_msg[512];
+        snprintf(log_msg, sizeof(log_msg),
+                 "MAGDA: AddMIDI: Using clip from context (item %d on track %d)\n",
+                 clipItemIndex, track_index);
+        ShowConsoleMsg(log_msg);
+      }
+    }
+  }
+
+  // If no context clip, find the rightmost item
+  if (!item && num_items > 0) {
     double (*GetMediaItemInfo_Value)(MediaItem *, const char *) = (double (*)(
         MediaItem *, const char *))g_rec->GetFunc("GetMediaItemInfo_Value");
 
@@ -2000,7 +2033,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
         } else if (GetMediaItemPosition) {
           pos = GetMediaItemPosition(candidate);
         }
-        if (pos >= max_pos) {  // Use >= to prefer later items at same position
+        if (pos >= max_pos) {
           max_pos = pos;
           item = candidate;
         }
@@ -2012,7 +2045,7 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
                "MAGDA: AddMIDI: Using rightmost item at position %.2f sec\n", max_pos);
       ShowConsoleMsg(log_msg);
     }
-  } else {
+  } else if (!item) {
     // No clips exist, create one at bar 1, 4 bars long
     if (ShowConsoleMsg)
       ShowConsoleMsg(
@@ -3084,4 +3117,87 @@ bool MagdaActions::AddAutomation(int track_index, const char *param,
   }
 
   return points_inserted > 0;
+}
+
+// Save JSFX code to file and optionally add to track
+bool MagdaActions::SaveAndApplyJSFX(const char *jsfx_code,
+                                    const char *effect_name, int track_index,
+                                    WDL_FastString &error_msg) {
+  if (!g_rec) {
+    error_msg.Set("REAPER API not available");
+    return false;
+  }
+
+  void (*ShowConsoleMsg)(const char *msg) =
+      (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+  if (!jsfx_code || !*jsfx_code) {
+    error_msg.Set("No JSFX code provided");
+    return false;
+  }
+
+  // Get REAPER resource path for Effects folder
+  const char *(*GetResourcePath)() =
+      (const char *(*)())g_rec->GetFunc("GetResourcePath");
+  if (!GetResourcePath) {
+    error_msg.Set("GetResourcePath not available");
+    return false;
+  }
+
+  std::string resourcePath = GetResourcePath();
+  std::string effectsPath = resourcePath + "/Effects/MAGDA";
+
+// Create MAGDA subfolder if it doesn't exist
+#ifdef _WIN32
+  _mkdir(effectsPath.c_str());
+#else
+  mkdir(effectsPath.c_str(), 0755);
+#endif
+
+  // Generate filename
+  std::string filename = effect_name ? effect_name : "magda_effect";
+  // Sanitize filename
+  for (char &c : filename) {
+    if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' ||
+        c == '<' || c == '>' || c == '|') {
+      c = '_';
+    }
+  }
+  if (filename.find(".jsfx") == std::string::npos) {
+    filename += ".jsfx";
+  }
+
+  std::string fullPath = effectsPath + "/" + filename;
+
+  // Write JSFX code to file
+  std::ofstream file(fullPath);
+  if (!file.is_open()) {
+    error_msg.SetFormatted(512, "Failed to create JSFX file: %s",
+                           fullPath.c_str());
+    return false;
+  }
+  file << jsfx_code;
+  file.close();
+
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA: Saved JSFX to %s\n", fullPath.c_str());
+    ShowConsoleMsg(msg);
+  }
+
+  // Refresh JSFX list (Action 41997)
+  void (*Main_OnCommand)(int, int) =
+      (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
+  if (Main_OnCommand) {
+    Main_OnCommand(41997, 0); // Refresh list of JSFX
+  }
+
+  // Optionally add to track
+  if (track_index >= 0) {
+    // Build FX name for AddTrackFX
+    std::string fxName = "JS:MAGDA/" + filename;
+    return AddTrackFX(track_index, fxName.c_str(), false, error_msg);
+  }
+
+  return true;
 }

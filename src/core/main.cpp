@@ -1,5 +1,6 @@
 #include "magda_actions.h"
 #include "magda_bounce_workflow.h"
+#include "magda_dsl_interpreter.h"
 #include "magda_chat_window.h"
 #include "magda_drum_mapping.h"
 #include "magda_drum_mapping_window.h"
@@ -9,6 +10,7 @@
 #include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
 #include "magda_imgui_settings.h"
+#include "magda_imgui_api_keys.h"
 #include "magda_jsfx_editor.h"
 #include "magda_param_mapping.h"
 #include "magda_param_mapping_window.h"
@@ -32,6 +34,8 @@ static bool g_useImGuiChat = false;
 MagdaImGuiLogin *g_imguiLogin = nullptr;
 // Global ImGui settings window instance
 MagdaImGuiSettings *g_imguiSettings = nullptr;
+// Global ImGui API keys window instance
+MagdaImGuiApiKeys *g_imguiApiKeys = nullptr;
 // Global plugin scanner instance
 MagdaPluginScanner *g_pluginScanner = nullptr;
 // Global plugin window instance (SWELL fallback)
@@ -70,6 +74,10 @@ static void imguiTimerCallback() {
   // Render ImGui settings window if visible
   if (g_imguiSettings && g_imguiSettings->IsVisible()) {
     g_imguiSettings->Render();
+  }
+  // Render ImGui API keys window if visible
+  if (g_imguiApiKeys && g_imguiApiKeys->IsVisible()) {
+    g_imguiApiKeys->Render();
   }
   // Also render ImGui plugin window if visible
   if (g_imguiPluginWindow && g_imguiPluginWindow->IsVisible()) {
@@ -166,10 +174,12 @@ static int g_cmdMenuID = 0;
 static int g_cmdOpen = 0;
 static int g_cmdLogin = 0;
 static int g_cmdSettings = 0;
+static int g_cmdApiKeys = 0;
 static int g_cmdAbout = 0;
 static int g_cmdScanPlugins = 0;
 static int g_cmdAnalyzeTrack = 0;
 static int g_cmdTestExecute = 0;
+static int g_cmdTestDSL = 0;
 static int g_cmdJSFXEditor = 0;
 
 // Macros for code compatibility
@@ -177,6 +187,7 @@ static int g_cmdJSFXEditor = 0;
 #define MAGDA_CMD_OPEN g_cmdOpen
 #define MAGDA_CMD_LOGIN g_cmdLogin
 #define MAGDA_CMD_SETTINGS g_cmdSettings
+#define MAGDA_CMD_API_KEYS g_cmdApiKeys
 #define MAGDA_CMD_ABOUT g_cmdAbout
 #define MAGDA_CMD_SCAN_PLUGINS g_cmdScanPlugins
 #define MAGDA_CMD_ANALYZE_TRACK g_cmdAnalyzeTrack
@@ -298,6 +309,7 @@ void magdaAction(int command_id, int flag) {
       }
     }
   } else if (command_id == g_cmdLogin) {
+    // Login for Go API path - hidden from menu but still accessible via Actions
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Opening login dialog\n");
     }
@@ -321,6 +333,20 @@ void magdaAction(int command_id, int flag) {
     } else {
       if (ShowConsoleMsg) {
         ShowConsoleMsg("MAGDA: Settings requires ReaImGui extension\n");
+      }
+    }
+  } else if (command_id == g_cmdApiKeys) {
+    // Open dedicated API Keys window
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Opening API Keys window\n");
+    }
+    if (g_imguiApiKeys && g_imguiApiKeys->IsAvailable()) {
+      if (!g_imguiApiKeys->IsVisible()) {
+        g_imguiApiKeys->Show();
+      }
+    } else {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: API Keys requires ReaImGui extension\n");
       }
     }
   } else if (command_id == g_cmdAbout) {
@@ -614,6 +640,55 @@ void magdaAction(int command_id, int flag) {
         }
       }
     }
+  } else if (command_id == g_cmdTestDSL) {
+    // Test DSL interpreter: Execute MAGDA DSL from project state
+    // This allows testing the new DSL interpreter without going through OpenAI
+    {
+      void *(*GetProjExtState)(ReaProject *, const char *, const char *, char *,
+                               int) =
+          (void *(*)(ReaProject *, const char *, const char *, char *,
+                     int))g_rec->GetFunc("GetProjExtState");
+      void (*SetProjExtState)(ReaProject *, const char *, const char *,
+                              const char *) =
+          (void (*)(ReaProject *, const char *, const char *,
+                    const char *))g_rec->GetFunc("SetProjExtState");
+
+      if (GetProjExtState) {
+        char dsl_code[4096] = {0};
+        GetProjExtState(nullptr, "MAGDA_TEST", "DSL_CODE", dsl_code,
+                        sizeof(dsl_code));
+
+        if (dsl_code[0]) {
+          // Create DSL interpreter and execute
+          MagdaDSL::Interpreter interpreter;
+          if (interpreter.Execute(dsl_code)) {
+            if (SetProjExtState) {
+              SetProjExtState(nullptr, "MAGDA_TEST", "DSL_RESULT", "OK");
+              SetProjExtState(nullptr, "MAGDA_TEST", "DSL_ERROR", "");
+            }
+            if (ShowConsoleMsg) {
+              ShowConsoleMsg("MAGDA: DSL executed successfully\n");
+            }
+          } else {
+            if (SetProjExtState) {
+              SetProjExtState(nullptr, "MAGDA_TEST", "DSL_RESULT", "ERROR");
+              SetProjExtState(nullptr, "MAGDA_TEST", "DSL_ERROR",
+                             interpreter.GetError());
+            }
+            if (ShowConsoleMsg) {
+              char msg[512];
+              snprintf(msg, sizeof(msg), "MAGDA: DSL execution failed: %s\n",
+                       interpreter.GetError());
+              ShowConsoleMsg(msg);
+            }
+          }
+        } else {
+          if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA: No DSL code found in MAGDA_TEST/DSL_CODE\n");
+          }
+        }
+      }
+    }
   } else if (command_id == g_cmdChatRepeatLast) {
     // Repeat last chat command
     if (g_imguiChat && g_imguiChat->IsAvailable()) {
@@ -667,8 +742,8 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
   // Only handle if IDs are allocated (non-zero) and command matches
   if ((g_cmdMenuID != 0 && command == g_cmdMenuID) ||
       (g_cmdOpen != 0 && command == g_cmdOpen) ||
-      (g_cmdLogin != 0 && command == g_cmdLogin) ||
       (g_cmdSettings != 0 && command == g_cmdSettings) ||
+      (g_cmdApiKeys != 0 && command == g_cmdApiKeys) ||
       (g_cmdAbout != 0 && command == g_cmdAbout) ||
       (g_cmdScanPlugins != 0 && command == g_cmdScanPlugins) ||
       (g_cmdAnalyzeTrack != 0 && command == g_cmdAnalyzeTrack) ||
@@ -676,6 +751,7 @@ static bool hookcmd_func(KbdSectionInfo *sec, int command, int val, int val2,
       (g_cmdMasterAnalyze != 0 && command == g_cmdMasterAnalyze) ||
       (g_cmdJSFXEditor != 0 && command == g_cmdJSFXEditor) ||
       (g_cmdTestExecute != 0 && command == g_cmdTestExecute) ||
+      (g_cmdTestDSL != 0 && command == g_cmdTestDSL) ||
       (g_cmdChatRepeatLast != 0 && command == g_cmdChatRepeatLast) ||
       (g_cmdChatClear != 0 && command == g_cmdChatClear) ||
       (g_cmdChatCopy != 0 && command == g_cmdChatCopy)) {
@@ -776,12 +852,12 @@ void menuHook(const char *menuidstr, void *menu, int flag) {
     subMi.fType = MFT_SEPARATOR;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
-    // "Login" item
+    // "API Keys" item
     subMi.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
     subMi.fType = MFT_STRING;
     subMi.fState = MFS_UNCHECKED;
-    subMi.dwTypeData = (char *)"Login...";
-    subMi.wID = MAGDA_CMD_LOGIN;
+    subMi.dwTypeData = (char *)"API Keys...";
+    subMi.wID = MAGDA_CMD_API_KEYS;
     InsertMenuItem(hSubMenu, GetMenuItemCount(hSubMenu), true, &subMi);
 
     // "Settings" item
@@ -860,6 +936,10 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       delete g_imguiSettings;
       g_imguiSettings = nullptr;
     }
+    if (g_imguiApiKeys) {
+      delete g_imguiApiKeys;
+      g_imguiApiKeys = nullptr;
+    }
     if (g_imguiMixAnalysisDialog) {
       delete g_imguiMixAnalysisDialog;
       g_imguiMixAnalysisDialog = nullptr;
@@ -901,6 +981,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   g_cmdOpen = rec->Register("command_id", (void *)"MAGDA_Open");
   g_cmdLogin = rec->Register("command_id", (void *)"MAGDA_Login");
   g_cmdSettings = rec->Register("command_id", (void *)"MAGDA_Settings");
+  g_cmdApiKeys = rec->Register("command_id", (void *)"MAGDA_ApiKeys");
   g_cmdAbout = rec->Register("command_id", (void *)"MAGDA_About");
   g_cmdScanPlugins = rec->Register("command_id", (void *)"MAGDA_ScanPlugins");
   g_cmdAnalyzeTrack = rec->Register("command_id", (void *)"MAGDA_AnalyzeTrack");
@@ -909,6 +990,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       rec->Register("command_id", (void *)"MAGDA_MasterAnalyze");
   g_cmdJSFXEditor = rec->Register("command_id", (void *)"MAGDA_JSFXEditor");
   g_cmdTestExecute = rec->Register("command_id", (void *)"MAGDA_TestExecute");
+  g_cmdTestDSL = rec->Register("command_id", (void *)"MAGDA_TestDSL");
   g_cmdChatRepeatLast =
       rec->Register("command_id", (void *)"MAGDA_ChatRepeatLast");
   g_cmdChatClear = rec->Register("command_id", (void *)"MAGDA_ChatClear");
@@ -933,6 +1015,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                                     "MAGDA: Login"};
   gaccel_register_t gaccel_settings = {{0, 0, (unsigned short)g_cmdSettings},
                                        "MAGDA: Settings"};
+  gaccel_register_t gaccel_api_keys = {{0, 0, (unsigned short)g_cmdApiKeys},
+                                       "MAGDA: API Keys"};
   gaccel_register_t gaccel_about = {{0, 0, (unsigned short)g_cmdAbout},
                                     "MAGDA: About"};
   gaccel_register_t gaccel_scan_plugins = {
@@ -948,6 +1032,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       {0, 0, (unsigned short)g_cmdJSFXEditor}, "MAGDA: JSFX Editor"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
+  gaccel_register_t gaccel_test_dsl = {
+      {0, 0, (unsigned short)g_cmdTestDSL}, "MAGDA: Test DSL Interpreter"};
   gaccel_register_t gaccel_chat_repeat_last = {
       {0, 0, (unsigned short)g_cmdChatRepeatLast},
       "MAGDA: Repeat Last Command"};
@@ -969,6 +1055,11 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   if (rec->Register("gaccel", &gaccel_settings)) {
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: Registered 'Settings' action\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_api_keys)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg("MAGDA: Registered 'API Keys' action\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_about)) {
@@ -1005,6 +1096,12 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
     if (ShowConsoleMsg) {
       ShowConsoleMsg(
           "MAGDA: Registered 'Test Execute Action' (for headless testing)\n");
+    }
+  }
+  if (rec->Register("gaccel", &gaccel_test_dsl)) {
+    if (ShowConsoleMsg) {
+      ShowConsoleMsg(
+          "MAGDA: Registered 'Test DSL Interpreter' (for DSL testing)\n");
     }
   }
   if (rec->Register("gaccel", &gaccel_chat_repeat_last)) {
@@ -1084,6 +1181,20 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       g_imguiSettings = nullptr;
       if (ShowConsoleMsg) {
         ShowConsoleMsg("MAGDA: ImGui settings requires ReaImGui extension\n");
+      }
+    }
+
+    // Initialize ImGui API keys window
+    g_imguiApiKeys = new MagdaImGuiApiKeys();
+    if (g_imguiApiKeys->Initialize(rec)) {
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui API keys initialized\n");
+      }
+    } else {
+      delete g_imguiApiKeys;
+      g_imguiApiKeys = nullptr;
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: ImGui API keys requires ReaImGui extension\n");
       }
     }
 

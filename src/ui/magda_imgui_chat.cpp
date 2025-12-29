@@ -1,8 +1,18 @@
 #include "magda_imgui_chat.h"
 #include "../WDL/WDL/jsonparse.h"
+#include "../api/magda_agents.h"
+#include "../api/magda_openai.h"
+#include "../dsl/magda_actions.h"
+#include "../dsl/magda_arranger_interpreter.h"
+#include "../dsl/magda_drummer_interpreter.h"
+#include "../dsl/magda_dsl_context.h"
+#include "../dsl/magda_dsl_grammar.h"
+#include "../dsl/magda_dsl_interpreter.h"
+#include "../dsl/magda_jsfx_interpreter.h"
 #include "magda_actions.h"
 #include "magda_api_client.h"
 #include "magda_bounce_workflow.h"
+#include "magda_imgui_api_keys.h"
 #include "magda_imgui_login.h"
 #include "magda_imgui_settings.h"
 #include "magda_plugin_scanner.h"
@@ -985,8 +995,9 @@ void MagdaImGuiChat::RenderResponseColumn() {
       int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
       // Build loading message with spinner - show phase-specific message
-      // Don't show spinner if we're actively streaming (text is already appearing)
-      if (!m_isMixAnalysisStreaming) {
+      // Show spinner if NOT streaming, OR if streaming but buffer is still empty
+      // (buffer empty means we're waiting for the synchronous HTTP request to complete)
+      if (!m_isMixAnalysisStreaming || m_lastMixStreamBuffer.empty()) {
         const char *phaseMsg = "Processing request...";
         MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
         switch (phase) {
@@ -1755,6 +1766,93 @@ void MagdaImGuiChat::ClearStreamingBuffer() {
   }
 }
 
+void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
+  // Get REAPER state snapshot on main thread
+  char *stateJson = MagdaState::GetStateSnapshot();
+  std::string stateStr = stateJson ? stateJson : "{}";
+  if (stateJson) {
+    free(stateJson);
+  }
+
+  // Store the pending state
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    m_pendingQuestion = question;
+    m_asyncPending = true;
+    m_asyncResultReady = false;
+    m_asyncSuccess = false;
+    m_cancelRequested = false;
+    m_directOpenAI = true;  // Mark as direct OpenAI (DSL result)
+    m_asyncResponseJson.clear();
+    m_asyncErrorMsg.clear();
+    m_streamingActions.clear();
+  }
+
+  // Wait for any previous thread to finish
+  if (m_asyncThread.joinable()) {
+    m_asyncThread.join();
+  }
+
+  // Start async thread for agent orchestration
+  m_asyncThread = std::thread([this, question, stateStr]() {
+    MagdaAgentManager *agentMgr = GetMagdaAgentManager();
+    if (!agentMgr || !agentMgr->HasAPIKey()) {
+      // Fallback to direct OpenAI client
+      MagdaOpenAI *openai = GetMagdaOpenAI();
+      if (!openai || !openai->HasAPIKey()) {
+        std::lock_guard<std::mutex> lock(m_asyncMutex);
+        m_asyncSuccess = false;
+        m_asyncErrorMsg = "No API key configured";
+        m_asyncResultReady = true;
+        m_asyncPending = false;
+        return;
+      }
+
+      // Use simple DAW-only mode via OpenAI client
+      WDL_FastString dslCode, errorMsg;
+      bool success = openai->GenerateDSLWithState(
+          question.c_str(), MAGDA_DSL_TOOL_DESCRIPTION, stateStr.c_str(), dslCode, errorMsg);
+
+      std::lock_guard<std::mutex> lock(m_asyncMutex);
+      m_asyncSuccess = success && dslCode.GetLength() > 0;
+      m_asyncResponseJson = dslCode.Get();
+      m_asyncErrorMsg = errorMsg.Get();
+      m_asyncResultReady = true;
+      m_asyncPending = false;
+      return;
+    }
+
+    // Use agent orchestration (detects and runs appropriate agents)
+    std::vector<AgentResult> results;
+    WDL_FastString errorMsg;
+    bool success = agentMgr->Orchestrate(question.c_str(), stateStr.c_str(), results, errorMsg);
+
+    if (success && !results.empty()) {
+      // Combine all DSL results
+      std::string combinedDSL;
+      for (const auto& result : results) {
+        if (result.success && !result.dslCode.empty()) {
+          if (!combinedDSL.empty()) combinedDSL += "\n";
+          combinedDSL += result.dslCode;
+        }
+      }
+
+      std::lock_guard<std::mutex> lock(m_asyncMutex);
+      m_asyncSuccess = !combinedDSL.empty();
+      m_asyncResponseJson = combinedDSL;
+      m_asyncErrorMsg = m_asyncSuccess ? "" : "No DSL generated";
+      m_asyncResultReady = true;
+      m_asyncPending = false;
+    } else {
+      std::lock_guard<std::mutex> lock(m_asyncMutex);
+      m_asyncSuccess = false;
+      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Agent orchestration failed";
+      m_asyncResultReady = true;
+      m_asyncPending = false;
+    }
+  });
+}
+
 void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Don't start a new request if one is already pending
   {
@@ -1767,11 +1865,22 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Set busy state and start spinner animation
   m_busy = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-  SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
   ClearStreamingBuffer();                // Clear any previous streaming content
 
   // Reset mix analysis phase for regular chat requests (show generic "Processing...")
   MagdaBounceWorkflow::SetCurrentPhase(MIX_PHASE_IDLE);
+
+  // Check if OpenAI API key is configured - use direct OpenAI if available
+  MagdaOpenAI* openai = GetMagdaOpenAI();
+  if (openai && openai->HasAPIKey()) {
+    // Use direct OpenAI API
+    SetAPIStatus("OpenAI Direct", 0x88FF88FF); // Green
+    StartDirectOpenAIRequest(question);
+    return;
+  }
+
+  // Fall back to Go backend
+  SetAPIStatus("Connected", 0x88FF88FF); // Green - API is healthy
 
   // Set backend URL from settings
   const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
@@ -2220,47 +2329,263 @@ void MagdaImGuiChat::ProcessAsyncResult() {
     m_asyncThread.join();
   }
 
+  // Check if this is a direct OpenAI (DSL) result
+  bool isDSL = false;
+  {
+    std::lock_guard<std::mutex> lock(m_asyncMutex);
+    isDSL = m_directOpenAI;
+    m_directOpenAI = false;  // Reset for next request
+  }
+
   // Process final result on the MAIN thread
   if (success) {
-    // For streaming: the buffer should contain formatted action messages
-    // ClearStreamingBuffer adds buffer content to chat history
-    bool hadStreamingContent = !m_streamingBuffer.empty();
-    ClearStreamingBuffer();
-
-    // Only add summary if streaming buffer was empty (non-streaming response)
-    // For streaming, the actions were already formatted and displayed
-    if (!hadStreamingContent) {
-      // Extract summary of what was done from the response JSON
-      std::string summary = ExtractActionSummary(responseJson.c_str());
-      if (!summary.empty()) {
-        AddAssistantMessage(summary);
-      } else {
-        // Fallback: show action count
-        char summary_msg[256];
-        int action_count = 0;
-        if (!responseJson.empty()) {
-          char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
-              responseJson.c_str(), (int)responseJson.length());
-          if (actions_json) {
-            // Count actions (rough estimate)
-            for (const char *p = actions_json; *p; p++) {
-              if (strncmp(p, "\"action\":", 9) == 0) {
-                action_count++;
-              }
-            }
-            free(actions_json);
-          }
-        }
-        if (action_count > 0) {
-          snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).",
-                   action_count);
-          AddAssistantMessage(summary_msg);
-        } else {
-          AddAssistantMessage("Done.");
+    // For direct OpenAI: execute DSL code
+    if (isDSL && !responseJson.empty()) {
+      // Log the DSL code we received
+      if (g_rec) {
+        void (*ShowConsoleMsg)(const char *msg) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char log_msg[2048];
+          snprintf(log_msg, sizeof(log_msg), "MAGDA: OpenAI generated DSL:\n%s\n",
+                   responseJson.c_str());
+          ShowConsoleMsg(log_msg);
         }
       }
+
+      // Execute the DSL code - route each line to appropriate interpreter
+      bool dslSuccess = true;
+      std::string lastError;
+      int successCount = 0;
+      std::vector<std::string> actionSummaries; // Track what actions were performed
+
+      // Clear DSL context before processing
+      MagdaDSLContext::Get().Clear();
+
+      // Split DSL by newlines and SORT: DAW commands first, then content commands
+      // This ensures track/clip creation happens before MIDI notes are added
+      std::string dslCode = responseJson;
+      std::vector<std::string> dawCommands;     // track, clip, fx - execute first
+      std::vector<std::string> contentCommands; // arpeggio, chord, pattern - execute second
+      std::string jsfxCode; // JSFX is special - entire block
+
+      size_t pos = 0;
+      while (pos < dslCode.size()) {
+        size_t endPos = dslCode.find('\n', pos);
+        if (endPos == std::string::npos) endPos = dslCode.size();
+
+        std::string line = dslCode.substr(pos, endPos - pos);
+        pos = endPos + 1;
+
+        // Trim whitespace
+        size_t start = line.find_first_not_of(" \t\r");
+        if (start == std::string::npos) continue;
+        size_t end = line.find_last_not_of(" \t\r");
+        line = line.substr(start, end - start + 1);
+        if (line.empty()) continue;
+
+        // Categorize command
+        if (line.find("desc:") == 0 || line.find("@init") != std::string::npos ||
+            line.find("@sample") != std::string::npos) {
+          jsfxCode = dslCode; // JSFX is entire block
+          break;
+        } else if (line.find("track(") == 0 || line.find("clip(") == 0 ||
+                   line.find("fx(") == 0 || line.find("item(") == 0) {
+          dawCommands.push_back(line);
+        } else if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
+                   line.find("note(") == 0 || line.find("progression(") == 0 ||
+                   line.find("pattern(") == 0) {
+          contentCommands.push_back(line);
+        } else {
+          // Unknown - treat as DAW command (fallback)
+          dawCommands.push_back(line);
+        }
+      }
+
+      // Helper to extract a human-readable summary from a DSL command
+      auto getActionSummary = [](const std::string& line) -> std::string {
+        // Extract key info from common patterns
+        if (line.find("track(") == 0) {
+          // track(name="X").new() or track(name="X").new_clip(...)
+          size_t nameStart = line.find("name=\"");
+          if (nameStart != std::string::npos) {
+            nameStart += 6;
+            size_t nameEnd = line.find("\"", nameStart);
+            if (nameEnd != std::string::npos) {
+              std::string name = line.substr(nameStart, nameEnd - nameStart);
+              if (line.find(".new_clip") != std::string::npos) {
+                return "Created track '" + name + "' with clip";
+              } else {
+                return "Created track '" + name + "'";
+              }
+            }
+          }
+          return "Created track";
+        } else if (line.find("arpeggio(") == 0) {
+          size_t symStart = line.find("symbol=");
+          if (symStart != std::string::npos) {
+            symStart += 7;
+            size_t symEnd = line.find_first_of(",)", symStart);
+            if (symEnd != std::string::npos) {
+              std::string sym = line.substr(symStart, symEnd - symStart);
+              return "Added " + sym + " arpeggio";
+            }
+          }
+          return "Added arpeggio";
+        } else if (line.find("chord(") == 0) {
+          size_t symStart = line.find("symbol=");
+          if (symStart != std::string::npos) {
+            symStart += 7;
+            size_t symEnd = line.find_first_of(",)", symStart);
+            if (symEnd != std::string::npos) {
+              std::string sym = line.substr(symStart, symEnd - symStart);
+              return "Added " + sym + " chord";
+            }
+          }
+          return "Added chord";
+        } else if (line.find("pattern(") == 0) {
+          return "Added drum pattern";
+        } else if (line.find("progression(") == 0) {
+          return "Added chord progression";
+        } else if (line.find("note(") == 0) {
+          return "Added note";
+        } else if (line.find("fx(") == 0 || line.find(".add_fx") != std::string::npos) {
+          return "Added FX";
+        } else if (line.find("clip(") == 0 || line.find(".new_clip") != std::string::npos) {
+          return "Created clip";
+        }
+        return "";
+      };
+
+      // Helper lambda to execute a line
+      auto executeLine = [&](const std::string& line) -> bool {
+        bool lineSuccess = false;
+        if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
+            line.find("note(") == 0 || line.find("progression(") == 0) {
+          MagdaArranger::Interpreter arrangerInterp;
+          lineSuccess = arrangerInterp.Execute(line.c_str());
+          if (!lineSuccess) lastError = arrangerInterp.GetError();
+        } else if (line.find("pattern(") == 0) {
+          MagdaDrummer::Interpreter drummerInterp;
+          lineSuccess = drummerInterp.Execute(line.c_str());
+          if (!lineSuccess) lastError = drummerInterp.GetError();
+        } else {
+          MagdaDSL::Interpreter dawInterp;
+          lineSuccess = dawInterp.Execute(line.c_str());
+          if (!lineSuccess) lastError = dawInterp.GetError();
+        }
+        // Add action summary if successful
+        if (lineSuccess) {
+          std::string summary = getActionSummary(line);
+          if (!summary.empty()) {
+            actionSummaries.push_back(summary);
+          }
+        }
+        return lineSuccess;
+      };
+
+      // Handle JSFX separately
+      if (!jsfxCode.empty()) {
+        MagdaJSFX::Interpreter jsfxInterp;
+        jsfxInterp.SetTargetTrack(-1);
+        if (jsfxInterp.Execute(jsfxCode.c_str())) {
+          successCount++;
+          actionSummaries.push_back("Created JSFX effect");
+        } else {
+          lastError = jsfxInterp.GetError();
+          dslSuccess = false;
+        }
+      } else {
+        // Execute DAW commands FIRST (creates tracks/clips)
+        for (const auto& cmd : dawCommands) {
+          if (executeLine(cmd)) {
+            successCount++;
+          } else {
+            dslSuccess = false;
+          }
+        }
+
+        // Execute content commands SECOND (adds MIDI to created tracks)
+        for (const auto& cmd : contentCommands) {
+          if (executeLine(cmd)) {
+            successCount++;
+          } else {
+            dslSuccess = false;
+          }
+        }
+      }
+
+      if (successCount > 0 && !dslSuccess) {
+        // Partial success - show what worked and the error
+        std::string msg;
+        for (const auto& summary : actionSummaries) {
+          msg += "✓ " + summary + "\n";
+        }
+        msg += "⚠ Error: " + lastError;
+        AddAssistantMessage(msg);
+        SetAPIStatus("Partial", 0xFFAA44FF); // Orange
+      } else if (dslSuccess && !actionSummaries.empty()) {
+        // Full success - show all actions performed
+        std::string msg;
+        for (size_t i = 0; i < actionSummaries.size(); i++) {
+          msg += "✓ " + actionSummaries[i];
+          if (i < actionSummaries.size() - 1) msg += "\n";
+        }
+        AddAssistantMessage(msg);
+        SetAPIStatus("Done", 0x88FF88FF); // Green
+      } else if (dslSuccess) {
+        // Success but no trackable actions (fallback)
+        AddAssistantMessage("Done.");
+        SetAPIStatus("Done", 0x88FF88FF); // Green
+      } else {
+        std::string errorStr = "Error: " + lastError;
+        AddAssistantMessage(errorStr);
+        SetAPIStatus("Error", 0xFF6666FF); // Red
+      }
+
+      // Clear DSL context after processing
+      MagdaDSLContext::Get().Clear();
+    } else {
+      // For streaming from Go backend: the buffer should contain formatted action messages
+      // ClearStreamingBuffer adds buffer content to chat history
+      bool hadStreamingContent = !m_streamingBuffer.empty();
+      ClearStreamingBuffer();
+
+      // Only add summary if streaming buffer was empty (non-streaming response)
+      // For streaming, the actions were already formatted and displayed
+      if (!hadStreamingContent) {
+        // Extract summary of what was done from the response JSON
+        std::string summary = ExtractActionSummary(responseJson.c_str());
+        if (!summary.empty()) {
+          AddAssistantMessage(summary);
+        } else {
+          // Fallback: show action count
+          char summary_msg[256];
+          int action_count = 0;
+          if (!responseJson.empty()) {
+            char *actions_json = MagdaHTTPClient::ExtractActionsJSON(
+                responseJson.c_str(), (int)responseJson.length());
+            if (actions_json) {
+              // Count actions (rough estimate)
+              for (const char *p = actions_json; *p; p++) {
+                if (strncmp(p, "\"action\":", 9) == 0) {
+                  action_count++;
+                }
+              }
+              free(actions_json);
+            }
+          }
+          if (action_count > 0) {
+            snprintf(summary_msg, sizeof(summary_msg), "Executed %d action(s).",
+                     action_count);
+            AddAssistantMessage(summary_msg);
+          } else {
+            AddAssistantMessage("Done.");
+          }
+        }
+      }
+      SetAPIStatus("Connected", 0x88FF88FF); // Green
     }
-    SetAPIStatus("Connected", 0x88FF88FF); // Green
   } else {
     // Error - show more context
     ClearStreamingBuffer();

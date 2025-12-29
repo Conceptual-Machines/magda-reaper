@@ -218,6 +218,7 @@ private:
   bool m_asyncResultReady = false;
   bool m_asyncSuccess = false;
   bool m_cancelRequested = false;  // Flag to cancel ongoing request
+  bool m_directOpenAI = false;     // True when using direct OpenAI (DSL result)
   std::string m_asyncResponseJson;
   std::string m_asyncErrorMsg;
   std::string m_pendingQuestion;               // Question being processed
@@ -227,6 +228,7 @@ private:
   // Internal methods
   void ProcessAsyncResult();
   void StartAsyncRequest(const std::string &question);
+  void StartDirectOpenAIRequest(const std::string &question);
   void CheckAPIHealth();
   void RenderHeader();
   void RenderInputArea();
