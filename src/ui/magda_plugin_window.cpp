@@ -418,10 +418,12 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
   case WM_ERASEBKGND:
     return TRUE; // Let SWELL handle background painting
   case WM_CTLCOLORDLG:
-  case WM_CTLCOLORSTATIC:
+  case WM_CTLCOLORSTATIC: {
     // Forward to REAPER main window for theme colors (exact SWS pattern)
     if (g_rec) {
-      HWND (*GetMainHwnd)() = (HWND (*)())g_rec->GetFunc("GetMainHwnd");
+      typedef HWND (*GetMainHwndFunc)();
+      GetMainHwndFunc GetMainHwnd =
+          reinterpret_cast<GetMainHwndFunc>(g_rec->GetFunc("GetMainHwnd"));
       if (GetMainHwnd) {
         HWND mainHwnd = GetMainHwnd();
         if (mainHwnd) {
@@ -430,6 +432,7 @@ INT_PTR MagdaPluginWindow::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
       }
     }
     return 0;
+  }
   case WM_COMMAND: {
     int command = LOWORD(wParam);
     int notifyCode = HIWORD(wParam);
