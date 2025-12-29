@@ -50,6 +50,21 @@ public:
                            StreamCallback callback,
                            WDL_FastString& error_msg);
 
+    // Generate free-form text response (for Mix Analysis, no grammar constraints)
+    // Uses streaming to return text as it arrives
+    bool GenerateMixFeedback(const char* analysis_json,
+                             const char* track_context_json,
+                             const char* user_request,
+                             StreamCallback callback,
+                             WDL_FastString& error_msg);
+
+    // Generate JSFX code with streaming (uses CFG grammar for structure)
+    // Streams characters as they arrive from the LLM
+    bool GenerateJSFXStream(const char* question,
+                            const char* existing_code,
+                            StreamCallback callback,
+                            WDL_FastString& error_msg);
+
     // Check if API key is configured
     bool HasAPIKey() const { return m_api_key.GetLength() > 0; }
 

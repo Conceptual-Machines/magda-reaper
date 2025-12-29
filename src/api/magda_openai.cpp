@@ -1,5 +1,6 @@
 #include "magda_openai.h"
 #include "../dsl/magda_dsl_grammar.h"
+#include "../dsl/magda_jsfx_grammar.h"
 #include "reaper_plugin.h"
 #include "../WDL/WDL/jsonparse.h"
 #include <cstring>
@@ -434,7 +435,7 @@ static size_t CurlStreamWriteCallback(void* contents, size_t size, size_t nmemb,
                             if (type_elem && type_elem->m_value_string) {
                                 const char* event_type = type_elem->m_value;
 
-                                // Handle text delta events
+                                // Handle text delta events (for plain text output)
                                 if (strcmp(event_type, "response.output_text.delta") == 0) {
                                     wdl_json_element* delta_elem = root->get_item_by_name("delta");
                                     if (delta_elem && delta_elem->m_value_string && delta_elem->m_value) {
@@ -444,8 +445,18 @@ static size_t CurlStreamWriteCallback(void* contents, size_t size, size_t nmemb,
                                         }
                                         data->received_content = true;
                                     }
-                                } else if (strcmp(event_type, "response.output_text.done") == 0) {
-                                    // Text output complete - mark content received
+                                } else if (strcmp(event_type, "response.function_call_arguments.delta") == 0) {
+                                    // CFG grammar tool call streaming (for JSFX/DSL output)
+                                    wdl_json_element* delta_elem = root->get_item_by_name("delta");
+                                    if (delta_elem && delta_elem->m_value_string && delta_elem->m_value) {
+                                        if (data->callback) {
+                                            data->callback(delta_elem->m_value, false);
+                                        }
+                                        data->received_content = true;
+                                    }
+                                } else if (strcmp(event_type, "response.output_text.done") == 0 ||
+                                           strcmp(event_type, "response.function_call_arguments.done") == 0) {
+                                    // Text/arguments output complete - mark content received
                                     data->received_content = true;
                                 } else if (strcmp(event_type, "response.done") == 0 ||
                                            strcmp(event_type, "response.completed") == 0) {
@@ -1052,5 +1063,159 @@ bool MagdaOpenAI::GenerateMixFeedback(const char* analysis_json,
     }
 
     return true;
+#endif
+}
+
+// ============================================================================
+// JSFX Generation with Streaming
+// ============================================================================
+
+bool MagdaOpenAI::GenerateJSFXStream(const char* question,
+                                      const char* existing_code,
+                                      StreamCallback callback,
+                                      WDL_FastString& error_msg) {
+    if (!HasAPIKey()) {
+        error_msg.Set("OpenAI API key not configured");
+        return false;
+    }
+
+    // Build request JSON - use plain text output (no CFG grammar for streaming)
+    // CFG grammar requires special SDK support; plain text with strong prompt works well
+    WDL_FastString json;
+    WDL_FastString escaped;
+
+    json.Set("{");
+
+    // Model - use gpt-4.1 for JSFX
+    json.Append("\"model\":\"gpt-4.1\",");
+
+    // Enable streaming
+    json.Append("\"stream\":true,");
+
+    // Input messages
+    json.Append("\"input\":[");
+
+    // Add existing code context if provided
+    if (existing_code && *existing_code) {
+        json.Append("{\"role\":\"user\",\"content\":\"Current JSFX code:\\n```\\n");
+        EscapeJSONString(existing_code, escaped);
+        json.Append(escaped.Get());
+        json.Append("\\n```\"},");
+    }
+
+    // Add user question
+    json.Append("{\"role\":\"user\",\"content\":\"");
+    EscapeJSONString(question, escaped);
+    json.Append(escaped.Get());
+    json.Append("\"}");
+
+    json.Append("],");
+
+    // Use the comprehensive system prompt from JSFX grammar header
+    json.Append("\"instructions\":\"");
+    EscapeJSONString(JSFX_SYSTEM_PROMPT, escaped);
+    json.Append(escaped.Get());
+    json.Append("\",");
+
+    // Plain text output format (for streaming)
+    json.Append("\"text\":{\"format\":{\"type\":\"text\"}}");
+
+    json.Append("}");
+
+    // Log request
+    void (*ShowConsoleMsg)(const char*) = nullptr;
+    if (g_rec) {
+        ShowConsoleMsg = (void (*)(const char*))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA OpenAI: Sending streaming JSFX generation request...\n");
+        }
+    }
+
+#ifndef _WIN32
+    // macOS/Linux: Use curl with streaming
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        error_msg.Set("Failed to initialize curl");
+        return false;
+    }
+
+    CurlStreamWriteData streamData;
+    streamData.callback = callback;
+    streamData.line_pos = 0;
+    streamData.success = false;
+    streamData.received_content = false;
+
+    curl_easy_setopt(curl, CURLOPT_URL, "https://api.openai.com/v1/responses");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.Get());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json.GetLength());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlStreamWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &streamData);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);  // 5 minutes for CFG
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
+
+    // Set headers
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "Accept: text/event-stream");
+
+    char auth_header[512];
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_api_key.Get());
+    headers = curl_slist_append(headers, auth_header);
+
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+    if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA OpenAI: Starting JSFX SSE stream...\n");
+    }
+
+    CURLcode res = curl_easy_perform(curl);
+
+    bool success = false;
+    if (res == CURLE_OK) {
+        long response_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+        if (response_code == 200 && (streamData.success || streamData.received_content)) {
+            success = true;
+            if (streamData.received_content && !streamData.success && callback) {
+                callback("", true);
+            }
+            if (ShowConsoleMsg) {
+                ShowConsoleMsg("MAGDA OpenAI: JSFX streaming complete\n");
+            }
+        } else if (response_code != 200) {
+            error_msg.SetFormatted(512, "HTTP %ld: %s", response_code,
+                                   streamData.error_msg.GetLength() > 0 ?
+                                   streamData.error_msg.Get() : "API error");
+            if (ShowConsoleMsg) {
+                char msg[512];
+                snprintf(msg, sizeof(msg), "MAGDA OpenAI: JSFX streaming failed: %s\n", error_msg.Get());
+                ShowConsoleMsg(msg);
+            }
+        } else {
+            error_msg.Set("No JSFX code received from API");
+            if (ShowConsoleMsg) {
+                ShowConsoleMsg("MAGDA OpenAI: No JSFX code received\n");
+            }
+        }
+    } else {
+        error_msg.Set(curl_easy_strerror(res));
+        if (ShowConsoleMsg) {
+            char msg[512];
+            snprintf(msg, sizeof(msg), "MAGDA OpenAI: JSFX curl error: %s\n", error_msg.Get());
+            ShowConsoleMsg(msg);
+        }
+    }
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    return success;
+
+#else
+    // Windows: Fall back to non-streaming
+    error_msg.Set("JSFX streaming not yet implemented for Windows");
+    return false;
 #endif
 }

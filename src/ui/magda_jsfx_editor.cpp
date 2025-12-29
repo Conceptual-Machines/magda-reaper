@@ -3,6 +3,7 @@
 #include "magda_api_client.h"
 #include "magda_imgui_login.h"
 #include "magda_imgui_settings.h"
+#include "magda_openai.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -1336,6 +1337,76 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
   m_waitingForAI = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
 
+  // Check if we can use direct OpenAI streaming (preferred - faster, no Go API needed)
+  MagdaOpenAI* openai = GetMagdaOpenAI();
+  bool useDirectOpenAI = openai && openai->HasAPIKey();
+
+  // Capture message and code for the background thread
+  std::string userMessage = message;
+  std::string existingCode = m_editorBuffer;
+
+  if (useDirectOpenAI) {
+    // Direct OpenAI streaming - no Go API needed
+    if (m_rec) {
+      void (*ShowConsoleMsg)(const char *) =
+          (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA JSFX: Using direct OpenAI streaming...\n");
+      }
+    }
+
+    std::thread([this, userMessage, existingCode, aiIndex]() {
+      std::string codeBuffer;
+      WDL_FastString errorMsg;
+
+      auto streamCallback = [this, aiIndex, &codeBuffer](const char* text, bool is_done) -> bool {
+        if (text && *text) {
+          codeBuffer += text;
+          // Update UI with streaming code
+          if (aiIndex < m_chatHistory.size()) {
+            JSFXChatMessage &aiMsg = m_chatHistory[aiIndex];
+            aiMsg.content = "Streaming JSFX code...";
+            aiMsg.code_block = codeBuffer;
+            aiMsg.has_code_block = true;
+          }
+        }
+        if (is_done) {
+          // Streaming complete
+          if (aiIndex < m_chatHistory.size()) {
+            JSFXChatMessage &aiMsg = m_chatHistory[aiIndex];
+            aiMsg.code_block = codeBuffer;
+            aiMsg.has_code_block = !codeBuffer.empty();
+            aiMsg.streaming_complete = true;
+            if (!codeBuffer.empty()) {
+              aiMsg.content = "Generated JSFX code.";
+            } else {
+              aiMsg.content = "JSFX generation finished with empty result.";
+            }
+          }
+          m_waitingForAI = false;
+        }
+        return true;
+      };
+
+      MagdaOpenAI* openai = GetMagdaOpenAI();
+      bool success = openai->GenerateJSFXStream(
+          userMessage.c_str(),
+          existingCode.empty() ? nullptr : existingCode.c_str(),
+          streamCallback,
+          errorMsg);
+
+      if (!success && aiIndex < m_chatHistory.size()) {
+        JSFXChatMessage &aiMsg = m_chatHistory[aiIndex];
+        aiMsg.content = "Error: " + std::string(errorMsg.Get());
+        aiMsg.has_code_block = false;
+        m_waitingForAI = false;
+      }
+    }).detach();
+
+    return;
+  }
+
+  // Fall back to Go API if no OpenAI key
   // Set backend URL from settings
   const char *backendUrl = MagdaImGuiLogin::GetBackendURL();
   if (backendUrl && backendUrl[0]) {
