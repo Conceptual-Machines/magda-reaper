@@ -254,7 +254,9 @@ void MagdaImGuiSettings::Show() {
   }
 }
 
-void MagdaImGuiSettings::Hide() { m_visible = false; }
+void MagdaImGuiSettings::Hide() {
+  m_shouldClose = true;  // Will close on next frame
+}
 
 void MagdaImGuiSettings::Toggle() {
   if (m_visible) {
@@ -266,7 +268,9 @@ void MagdaImGuiSettings::Toggle() {
 
 void MagdaImGuiSettings::OnSave() {
   SaveSettings();
-  Hide();
+  // Don't call Hide() here - let the window close naturally
+  // Just set a flag to close on next frame
+  m_shouldClose = true;
 }
 
 void MagdaImGuiSettings::Render() {
@@ -320,7 +324,8 @@ void MagdaImGuiSettings::Render() {
 
   // Begin window
   int flags = ImGuiWindowFlags::NoCollapse;
-  bool open = true;
+  bool open = !m_shouldClose;  // If should close, start with open=false
+  m_shouldClose = false;  // Reset flag
   if (!m_ImGui_Begin(m_ctx, "MAGDA Settings", &open, &flags)) {
     m_ImGui_End(m_ctx);
     if (m_ImGui_PopStyleColor) {

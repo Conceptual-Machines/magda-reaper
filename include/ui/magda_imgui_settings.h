@@ -79,6 +79,7 @@ private:
   // State
   bool m_available = false;
   bool m_visible = false;
+  bool m_shouldClose = false;  // Deferred close flag
   void *m_ctx = nullptr;
 
   // Current preferences (editable in UI)

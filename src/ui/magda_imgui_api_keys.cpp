@@ -431,13 +431,6 @@ void MagdaImGuiApiKeys::Render() {
     m_ImGui_PopStyleColor(m_ctx, &n);
   }
 
-  if (m_ImGui_SameLine)
-    m_ImGui_SameLine(m_ctx, nullptr, nullptr);
-
-  if (m_ImGui_Button(m_ctx, "Close", nullptr, nullptr)) {
-    Hide();
-  }
-
   m_ImGui_End(m_ctx);
 
   // Pop window style colors
