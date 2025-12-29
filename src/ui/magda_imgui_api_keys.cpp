@@ -1,4 +1,5 @@
 #include "magda_imgui_api_keys.h"
+#include "magda_agents.h"
 #include "magda_openai.h"
 #include <cstdlib>
 #include <cstring>
@@ -134,10 +135,14 @@ void MagdaImGuiApiKeys::LoadSettings() {
     m_openaiKeyStatus = ApiKeyStatus::Valid;
     m_statusMessage = "Key loaded from settings";
 
-    // Initialize OpenAI client with saved key
+    // Initialize OpenAI client and agent manager with saved key
     MagdaOpenAI* openai = GetMagdaOpenAI();
     if (openai) {
       openai->SetAPIKey(m_openaiApiKey);
+    }
+    MagdaAgentManager* agentMgr = GetMagdaAgentManager();
+    if (agentMgr) {
+      agentMgr->SetAPIKey(m_openaiApiKey);
     }
   }
 }
@@ -157,10 +162,14 @@ void MagdaImGuiApiKeys::SaveSettings() {
   if (m_openaiKeyStatus == ApiKeyStatus::Valid) {
     SetExtState("MAGDA", "openai_api_key", m_openaiApiKey, true);
 
-    // Update OpenAI client
+    // Update OpenAI client and agent manager
     MagdaOpenAI* openai = GetMagdaOpenAI();
     if (openai) {
       openai->SetAPIKey(m_openaiApiKey);
+    }
+    MagdaAgentManager* agentMgr = GetMagdaAgentManager();
+    if (agentMgr) {
+      agentMgr->SetAPIKey(m_openaiApiKey);
     }
   }
 }
@@ -248,6 +257,12 @@ void MagdaImGuiApiKeys::ValidateOpenAIKey() {
 
     // Set the key for validation
     openai->SetAPIKey(keyCopy);
+
+    // Also set on agent manager
+    MagdaAgentManager* agentMgr = GetMagdaAgentManager();
+    if (agentMgr) {
+      agentMgr->SetAPIKey(keyCopy);
+    }
 
     // Validate by calling GET /v1/models
     WDL_FastString error;

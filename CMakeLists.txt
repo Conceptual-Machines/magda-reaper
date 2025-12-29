@@ -71,6 +71,7 @@ set(SOURCES
     src/api/magda_api_client.cpp
     src/api/magda_auth.cpp
     src/api/magda_openai.cpp
+    src/api/magda_agents.cpp
     # DSL
     src/dsl/magda_actions.cpp
     src/dsl/magda_dsl_interpreter.cpp

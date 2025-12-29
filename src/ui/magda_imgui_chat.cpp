@@ -1,6 +1,8 @@
 #include "magda_imgui_chat.h"
 #include "../WDL/WDL/jsonparse.h"
+#include "../api/magda_agents.h"
 #include "../api/magda_openai.h"
+#include "../dsl/magda_dsl_grammar.h"
 #include "../dsl/magda_dsl_interpreter.h"
 #include "magda_actions.h"
 #include "magda_api_client.h"
@@ -1785,49 +1787,60 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
     m_asyncThread.join();
   }
 
-  // Start async thread for OpenAI request
+  // Start async thread for agent orchestration
   m_asyncThread = std::thread([this, question, stateStr]() {
-    MagdaOpenAI *openai = GetMagdaOpenAI();
-    if (!openai) {
+    MagdaAgentManager *agentMgr = GetMagdaAgentManager();
+    if (!agentMgr || !agentMgr->HasAPIKey()) {
+      // Fallback to direct OpenAI client
+      MagdaOpenAI *openai = GetMagdaOpenAI();
+      if (!openai || !openai->HasAPIKey()) {
+        std::lock_guard<std::mutex> lock(m_asyncMutex);
+        m_asyncSuccess = false;
+        m_asyncErrorMsg = "No API key configured";
+        m_asyncResultReady = true;
+        m_asyncPending = false;
+        return;
+      }
+
+      // Use simple DAW-only mode via OpenAI client
+      WDL_FastString dslCode, errorMsg;
+      bool success = openai->GenerateDSLWithState(
+          question.c_str(), MAGDA_DSL_TOOL_DESCRIPTION, stateStr.c_str(), dslCode, errorMsg);
+
       std::lock_guard<std::mutex> lock(m_asyncMutex);
-      m_asyncSuccess = false;
-      m_asyncErrorMsg = "OpenAI client not available";
+      m_asyncSuccess = success && dslCode.GetLength() > 0;
+      m_asyncResponseJson = dslCode.Get();
+      m_asyncErrorMsg = errorMsg.Get();
       m_asyncResultReady = true;
       m_asyncPending = false;
       return;
     }
 
-    // System prompt for REAPER DSL generation
-    const char *systemPrompt =
-        "You are MAGDA, an AI assistant for REAPER DAW. Generate DSL commands "
-        "to control REAPER based on the user's request. The DSL syntax is:\n"
-        "- track(name=\"...\").new() - Create a new track\n"
-        "- track(name=\"...\").insert_item(start=<bar>, length=<bars>) - Insert a media item\n"
-        "- track(index=N).select() - Select a track by index\n"
-        "- track(name=\"...\").set_volume(db=<value>) - Set track volume\n"
-        "- track(name=\"...\").set_pan(value=<-1 to 1>) - Set track pan\n"
-        "- track(name=\"...\").mute() / .unmute() / .solo() / .unsolo()\n"
-        "Output ONLY valid DSL commands, one per line.";
-
-    // Generate DSL using OpenAI with grammar constraints
-    WDL_FastString dslCode;
+    // Use agent orchestration (detects and runs appropriate agents)
+    std::vector<AgentResult> results;
     WDL_FastString errorMsg;
-    bool success = openai->GenerateDSLWithState(
-        question.c_str(), systemPrompt, stateStr.c_str(), dslCode, errorMsg);
+    bool success = agentMgr->Orchestrate(question.c_str(), stateStr.c_str(), results, errorMsg);
 
-    if (success && dslCode.GetLength() > 0) {
-      // Store the DSL for execution on main thread
-      {
-        std::lock_guard<std::mutex> lock(m_asyncMutex);
-        m_asyncSuccess = true;
-        m_asyncResponseJson = dslCode.Get();  // Store DSL code
-        m_asyncResultReady = true;
-        m_asyncPending = false;
+    if (success && !results.empty()) {
+      // Combine all DSL results
+      std::string combinedDSL;
+      for (const auto& result : results) {
+        if (result.success && !result.dslCode.empty()) {
+          if (!combinedDSL.empty()) combinedDSL += "\n";
+          combinedDSL += result.dslCode;
+        }
       }
+
+      std::lock_guard<std::mutex> lock(m_asyncMutex);
+      m_asyncSuccess = !combinedDSL.empty();
+      m_asyncResponseJson = combinedDSL;
+      m_asyncErrorMsg = m_asyncSuccess ? "" : "No DSL generated";
+      m_asyncResultReady = true;
+      m_asyncPending = false;
     } else {
       std::lock_guard<std::mutex> lock(m_asyncMutex);
       m_asyncSuccess = false;
-      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Failed to generate DSL";
+      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Agent orchestration failed";
       m_asyncResultReady = true;
       m_asyncPending = false;
     }
