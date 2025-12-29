@@ -160,16 +160,21 @@ bool MagdaOpenAI::ExtractDSLFromResponse(const char* response_json,
         return false;
     }
 
-    // Check for API error
+    // Check for API error (only if error field is an object with a message, not null)
+    // When error is null, error_elem exists but has no children (get_item_by_name returns nullptr)
     wdl_json_element* error_elem = root->get_item_by_name("error");
     if (error_elem) {
         wdl_json_element* msg_elem = error_elem->get_item_by_name("message");
-        if (msg_elem && msg_elem->m_value_string) {
+        if (msg_elem && msg_elem->m_value_string && msg_elem->m_value) {
             error_msg.SetFormatted(512, "OpenAI API error: %s", msg_elem->m_value);
-        } else {
-            error_msg.Set("OpenAI API returned an error");
+            return false;
         }
-        return false;
+        // If error exists but has no message, check if it's an actual error object (has children)
+        if (error_elem->m_array && error_elem->m_array->GetSize() > 0) {
+            error_msg.Set("OpenAI API returned an error");
+            return false;
+        }
+        // Otherwise it's "error": null - not an error, continue
     }
 
     // Navigate to output array
