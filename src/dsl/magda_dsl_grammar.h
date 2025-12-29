@@ -20,7 +20,7 @@
 //   filter(tracks, track.name == "Bass").delete()
 // ============================================================================
 
-static const char* MAGDA_DSL_GRAMMAR = R"GRAMMAR(
+static const char *MAGDA_DSL_GRAMMAR = R"GRAMMAR(
 // MAGDA DSL Grammar - Lark format
 // Functional DSL for REAPER operations
 
@@ -83,7 +83,7 @@ COMMENT: "//" /[^\n]/*
 // ============================================================================
 // This description helps the LLM understand when and how to use the DSL.
 
-static const char* MAGDA_DSL_TOOL_DESCRIPTION = R"DESC(
+static const char *MAGDA_DSL_TOOL_DESCRIPTION = R"DESC(
 **YOU MUST USE THIS TOOL TO GENERATE YOUR RESPONSE. DO NOT GENERATE TEXT OUTPUT DIRECTLY.**
 
 Executes REAPER operations using the MAGDA DSL. Generate functional script code.

@@ -9,7 +9,7 @@
 //   "x" = hit (velocity 100), "X" = accent (velocity 127)
 //   "-" = rest, "o" = ghost note (velocity 60)
 
-static const char* DRUMMER_DSL_GRAMMAR = R"GRAMMAR(
+static const char *DRUMMER_DSL_GRAMMAR = R"GRAMMAR(
 // Drummer DSL Grammar - Grid-based drum pattern notation
 // SYNTAX:
 //   pattern(drum=kick, grid="x---x---x---x---")
@@ -49,7 +49,7 @@ STRING: /"[^"]*"/
 NUMBER: /-?\d+(\.\d+)?/
 )GRAMMAR";
 
-static const char* DRUMMER_TOOL_DESCRIPTION = R"DESC(
+static const char *DRUMMER_TOOL_DESCRIPTION = R"DESC(
 Generate drum patterns using grid notation.
 
 SYNTAX: pattern(drum=<drum_name>, grid="<pattern>")

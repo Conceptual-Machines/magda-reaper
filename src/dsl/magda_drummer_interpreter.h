@@ -12,24 +12,24 @@ namespace MagdaDrummer {
 
 class Interpreter {
 public:
-    Interpreter();
-    ~Interpreter();
+  Interpreter();
+  ~Interpreter();
 
-    // Execute Drummer DSL code (pattern(...) calls)
-    bool Execute(const char* dsl_code);
+  // Execute Drummer DSL code (pattern(...) calls)
+  bool Execute(const char *dsl_code);
 
-    // Get error message
-    const char* GetError() const { return m_error.Get(); }
+  // Get error message
+  const char *GetError() const { return m_error.Get(); }
 
-    // Set target track index (uses selected track if -1)
-    void SetTargetTrack(int track_index) { m_trackIndex = track_index; }
+  // Set target track index (uses selected track if -1)
+  void SetTargetTrack(int track_index) { m_trackIndex = track_index; }
 
 private:
-    bool ExecutePattern(const char* params);
-    int GetSelectedTrackIndex();
+  bool ExecutePattern(const char *params);
+  int GetSelectedTrackIndex();
 
-    WDL_FastString m_error;
-    int m_trackIndex;
+  WDL_FastString m_error;
+  int m_trackIndex;
 };
 
 } // namespace MagdaDrummer

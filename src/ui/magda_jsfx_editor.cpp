@@ -961,7 +961,8 @@ void MagdaJSFXEditor::RenderChatPanel() {
             } else {
               // After streaming: show first 400 chars with total count
               preview = preview.substr(0, 400) + "\n... (" +
-                        std::to_string(msg.code_block.length()) + " chars total)";
+                        std::to_string(msg.code_block.length()) +
+                        " chars total)";
             }
           }
 
@@ -975,8 +976,8 @@ void MagdaJSFXEditor::RenderChatPanel() {
           // Show compile error if any
           if (!msg.compile_error.empty()) {
             m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Text, 0xFF4444FF); // Red
-            m_ImGui_TextWrapped(m_ctx,
-                                ("⚠️ Compile Error: " + msg.compile_error).c_str());
+            m_ImGui_TextWrapped(
+                m_ctx, ("⚠️ Compile Error: " + msg.compile_error).c_str());
             m_ImGui_PopStyleColor(m_ctx, nullptr);
             m_ImGui_Dummy(m_ctx, 0, 4);
           }
@@ -1006,22 +1007,24 @@ void MagdaJSFXEditor::RenderChatPanel() {
               }
             }
 
-            // Fix Errors / Auto-fix buttons - only show if there's a compile error
+            // Fix Errors / Auto-fix buttons - only show if there's a compile
+            // error
             if (!msg.compile_error.empty()) {
               m_ImGui_SameLine(m_ctx, nullptr, nullptr);
 
               // Check if auto-fix is active for this message
-              bool isAutoFixTarget = m_autoFixActive &&
-                                     (m_autoFixMessageIndex == msgIndex - 1 ||
+              bool isAutoFixTarget =
+                  m_autoFixActive && (m_autoFixMessageIndex == msgIndex - 1 ||
                                       m_autoFixMessageIndex == msgIndex);
 
               if (isAutoFixTarget) {
                 // Show auto-fix progress
-                m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF4488FF); // Blue
+                m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button,
+                                       0xFF4488FF); // Blue
                 char progressLabel[64];
                 snprintf(progressLabel, sizeof(progressLabel),
-                         "Auto-fixing (%d/%d)##msg%d",
-                         m_autoFixAttempt, MAX_AUTO_FIX_ATTEMPTS, msgIndex);
+                         "Auto-fixing (%d/%d)##msg%d", m_autoFixAttempt,
+                         MAX_AUTO_FIX_ATTEMPTS, msgIndex);
                 if (m_ImGui_Button(m_ctx, progressLabel, nullptr, nullptr)) {
                   StopAutoFix();
                 }
@@ -1029,14 +1032,16 @@ void MagdaJSFXEditor::RenderChatPanel() {
 
                 m_ImGui_SameLine(m_ctx, nullptr, nullptr);
                 m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF2222AA);
-                snprintf(buttonLabel, sizeof(buttonLabel), "Stop##msg%d", msgIndex);
+                snprintf(buttonLabel, sizeof(buttonLabel), "Stop##msg%d",
+                         msgIndex);
                 if (m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr)) {
                   StopAutoFix();
                 }
                 m_ImGui_PopStyleColor(m_ctx, nullptr);
               } else if (!m_autoFixActive && !m_waitingForAI) {
                 // Manual fix button
-                m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF2222AA); // Red
+                m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button,
+                                       0xFF2222AA); // Red
                 snprintf(buttonLabel, sizeof(buttonLabel), "Fix Errors##msg%d",
                          msgIndex);
                 if (m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr)) {
@@ -1046,7 +1051,8 @@ void MagdaJSFXEditor::RenderChatPanel() {
 
                 // Auto-fix button
                 m_ImGui_SameLine(m_ctx, nullptr, nullptr);
-                m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button, 0xFF44AA44); // Green
+                m_ImGui_PushStyleColor(m_ctx, ImGuiCol::Button,
+                                       0xFF44AA44); // Green
                 snprintf(buttonLabel, sizeof(buttonLabel), "Auto-fix##msg%d",
                          msgIndex);
                 if (m_ImGui_Button(m_ctx, buttonLabel, nullptr, nullptr)) {
@@ -1337,8 +1343,9 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
   m_waitingForAI = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
 
-  // Check if we can use direct OpenAI streaming (preferred - faster, no Go API needed)
-  MagdaOpenAI* openai = GetMagdaOpenAI();
+  // Check if we can use direct OpenAI streaming (preferred - faster, no Go API
+  // needed)
+  MagdaOpenAI *openai = GetMagdaOpenAI();
   bool useDirectOpenAI = openai && openai->HasAPIKey();
 
   // Capture message and code for the background thread
@@ -1359,7 +1366,8 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
       std::string codeBuffer;
       WDL_FastString errorMsg;
 
-      auto streamCallback = [this, aiIndex, &codeBuffer](const char* text, bool is_done) -> bool {
+      auto streamCallback = [this, aiIndex, &codeBuffer](const char *text,
+                                                         bool is_done) -> bool {
         if (text && *text) {
           codeBuffer += text;
           // Update UI with streaming code
@@ -1388,11 +1396,10 @@ void MagdaJSFXEditor::SendToAI(const std::string &message) {
         return true;
       };
 
-      MagdaOpenAI* openai = GetMagdaOpenAI();
+      MagdaOpenAI *openai = GetMagdaOpenAI();
       bool success = openai->GenerateJSFXStream(
           userMessage.c_str(),
-          existingCode.empty() ? nullptr : existingCode.c_str(),
-          streamCallback,
+          existingCode.empty() ? nullptr : existingCode.c_str(), streamCallback,
           errorMsg);
 
       if (!success && aiIndex < m_chatHistory.size()) {
@@ -1988,12 +1995,13 @@ std::string MagdaJSFXEditor::TryCompileJSFX(const std::string &code) {
   // Get additional REAPER API functions for error detection
   bool (*TrackFX_GetOffline)(MediaTrack *, int) =
       (bool (*)(MediaTrack *, int))m_rec->GetFunc("TrackFX_GetOffline");
-  bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
-      (bool (*)(MediaTrack *, int, char *, int))m_rec->GetFunc("TrackFX_GetFXName");
+  bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) = (bool (*)(
+      MediaTrack *, int, char *, int))m_rec->GetFunc("TrackFX_GetFXName");
   int (*TrackFX_GetNumParams)(MediaTrack *, int) =
       (int (*)(MediaTrack *, int))m_rec->GetFunc("TrackFX_GetNumParams");
 
-  if (fxIdx >= 0 || (TrackFX_GetCount && TrackFX_GetCount(track) > fxCountBefore)) {
+  if (fxIdx >= 0 ||
+      (TrackFX_GetCount && TrackFX_GetCount(track) > fxCountBefore)) {
     // FX was added, check for compile errors
     if (fxIdx < 0 && TrackFX_GetCount) {
       fxIdx = TrackFX_GetCount(track) - 1;
@@ -2034,7 +2042,8 @@ std::string MagdaJSFXEditor::TryCompileJSFX(const std::string &code) {
           std::string name = fxNameBuf;
           if (ShowConsoleMsg) {
             char msg[512];
-            snprintf(msg, sizeof(msg), "MAGDA JSFX: FX name is '%s'\n", fxNameBuf);
+            snprintf(msg, sizeof(msg), "MAGDA JSFX: FX name is '%s'\n",
+                     fxNameBuf);
             ShowConsoleMsg(msg);
           }
 
@@ -2058,7 +2067,8 @@ std::string MagdaJSFXEditor::TryCompileJSFX(const std::string &code) {
       // Method 3: Check if FX is offline (often indicates compile error)
       if (compileError.empty() && TrackFX_GetOffline) {
         if (TrackFX_GetOffline(track, fxIdx)) {
-          compileError = "JSFX is offline - likely compile error (check @init section)";
+          compileError =
+              "JSFX is offline - likely compile error (check @init section)";
         }
       }
 
@@ -2067,16 +2077,19 @@ std::string MagdaJSFXEditor::TryCompileJSFX(const std::string &code) {
         int numParams = TrackFX_GetNumParams(track, fxIdx);
         if (ShowConsoleMsg) {
           char msg[256];
-          snprintf(msg, sizeof(msg), "MAGDA JSFX: FX has %d parameters\n", numParams);
+          snprintf(msg, sizeof(msg), "MAGDA JSFX: FX has %d parameters\n",
+                   numParams);
           ShowConsoleMsg(msg);
         }
 
-        // If the code has slider definitions but we got 0 params, something's wrong
+        // If the code has slider definitions but we got 0 params, something's
+        // wrong
         if (numParams == 0 && code.find("slider") != std::string::npos) {
           // Check if there are slider definitions that should create params
           if (code.find("slider1:") != std::string::npos ||
               code.find("slider2:") != std::string::npos) {
-            compileError = "JSFX compiled but sliders not created - check slider syntax";
+            compileError =
+                "JSFX compiled but sliders not created - check slider syntax";
           }
         }
       }
@@ -2109,7 +2122,7 @@ std::string MagdaJSFXEditor::TryCompileJSFX(const std::string &code) {
 }
 
 void MagdaJSFXEditor::RequestFix(size_t messageIndex,
-                                  const std::string &compileError) {
+                                 const std::string &compileError) {
   if (messageIndex >= m_chatHistory.size()) {
     return;
   }
@@ -2217,7 +2230,8 @@ void MagdaJSFXEditor::RequestFix(size_t messageIndex,
             if (chunk_elem->m_value_string) {
               ctx->codeBuffer.append(chunk_elem->m_value);
               JSFXChatMessage &aiMsg = editor->m_chatHistory[ctx->messageIndex];
-              aiMsg.content = ctx->autoFixMode ? "Auto-fixing..." : "Generating fix...";
+              aiMsg.content =
+                  ctx->autoFixMode ? "Auto-fixing..." : "Generating fix...";
               aiMsg.code_block = ctx->codeBuffer;
               aiMsg.has_code_block = true;
             }
@@ -2240,7 +2254,8 @@ void MagdaJSFXEditor::RequestFix(size_t messageIndex,
           editor->m_waitingForAI = false;
 
           // If in auto-fix mode, continue the loop
-          if (ctx->autoFixMode && editor->m_autoFixActive && !finalCode.empty()) {
+          if (ctx->autoFixMode && editor->m_autoFixActive &&
+              !finalCode.empty()) {
             editor->ContinueAutoFix();
           }
         } else if (eventType && strcmp(eventType, "error") == 0) {
@@ -2331,8 +2346,8 @@ void MagdaJSFXEditor::StartAutoFix(size_t messageIndex) {
   if (ShowConsoleMsg) {
     char logMsg[512];
     snprintf(logMsg, sizeof(logMsg),
-             "MAGDA JSFX: Auto-fix attempt %d - Error: %s\n",
-             m_autoFixAttempt, error.c_str());
+             "MAGDA JSFX: Auto-fix attempt %d - Error: %s\n", m_autoFixAttempt,
+             error.c_str());
     ShowConsoleMsg(logMsg);
   }
 
@@ -2388,9 +2403,10 @@ void MagdaJSFXEditor::ContinueAutoFix() {
   if (m_autoFixAttempt > MAX_AUTO_FIX_ATTEMPTS) {
     if (ShowConsoleMsg) {
       char logMsg[256];
-      snprintf(logMsg, sizeof(logMsg),
-               "MAGDA JSFX: Auto-fix gave up after %d attempts. Last error: %s\n",
-               MAX_AUTO_FIX_ATTEMPTS, error.c_str());
+      snprintf(
+          logMsg, sizeof(logMsg),
+          "MAGDA JSFX: Auto-fix gave up after %d attempts. Last error: %s\n",
+          MAX_AUTO_FIX_ATTEMPTS, error.c_str());
       ShowConsoleMsg(logMsg);
     }
     StopAutoFix();

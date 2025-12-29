@@ -5,11 +5,11 @@
 
 // API Key validation status
 enum class ApiKeyStatus {
-  Unknown,    // Not yet validated
-  Checking,   // Currently validating
-  Valid,      // Key is valid
-  Invalid,    // Key is invalid
-  Error       // Validation failed (network error, etc.)
+  Unknown,  // Not yet validated
+  Checking, // Currently validating
+  Valid,    // Key is valid
+  Invalid,  // Key is invalid
+  Error     // Validation failed (network error, etc.)
 };
 
 class MagdaImGuiApiKeys {
@@ -33,12 +33,13 @@ public:
   void Render();
 
   // Static methods to get/set API keys
-  static const char* GetOpenAIApiKey();
-  static void SetOpenAIApiKey(const char* key);
+  static const char *GetOpenAIApiKey();
+  static void SetOpenAIApiKey(const char *key);
 
 private:
   // ReaImGui function pointers
-  void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
+  void *(*m_ImGui_CreateContext)(const char *label,
+                                 int *config_flagsInOptional);
   bool (*m_ImGui_Begin)(void *ctx, const char *name, bool *p_openInOutOptional,
                         int *flagsInOptional);
   void (*m_ImGui_End)(void *ctx);
@@ -81,7 +82,7 @@ private:
 
   // Validation
   void ValidateOpenAIKey();
-  void OnValidationComplete(bool success, const char* message);
+  void OnValidationComplete(bool success, const char *message);
 
   // Internal methods
   void LoadSettings();

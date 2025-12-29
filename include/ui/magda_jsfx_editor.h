@@ -10,13 +10,13 @@ struct reaper_plugin_info_t;
 struct JSFXChatMessage {
   bool is_user;
   std::string content;
-  std::string description;    // Description of generated code
-  std::string code_block;     // Extracted code from AI response
+  std::string description; // Description of generated code
+  std::string code_block;  // Extracted code from AI response
   bool has_code_block;
   bool streaming_complete = false; // True when streaming is done
-  std::string compile_error;  // Compile error if any
-  bool compile_checked = false; // True when compilation was attempted
-  int auto_fix_attempt = 0;   // Which auto-fix attempt this is (0 = original)
+  std::string compile_error;       // Compile error if any
+  bool compile_checked = false;    // True when compilation was attempted
+  int auto_fix_attempt = 0; // Which auto-fix attempt this is (0 = original)
 };
 
 // File entry for browser
@@ -70,13 +70,15 @@ private:
   void AddToTrackAndOpen();
   void OpenInReaperEditor();
 
-  // Compile and get errors - returns empty string on success, error message on failure
+  // Compile and get errors - returns empty string on success, error message on
+  // failure
   std::string TryCompileJSFX(const std::string &code);
 
   // Send compile error to API for fixing
   void RequestFix(size_t messageIndex, const std::string &compileError);
 
-  // Auto-fix: compile, catch errors, send to AI, retry until success or max retries
+  // Auto-fix: compile, catch errors, send to AI, retry until success or max
+  // retries
   void StartAutoFix(size_t messageIndex);
   void ContinueAutoFix(); // Called when AI response is ready
   void StopAutoFix();
@@ -118,8 +120,8 @@ private:
 
   // Auto-fix state
   bool m_autoFixActive = false;
-  size_t m_autoFixMessageIndex = 0;  // Index of message being auto-fixed
-  int m_autoFixAttempt = 0;          // Current attempt number
+  size_t m_autoFixMessageIndex = 0; // Index of message being auto-fixed
+  int m_autoFixAttempt = 0;         // Current attempt number
   static constexpr int MAX_AUTO_FIX_ATTEMPTS = 5;
 
   // ReaImGui function pointers

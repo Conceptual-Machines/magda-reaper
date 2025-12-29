@@ -59,7 +59,8 @@ bool MagdaActions::CreateTrack(int index, const char *name,
     return false;
   }
 
-  // Store in context for inter-command coordination (Arranger/Drummer will use this)
+  // Store in context for inter-command coordination (Arranger/Drummer will use
+  // this)
   MagdaDSLContext::Get().SetCreatedTrack(index, name);
 
   // Set track name if provided
@@ -133,7 +134,8 @@ bool MagdaActions::CreateClip(int track_index, double position, double length,
 
   // Create MIDI item directly (ready for notes)
   // Using CreateNewMIDIItemInProj so it's immediately usable for MIDI
-  MediaItem *item = CreateNewMIDIItemInProj(track, position, position + length, nullptr);
+  MediaItem *item =
+      CreateNewMIDIItemInProj(track, position, position + length, nullptr);
   if (!item) {
     error_msg.Set("Failed to create MIDI item");
     return false;
@@ -945,7 +947,8 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
 
   // Set color if provided (REAPER uses OS-dependent color values)
   if (color && color[0]) {
-    // Use SetMediaItemInfo_Value with CORRECT signature (returns double, takes double)
+    // Use SetMediaItemInfo_Value with CORRECT signature (returns double, takes
+    // double)
     double (*SetMediaItemInfo_Value)(MediaItem *, const char *, double) =
         (double (*)(MediaItem *, const char *, double))g_rec->GetFunc(
             "SetMediaItemInfo_Value");
@@ -1003,10 +1006,11 @@ bool MagdaActions::SetClipProperties(int track_index, const char *clip_str,
                   ? GetMediaItemInfo_Value(target_item, "D_POSITION")
                   : -1.0;
           char log_msg[512];
-          snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
-                   "(native: 0x%08x)\n",
-                   item_pos, r, g, b, color_with_flag);
+          snprintf(
+              log_msg, sizeof(log_msg),
+              "MAGDA: Setting clip color at position %.6f to RGB(%u,%u,%u) "
+              "(native: 0x%08x)\n",
+              item_pos, r, g, b, color_with_flag);
           ShowConsoleMsg(log_msg);
         }
 
@@ -1391,7 +1395,8 @@ bool MagdaActions::ExecuteAction(const wdl_json_element *action,
   } else if (strcmp(action_type, "add_midi") == 0) {
     const char *track_str = action->get_string_by_name("track", true);
     wdl_json_element *notes_array = action->get_item_by_name("notes");
-    const char *name = action->get_string_by_name("name", true);  // Optional take name
+    const char *name =
+        action->get_string_by_name("name", true); // Optional take name
     if (!track_str || !notes_array) {
       error_msg.Set("Missing 'track' or 'notes' field");
       return false;
@@ -1778,7 +1783,8 @@ bool MagdaActions::ExecuteActions(const char *json, WDL_FastString &result,
 
       if (drum_notes_array) {
         WDL_FastString drum_error;
-        if (AddMIDI(drum_track_index, drum_notes_array, "Drum Pattern", drum_error)) {
+        if (AddMIDI(drum_track_index, drum_notes_array, "Drum Pattern",
+                    drum_error)) {
           result.Append(
               "{\"action\":\"drum_pattern\",\"success\":true,\"notes\":"
               "");
@@ -2010,9 +2016,10 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
       item = GetTrackMediaItem(track, clipItemIndex);
       if (item && ShowConsoleMsg) {
         char log_msg[512];
-        snprintf(log_msg, sizeof(log_msg),
-                 "MAGDA: AddMIDI: Using clip from context (item %d on track %d)\n",
-                 clipItemIndex, track_index);
+        snprintf(
+            log_msg, sizeof(log_msg),
+            "MAGDA: AddMIDI: Using clip from context (item %d on track %d)\n",
+            clipItemIndex, track_index);
         ShowConsoleMsg(log_msg);
       }
     }
@@ -2042,7 +2049,8 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
     if (ShowConsoleMsg) {
       char log_msg[512];
       snprintf(log_msg, sizeof(log_msg),
-               "MAGDA: AddMIDI: Using rightmost item at position %.2f sec\n", max_pos);
+               "MAGDA: AddMIDI: Using rightmost item at position %.2f sec\n",
+               max_pos);
       ShowConsoleMsg(log_msg);
     }
   } else if (!item) {
@@ -2280,8 +2288,8 @@ bool MagdaActions::AddMIDI(int track_index, wdl_json_element *notes_array,
   if (take_name && take_name[0]) {
     bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
                                            char *, bool) =
-        (bool (*)(MediaItem_Take *, const char *, char *,
-                  bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
+        (bool (*)(MediaItem_Take *, const char *, char *, bool))g_rec->GetFunc(
+            "GetSetMediaItemTakeInfo_String");
     if (GetSetMediaItemTakeInfo_String) {
       char name_buf[256];
       strncpy(name_buf, take_name, sizeof(name_buf) - 1);

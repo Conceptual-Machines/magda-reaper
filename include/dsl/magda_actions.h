@@ -29,8 +29,8 @@ public:
 
   // Context for inter-command coordination
   // When DAW creates a track, store index here so Arranger/Drummer can use it
-  static int GetLastCreatedTrackIndex();  // Returns -1 if none
-  static void ClearLastCreatedTrack();    // Call after processing all DSL
+  static int GetLastCreatedTrackIndex(); // Returns -1 if none
+  static void ClearLastCreatedTrack();   // Call after processing all DSL
 
 private:
   // Execute a single action

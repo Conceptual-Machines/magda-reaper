@@ -37,8 +37,8 @@ struct MixStreamingState {
   bool isStreaming = false;
   bool streamComplete = false;
   bool streamError = false;
-  std::string streamBuffer;   // Accumulated text from streaming
-  std::string errorMessage;   // Error message if failed
+  std::string streamBuffer; // Accumulated text from streaming
+  std::string errorMessage; // Error message if failed
 };
 
 // Result callback type for mix analysis

@@ -170,10 +170,10 @@ private:
   bool m_scrollToBottom = false;
 
   // Streaming text display (for typewriter effect on responses)
-  std::string m_streamingFullText;      // Full text to stream
-  size_t m_streamingCharIndex = 0;      // Current position in text
-  double m_lastStreamCharTime = 0.0;    // Last time we added a character
-  bool m_isStreamingText = false;       // Whether we're currently streaming
+  std::string m_streamingFullText;   // Full text to stream
+  size_t m_streamingCharIndex = 0;   // Current position in text
+  double m_lastStreamCharTime = 0.0; // Last time we added a character
+  bool m_isStreamingText = false;    // Whether we're currently streaming
 
   // TRUE streaming state for mix analysis (SSE streaming from API)
   bool m_isMixAnalysisStreaming = false;
@@ -217,8 +217,8 @@ private:
   bool m_asyncPending = false;
   bool m_asyncResultReady = false;
   bool m_asyncSuccess = false;
-  bool m_cancelRequested = false;  // Flag to cancel ongoing request
-  bool m_directOpenAI = false;     // True when using direct OpenAI (DSL result)
+  bool m_cancelRequested = false; // Flag to cancel ongoing request
+  bool m_directOpenAI = false;    // True when using direct OpenAI (DSL result)
   std::string m_asyncResponseJson;
   std::string m_asyncErrorMsg;
   std::string m_pendingQuestion;               // Question being processed

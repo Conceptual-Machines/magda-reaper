@@ -621,7 +621,8 @@ void MagdaImGuiChat::Render() {
     double zero = 0;
     m_ImGui_SameLine(m_ctx, &zero, &btnSpacing);
 
-    // Hide Send/Cancel button when autocomplete is showing to prevent accidental clicks
+    // Hide Send/Cancel button when autocomplete is showing to prevent
+    // accidental clicks
     if (!m_showAutocomplete) {
       if (m_busy) {
         // Red Cancel button when busy
@@ -696,7 +697,7 @@ void MagdaImGuiChat::Render() {
 
     // Single-column chat area
     double chatW = col1W + colSpacing + col2W;
-    int userColor = g_theme.accent;       // Blue for user
+    int userColor = g_theme.accent;          // Blue for user
     int assistantColor = g_theme.normalText; // Normal for assistant
 
     if (m_ImGui_BeginChild(m_ctx, "##chat_scroll", &chatW, &paneH, &borderFlags,
@@ -716,7 +717,8 @@ void MagdaImGuiChat::Render() {
       }
 
       // Update streaming text
-      if (m_isStreamingText && m_streamingCharIndex < m_streamingFullText.length()) {
+      if (m_isStreamingText &&
+          m_streamingCharIndex < m_streamingFullText.length()) {
         double now = (double)clock() / CLOCKS_PER_SEC;
         while (m_streamingCharIndex < m_streamingFullText.length() &&
                (now - m_lastStreamCharTime) > 0.016) {
@@ -740,24 +742,33 @@ void MagdaImGuiChat::Render() {
         const char *spinnerFrames[] = {
             "\xe2\xa0\x8b", "\xe2\xa0\x99", "\xe2\xa0\xb9", "\xe2\xa0\xb8",
             "\xe2\xa0\xbc", "\xe2\xa0\xb4", "\xe2\xa0\xa6", "\xe2\xa0\xa7",
-            "\xe2\xa0\x87", "\xe2\xa0\x8f"
-        };
-        double elapsed = ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
+            "\xe2\xa0\x87", "\xe2\xa0\x8f"};
+        double elapsed =
+            ((double)clock() / CLOCKS_PER_SEC) - m_spinnerStartTime;
         int frameIndex = ((int)(elapsed * 10.0)) % 10;
 
-        // Only show phase-specific messages for mix analysis (when phase != IDLE)
+        // Only show phase-specific messages for mix analysis (when phase !=
+        // IDLE)
         const char *phaseMsg = "Processing request...";
         MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
         if (phase != MIX_PHASE_IDLE) {
           switch (phase) {
-            case MIX_PHASE_RENDERING: phaseMsg = "Rendering audio..."; break;
-            case MIX_PHASE_DSP_ANALYSIS: phaseMsg = "Running DSP analysis..."; break;
-            case MIX_PHASE_API_CALL: phaseMsg = "Analyzing with AI..."; break;
-            default: break;
+          case MIX_PHASE_RENDERING:
+            phaseMsg = "Rendering audio...";
+            break;
+          case MIX_PHASE_DSP_ANALYSIS:
+            phaseMsg = "Running DSP analysis...";
+            break;
+          case MIX_PHASE_API_CALL:
+            phaseMsg = "Analyzing with AI...";
+            break;
+          default:
+            break;
           }
         }
         char loadingMsg[128];
-        snprintf(loadingMsg, sizeof(loadingMsg), "%s %s", spinnerFrames[frameIndex], phaseMsg);
+        snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
+                 spinnerFrames[frameIndex], phaseMsg);
         m_ImGui_TextColored(m_ctx, g_theme.statusYellow, loadingMsg);
         m_scrollToBottom = true;
       }
@@ -942,7 +953,8 @@ void MagdaImGuiChat::RenderResponseColumn() {
     }
 
     // Update streaming text (typewriter effect for mix analysis responses)
-    if (m_isStreamingText && m_streamingCharIndex < m_streamingFullText.length()) {
+    if (m_isStreamingText &&
+        m_streamingCharIndex < m_streamingFullText.length()) {
       double now = (double)clock() / CLOCKS_PER_SEC;
       while (m_streamingCharIndex < m_streamingFullText.length() &&
              (now - m_lastStreamCharTime) > 0.016) {
@@ -972,8 +984,8 @@ void MagdaImGuiChat::RenderResponseColumn() {
       m_ImGui_PopStyleColor(m_ctx, &popCount);
     }
 
-    // TODO: "Apply Changes" UI disabled for now - needs refinement (compact view)
-    // if (m_hasPendingMixActions) { ... }
+    // TODO: "Apply Changes" UI disabled for now - needs refinement (compact
+    // view) if (m_hasPendingMixActions) { ... }
 
     // Show loading spinner while busy
     if (m_busy) {
@@ -995,24 +1007,25 @@ void MagdaImGuiChat::RenderResponseColumn() {
       int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
       // Build loading message with spinner - show phase-specific message
-      // Show spinner if NOT streaming, OR if streaming but buffer is still empty
-      // (buffer empty means we're waiting for the synchronous HTTP request to complete)
+      // Show spinner if NOT streaming, OR if streaming but buffer is still
+      // empty (buffer empty means we're waiting for the synchronous HTTP
+      // request to complete)
       if (!m_isMixAnalysisStreaming || m_lastMixStreamBuffer.empty()) {
         const char *phaseMsg = "Processing request...";
         MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
         switch (phase) {
-          case MIX_PHASE_RENDERING:
-            phaseMsg = "Rendering audio...";
-            break;
-          case MIX_PHASE_DSP_ANALYSIS:
-            phaseMsg = "Running DSP analysis...";
-            break;
-          case MIX_PHASE_API_CALL:
-            phaseMsg = "Analyzing with AI...";
-            break;
-          default:
-            phaseMsg = "Processing request...";
-            break;
+        case MIX_PHASE_RENDERING:
+          phaseMsg = "Rendering audio...";
+          break;
+        case MIX_PHASE_DSP_ANALYSIS:
+          phaseMsg = "Running DSP analysis...";
+          break;
+        case MIX_PHASE_API_CALL:
+          phaseMsg = "Analyzing with AI...";
+          break;
+        default:
+          phaseMsg = "Processing request...";
+          break;
         }
         char loadingMsg[128];
         snprintf(loadingMsg, sizeof(loadingMsg), "%s %s",
@@ -1782,7 +1795,7 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
     m_asyncResultReady = false;
     m_asyncSuccess = false;
     m_cancelRequested = false;
-    m_directOpenAI = true;  // Mark as direct OpenAI (DSL result)
+    m_directOpenAI = true; // Mark as direct OpenAI (DSL result)
     m_asyncResponseJson.clear();
     m_asyncErrorMsg.clear();
     m_streamingActions.clear();
@@ -1811,7 +1824,8 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
       // Use simple DAW-only mode via OpenAI client
       WDL_FastString dslCode, errorMsg;
       bool success = openai->GenerateDSLWithState(
-          question.c_str(), MAGDA_DSL_TOOL_DESCRIPTION, stateStr.c_str(), dslCode, errorMsg);
+          question.c_str(), MAGDA_DSL_TOOL_DESCRIPTION, stateStr.c_str(),
+          dslCode, errorMsg);
 
       std::lock_guard<std::mutex> lock(m_asyncMutex);
       m_asyncSuccess = success && dslCode.GetLength() > 0;
@@ -1825,14 +1839,16 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
     // Use agent orchestration (detects and runs appropriate agents)
     std::vector<AgentResult> results;
     WDL_FastString errorMsg;
-    bool success = agentMgr->Orchestrate(question.c_str(), stateStr.c_str(), results, errorMsg);
+    bool success = agentMgr->Orchestrate(question.c_str(), stateStr.c_str(),
+                                         results, errorMsg);
 
     if (success && !results.empty()) {
       // Combine all DSL results
       std::string combinedDSL;
-      for (const auto& result : results) {
+      for (const auto &result : results) {
         if (result.success && !result.dslCode.empty()) {
-          if (!combinedDSL.empty()) combinedDSL += "\n";
+          if (!combinedDSL.empty())
+            combinedDSL += "\n";
           combinedDSL += result.dslCode;
         }
       }
@@ -1846,7 +1862,8 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
     } else {
       std::lock_guard<std::mutex> lock(m_asyncMutex);
       m_asyncSuccess = false;
-      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Agent orchestration failed";
+      m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get()
+                                                 : "Agent orchestration failed";
       m_asyncResultReady = true;
       m_asyncPending = false;
     }
@@ -1865,13 +1882,14 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
   // Set busy state and start spinner animation
   m_busy = true;
   m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-  ClearStreamingBuffer();                // Clear any previous streaming content
+  ClearStreamingBuffer(); // Clear any previous streaming content
 
-  // Reset mix analysis phase for regular chat requests (show generic "Processing...")
+  // Reset mix analysis phase for regular chat requests (show generic
+  // "Processing...")
   MagdaBounceWorkflow::SetCurrentPhase(MIX_PHASE_IDLE);
 
   // Check if OpenAI API key is configured - use direct OpenAI if available
-  MagdaOpenAI* openai = GetMagdaOpenAI();
+  MagdaOpenAI *openai = GetMagdaOpenAI();
   if (openai && openai->HasAPIKey()) {
     // Use direct OpenAI API
     SetAPIStatus("OpenAI Direct", 0x88FF88FF); // Green
@@ -1946,7 +1964,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
     m_asyncPending = true;
     m_asyncResultReady = false;
     m_asyncSuccess = false;
-    m_cancelRequested = false;  // Reset cancel flag for new request
+    m_cancelRequested = false; // Reset cancel flag for new request
     m_asyncResponseJson.clear();
     m_asyncErrorMsg.clear();
     m_streamingActions.clear(); // Clear any pending actions
@@ -1979,7 +1997,7 @@ void MagdaImGuiChat::StartAsyncRequest(const std::string &question) {
       {
         std::lock_guard<std::mutex> lock(ctx->chat->m_asyncMutex);
         if (ctx->chat->m_cancelRequested) {
-          return;  // Stop processing if cancelled
+          return; // Stop processing if cancelled
         }
       }
 
@@ -2185,7 +2203,8 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         }
 
         // Update message content with accumulated stream
-        if (!m_history.empty() && streamState.streamBuffer != m_lastMixStreamBuffer) {
+        if (!m_history.empty() &&
+            streamState.streamBuffer != m_lastMixStreamBuffer) {
           m_history.back().content = streamState.streamBuffer;
           m_lastMixStreamBuffer = streamState.streamBuffer;
           m_scrollToBottom = true;
@@ -2334,7 +2353,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
   {
     std::lock_guard<std::mutex> lock(m_asyncMutex);
     isDSL = m_directOpenAI;
-    m_directOpenAI = false;  // Reset for next request
+    m_directOpenAI = false; // Reset for next request
   }
 
   // Process final result on the MAIN thread
@@ -2347,8 +2366,8 @@ void MagdaImGuiChat::ProcessAsyncResult() {
             (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
         if (ShowConsoleMsg) {
           char log_msg[2048];
-          snprintf(log_msg, sizeof(log_msg), "MAGDA: OpenAI generated DSL:\n%s\n",
-                   responseJson.c_str());
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: OpenAI generated DSL:\n%s\n", responseJson.c_str());
           ShowConsoleMsg(log_msg);
         }
       }
@@ -2357,35 +2376,42 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       bool dslSuccess = true;
       std::string lastError;
       int successCount = 0;
-      std::vector<std::string> actionSummaries; // Track what actions were performed
+      std::vector<std::string>
+          actionSummaries; // Track what actions were performed
 
       // Clear DSL context before processing
       MagdaDSLContext::Get().Clear();
 
-      // Split DSL by newlines and SORT: DAW commands first, then content commands
-      // This ensures track/clip creation happens before MIDI notes are added
+      // Split DSL by newlines and SORT: DAW commands first, then content
+      // commands This ensures track/clip creation happens before MIDI notes are
+      // added
       std::string dslCode = responseJson;
-      std::vector<std::string> dawCommands;     // track, clip, fx - execute first
-      std::vector<std::string> contentCommands; // arpeggio, chord, pattern - execute second
+      std::vector<std::string> dawCommands; // track, clip, fx - execute first
+      std::vector<std::string>
+          contentCommands;  // arpeggio, chord, pattern - execute second
       std::string jsfxCode; // JSFX is special - entire block
 
       size_t pos = 0;
       while (pos < dslCode.size()) {
         size_t endPos = dslCode.find('\n', pos);
-        if (endPos == std::string::npos) endPos = dslCode.size();
+        if (endPos == std::string::npos)
+          endPos = dslCode.size();
 
         std::string line = dslCode.substr(pos, endPos - pos);
         pos = endPos + 1;
 
         // Trim whitespace
         size_t start = line.find_first_not_of(" \t\r");
-        if (start == std::string::npos) continue;
+        if (start == std::string::npos)
+          continue;
         size_t end = line.find_last_not_of(" \t\r");
         line = line.substr(start, end - start + 1);
-        if (line.empty()) continue;
+        if (line.empty())
+          continue;
 
         // Categorize command
-        if (line.find("desc:") == 0 || line.find("@init") != std::string::npos ||
+        if (line.find("desc:") == 0 ||
+            line.find("@init") != std::string::npos ||
             line.find("@sample") != std::string::npos) {
           jsfxCode = dslCode; // JSFX is entire block
           break;
@@ -2403,7 +2429,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       }
 
       // Helper to extract a human-readable summary from a DSL command
-      auto getActionSummary = [](const std::string& line) -> std::string {
+      auto getActionSummary = [](const std::string &line) -> std::string {
         // Extract key info from common patterns
         if (line.find("track(") == 0) {
           // track(name="X").new() or track(name="X").new_clip(...)
@@ -2449,30 +2475,35 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           return "Added chord progression";
         } else if (line.find("note(") == 0) {
           return "Added note";
-        } else if (line.find("fx(") == 0 || line.find(".add_fx") != std::string::npos) {
+        } else if (line.find("fx(") == 0 ||
+                   line.find(".add_fx") != std::string::npos) {
           return "Added FX";
-        } else if (line.find("clip(") == 0 || line.find(".new_clip") != std::string::npos) {
+        } else if (line.find("clip(") == 0 ||
+                   line.find(".new_clip") != std::string::npos) {
           return "Created clip";
         }
         return "";
       };
 
       // Helper lambda to execute a line
-      auto executeLine = [&](const std::string& line) -> bool {
+      auto executeLine = [&](const std::string &line) -> bool {
         bool lineSuccess = false;
         if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
             line.find("note(") == 0 || line.find("progression(") == 0) {
           MagdaArranger::Interpreter arrangerInterp;
           lineSuccess = arrangerInterp.Execute(line.c_str());
-          if (!lineSuccess) lastError = arrangerInterp.GetError();
+          if (!lineSuccess)
+            lastError = arrangerInterp.GetError();
         } else if (line.find("pattern(") == 0) {
           MagdaDrummer::Interpreter drummerInterp;
           lineSuccess = drummerInterp.Execute(line.c_str());
-          if (!lineSuccess) lastError = drummerInterp.GetError();
+          if (!lineSuccess)
+            lastError = drummerInterp.GetError();
         } else {
           MagdaDSL::Interpreter dawInterp;
           lineSuccess = dawInterp.Execute(line.c_str());
-          if (!lineSuccess) lastError = dawInterp.GetError();
+          if (!lineSuccess)
+            lastError = dawInterp.GetError();
         }
         // Add action summary if successful
         if (lineSuccess) {
@@ -2497,7 +2528,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         }
       } else {
         // Execute DAW commands FIRST (creates tracks/clips)
-        for (const auto& cmd : dawCommands) {
+        for (const auto &cmd : dawCommands) {
           if (executeLine(cmd)) {
             successCount++;
           } else {
@@ -2506,7 +2537,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         }
 
         // Execute content commands SECOND (adds MIDI to created tracks)
-        for (const auto& cmd : contentCommands) {
+        for (const auto &cmd : contentCommands) {
           if (executeLine(cmd)) {
             successCount++;
           } else {
@@ -2518,7 +2549,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       if (successCount > 0 && !dslSuccess) {
         // Partial success - show what worked and the error
         std::string msg;
-        for (const auto& summary : actionSummaries) {
+        for (const auto &summary : actionSummaries) {
           msg += "✓ " + summary + "\n";
         }
         msg += "⚠ Error: " + lastError;
@@ -2529,7 +2560,8 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         std::string msg;
         for (size_t i = 0; i < actionSummaries.size(); i++) {
           msg += "✓ " + actionSummaries[i];
-          if (i < actionSummaries.size() - 1) msg += "\n";
+          if (i < actionSummaries.size() - 1)
+            msg += "\n";
         }
         AddAssistantMessage(msg);
         SetAPIStatus("Done", 0x88FF88FF); // Green
@@ -2546,8 +2578,9 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       // Clear DSL context after processing
       MagdaDSLContext::Get().Clear();
     } else {
-      // For streaming from Go backend: the buffer should contain formatted action messages
-      // ClearStreamingBuffer adds buffer content to chat history
+      // For streaming from Go backend: the buffer should contain formatted
+      // action messages ClearStreamingBuffer adds buffer content to chat
+      // history
       bool hadStreamingContent = !m_streamingBuffer.empty();
       ClearStreamingBuffer();
 

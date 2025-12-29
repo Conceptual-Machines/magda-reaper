@@ -95,9 +95,8 @@ bool MagdaImGuiSettings::Initialize(reaper_plugin_info_t *rec) {
                                  double *))rec->GetFunc("ImGui_Selectable");
   m_ImGui_InputInt = (bool (*)(void *, const char *, int *, int *, int *,
                                int *))rec->GetFunc("ImGui_InputInt");
-  m_ImGui_InputText =
-      (bool (*)(void *, const char *, char *, int, int *, void *,
-                void *))rec->GetFunc("ImGui_InputText");
+  m_ImGui_InputText = (bool (*)(void *, const char *, char *, int, int *,
+                                void *, void *))rec->GetFunc("ImGui_InputText");
   m_ImGui_InputTextWithHint =
       (bool (*)(void *, const char *, const char *, char *, int, int *, void *,
                 void *))rec->GetFunc("ImGui_InputTextWithHint");
@@ -255,7 +254,7 @@ void MagdaImGuiSettings::Show() {
 }
 
 void MagdaImGuiSettings::Hide() {
-  m_shouldClose = true;  // Will close on next frame
+  m_shouldClose = true; // Will close on next frame
 }
 
 void MagdaImGuiSettings::Toggle() {
@@ -324,8 +323,8 @@ void MagdaImGuiSettings::Render() {
 
   // Begin window
   int flags = ImGuiWindowFlags::NoCollapse;
-  bool open = !m_shouldClose;  // If should close, start with open=false
-  m_shouldClose = false;  // Reset flag
+  bool open = !m_shouldClose; // If should close, start with open=false
+  m_shouldClose = false;      // Reset flag
   if (!m_ImGui_Begin(m_ctx, "MAGDA Settings", &open, &flags)) {
     m_ImGui_End(m_ctx);
     if (m_ImGui_PopStyleColor) {

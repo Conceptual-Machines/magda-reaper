@@ -62,7 +62,8 @@ private:
                            int *flagsInOptional);
   bool (*m_ImGui_InputText)(void *ctx, const char *label, char *buf,
                             int buf_size, int *flagsInOptional,
-                            void *callbackInOptional, void *user_dataInOptional);
+                            void *callbackInOptional,
+                            void *user_dataInOptional);
   bool (*m_ImGui_InputTextWithHint)(void *ctx, const char *label,
                                     const char *hint, char *buf, int buf_size,
                                     int *flagsInOptional,
@@ -79,7 +80,7 @@ private:
   // State
   bool m_available = false;
   bool m_visible = false;
-  bool m_shouldClose = false;  // Deferred close flag
+  bool m_shouldClose = false; // Deferred close flag
   void *m_ctx = nullptr;
 
   // Current preferences (editable in UI)

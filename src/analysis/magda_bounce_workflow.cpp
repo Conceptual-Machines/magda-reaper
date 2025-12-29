@@ -1,10 +1,10 @@
 #include "magda_bounce_workflow.h"
+#include "../WDL/WDL/jsonparse.h"
+#include "../api/magda_openai.h"
 #include "magda_api_client.h"
 #include "magda_dsp_analyzer.h"
 #include "magda_imgui_login.h"
-#include "../api/magda_openai.h"
 #include "reaper_plugin.h"
-#include "../WDL/WDL/jsonparse.h"
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
@@ -88,7 +88,7 @@ static MixStreamingState s_streamState;
 bool MagdaBounceWorkflow::GetStreamingState(MixStreamingState &state) {
   std::lock_guard<std::mutex> lock(s_streamMutex);
   if (!s_streamState.isStreaming && !s_streamState.streamComplete) {
-    return false;  // No streaming active or complete
+    return false; // No streaming active or complete
   }
   state = s_streamState;
   return true;
@@ -108,7 +108,8 @@ void MagdaBounceWorkflow::StartStreaming() {
   s_streamState.errorMessage.clear();
 }
 
-void MagdaBounceWorkflow::CompleteStreaming(bool success, const std::string &error) {
+void MagdaBounceWorkflow::CompleteStreaming(bool success,
+                                            const std::string &error) {
   std::lock_guard<std::mutex> lock(s_streamMutex);
   s_streamState.isStreaming = false;
   s_streamState.streamComplete = true;
@@ -1166,9 +1167,10 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   SetCurrentPhase(MIX_PHASE_API_CALL);
 
   // Check if OpenAI API key is available
-  MagdaOpenAI* openai = GetMagdaOpenAI();
+  MagdaOpenAI *openai = GetMagdaOpenAI();
   if (!openai || !openai->HasAPIKey()) {
-    error_msg.Set("OpenAI API key not configured. Please set it in MAGDA > API Keys.");
+    error_msg.Set(
+        "OpenAI API key not configured. Please set it in MAGDA > API Keys.");
     if (ShowConsoleMsg) {
       ShowConsoleMsg("MAGDA: OpenAI API key not configured\n");
     }
@@ -1186,10 +1188,18 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   // Escape track name
   for (const char *p = trackName; p && *p; p++) {
     switch (*p) {
-    case '"':  contextJson.Append("\\\""); break;
-    case '\\': contextJson.Append("\\\\"); break;
-    case '\n': contextJson.Append("\\n"); break;
-    default:   contextJson.Append(p, 1); break;
+    case '"':
+      contextJson.Append("\\\"");
+      break;
+    case '\\':
+      contextJson.Append("\\\\");
+      break;
+    case '\n':
+      contextJson.Append("\\n");
+      break;
+    default:
+      contextJson.Append(p, 1);
+      break;
     }
   }
   contextJson.Append("\"");
@@ -1197,9 +1207,15 @@ bool MagdaBounceWorkflow::SendToMixAPI(
     contextJson.Append(",\"track_type\":\"");
     for (const char *p = trackType; *p; p++) {
       switch (*p) {
-      case '"':  contextJson.Append("\\\""); break;
-      case '\\': contextJson.Append("\\\\"); break;
-      default:   contextJson.Append(p, 1); break;
+      case '"':
+        contextJson.Append("\\\"");
+        break;
+      case '\\':
+        contextJson.Append("\\\\");
+        break;
+      default:
+        contextJson.Append(p, 1);
+        break;
       }
     }
     contextJson.Append("\"");
@@ -1222,10 +1238,11 @@ bool MagdaBounceWorkflow::SendToMixAPI(
   std::string localAccumulator;
 
   // Streaming callback that accumulates text both locally and to UI state
-  auto streamCallback = [&localAccumulator](const char* text, bool is_done) -> bool {
+  auto streamCallback = [&localAccumulator](const char *text,
+                                            bool is_done) -> bool {
     if (text && *text) {
-      localAccumulator += text;  // Local accumulator (safe from UI clearing)
-      MagdaBounceWorkflow::AppendStreamText(text);  // For UI streaming display
+      localAccumulator += text; // Local accumulator (safe from UI clearing)
+      MagdaBounceWorkflow::AppendStreamText(text); // For UI streaming display
     }
     if (is_done) {
       MagdaBounceWorkflow::CompleteStreaming(true);
@@ -1235,17 +1252,14 @@ bool MagdaBounceWorkflow::SendToMixAPI(
 
   // Call OpenAI directly
   bool success = openai->GenerateMixFeedback(
-      analysisJson,
-      contextJson.Get(),
-      userRequest,
-      streamCallback,
-      error_msg);
+      analysisJson, contextJson.Get(), userRequest, streamCallback, error_msg);
 
   if (!success) {
     CompleteStreaming(false, error_msg.Get());
     if (ShowConsoleMsg) {
       char msg[512];
-      snprintf(msg, sizeof(msg), "MAGDA: OpenAI mix analysis error: %s\n", error_msg.Get());
+      snprintf(msg, sizeof(msg), "MAGDA: OpenAI mix analysis error: %s\n",
+               error_msg.Get());
       ShowConsoleMsg(msg);
     }
     return false;
@@ -1396,12 +1410,13 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
           (int (*)(MediaItem *))g_rec->GetFunc("CountTakes");
       int takesBefore = CountTakesFunc ? CountTakesFunc(item) : 0;
 
-      // Ensure take has a valid name before rendering (prevents garbage filenames)
+      // Ensure take has a valid name before rendering (prevents garbage
+      // filenames)
       if (GetActiveTake) {
         MediaItem_Take *activeTake = GetActiveTake(item);
         if (activeTake) {
           bool (*GetSetMediaItemTakeInfo_String)(MediaItem_Take *, const char *,
-                                                  char *, bool) =
+                                                 char *, bool) =
               (bool (*)(MediaItem_Take *, const char *, char *,
                         bool))g_rec->GetFunc("GetSetMediaItemTakeInfo_String");
 
@@ -1722,7 +1737,8 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
 
             // Queue take deletion BEFORE API call (must be done on main thread)
-            // We delete the rendered take early to avoid holding onto temp audio
+            // We delete the rendered take early to avoid holding onto temp
+            // audio
             {
               std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
               ReaperCommand deleteCmd;
@@ -1735,11 +1751,13 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             }
 
             if (ShowConsoleMsg) {
-              ShowConsoleMsg("MAGDA: Queued take deletion, calling Mix API...\n");
+              ShowConsoleMsg(
+                  "MAGDA: Queued take deletion, calling Mix API...\n");
             }
 
             // Send to mix API with TRUE STREAMING
-            // Text is streamed to the UI in real-time via MagdaBounceWorkflow::AppendStreamText
+            // Text is streamed to the UI in real-time via
+            // MagdaBounceWorkflow::AppendStreamText
             WDL_FastString responseJson, error_msg;
             if (!SendToMixAPI(analysisJson.Get(), fxStr.c_str(),
                               trackType[0] ? trackType : "other",
@@ -1758,8 +1776,8 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                 ShowConsoleMsg(
                     "MAGDA: Mix analysis streaming completed successfully!\n");
               }
-              // Success already handled by streaming - text was streamed to UI in real-time
-              // and CompleteStreaming was called
+              // Success already handled by streaming - text was streamed to UI
+              // in real-time and CompleteStreaming was called
             }
           }
           // Take deletion already queued before API call

@@ -1,16 +1,16 @@
 #include "magda_actions.h"
 #include "magda_bounce_workflow.h"
-#include "magda_dsl_interpreter.h"
 #include "magda_chat_window.h"
 #include "magda_drum_mapping.h"
 #include "magda_drum_mapping_window.h"
+#include "magda_dsl_interpreter.h"
 #include "magda_dsp_analyzer.h"
+#include "magda_imgui_api_keys.h"
 #include "magda_imgui_chat.h"
 #include "magda_imgui_login.h"
 #include "magda_imgui_mix_analysis_dialog.h"
 #include "magda_imgui_plugin_window.h"
 #include "magda_imgui_settings.h"
-#include "magda_imgui_api_keys.h"
 #include "magda_jsfx_editor.h"
 #include "magda_param_mapping.h"
 #include "magda_param_mapping_window.h"
@@ -673,7 +673,7 @@ void magdaAction(int command_id, int flag) {
             if (SetProjExtState) {
               SetProjExtState(nullptr, "MAGDA_TEST", "DSL_RESULT", "ERROR");
               SetProjExtState(nullptr, "MAGDA_TEST", "DSL_ERROR",
-                             interpreter.GetError());
+                              interpreter.GetError());
             }
             if (ShowConsoleMsg) {
               char msg[512];
@@ -1032,8 +1032,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
       {0, 0, (unsigned short)g_cmdJSFXEditor}, "MAGDA: JSFX Editor"};
   gaccel_register_t gaccel_test_execute = {
       {0, 0, (unsigned short)g_cmdTestExecute}, "MAGDA: Test Execute Action"};
-  gaccel_register_t gaccel_test_dsl = {
-      {0, 0, (unsigned short)g_cmdTestDSL}, "MAGDA: Test DSL Interpreter"};
+  gaccel_register_t gaccel_test_dsl = {{0, 0, (unsigned short)g_cmdTestDSL},
+                                       "MAGDA: Test DSL Interpreter"};
   gaccel_register_t gaccel_chat_repeat_last = {
       {0, 0, (unsigned short)g_cmdChatRepeatLast},
       "MAGDA: Repeat Last Command"};
