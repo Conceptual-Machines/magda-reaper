@@ -995,8 +995,9 @@ void MagdaImGuiChat::RenderResponseColumn() {
       int frameIndex = ((int)(elapsed * 10.0)) % numFrames; // 10 FPS animation
 
       // Build loading message with spinner - show phase-specific message
-      // Don't show spinner if we're actively streaming (text is already appearing)
-      if (!m_isMixAnalysisStreaming) {
+      // Show spinner if NOT streaming, OR if streaming but buffer is still empty
+      // (buffer empty means we're waiting for the synchronous HTTP request to complete)
+      if (!m_isMixAnalysisStreaming || m_lastMixStreamBuffer.empty()) {
         const char *phaseMsg = "Processing request...";
         MixAnalysisPhase phase = MagdaBounceWorkflow::GetCurrentPhase();
         switch (phase) {
@@ -2356,6 +2357,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       bool dslSuccess = true;
       std::string lastError;
       int successCount = 0;
+      std::vector<std::string> actionSummaries; // Track what actions were performed
 
       // Clear DSL context before processing
       MagdaDSLContext::Get().Clear();
@@ -2400,6 +2402,61 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         }
       }
 
+      // Helper to extract a human-readable summary from a DSL command
+      auto getActionSummary = [](const std::string& line) -> std::string {
+        // Extract key info from common patterns
+        if (line.find("track(") == 0) {
+          // track(name="X").new() or track(name="X").new_clip(...)
+          size_t nameStart = line.find("name=\"");
+          if (nameStart != std::string::npos) {
+            nameStart += 6;
+            size_t nameEnd = line.find("\"", nameStart);
+            if (nameEnd != std::string::npos) {
+              std::string name = line.substr(nameStart, nameEnd - nameStart);
+              if (line.find(".new_clip") != std::string::npos) {
+                return "Created track '" + name + "' with clip";
+              } else {
+                return "Created track '" + name + "'";
+              }
+            }
+          }
+          return "Created track";
+        } else if (line.find("arpeggio(") == 0) {
+          size_t symStart = line.find("symbol=");
+          if (symStart != std::string::npos) {
+            symStart += 7;
+            size_t symEnd = line.find_first_of(",)", symStart);
+            if (symEnd != std::string::npos) {
+              std::string sym = line.substr(symStart, symEnd - symStart);
+              return "Added " + sym + " arpeggio";
+            }
+          }
+          return "Added arpeggio";
+        } else if (line.find("chord(") == 0) {
+          size_t symStart = line.find("symbol=");
+          if (symStart != std::string::npos) {
+            symStart += 7;
+            size_t symEnd = line.find_first_of(",)", symStart);
+            if (symEnd != std::string::npos) {
+              std::string sym = line.substr(symStart, symEnd - symStart);
+              return "Added " + sym + " chord";
+            }
+          }
+          return "Added chord";
+        } else if (line.find("pattern(") == 0) {
+          return "Added drum pattern";
+        } else if (line.find("progression(") == 0) {
+          return "Added chord progression";
+        } else if (line.find("note(") == 0) {
+          return "Added note";
+        } else if (line.find("fx(") == 0 || line.find(".add_fx") != std::string::npos) {
+          return "Added FX";
+        } else if (line.find("clip(") == 0 || line.find(".new_clip") != std::string::npos) {
+          return "Created clip";
+        }
+        return "";
+      };
+
       // Helper lambda to execute a line
       auto executeLine = [&](const std::string& line) -> bool {
         bool lineSuccess = false;
@@ -2417,6 +2474,13 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           lineSuccess = dawInterp.Execute(line.c_str());
           if (!lineSuccess) lastError = dawInterp.GetError();
         }
+        // Add action summary if successful
+        if (lineSuccess) {
+          std::string summary = getActionSummary(line);
+          if (!summary.empty()) {
+            actionSummaries.push_back(summary);
+          }
+        }
         return lineSuccess;
       };
 
@@ -2426,6 +2490,7 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         jsfxInterp.SetTargetTrack(-1);
         if (jsfxInterp.Execute(jsfxCode.c_str())) {
           successCount++;
+          actionSummaries.push_back("Created JSFX effect");
         } else {
           lastError = jsfxInterp.GetError();
           dslSuccess = false;
@@ -2451,22 +2516,31 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       }
 
       if (successCount > 0 && !dslSuccess) {
-        // Partial success
-        char msg[256];
-        snprintf(msg, sizeof(msg), "Partial success (%d commands). Last error: %s",
-                 successCount, lastError.c_str());
+        // Partial success - show what worked and the error
+        std::string msg;
+        for (const auto& summary : actionSummaries) {
+          msg += "✓ " + summary + "\n";
+        }
+        msg += "⚠ Error: " + lastError;
         AddAssistantMessage(msg);
         SetAPIStatus("Partial", 0xFFAA44FF); // Orange
-      } else if (dslSuccess) {
-        char msg[64];
-        snprintf(msg, sizeof(msg), "Done (via OpenAI Direct) - %d commands.", successCount);
+      } else if (dslSuccess && !actionSummaries.empty()) {
+        // Full success - show all actions performed
+        std::string msg;
+        for (size_t i = 0; i < actionSummaries.size(); i++) {
+          msg += "✓ " + actionSummaries[i];
+          if (i < actionSummaries.size() - 1) msg += "\n";
+        }
         AddAssistantMessage(msg);
-        SetAPIStatus("OpenAI Direct", 0x88FF88FF); // Green
+        SetAPIStatus("Done", 0x88FF88FF); // Green
+      } else if (dslSuccess) {
+        // Success but no trackable actions (fallback)
+        AddAssistantMessage("Done.");
+        SetAPIStatus("Done", 0x88FF88FF); // Green
       } else {
-        std::string errorStr = "DSL Error: ";
-        errorStr += lastError;
+        std::string errorStr = "Error: " + lastError;
         AddAssistantMessage(errorStr);
-        SetAPIStatus("DSL Error", 0xFF6666FF); // Red
+        SetAPIStatus("Error", 0xFF6666FF); // Red
       }
 
       // Clear DSL context after processing

@@ -392,6 +392,101 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
     return realsize;
 }
 
+// Streaming callback data structure for SSE processing
+struct CurlStreamWriteData {
+    MagdaOpenAI::StreamCallback callback;
+    char line_buffer[16384];
+    int line_pos;
+    bool success;
+    bool received_content;  // Track if we received any text content
+    WDL_FastString error_msg;
+};
+
+// SSE streaming write callback - processes OpenAI streaming events
+static size_t CurlStreamWriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+    size_t total_size = size * nmemb;
+    CurlStreamWriteData* data = (CurlStreamWriteData*)userp;
+    char* ptr = (char*)contents;
+
+    for (size_t i = 0; i < total_size; i++) {
+        if (ptr[i] == '\n' || data->line_pos >= (int)sizeof(data->line_buffer) - 1) {
+            data->line_buffer[data->line_pos] = '\0';
+
+            if (data->line_pos > 0) {
+                // Process SSE line
+                if (strncmp(data->line_buffer, "data: ", 6) == 0) {
+                    const char* json_data = data->line_buffer + 6;
+
+                    // Skip [DONE] marker
+                    if (strcmp(json_data, "[DONE]") == 0) {
+                        data->success = true;
+                        // Call callback with is_done = true
+                        if (data->callback) {
+                            data->callback("", true);
+                        }
+                    } else {
+                        // Parse JSON to extract text delta
+                        wdl_json_parser parser;
+                        wdl_json_element* root = parser.parse(json_data, (int)strlen(json_data));
+
+                        if (!parser.m_err && root) {
+                            wdl_json_element* type_elem = root->get_item_by_name("type");
+                            if (type_elem && type_elem->m_value_string) {
+                                const char* event_type = type_elem->m_value;
+
+                                // Handle text delta events
+                                if (strcmp(event_type, "response.output_text.delta") == 0) {
+                                    wdl_json_element* delta_elem = root->get_item_by_name("delta");
+                                    if (delta_elem && delta_elem->m_value_string && delta_elem->m_value) {
+                                        // Call callback with text chunk
+                                        if (data->callback) {
+                                            data->callback(delta_elem->m_value, false);
+                                        }
+                                        data->received_content = true;
+                                    }
+                                } else if (strcmp(event_type, "response.output_text.done") == 0) {
+                                    // Text output complete - mark content received
+                                    data->received_content = true;
+                                } else if (strcmp(event_type, "response.done") == 0 ||
+                                           strcmp(event_type, "response.completed") == 0) {
+                                    // Stream complete
+                                    data->success = true;
+                                    if (data->callback) {
+                                        data->callback("", true);
+                                    }
+                                } else if (strcmp(event_type, "response.failed") == 0) {
+                                    // Response failed - extract error from response.error.message
+                                    wdl_json_element* response_elem = root->get_item_by_name("response");
+                                    if (response_elem) {
+                                        wdl_json_element* error_elem = response_elem->get_item_by_name("error");
+                                        if (error_elem) {
+                                            wdl_json_element* msg_elem = error_elem->get_item_by_name("message");
+                                            if (msg_elem && msg_elem->m_value_string && msg_elem->m_value) {
+                                                data->error_msg.Set(msg_elem->m_value);
+                                            }
+                                        }
+                                    }
+                                } else if (strcmp(event_type, "error") == 0) {
+                                    // Error event
+                                    wdl_json_element* msg_elem = root->get_item_by_name("message");
+                                    if (msg_elem && msg_elem->m_value_string && msg_elem->m_value) {
+                                        data->error_msg.Set(msg_elem->m_value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            data->line_pos = 0;
+        } else if (ptr[i] != '\r') {
+            data->line_buffer[data->line_pos++] = ptr[i];
+        }
+    }
+
+    return total_size;
+}
+
 bool MagdaOpenAI::SendHTTPSRequest(const char* url,
                                     const char* post_data,
                                     int post_data_len,
@@ -706,3 +801,256 @@ bool MagdaOpenAI::ValidateAPIKey(WDL_FastString& error_msg) {
     return success;
 }
 #endif
+
+// ============================================================================
+// Mix Analysis (Free-form text, no CFG constraints)
+// ============================================================================
+
+// Mix analysis system prompt
+static const char* MIX_ANALYSIS_SYSTEM_PROMPT = R"(You are MAGDA, an expert audio mixing engineer AI assistant integrated into REAPER DAW.
+
+You have received spectral analysis, dynamics data, and track information. Analyze the audio and provide:
+
+1. **Frequency Balance**: Comment on the overall tonal balance (bass, mids, highs)
+2. **Dynamics**: Evaluate the dynamic range and compression characteristics
+3. **Mix Issues**: Identify any problems (muddiness, harshness, masking, etc.)
+4. **Recommendations**: Suggest specific EQ, compression, or other processing
+5. **Plugin Suggestions**: If helpful, recommend specific plugins or settings
+
+Be concise but thorough. Focus on actionable advice. Use proper audio engineering terminology.
+
+Format your response in clear sections with markdown headers.)";
+
+bool MagdaOpenAI::GenerateMixFeedback(const char* analysis_json,
+                                       const char* track_context_json,
+                                       const char* user_request,
+                                       StreamCallback callback,
+                                       WDL_FastString& error_msg) {
+    if (!HasAPIKey()) {
+        error_msg.Set("OpenAI API key not configured");
+        return false;
+    }
+
+    // Build request JSON for simple chat completion (no CFG tools)
+    WDL_FastString json;
+    WDL_FastString escaped;
+
+    json.Set("{");
+
+    // Model - use gpt-4.1 for analysis
+    json.Append("\"model\":\"gpt-4.1\",");
+
+    // Enable streaming for real-time text output
+    json.Append("\"stream\":true,");
+
+    // Input messages
+    json.Append("\"input\":[");
+
+    // Add analysis data
+    json.Append("{\"role\":\"user\",\"content\":\"Audio Analysis Data:\\n");
+    EscapeJSONString(analysis_json ? analysis_json : "{}", escaped);
+    json.Append(escaped.Get());
+    json.Append("\"}");
+
+    // Add track context
+    if (track_context_json && *track_context_json) {
+        json.Append(",{\"role\":\"user\",\"content\":\"Track Context:\\n");
+        EscapeJSONString(track_context_json, escaped);
+        json.Append(escaped.Get());
+        json.Append("\"}");
+    }
+
+    // Add user request
+    if (user_request && *user_request) {
+        json.Append(",{\"role\":\"user\",\"content\":\"User Request: ");
+        EscapeJSONString(user_request, escaped);
+        json.Append(escaped.Get());
+        json.Append("\"}");
+    }
+
+    json.Append("],");
+
+    // System prompt (instructions)
+    json.Append("\"instructions\":\"");
+    EscapeJSONString(MIX_ANALYSIS_SYSTEM_PROMPT, escaped);
+    json.Append(escaped.Get());
+    json.Append("\",");
+
+    // Plain text output (no tools, no grammar)
+    json.Append("\"text\":{\"format\":{\"type\":\"text\"}}");
+
+    json.Append("}");
+
+    // Log request
+    void (*ShowConsoleMsg)(const char*) = nullptr;
+    if (g_rec) {
+        ShowConsoleMsg = (void (*)(const char*))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+            ShowConsoleMsg("MAGDA OpenAI: Sending streaming mix analysis request...\n");
+        }
+    }
+
+#ifndef _WIN32
+    // macOS/Linux: Use curl with streaming
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        error_msg.Set("Failed to initialize curl");
+        return false;
+    }
+
+    CurlStreamWriteData streamData;
+    streamData.callback = callback;
+    streamData.line_pos = 0;
+    streamData.success = false;
+    streamData.received_content = false;
+
+    curl_easy_setopt(curl, CURLOPT_URL, "https://api.openai.com/v1/responses");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.Get());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json.GetLength());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlStreamWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &streamData);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);  // 5 minutes for streaming
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
+
+    // Set headers
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "Accept: text/event-stream");
+
+    char auth_header[512];
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", m_api_key.Get());
+    headers = curl_slist_append(headers, auth_header);
+
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+    if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA OpenAI: Starting SSE stream...\n");
+    }
+
+    CURLcode res = curl_easy_perform(curl);
+
+    bool success = false;
+    if (res == CURLE_OK) {
+        long response_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+        // Success if: HTTP 200 AND (explicit done event OR received content)
+        if (response_code == 200 && (streamData.success || streamData.received_content)) {
+            success = true;
+            // Call callback with is_done=true if we haven't already
+            if (!streamData.success && callback) {
+                callback("", true);
+            }
+            if (ShowConsoleMsg) {
+                ShowConsoleMsg("MAGDA OpenAI: Streaming complete\n");
+            }
+        } else if (response_code != 200) {
+            error_msg.SetFormatted(512, "HTTP %ld: %s", response_code,
+                                   streamData.error_msg.GetLength() > 0 ?
+                                   streamData.error_msg.Get() : "Unknown error");
+            if (ShowConsoleMsg) {
+                char msg[512];
+                snprintf(msg, sizeof(msg), "MAGDA OpenAI: Streaming failed: %s\n", error_msg.Get());
+                ShowConsoleMsg(msg);
+            }
+        } else {
+            // HTTP 200 but no content received
+            error_msg.Set("No content received from stream");
+            if (ShowConsoleMsg) {
+                ShowConsoleMsg("MAGDA OpenAI: No content received from stream\n");
+            }
+        }
+    } else {
+        error_msg.Set(curl_easy_strerror(res));
+        if (ShowConsoleMsg) {
+            char msg[512];
+            snprintf(msg, sizeof(msg), "MAGDA OpenAI: Curl error: %s\n", error_msg.Get());
+            ShowConsoleMsg(msg);
+        }
+    }
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    return success;
+
+#else
+    // Windows: Fall back to non-streaming for now
+    // TODO: Implement WinHTTP streaming
+    WDL_FastString response;
+    bool success = SendHTTPSRequest("https://api.openai.com/v1/responses",
+                                    json.Get(), json.GetLength(),
+                                    response, error_msg);
+
+    if (!success) {
+        return false;
+    }
+
+    // Extract text from response
+    wdl_json_parser parser;
+    wdl_json_element* root = parser.parse(response.Get(), response.GetLength());
+
+    if (parser.m_err || !root) {
+        error_msg.SetFormatted(256, "Failed to parse API response: %s",
+                              parser.m_err ? parser.m_err : "unknown error");
+        return false;
+    }
+
+    // Check for API error
+    wdl_json_element* error_elem = root->get_item_by_name("error");
+    if (error_elem) {
+        wdl_json_element* msg_elem = error_elem->get_item_by_name("message");
+        if (msg_elem && msg_elem->m_value_string && msg_elem->m_value) {
+            error_msg.SetFormatted(512, "OpenAI API error: %s", msg_elem->m_value);
+            return false;
+        }
+    }
+
+    // Navigate to output array and extract text
+    wdl_json_element* output = root->get_item_by_name("output");
+    if (!output || !output->is_array()) {
+        error_msg.Set("Response missing 'output' array");
+        return false;
+    }
+
+    // Find message content
+    WDL_FastString full_text;
+    int output_count = output->m_array ? output->m_array->GetSize() : 0;
+    for (int i = 0; i < output_count; i++) {
+        wdl_json_element* item = output->enum_item(i);
+        if (!item) continue;
+
+        wdl_json_element* type_elem = item->get_item_by_name("type");
+        if (!type_elem || !type_elem->m_value_string) continue;
+
+        if (strcmp(type_elem->m_value, "message") == 0) {
+            wdl_json_element* content = item->get_item_by_name("content");
+            if (content && content->is_array()) {
+                int content_count = content->m_array ? content->m_array->GetSize() : 0;
+                for (int j = 0; j < content_count; j++) {
+                    wdl_json_element* content_item = content->enum_item(j);
+                    if (!content_item) continue;
+
+                    wdl_json_element* text_elem = content_item->get_item_by_name("text");
+                    if (text_elem && text_elem->m_value_string && text_elem->m_value) {
+                        full_text.Append(text_elem->m_value);
+                    }
+                }
+            }
+        }
+    }
+
+    if (full_text.GetLength() == 0) {
+        error_msg.Set("No text output found in API response");
+        return false;
+    }
+
+    // Call callback with full text
+    if (callback) {
+        callback(full_text.Get(), true);
+    }
+
+    return true;
+#endif
+}
