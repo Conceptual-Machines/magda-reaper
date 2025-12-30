@@ -24,6 +24,9 @@ public:
   void Toggle();
   bool IsVisible() const { return m_visible; }
 
+  // Request refresh of plugin list (e.g., after param mappings changed)
+  void RequestRefresh() { m_needsRefresh = true; }
+
   // Main render loop - call from timer
   void Render();
 
