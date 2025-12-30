@@ -1956,26 +1956,34 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
     bool success = agentMgr->Orchestrate(question.c_str(), stateStr.c_str(), results, errorMsg);
 
     if (success && !results.empty()) {
-      // Combine all DSL results
+      // Combine all DSL results and sum token usage
       std::string combinedDSL;
+      int totalInputTokens = 0;
+      int totalOutputTokens = 0;
       for (const auto &result : results) {
         if (result.success && !result.dslCode.empty()) {
           if (!combinedDSL.empty())
             combinedDSL += "\n";
           combinedDSL += result.dslCode;
         }
+        totalInputTokens += result.inputTokens;
+        totalOutputTokens += result.outputTokens;
       }
 
       std::lock_guard<std::mutex> lock(m_asyncMutex);
       m_asyncSuccess = !combinedDSL.empty();
       m_asyncResponseJson = combinedDSL;
       m_asyncErrorMsg = m_asyncSuccess ? "" : "No DSL generated";
+      m_lastInputTokens = totalInputTokens;
+      m_lastOutputTokens = totalOutputTokens;
       m_asyncResultReady = true;
       m_asyncPending = false;
     } else {
       std::lock_guard<std::mutex> lock(m_asyncMutex);
       m_asyncSuccess = false;
       m_asyncErrorMsg = errorMsg.GetLength() > 0 ? errorMsg.Get() : "Agent orchestration failed";
+      m_lastInputTokens = 0;
+      m_lastOutputTokens = 0;
       m_asyncResultReady = true;
       m_asyncPending = false;
     }
@@ -2830,21 +2838,15 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           if (i < actionSummaries.size() - 1)
             msg += "\n";
         }
-        // Add token usage if available
-        if (m_lastInputTokens > 0 || m_lastOutputTokens > 0) {
-          msg += "\n\n";
-          msg += "📊 " + std::to_string(m_lastInputTokens) + " → " +
-                 std::to_string(m_lastOutputTokens) + " tokens";
-        }
+        // Always show token usage (shows 0 if not available)
+        msg += "\n📊 " + std::to_string(m_lastInputTokens) + " → " +
+               std::to_string(m_lastOutputTokens) + " tokens";
         AddAssistantMessage(msg);
       } else if (dslSuccess) {
         // Success but no trackable actions (fallback)
         std::string msg = "Done.";
-        if (m_lastInputTokens > 0 || m_lastOutputTokens > 0) {
-          msg += "\n\n";
-          msg += "📊 " + std::to_string(m_lastInputTokens) + " → " +
-                 std::to_string(m_lastOutputTokens) + " tokens";
-        }
+        msg += "\n📊 " + std::to_string(m_lastInputTokens) + " → " +
+               std::to_string(m_lastOutputTokens) + " tokens";
         AddAssistantMessage(msg);
       } else {
         std::string errorStr = "Error: " + lastError;

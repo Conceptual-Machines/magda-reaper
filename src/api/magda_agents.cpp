@@ -258,7 +258,8 @@ char *MagdaAgentManager::BuildAgentRequest(const char *model, const char *questi
 // Extract DSL from Response
 // ============================================================================
 bool MagdaAgentManager::ExtractDSL(const char *response_json, int len, const char *tool_name,
-                                   WDL_FastString &out_dsl, WDL_FastString &error) {
+                                   WDL_FastString &out_dsl, WDL_FastString &error,
+                                   int *out_input_tokens, int *out_output_tokens) {
   wdl_json_parser parser;
   wdl_json_element *root = parser.parse(response_json, len);
 
@@ -274,6 +275,23 @@ bool MagdaAgentManager::ExtractDSL(const char *response_json, int len, const cha
     if (msg_elem && msg_elem->m_value_string && msg_elem->m_value) {
       error.SetFormatted(512, "API error: %s", msg_elem->m_value);
       return false;
+    }
+  }
+
+  // Extract token usage if requested
+  if (out_input_tokens || out_output_tokens) {
+    wdl_json_element *usage = root->get_item_by_name("usage");
+    if (usage) {
+      if (out_input_tokens) {
+        wdl_json_element *input_tokens = usage->get_item_by_name("input_tokens");
+        if (input_tokens && input_tokens->m_value && !input_tokens->m_value_string)
+          *out_input_tokens = atoi(input_tokens->m_value);
+      }
+      if (out_output_tokens) {
+        wdl_json_element *output_tokens = usage->get_item_by_name("output_tokens");
+        if (output_tokens && output_tokens->m_value && !output_tokens->m_value_string)
+          *out_output_tokens = atoi(output_tokens->m_value);
+      }
     }
   }
 
@@ -386,7 +404,8 @@ bool MagdaAgentManager::SendHTTPSRequest(const char *url, const char *post_data,
 // Agent Generators
 // ============================================================================
 bool MagdaAgentManager::GenerateDAW(const char *question, const char *state_json,
-                                    WDL_FastString &out_dsl, WDL_FastString &error) {
+                                    WDL_FastString &out_dsl, WDL_FastString &error,
+                                    int *out_input_tokens, int *out_output_tokens) {
   // Build system prompt with state
   WDL_FastString prompt;
   prompt.Set(MAGDA_DSL_TOOL_DESCRIPTION);
@@ -409,11 +428,13 @@ bool MagdaAgentManager::GenerateDAW(const char *question, const char *state_json
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "magda_dsl", out_dsl, error);
+  return ExtractDSL(response.Get(), response.GetLength(), "magda_dsl", out_dsl, error,
+                    out_input_tokens, out_output_tokens);
 }
 
 bool MagdaAgentManager::GenerateArranger(const char *question, WDL_FastString &out_dsl,
-                                         WDL_FastString &error) {
+                                         WDL_FastString &error, int *out_input_tokens,
+                                         int *out_output_tokens) {
   char *request = BuildAgentRequest("gpt-5.1", question, ARRANGER_TOOL_DESCRIPTION, "arranger_dsl",
                                     ARRANGER_TOOL_DESCRIPTION, ARRANGER_DSL_GRAMMAR);
   if (!request) {
@@ -428,11 +449,13 @@ bool MagdaAgentManager::GenerateArranger(const char *question, WDL_FastString &o
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "arranger_dsl", out_dsl, error);
+  return ExtractDSL(response.Get(), response.GetLength(), "arranger_dsl", out_dsl, error,
+                    out_input_tokens, out_output_tokens);
 }
 
 bool MagdaAgentManager::GenerateDrummer(const char *question, WDL_FastString &out_dsl,
-                                        WDL_FastString &error) {
+                                        WDL_FastString &error, int *out_input_tokens,
+                                        int *out_output_tokens) {
   char *request = BuildAgentRequest("gpt-5.1", question, DRUMMER_TOOL_DESCRIPTION, "drummer_dsl",
                                     DRUMMER_TOOL_DESCRIPTION, DRUMMER_DSL_GRAMMAR);
   if (!request) {
@@ -447,11 +470,13 @@ bool MagdaAgentManager::GenerateDrummer(const char *question, WDL_FastString &ou
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "drummer_dsl", out_dsl, error);
+  return ExtractDSL(response.Get(), response.GetLength(), "drummer_dsl", out_dsl, error,
+                    out_input_tokens, out_output_tokens);
 }
 
 bool MagdaAgentManager::GenerateJSFX(const char *question, const char *existing_code,
-                                     WDL_FastString &out_code, WDL_FastString &error) {
+                                     WDL_FastString &out_code, WDL_FastString &error,
+                                     int *out_input_tokens, int *out_output_tokens) {
   WDL_FastString fullQuestion;
   fullQuestion.Set(question);
   if (existing_code && *existing_code) {
@@ -473,7 +498,8 @@ bool MagdaAgentManager::GenerateJSFX(const char *question, const char *existing_
 
   if (!success)
     return false;
-  return ExtractDSL(response.Get(), response.GetLength(), "jsfx_generator", out_code, error);
+  return ExtractDSL(response.Get(), response.GetLength(), "jsfx_generator", out_code, error,
+                    out_input_tokens, out_output_tokens);
 }
 
 // ============================================================================
@@ -496,7 +522,8 @@ bool MagdaAgentManager::Orchestrate(const char *question, const char *state_json
     AgentResult result;
     result.agentType = AgentType::DAW;
     WDL_FastString dsl, err;
-    result.success = GenerateDAW(question, state_json, dsl, err);
+    result.success =
+        GenerateDAW(question, state_json, dsl, err, &result.inputTokens, &result.outputTokens);
     result.dslCode = dsl.Get();
     result.error = err.Get();
     std::lock_guard<std::mutex> lock(resultsMutex);
@@ -509,7 +536,8 @@ bool MagdaAgentManager::Orchestrate(const char *question, const char *state_json
       AgentResult result;
       result.agentType = AgentType::Arranger;
       WDL_FastString dsl, err;
-      result.success = GenerateArranger(question, dsl, err);
+      result.success =
+          GenerateArranger(question, dsl, err, &result.inputTokens, &result.outputTokens);
       result.dslCode = dsl.Get();
       result.error = err.Get();
       std::lock_guard<std::mutex> lock(resultsMutex);
@@ -523,7 +551,8 @@ bool MagdaAgentManager::Orchestrate(const char *question, const char *state_json
       AgentResult result;
       result.agentType = AgentType::Drummer;
       WDL_FastString dsl, err;
-      result.success = GenerateDrummer(question, dsl, err);
+      result.success =
+          GenerateDrummer(question, dsl, err, &result.inputTokens, &result.outputTokens);
       result.dslCode = dsl.Get();
       result.error = err.Get();
       std::lock_guard<std::mutex> lock(resultsMutex);

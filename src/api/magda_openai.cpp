@@ -200,6 +200,25 @@ bool MagdaOpenAI::ExtractDSLFromResponse(const char *response_json, int response
       m_lastTokenUsage.output_tokens = atoi(output_tokens->m_value);
     if (total_tokens && total_tokens->m_value && !total_tokens->m_value_string)
       m_lastTokenUsage.total_tokens = atoi(total_tokens->m_value);
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "MAGDA: Token usage - input=%d, output=%d, total=%d\n",
+                 m_lastTokenUsage.input_tokens, m_lastTokenUsage.output_tokens,
+                 m_lastTokenUsage.total_tokens);
+        ShowConsoleMsg(buf);
+      }
+    }
+  } else {
+    if (g_rec) {
+      void (*ShowConsoleMsg)(const char *msg) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA: No 'usage' field found in API response\n");
+      }
+    }
   }
 
   // Navigate to output array

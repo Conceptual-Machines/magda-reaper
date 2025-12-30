@@ -33,6 +33,8 @@ struct AgentResult {
   std::string dslCode;
   std::string error;
   AgentType agentType;
+  int inputTokens = 0;
+  int outputTokens = 0;
 };
 
 // ============================================================================
@@ -50,16 +52,20 @@ public:
   // Detect which agents are needed for a question (uses gpt-4.1-mini)
   bool DetectAgents(const char *question, AgentDetection &result, WDL_FastString &error);
 
-  // Generate DSL using specific agent
+  // Generate DSL using specific agent (optional token usage output)
   bool GenerateDAW(const char *question, const char *state_json, WDL_FastString &out_dsl,
-                   WDL_FastString &error);
+                   WDL_FastString &error, int *out_input_tokens = nullptr,
+                   int *out_output_tokens = nullptr);
 
-  bool GenerateArranger(const char *question, WDL_FastString &out_dsl, WDL_FastString &error);
+  bool GenerateArranger(const char *question, WDL_FastString &out_dsl, WDL_FastString &error,
+                        int *out_input_tokens = nullptr, int *out_output_tokens = nullptr);
 
-  bool GenerateDrummer(const char *question, WDL_FastString &out_dsl, WDL_FastString &error);
+  bool GenerateDrummer(const char *question, WDL_FastString &out_dsl, WDL_FastString &error,
+                       int *out_input_tokens = nullptr, int *out_output_tokens = nullptr);
 
   bool GenerateJSFX(const char *question, const char *existing_code, WDL_FastString &out_code,
-                    WDL_FastString &error);
+                    WDL_FastString &error, int *out_input_tokens = nullptr,
+                    int *out_output_tokens = nullptr);
 
   // Orchestrate: detect agents, run in parallel, merge results
   bool Orchestrate(const char *question, const char *state_json, std::vector<AgentResult> &results,
@@ -79,9 +85,10 @@ private:
   bool SendHTTPSRequest(const char *url, const char *post_data, int post_data_len,
                         WDL_FastString &response, WDL_FastString &error);
 
-  // Extract DSL from response
+  // Extract DSL from response (also extracts token usage)
   bool ExtractDSL(const char *response_json, int len, const char *tool_name,
-                  WDL_FastString &out_dsl, WDL_FastString &error);
+                  WDL_FastString &out_dsl, WDL_FastString &error, int *out_input_tokens = nullptr,
+                  int *out_output_tokens = nullptr);
 
   WDL_FastString m_api_key;
   int m_timeout_seconds;
