@@ -50,6 +50,8 @@ struct ReaperCommand {
   int deferCount;    // Max attempts before giving up
   long lastFileSize; // Last checked file size (for stability check)
   int stableCount;   // How many ticks file size has been stable
+  // For stem track cleanup
+  bool deleteTrackAfterAnalysis; // If true, delete entire track (not just take) after analysis
 };
 
 static std::vector<ReaperCommand> s_reaperCommandQueue;
@@ -333,6 +335,7 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode, const char *tra
     cmd.completed = false;
     cmd.startAsyncAfterRender = true;
     cmd.selectedTrackIndex = selectedTrackIndex;
+    cmd.deleteTrackAfterAnalysis = false; // Single track workflow only deletes take, not track
     strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
     cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
     if (trackType) {
@@ -600,6 +603,7 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
     cmd.deferCount = 50; // Wait for file to stabilize
     cmd.lastFileSize = 0;
     cmd.stableCount = 0;
+    cmd.deleteTrackAfterAnalysis = true; // Master workflow creates temp stem track
     strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
     cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
     strncpy(cmd.trackType, "master", sizeof(cmd.trackType) - 1);
@@ -819,6 +823,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
       cmd.completed = false;
       cmd.startAsyncAfterRender = true;
       cmd.selectedTrackIndex = trackIdx;
+      cmd.deleteTrackAfterAnalysis = false; // Multi-track workflow only deletes take, not track
       strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
       cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
       strncpy(cmd.trackType, i == 0 ? "compare_track1" : "compare_track2",
@@ -1417,6 +1422,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         dspCmd.deferCount = 100; // Max 100 attempts (~3-5 seconds)
         dspCmd.lastFileSize = 0; // Will check file size stability
         dspCmd.stableCount = 0;  // Need 3 stable readings
+        dspCmd.deleteTrackAfterAnalysis = cmd.deleteTrackAfterAnalysis; // Propagate cleanup flag
         strncpy(dspCmd.trackName, cmd.trackName, sizeof(dspCmd.trackName) - 1);
         dspCmd.trackName[sizeof(dspCmd.trackName) - 1] = '\0';
         strncpy(dspCmd.trackType, cmd.trackType, sizeof(dspCmd.trackType) - 1);
@@ -1592,12 +1598,19 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         if (ShowConsoleMsg) {
           ShowConsoleMsg("MAGDA: Failed to read audio samples\n");
         }
-        // Still queue delete to clean up the rendered take
+        // Still queue cleanup even on failure
         ReaperCommand deleteCmd;
-        deleteCmd.type = CMD_DELETE_TAKE;
-        deleteCmd.trackIndex = cmd.trackIndex;
-        deleteCmd.itemPtr = cmd.itemPtr;
-        deleteCmd.takeIndex = cmd.takeIndex;
+        if (cmd.deleteTrackAfterAnalysis) {
+          // For stem workflows, delete the entire temp track
+          deleteCmd.type = CMD_DELETE_TRACK;
+          deleteCmd.trackIndex = cmd.trackIndex;
+        } else {
+          // For single track workflows, just delete the rendered take
+          deleteCmd.type = CMD_DELETE_TAKE;
+          deleteCmd.trackIndex = cmd.trackIndex;
+          deleteCmd.itemPtr = cmd.itemPtr;
+          deleteCmd.takeIndex = cmd.takeIndex;
+        }
         deleteCmd.completed = false;
         commandsToAdd.push_back(deleteCmd);
       } else {
@@ -1618,6 +1631,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         int selectedTrackIndex = cmd.selectedTrackIndex;
         void *itemPtr = cmd.itemPtr;
         int takeIndex = cmd.takeIndex;
+        bool deleteTrackAfter = cmd.deleteTrackAfterAnalysis;
         char trackName[256];
         char trackType[256];
         char userRequest[1024];
@@ -1629,8 +1643,9 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         userRequest[sizeof(userRequest) - 1] = '\0';
 
         // Move audio data to background thread for processing
-        std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex, trackName, trackType,
-                     userRequest, fxStr, audioData = std::move(audioData), dspConfig]() mutable {
+        std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex, deleteTrackAfter,
+                     trackName, trackType, userRequest, fxStr, audioData = std::move(audioData),
+                     dspConfig]() mutable {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -1655,22 +1670,33 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
             WDL_FastString analysisJson;
             MagdaDSPAnalyzer::ToJSON(analysisResult, analysisJson);
 
-            // Queue take deletion BEFORE API call (must be done on main thread)
-            // We delete the rendered take early to avoid holding onto temp
-            // audio
+            // Queue cleanup BEFORE API call (must be done on main thread)
             {
               std::lock_guard<std::mutex> cmdLock(s_commandQueueMutex);
-              ReaperCommand deleteCmd;
-              deleteCmd.type = CMD_DELETE_TAKE;
-              deleteCmd.trackIndex = trackIndex;
-              deleteCmd.itemPtr = itemPtr;
-              deleteCmd.takeIndex = takeIndex;
-              deleteCmd.completed = false;
-              s_reaperCommandQueue.push_back(deleteCmd);
+
+              if (deleteTrackAfter) {
+                // For stem workflows (master analysis), delete the entire temp track
+                ReaperCommand deleteCmd;
+                deleteCmd.type = CMD_DELETE_TRACK;
+                deleteCmd.trackIndex = trackIndex;
+                deleteCmd.completed = false;
+                s_reaperCommandQueue.push_back(deleteCmd);
+              } else {
+                // For single track workflows, just delete the rendered take
+                ReaperCommand deleteCmd;
+                deleteCmd.type = CMD_DELETE_TAKE;
+                deleteCmd.trackIndex = trackIndex;
+                deleteCmd.itemPtr = itemPtr;
+                deleteCmd.takeIndex = takeIndex;
+                deleteCmd.completed = false;
+                s_reaperCommandQueue.push_back(deleteCmd);
+              }
             }
 
             if (ShowConsoleMsg) {
-              ShowConsoleMsg("MAGDA: Queued take deletion, calling Mix API...\n");
+              ShowConsoleMsg(deleteTrackAfter
+                                 ? "MAGDA: Queued track deletion, calling Mix API...\n"
+                                 : "MAGDA: Queued take deletion, calling Mix API...\n");
             }
 
             // Send to mix API with TRUE STREAMING
