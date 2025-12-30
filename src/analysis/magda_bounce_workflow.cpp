@@ -52,6 +52,8 @@ struct ReaperCommand {
   int stableCount;   // How many ticks file size has been stable
   // For stem track cleanup
   bool deleteTrackAfterAnalysis; // If true, delete entire track (not just take) after analysis
+  // For master render cleanup
+  char renderedFilePath[1024]; // File to delete after analysis (for master workflow)
 };
 
 static std::vector<ReaperCommand> s_reaperCommandQueue;
@@ -336,6 +338,7 @@ bool MagdaBounceWorkflow::ExecuteWorkflow(BounceMode bounceMode, const char *tra
     cmd.startAsyncAfterRender = true;
     cmd.selectedTrackIndex = selectedTrackIndex;
     cmd.deleteTrackAfterAnalysis = false; // Single track workflow only deletes take, not track
+    cmd.renderedFilePath[0] = '\0';       // No rendered file to clean up
     strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
     cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
     if (trackType) {
@@ -367,48 +370,45 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
     ShowConsoleMsg("MAGDA: Starting master analysis workflow...\n");
   }
 
-  // For master analysis, we need to:
-  // 1. Get the project time range
-  // 2. Create a temporary track
-  // 3. Add a receive from master
-  // 4. Render time selection to new take
-  // 5. Analyze the rendered audio
-  // 6. Clean up
+  // Master analysis workflow:
+  // 1. Save current render settings
+  // 2. Configure render settings for master mix only
+  // 3. Render project to temp file
+  // 4. Import rendered file to temp track
+  // 5. Queue DSP analysis
+  // 6. Clean up (delete track and file after analysis)
 
   // Get required functions
   int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
   MediaTrack *(*GetTrack)(ReaProject *, int) =
       (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
-  MediaTrack *(*GetMasterTrack)(ReaProject *) =
-      (MediaTrack * (*)(ReaProject *)) g_rec->GetFunc("GetMasterTrack");
   void (*InsertTrackInProject)(ReaProject *, int, int) =
       (void (*)(ReaProject *, int, int))g_rec->GetFunc("InsertTrackInProject");
-  bool (*SetTrackSelected)(MediaTrack *, bool) =
-      (bool (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
   double (*GetProjectLength)(ReaProject *) =
       (double (*)(ReaProject *))g_rec->GetFunc("GetProjectLength");
   void (*GetSet_LoopTimeRange2)(ReaProject *, bool, bool, double *, double *, bool) = (void (*)(
       ReaProject *, bool, bool, double *, double *, bool))g_rec->GetFunc("GetSet_LoopTimeRange2");
-  int (*CreateTrackSend)(MediaTrack *, MediaTrack *) =
-      (int (*)(MediaTrack *, MediaTrack *))g_rec->GetFunc("CreateTrackSend");
-  bool (*SetTrackSendInfo_Value)(MediaTrack *, int, int, const char *, double) = (bool (*)(
-      MediaTrack *, int, int, const char *, double))g_rec->GetFunc("SetTrackSendInfo_Value");
-  void *(*GetSetMediaTrackInfo)(INT_PTR, const char *, void *, bool *) =
-      (void *(*)(INT_PTR, const char *, void *, bool *))g_rec->GetFunc("GetSetMediaTrackInfo");
-  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *, bool *) =
-      (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
-          "GetSetMediaTrackInfo_String");
+  double (*GetSetProjectInfo)(ReaProject *, const char *, double, bool) =
+      (double (*)(ReaProject *, const char *, double, bool))g_rec->GetFunc("GetSetProjectInfo");
+  bool (*GetSetProjectInfo_String)(ReaProject *, const char *, char *, bool) = (bool (*)(
+      ReaProject *, const char *, char *, bool))g_rec->GetFunc("GetSetProjectInfo_String");
   void (*Main_OnCommand)(int command, int flag) =
       (void (*)(int, int))g_rec->GetFunc("Main_OnCommand");
   void (*UpdateArrange)() = (void (*)())g_rec->GetFunc("UpdateArrange");
+  int (*InsertMedia)(const char *, int) = (int (*)(const char *, int))g_rec->GetFunc("InsertMedia");
+  const char *(*GetResourcePath)() = (const char *(*)())g_rec->GetFunc("GetResourcePath");
+  const char *(*GetSetMediaTrackInfo_String)(INT_PTR, const char *, char *, bool *) =
+      (const char *(*)(INT_PTR, const char *, char *, bool *))g_rec->GetFunc(
+          "GetSetMediaTrackInfo_String");
 
-  if (!GetNumTracks || !GetTrack || !GetMasterTrack || !InsertTrackInProject || !SetTrackSelected ||
-      !GetProjectLength || !GetSet_LoopTimeRange2) {
+  if (!GetNumTracks || !GetTrack || !InsertTrackInProject || !GetProjectLength ||
+      !GetSet_LoopTimeRange2 || !GetSetProjectInfo || !GetSetProjectInfo_String ||
+      !Main_OnCommand) {
     error_msg.Set("Required REAPER functions not available");
     return false;
   }
 
-  // Step 1: Get project length and set time selection
+  // Step 1: Check project length
   double projectLength = GetProjectLength(nullptr);
   if (projectLength < 0.1) {
     error_msg.Set("Project is empty or too short");
@@ -419,21 +419,124 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
   double savedTimeSelStart = 0, savedTimeSelEnd = 0;
   GetSet_LoopTimeRange2(nullptr, false, false, &savedTimeSelStart, &savedTimeSelEnd, false);
 
-  // Set time selection to full project
-  double timeSelStart = 0.0;
-  double timeSelEnd = projectLength;
-  GetSet_LoopTimeRange2(nullptr, true, false, &timeSelStart, &timeSelEnd, false);
+  // Step 2: Save current render settings
+  double savedRenderSettings = GetSetProjectInfo(nullptr, "RENDER_SETTINGS", 0, false);
+  double savedRenderBounds = GetSetProjectInfo(nullptr, "RENDER_BOUNDSFLAG", 0, false);
+  double savedRenderChannels = GetSetProjectInfo(nullptr, "RENDER_CHANNELS", 0, false);
+  double savedRenderAddToProj = GetSetProjectInfo(nullptr, "RENDER_ADDTOPROJ", 0, false);
 
-  // Step 2: Create a new track at the end
+  char savedRenderFile[1024] = {0};
+  char savedRenderPattern[256] = {0};
+  char savedRenderFormat[4096] = {0};
+  GetSetProjectInfo_String(nullptr, "RENDER_FILE", savedRenderFile, false);
+  GetSetProjectInfo_String(nullptr, "RENDER_PATTERN", savedRenderPattern, false);
+  GetSetProjectInfo_String(nullptr, "RENDER_FORMAT", savedRenderFormat, false);
+
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Saved current render settings\n");
+  }
+
+  // Step 3: Configure render settings for master mix
+  // RENDER_SETTINGS: 0 = master mix only (not stems)
+  GetSetProjectInfo(nullptr, "RENDER_SETTINGS", 0, true);
+  // RENDER_BOUNDSFLAG: 1 = entire project
+  GetSetProjectInfo(nullptr, "RENDER_BOUNDSFLAG", 1, true);
+  // RENDER_CHANNELS: 2 = stereo
+  GetSetProjectInfo(nullptr, "RENDER_CHANNELS", 2, true);
+  // RENDER_ADDTOPROJ: 0 = don't add to project (we'll import manually)
+  GetSetProjectInfo(nullptr, "RENDER_ADDTOPROJ", 0, true);
+
+  // Set render path and filename
+  const char *resourcePath = GetResourcePath ? GetResourcePath() : "/tmp";
+  char tempRenderPath[1024];
+  snprintf(tempRenderPath, sizeof(tempRenderPath), "%s", resourcePath);
+
+  // Generate unique filename with timestamp
+  time_t now = time(nullptr);
+  char tempRenderPattern[256];
+  snprintf(tempRenderPattern, sizeof(tempRenderPattern), "magda_master_analysis_%ld", (long)now);
+
+  GetSetProjectInfo_String(nullptr, "RENDER_FILE", tempRenderPath, true);
+  GetSetProjectInfo_String(nullptr, "RENDER_PATTERN", tempRenderPattern, true);
+  // Use WAV format (simple 4-byte string)
+  GetSetProjectInfo_String(nullptr, "RENDER_FORMAT", (char *)"evaw", true);
+
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA: Configured render: path=%s, pattern=%s\n", tempRenderPath,
+             tempRenderPattern);
+    ShowConsoleMsg(msg);
+  }
+
+  // Step 4: Render the project
+  // Action 42230 = "File: Render project with last settings (don't show render dialog)"
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Rendering master output...\n");
+  }
+  Main_OnCommand(42230, 0);
+
+  if (UpdateArrange) {
+    UpdateArrange();
+  }
+
+  // Step 5: Get the rendered file path
+  char renderedFiles[4096] = {0};
+  GetSetProjectInfo_String(nullptr, "RENDER_TARGETS", renderedFiles, false);
+
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA: Render targets: %s\n", renderedFiles);
+    ShowConsoleMsg(msg);
+  }
+
+  // Step 6: Restore original render settings
+  GetSetProjectInfo(nullptr, "RENDER_SETTINGS", savedRenderSettings, true);
+  GetSetProjectInfo(nullptr, "RENDER_BOUNDSFLAG", savedRenderBounds, true);
+  GetSetProjectInfo(nullptr, "RENDER_CHANNELS", savedRenderChannels, true);
+  GetSetProjectInfo(nullptr, "RENDER_ADDTOPROJ", savedRenderAddToProj, true);
+  GetSetProjectInfo_String(nullptr, "RENDER_FILE", savedRenderFile, true);
+  GetSetProjectInfo_String(nullptr, "RENDER_PATTERN", savedRenderPattern, true);
+  GetSetProjectInfo_String(nullptr, "RENDER_FORMAT", savedRenderFormat, true);
+
+  // Restore time selection
+  GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
+
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Restored original render settings\n");
+  }
+
+  // Parse the rendered file path (first file in semicolon-separated list)
+  char renderedFilePath[1024] = {0};
+  const char *semicolon = strchr(renderedFiles, ';');
+  if (semicolon) {
+    size_t len = semicolon - renderedFiles;
+    if (len < sizeof(renderedFilePath)) {
+      strncpy(renderedFilePath, renderedFiles, len);
+      renderedFilePath[len] = '\0';
+    }
+  } else {
+    strncpy(renderedFilePath, renderedFiles, sizeof(renderedFilePath) - 1);
+  }
+
+  if (renderedFilePath[0] == '\0') {
+    error_msg.Set("Render failed - no output file generated");
+    return false;
+  }
+
+  if (ShowConsoleMsg) {
+    char msg[512];
+    snprintf(msg, sizeof(msg), "MAGDA: Rendered file: %s\n", renderedFilePath);
+    ShowConsoleMsg(msg);
+  }
+
+  // Step 7: Create a temp track and import the rendered file
   int numTracks = GetNumTracks();
   int newTrackIndex = numTracks;
   InsertTrackInProject(nullptr, newTrackIndex, 1);
 
   MediaTrack *newTrack = GetTrack(nullptr, newTrackIndex);
   if (!newTrack) {
-    // Restore time selection
-    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
-    error_msg.Set("Failed to create temporary track");
+    error_msg.Set("Failed to create temporary track for analysis");
     return false;
   }
 
@@ -444,167 +547,82 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
     GetSetMediaTrackInfo_String((INT_PTR)newTrack, "P_NAME", trackName, &setValue);
   }
 
-  // Step 3: Create receive from master track
-  MediaTrack *masterTrack = GetMasterTrack(nullptr);
-  if (!masterTrack) {
-    // Delete the temp track
-    bool (*DeleteTrack)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
-    if (DeleteTrack) {
-      DeleteTrack(newTrack);
+  // Select only this track
+  bool (*SetTrackSelected)(MediaTrack *, bool) =
+      (bool (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
+  if (SetTrackSelected) {
+    for (int i = 0; i < numTracks; i++) {
+      MediaTrack *track = GetTrack(nullptr, i);
+      if (track) {
+        SetTrackSelected(track, false);
+      }
     }
-    // Restore time selection
-    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
-    error_msg.Set("Failed to get master track");
-    return false;
+    SetTrackSelected(newTrack, true);
   }
 
-  // Create send from master to our new track
-  // Note: In REAPER, sends FROM master are actually "hardware output" style
-  // Instead, we'll use a different approach: record the master output directly
-  // by using the "Render selected area of tracks to stereo post-fader stem
-  // tracks" action But first, let's try creating a send from master
-
-  if (CreateTrackSend && SetTrackSendInfo_Value) {
-    // Create a send from the master to our temp track
-    // Actually, REAPER doesn't allow sends FROM master in the normal way
-    // We need to use a different approach
-  }
-
-  // Alternative approach: Select the master track and use the stem render
-  // action to create an item on a new track
-
-  // For now, let's use a simpler approach:
-  // 1. Deselect all tracks
-  // 2. Select master track
-  // 3. Use "Track: Render selected area of tracks to stereo post-fader stem
-  // tracks (and mute originals)"
-  //    Action ID: 41719
-
-  // Deselect all tracks
-  for (int i = 0; i < numTracks; i++) {
-    MediaTrack *track = GetTrack(nullptr, i);
-    if (track) {
-      SetTrackSelected(track, false);
+  // Import the rendered file onto the selected track
+  // InsertMedia mode 0 = "Add to current track"
+  if (InsertMedia) {
+    int result = InsertMedia(renderedFilePath, 0);
+    if (result == 0) {
+      // Delete the temp track on failure
+      bool (*DeleteTrack)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
+      if (DeleteTrack && newTrack) {
+        DeleteTrack(newTrack);
+      }
+      error_msg.Set("Failed to import rendered master file");
+      return false;
     }
-  }
-
-  // Delete the temp track we created (we'll use the one created by the render
-  // action)
-  bool (*DeleteTrack)(MediaTrack *) = (bool (*)(MediaTrack *))g_rec->GetFunc("DeleteTrack");
-  if (DeleteTrack && newTrack) {
-    DeleteTrack(newTrack);
-  }
-
-  // Select master track for stem rendering
-  // Note: Master track selection works differently in REAPER
-  // Instead, let's use the "Render project to disk" approach with specific
-  // settings
-
-  // Actually, the easiest approach for master analysis is to render the entire
-  // project to a temp file and analyze that. But that requires file I/O which
-  // is more complex.
-
-  // For MVP, let's use a different approach:
-  // Select ALL tracks and use "Render tracks to mono/stereo stem tracks" This
-  // gives us the full mix as a rendered item
-
-  // Select all tracks
-  for (int i = 0; i < numTracks; i++) {
-    MediaTrack *track = GetTrack(nullptr, i);
-    if (track) {
-      SetTrackSelected(track, true);
-    }
-  }
-
-  // Update the track count since we deleted one
-  numTracks = GetNumTracks();
-
-  if (ShowConsoleMsg) {
-    ShowConsoleMsg("MAGDA: Rendering master output (stem render of all tracks)...\n");
-  }
-
-  // Use action: "Track: Render selected area of tracks to stereo post-fader
-  // stem tracks"
-  // This renders all selected tracks post-fader (including master bus
-  // processing) to new tracks Action ID: 41716 = "Render tracks to stereo
-  // post-fader stem tracks"
-  if (Main_OnCommand) {
-    Main_OnCommand(41716, 0); // Render to stereo stem tracks (post-fader)
   }
 
   if (UpdateArrange) {
     UpdateArrange();
   }
 
-  // Find the newly created stem track(s) - should be after our original tracks
-  int newNumTracks = GetNumTracks();
-  int stemTrackIndex = -1;
-
-  // The stem tracks are created at the end
-  if (newNumTracks > numTracks) {
-    // Take the last created track as our master stem
-    stemTrackIndex = newNumTracks - 1;
-
-    if (ShowConsoleMsg) {
-      char msg[256];
-      snprintf(msg, sizeof(msg), "MAGDA: Created master stem at track index %d\n", stemTrackIndex);
-      ShowConsoleMsg(msg);
-    }
-  } else {
-    // Restore time selection
-    GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
-    error_msg.Set("Failed to create stem render - no new tracks created");
-    return false;
-  }
-
-  // Restore time selection
-  GetSet_LoopTimeRange2(nullptr, true, false, &savedTimeSelStart, &savedTimeSelEnd, false);
-
-  // Now we have a rendered stem track - queue it for analysis
-  // Get track name for the API
-  MediaTrack *stemTrack = GetTrack(nullptr, stemTrackIndex);
-  char trackName[256] = "Master";
-
-  // Get the item on the stem track
+  // Get the item on the track
   int (*CountTrackMediaItems)(MediaTrack *) =
       (int (*)(MediaTrack *))g_rec->GetFunc("CountTrackMediaItems");
   MediaItem *(*GetTrackMediaItem)(MediaTrack *, int) =
       (MediaItem * (*)(MediaTrack *, int)) g_rec->GetFunc("GetTrackMediaItem");
 
-  if (!CountTrackMediaItems || !GetTrackMediaItem || !stemTrack) {
-    error_msg.Set("Failed to access stem track");
+  if (!CountTrackMediaItems || !GetTrackMediaItem) {
+    error_msg.Set("Failed to access track items");
     return false;
   }
 
-  int itemCount = CountTrackMediaItems(stemTrack);
+  int itemCount = CountTrackMediaItems(newTrack);
   if (itemCount == 0) {
-    error_msg.Set("Stem track has no media items");
+    error_msg.Set("No item found after importing rendered file");
     return false;
   }
 
-  MediaItem *stemItem = GetTrackMediaItem(stemTrack, 0);
-  if (!stemItem) {
-    error_msg.Set("Failed to get item from stem track");
+  MediaItem *item = GetTrackMediaItem(newTrack, 0);
+  if (!item) {
+    error_msg.Set("Failed to get imported media item");
     return false;
   }
 
-  // Queue the DSP analysis command
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA: Imported rendered master, queuing analysis...\n");
+  }
+
+  // Step 8: Queue the DSP analysis command
   {
     std::lock_guard<std::mutex> lock(s_commandQueueMutex);
     ReaperCommand cmd;
     cmd.type = CMD_DSP_ANALYZE;
-    cmd.trackIndex = stemTrackIndex;
+    cmd.trackIndex = newTrackIndex;
     cmd.itemIndex = 0;
     cmd.completed = false;
     cmd.startAsyncAfterRender = true;
-    cmd.selectedTrackIndex = stemTrackIndex;
-    cmd.itemPtr = (void *)stemItem;
+    cmd.selectedTrackIndex = newTrackIndex;
+    cmd.itemPtr = (void *)item;
     cmd.takeIndex = 0;
     cmd.deferCount = 50; // Wait for file to stabilize
     cmd.lastFileSize = 0;
     cmd.stableCount = 0;
-    cmd.deleteTrackAfterAnalysis = true; // Master workflow creates temp stem track
-    strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
+    cmd.deleteTrackAfterAnalysis = true; // Delete temp track after analysis
+    strncpy(cmd.trackName, "Master", sizeof(cmd.trackName) - 1);
     cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
     strncpy(cmd.trackType, "master", sizeof(cmd.trackType) - 1);
     cmd.trackType[sizeof(cmd.trackType) - 1] = '\0';
@@ -614,6 +632,9 @@ bool MagdaBounceWorkflow::ExecuteMasterWorkflow(const char *userRequest,
     } else {
       cmd.userRequest[0] = '\0';
     }
+    // Store rendered file path for cleanup
+    strncpy(cmd.renderedFilePath, renderedFilePath, sizeof(cmd.renderedFilePath) - 1);
+    cmd.renderedFilePath[sizeof(cmd.renderedFilePath) - 1] = '\0';
     s_reaperCommandQueue.push_back(cmd);
   }
 
@@ -824,6 +845,7 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
       cmd.startAsyncAfterRender = true;
       cmd.selectedTrackIndex = trackIdx;
       cmd.deleteTrackAfterAnalysis = false; // Multi-track workflow only deletes take, not track
+      cmd.renderedFilePath[0] = '\0';       // No rendered file to clean up
       strncpy(cmd.trackName, trackName, sizeof(cmd.trackName) - 1);
       cmd.trackName[sizeof(cmd.trackName) - 1] = '\0';
       strncpy(cmd.trackType, i == 0 ? "compare_track1" : "compare_track2",
@@ -1429,6 +1451,8 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         dspCmd.trackType[sizeof(dspCmd.trackType) - 1] = '\0';
         strncpy(dspCmd.userRequest, cmd.userRequest, sizeof(dspCmd.userRequest) - 1);
         dspCmd.userRequest[sizeof(dspCmd.userRequest) - 1] = '\0';
+        strncpy(dspCmd.renderedFilePath, cmd.renderedFilePath, sizeof(dspCmd.renderedFilePath) - 1);
+        dspCmd.renderedFilePath[sizeof(dspCmd.renderedFilePath) - 1] = '\0';
         commandsToAdd.push_back(dspCmd);
       }
 
@@ -1448,6 +1472,24 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
           if (ShowConsoleMsg) {
             char msg[256];
             snprintf(msg, sizeof(msg), "MAGDA: Deleted track %d\n", cmd.trackIndex);
+            ShowConsoleMsg(msg);
+          }
+        }
+      }
+
+      // Also delete the rendered file if specified (for master workflow)
+      if (cmd.renderedFilePath[0] != '\0') {
+        if (remove(cmd.renderedFilePath) == 0) {
+          if (ShowConsoleMsg) {
+            char msg[512];
+            snprintf(msg, sizeof(msg), "MAGDA: Deleted rendered file: %s\n", cmd.renderedFilePath);
+            ShowConsoleMsg(msg);
+          }
+        } else {
+          if (ShowConsoleMsg) {
+            char msg[512];
+            snprintf(msg, sizeof(msg), "MAGDA: Warning - could not delete rendered file: %s\n",
+                     cmd.renderedFilePath);
             ShowConsoleMsg(msg);
           }
         }
@@ -1604,12 +1646,17 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
           // For stem workflows, delete the entire temp track
           deleteCmd.type = CMD_DELETE_TRACK;
           deleteCmd.trackIndex = cmd.trackIndex;
+          // Copy rendered file path for cleanup
+          strncpy(deleteCmd.renderedFilePath, cmd.renderedFilePath,
+                  sizeof(deleteCmd.renderedFilePath) - 1);
+          deleteCmd.renderedFilePath[sizeof(deleteCmd.renderedFilePath) - 1] = '\0';
         } else {
           // For single track workflows, just delete the rendered take
           deleteCmd.type = CMD_DELETE_TAKE;
           deleteCmd.trackIndex = cmd.trackIndex;
           deleteCmd.itemPtr = cmd.itemPtr;
           deleteCmd.takeIndex = cmd.takeIndex;
+          deleteCmd.renderedFilePath[0] = '\0';
         }
         deleteCmd.completed = false;
         commandsToAdd.push_back(deleteCmd);
@@ -1635,17 +1682,20 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
         char trackName[256];
         char trackType[256];
         char userRequest[1024];
+        char renderedFile[1024];
         strncpy(trackName, cmd.trackName, sizeof(trackName) - 1);
         trackName[sizeof(trackName) - 1] = '\0';
         strncpy(trackType, cmd.trackType, sizeof(trackType) - 1);
         trackType[sizeof(trackType) - 1] = '\0';
         strncpy(userRequest, cmd.userRequest, sizeof(userRequest) - 1);
         userRequest[sizeof(userRequest) - 1] = '\0';
+        strncpy(renderedFile, cmd.renderedFilePath, sizeof(renderedFile) - 1);
+        renderedFile[sizeof(renderedFile) - 1] = '\0';
 
         // Move audio data to background thread for processing
         std::thread([trackIndex, selectedTrackIndex, itemPtr, takeIndex, deleteTrackAfter,
-                     trackName, trackType, userRequest, fxStr, audioData = std::move(audioData),
-                     dspConfig]() mutable {
+                     trackName, trackType, userRequest, renderedFile, fxStr,
+                     audioData = std::move(audioData), dspConfig]() mutable {
           void (*ShowConsoleMsg)(const char *msg) =
               (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
 
@@ -1680,6 +1730,10 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                 deleteCmd.type = CMD_DELETE_TRACK;
                 deleteCmd.trackIndex = trackIndex;
                 deleteCmd.completed = false;
+                // Copy rendered file path for cleanup
+                strncpy(deleteCmd.renderedFilePath, renderedFile,
+                        sizeof(deleteCmd.renderedFilePath) - 1);
+                deleteCmd.renderedFilePath[sizeof(deleteCmd.renderedFilePath) - 1] = '\0';
                 s_reaperCommandQueue.push_back(deleteCmd);
               } else {
                 // For single track workflows, just delete the rendered take
@@ -1689,6 +1743,7 @@ bool MagdaBounceWorkflow::ProcessCommandQueue() {
                 deleteCmd.itemPtr = itemPtr;
                 deleteCmd.takeIndex = takeIndex;
                 deleteCmd.completed = false;
+                deleteCmd.renderedFilePath[0] = '\0'; // No file to delete
                 s_reaperCommandQueue.push_back(deleteCmd);
               }
             }
