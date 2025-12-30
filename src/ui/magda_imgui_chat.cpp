@@ -2532,69 +2532,158 @@ void MagdaImGuiChat::ProcessAsyncResult() {
 
       // Helper to extract a human-readable summary from a DSL command
       auto getActionSummary = [](const std::string &line) -> std::string {
-        // Extract key info from common patterns
-        if (line.find("track(") == 0) {
-          // track(name="X").new() or track(name="X").new_clip(...)
-          size_t nameStart = line.find("name=\"");
-          if (nameStart != std::string::npos) {
-            nameStart += 6;
-            size_t nameEnd = line.find("\"", nameStart);
-            if (nameEnd != std::string::npos) {
-              std::string name = line.substr(nameStart, nameEnd - nameStart);
-              if (line.find(".new_clip") != std::string::npos) {
-                return "Created track '" + name + "' with clip";
-              } else {
-                return "Created track '" + name + "'";
-              }
-            }
-          }
-          return "Created track";
-        } else if (line.find("arpeggio(") == 0) {
-          size_t symStart = line.find("symbol=");
-          if (symStart != std::string::npos) {
-            symStart += 7;
-            size_t symEnd = line.find_first_of(",)", symStart);
-            if (symEnd != std::string::npos) {
-              std::string sym = line.substr(symStart, symEnd - symStart);
-              return "Added " + sym + " arpeggio";
-            }
-          }
-          return "Added arpeggio";
-        } else if (line.find("chord(") == 0) {
-          size_t symStart = line.find("symbol=");
-          if (symStart != std::string::npos) {
-            symStart += 7;
-            size_t symEnd = line.find_first_of(",)", symStart);
-            if (symEnd != std::string::npos) {
-              std::string sym = line.substr(symStart, symEnd - symStart);
-              return "Added " + sym + " chord";
-            }
-          }
-          return "Added chord";
-        } else if (line.find("pattern(") == 0) {
-          return "Added drum pattern";
-        } else if (line.find("progression(") == 0) {
-          return "Added chord progression";
-        } else if (line.find("note(") == 0) {
-          return "Added note";
-        } else if (line.find("fx(") == 0 || line.find(".add_fx") != std::string::npos) {
-          return "Added FX";
-        } else if (line.find("clip(") == 0 || line.find(".new_clip") != std::string::npos) {
-          return "Created clip";
-        } else if (line.find(".add_automation") != std::string::npos ||
-                   line.find(".addAutomation") != std::string::npos) {
-          // Extract param name if possible
+        // Check for chained commands first - the action is what comes after the dot
+        // e.g., track(id=1).add_automation(...) -> "Added automation"
+
+        // Check for automation first (highest priority since it's the main action)
+        if (line.find(".add_automation") != std::string::npos ||
+            line.find(".addAutomation") != std::string::npos) {
           size_t paramStart = line.find("param=\"");
           if (paramStart != std::string::npos) {
             paramStart += 7;
             size_t paramEnd = line.find("\"", paramStart);
             if (paramEnd != std::string::npos) {
               std::string param = line.substr(paramStart, paramEnd - paramStart);
+              // Clean up @plugin:param format for display
+              size_t colonPos = param.find(':');
+              if (colonPos != std::string::npos && param[0] == '@') {
+                param = param.substr(colonPos + 1); // Just show param name
+              }
               return "Added automation on '" + param + "'";
             }
           }
           return "Added automation";
         }
+
+        // Check for add_fx
+        if (line.find(".add_fx") != std::string::npos) {
+          size_t fxStart = line.find("fxname=\"");
+          if (fxStart != std::string::npos) {
+            fxStart += 8;
+            size_t fxEnd = line.find("\"", fxStart);
+            if (fxEnd != std::string::npos) {
+              return "Added FX '" + line.substr(fxStart, fxEnd - fxStart) + "'";
+            }
+          }
+          return "Added FX";
+        }
+
+        // Check for new_clip
+        if (line.find(".new_clip") != std::string::npos) {
+          return "Created clip";
+        }
+
+        // Check for set_track
+        if (line.find(".set_track") != std::string::npos) {
+          return "Updated track";
+        }
+
+        // Check for delete
+        if (line.find(".delete()") != std::string::npos) {
+          return "Deleted track";
+        }
+
+        // Now check for standalone commands (not chained)
+        if (line.find("track(") == 0) {
+          // Determine if this is a track reference or creation
+          bool isReference = (line.find("id=") != std::string::npos) ||
+                             (line.find("selected=") != std::string::npos);
+
+          // If it's just a reference with no action, skip it
+          if (isReference && line.find(").") == std::string::npos &&
+              line.find(")") == line.length() - 1) {
+            return ""; // Just a track reference, no action
+          }
+
+          // Track creation
+          if (!isReference) {
+            size_t nameStart = line.find("name=\"");
+            if (nameStart != std::string::npos) {
+              nameStart += 6;
+              size_t nameEnd = line.find("\"", nameStart);
+              if (nameEnd != std::string::npos) {
+                std::string name = line.substr(nameStart, nameEnd - nameStart);
+                return "Created track '" + name + "'";
+              }
+            }
+            // Check for instrument
+            size_t instStart = line.find("instrument=\"");
+            if (instStart != std::string::npos) {
+              instStart += 12;
+              size_t instEnd = line.find("\"", instStart);
+              if (instEnd != std::string::npos) {
+                std::string inst = line.substr(instStart, instEnd - instStart);
+                // Clean up @plugin format
+                if (inst[0] == '@')
+                  inst = inst.substr(1);
+                return "Created track with " + inst;
+              }
+            }
+            return "Created track";
+          }
+        }
+
+        // Musical content commands
+        if (line.find("note(") == 0) {
+          size_t pitchStart = line.find("pitch=\"");
+          if (pitchStart != std::string::npos) {
+            pitchStart += 7;
+            size_t pitchEnd = line.find("\"", pitchStart);
+            if (pitchEnd != std::string::npos) {
+              return "Added note " + line.substr(pitchStart, pitchEnd - pitchStart);
+            }
+          }
+          return "Added note";
+        }
+
+        if (line.find("chord(") == 0) {
+          size_t symStart = line.find("symbol=");
+          if (symStart != std::string::npos) {
+            symStart += 7;
+            size_t symEnd = line.find_first_of(",)", symStart);
+            if (symEnd != std::string::npos) {
+              return "Added " + line.substr(symStart, symEnd - symStart) + " chord";
+            }
+          }
+          return "Added chord";
+        }
+
+        if (line.find("arpeggio(") == 0) {
+          size_t symStart = line.find("symbol=");
+          if (symStart != std::string::npos) {
+            symStart += 7;
+            size_t symEnd = line.find_first_of(",)", symStart);
+            if (symEnd != std::string::npos) {
+              return "Added " + line.substr(symStart, symEnd - symStart) + " arpeggio";
+            }
+          }
+          return "Added arpeggio";
+        }
+
+        if (line.find("pattern(") == 0) {
+          size_t drumStart = line.find("drum=");
+          if (drumStart != std::string::npos) {
+            drumStart += 5;
+            size_t drumEnd = line.find_first_of(",)", drumStart);
+            if (drumEnd != std::string::npos) {
+              return "Added " + line.substr(drumStart, drumEnd - drumStart) + " pattern";
+            }
+          }
+          return "Added drum pattern";
+        }
+
+        if (line.find("progression(") == 0) {
+          return "Added chord progression";
+        }
+
+        if (line.find("fx(") == 0) {
+          return "Added FX";
+        }
+
+        if (line.find("clip(") == 0) {
+          return "Created clip";
+        }
+
         return "";
       };
 
