@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cstring>
 #include <ctime>
+#include <set>
 
 // Static HTTP client instance
 static MagdaHTTPClient s_httpClient;
@@ -2533,9 +2534,9 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         preprocessedDsl += prevLine + "\n";
       }
 
-      // Second pass: categorize commands and deduplicate
+      // Second pass: categorize commands and deduplicate using sets
       pos = 0;
-      std::string lastDawCmd, lastContentCmd;
+      std::set<std::string> seenDawCmds, seenContentCmds;
       while (pos < preprocessedDsl.size()) {
         size_t endPos = preprocessedDsl.find('\n', pos);
         if (endPos == std::string::npos)
@@ -2543,6 +2544,13 @@ void MagdaImGuiChat::ProcessAsyncResult() {
 
         std::string line = preprocessedDsl.substr(pos, endPos - pos);
         pos = endPos + 1;
+
+        // Trim any remaining whitespace
+        size_t trimStart = line.find_first_not_of(" \t\r\n");
+        if (trimStart == std::string::npos)
+          continue;
+        size_t trimEnd = line.find_last_not_of(" \t\r\n");
+        line = line.substr(trimStart, trimEnd - trimStart + 1);
 
         if (line.empty())
           continue;
@@ -2554,24 +2562,24 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           break;
         } else if (line.find("track(") == 0 || line.find("clip(") == 0 || line.find("fx(") == 0 ||
                    line.find("item(") == 0) {
-          // Skip duplicate consecutive commands
-          if (line != lastDawCmd) {
+          // Skip duplicates using set
+          if (seenDawCmds.find(line) == seenDawCmds.end()) {
             dawCommands.push_back(line);
-            lastDawCmd = line;
+            seenDawCmds.insert(line);
           }
         } else if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
                    line.find("note(") == 0 || line.find("progression(") == 0 ||
                    line.find("pattern(") == 0) {
-          // Skip duplicate consecutive commands
-          if (line != lastContentCmd) {
+          // Skip duplicates using set
+          if (seenContentCmds.find(line) == seenContentCmds.end()) {
             contentCommands.push_back(line);
-            lastContentCmd = line;
+            seenContentCmds.insert(line);
           }
         } else {
           // Unknown - treat as DAW command (fallback)
-          if (line != lastDawCmd) {
+          if (seenDawCmds.find(line) == seenDawCmds.end()) {
             dawCommands.push_back(line);
-            lastDawCmd = line;
+            seenDawCmds.insert(line);
           }
         }
       }
