@@ -2533,8 +2533,9 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         preprocessedDsl += prevLine + "\n";
       }
 
-      // Second pass: categorize commands
+      // Second pass: categorize commands and deduplicate
       pos = 0;
+      std::string lastDawCmd, lastContentCmd;
       while (pos < preprocessedDsl.size()) {
         size_t endPos = preprocessedDsl.find('\n', pos);
         if (endPos == std::string::npos)
@@ -2553,14 +2554,25 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           break;
         } else if (line.find("track(") == 0 || line.find("clip(") == 0 || line.find("fx(") == 0 ||
                    line.find("item(") == 0) {
-          dawCommands.push_back(line);
+          // Skip duplicate consecutive commands
+          if (line != lastDawCmd) {
+            dawCommands.push_back(line);
+            lastDawCmd = line;
+          }
         } else if (line.find("arpeggio(") == 0 || line.find("chord(") == 0 ||
                    line.find("note(") == 0 || line.find("progression(") == 0 ||
                    line.find("pattern(") == 0) {
-          contentCommands.push_back(line);
+          // Skip duplicate consecutive commands
+          if (line != lastContentCmd) {
+            contentCommands.push_back(line);
+            lastContentCmd = line;
+          }
         } else {
           // Unknown - treat as DAW command (fallback)
-          dawCommands.push_back(line);
+          if (line != lastDawCmd) {
+            dawCommands.push_back(line);
+            lastDawCmd = line;
+          }
         }
       }
 
