@@ -1,5 +1,6 @@
 #include "magda_dsl_interpreter.h"
 #include "magda_dsl_context.h"
+#include "plugins/magda_plugin_scanner.h"
 #include "reaper_plugin.h"
 #include <cctype>
 #include <cmath>
@@ -8,6 +9,7 @@
 #include <cstring>
 
 extern reaper_plugin_info_t *g_rec;
+extern MagdaPluginScanner *g_pluginScanner;
 
 namespace MagdaDSL {
 
@@ -662,11 +664,34 @@ MediaTrack *Interpreter::CreateTrack(const Params &params) {
   // Add instrument if provided
   if (params.Has("instrument") && TrackFX_AddByName) {
     std::string instrument = params.Get("instrument");
-    int fxIdx = TrackFX_AddByName(track, instrument.c_str(), false, -1);
+
+    // Resolve plugin alias using the plugin scanner
+    std::string resolved_instrument = instrument;
+    if (g_pluginScanner) {
+      std::string resolved = g_pluginScanner->ResolveAlias(instrument.c_str());
+      if (!resolved.empty() && resolved != instrument) {
+        resolved_instrument = resolved;
+        void (*ShowConsoleMsg)(const char *) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA DSL: Resolved '%s' -> '%s'\n", instrument.c_str(),
+                   resolved_instrument.c_str());
+          ShowConsoleMsg(msg);
+        }
+      }
+    }
+
+    int fxIdx = TrackFX_AddByName(track, resolved_instrument.c_str(), false, -1);
     if (fxIdx < 0) {
       // Try with VST prefix
-      std::string vst_name = "VST: " + instrument;
+      std::string vst_name = "VST: " + resolved_instrument;
       fxIdx = TrackFX_AddByName(track, vst_name.c_str(), false, -1);
+    }
+    if (fxIdx < 0) {
+      // Try with VST3 prefix
+      std::string vst3_name = "VST3: " + resolved_instrument;
+      fxIdx = TrackFX_AddByName(track, vst3_name.c_str(), false, -1);
     }
     if (fxIdx < 0) {
       // Log warning but don't fail
@@ -1040,11 +1065,33 @@ bool Interpreter::AddFX(MediaTrack *track, const std::string &fx_name) {
     return false;
   }
 
-  int idx = TrackFX_AddByName(track, fx_name.c_str(), false, -1);
+  // Resolve plugin alias using the plugin scanner
+  std::string resolved_fx = fx_name;
+  if (g_pluginScanner) {
+    std::string resolved = g_pluginScanner->ResolveAlias(fx_name.c_str());
+    if (!resolved.empty() && resolved != fx_name) {
+      resolved_fx = resolved;
+      void (*ShowConsoleMsg)(const char *) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg), "MAGDA DSL: Resolved FX '%s' -> '%s'\n", fx_name.c_str(),
+                 resolved_fx.c_str());
+        ShowConsoleMsg(msg);
+      }
+    }
+  }
+
+  int idx = TrackFX_AddByName(track, resolved_fx.c_str(), false, -1);
   if (idx < 0) {
     // Try with VST prefix
-    std::string vst_name = "VST: " + fx_name;
+    std::string vst_name = "VST: " + resolved_fx;
     idx = TrackFX_AddByName(track, vst_name.c_str(), false, -1);
+  }
+  if (idx < 0) {
+    // Try with VST3 prefix
+    std::string vst3_name = "VST3: " + resolved_fx;
+    idx = TrackFX_AddByName(track, vst3_name.c_str(), false, -1);
   }
 
   if (idx < 0) {
@@ -1055,7 +1102,7 @@ bool Interpreter::AddFX(MediaTrack *track, const std::string &fx_name) {
   void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA DSL: Added FX '%s' at index %d\n", fx_name.c_str(), idx);
+    snprintf(msg, sizeof(msg), "MAGDA DSL: Added FX '%s' at index %d\n", resolved_fx.c_str(), idx);
     ShowConsoleMsg(msg);
   }
 
