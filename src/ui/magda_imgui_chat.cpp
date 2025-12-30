@@ -1274,6 +1274,8 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         label = "#" + suggestion.alias + " - " + suggestion.plugin_name;
       } else if (m_autocompleteMode == AutocompleteMode::Param) {
         label = ":" + suggestion.alias + " - " + suggestion.plugin_name;
+      } else if (m_autocompleteMode == AutocompleteMode::Track) {
+        label = "$" + suggestion.alias + " - " + suggestion.plugin_name;
       } else {
         label = "@" + suggestion.alias + " - " + suggestion.plugin_name;
       }
@@ -1353,20 +1355,28 @@ void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
 void MagdaImGuiChat::DetectAtTrigger() {
   std::string input = m_inputBuffer;
 
-  // Check for @ (plugin) or # (mix) triggers
+  // Check for @ (plugin), # (mix), or $ (track) triggers
   size_t atPos = input.rfind('@');
   size_t hashPos = input.rfind('#');
+  size_t dollarPos = input.rfind('$');
 
   // Determine which trigger is most recent (closest to end)
   size_t triggerPos = std::string::npos;
   char triggerChar = 0;
 
-  if (atPos != std::string::npos && (hashPos == std::string::npos || atPos > hashPos)) {
+  // Find the rightmost trigger
+  if (atPos != std::string::npos) {
     triggerPos = atPos;
     triggerChar = '@';
-  } else if (hashPos != std::string::npos) {
+  }
+  if (hashPos != std::string::npos && (triggerPos == std::string::npos || hashPos > triggerPos)) {
     triggerPos = hashPos;
     triggerChar = '#';
+  }
+  if (dollarPos != std::string::npos &&
+      (triggerPos == std::string::npos || dollarPos > triggerPos)) {
+    triggerPos = dollarPos;
+    triggerChar = '$';
   }
 
   if (triggerPos == std::string::npos) {
@@ -1392,8 +1402,9 @@ void MagdaImGuiChat::DetectAtTrigger() {
     return;
   }
 
-  // Check for param autocomplete: @plugin_name:param
+  // Determine mode based on trigger character
   if (triggerChar == '@') {
+    // Check for param autocomplete: @plugin_name:param
     size_t colonPos = afterTrigger.find(':');
     if (colonPos != std::string::npos) {
       // Param autocomplete mode
@@ -1406,9 +1417,14 @@ void MagdaImGuiChat::DetectAtTrigger() {
       m_autocompletePrefix = afterTrigger;
       m_currentPluginAlias.clear();
     }
-  } else {
-    // # trigger - mix autocomplete mode
+  } else if (triggerChar == '#') {
+    // Mix autocomplete mode
     m_autocompleteMode = AutocompleteMode::Mix;
+    m_autocompletePrefix = afterTrigger;
+    m_currentPluginAlias.clear();
+  } else if (triggerChar == '$') {
+    // Track autocomplete mode
+    m_autocompleteMode = AutocompleteMode::Track;
     m_autocompletePrefix = afterTrigger;
     m_currentPluginAlias.clear();
   }
@@ -1520,6 +1536,47 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
         m_suggestions.push_back(hint);
       }
     }
+  } else if (m_autocompleteMode == AutocompleteMode::Track) {
+    // Track names from project (triggered by $)
+    if (g_rec) {
+      int (*GetNumTracks)() = (int (*)())g_rec->GetFunc("GetNumTracks");
+      MediaTrack *(*GetTrack)(ReaProject *, int) =
+          (MediaTrack * (*)(ReaProject *, int)) g_rec->GetFunc("GetTrack");
+      bool (*GetTrackName)(MediaTrack *, char *, int) =
+          (bool (*)(MediaTrack *, char *, int))g_rec->GetFunc("GetTrackName");
+
+      if (GetNumTracks && GetTrack && GetTrackName) {
+        int numTracks = GetNumTracks();
+        for (int i = 0; i < numTracks; i++) {
+          MediaTrack *track = GetTrack(nullptr, i);
+          if (track) {
+            char trackName[256] = {0};
+            GetTrackName(track, trackName, sizeof(trackName));
+
+            std::string name = trackName[0] ? trackName : ("Track " + std::to_string(i + 1));
+            std::string nameLower = name;
+            std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+
+            if (query.empty() || nameLower.find(query) != std::string::npos) {
+              AutocompleteSuggestion suggestion;
+              suggestion.alias = name;
+              suggestion.plugin_name = "Track " + std::to_string(i + 1);
+              suggestion.plugin_type = "track";
+              m_suggestions.push_back(suggestion);
+            }
+          }
+        }
+      }
+    }
+
+    // If no tracks found
+    if (m_suggestions.empty()) {
+      AutocompleteSuggestion hint;
+      hint.alias = "(no tracks)";
+      hint.plugin_name = "No tracks in project";
+      hint.plugin_type = "hint";
+      m_suggestions.push_back(hint);
+    }
   }
 
   // Sort suggestions
@@ -1544,7 +1601,7 @@ void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
   }
 
   // Skip hints (non-selectable items)
-  if (alias == "(no params mapped)") {
+  if (alias == "(no params mapped)" || alias == "(no tracks)") {
     m_showAutocomplete = false;
     return;
   }
@@ -1562,6 +1619,9 @@ void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
   } else if (m_autocompleteMode == AutocompleteMode::Param) {
     // Param: @serum_2:filter_1_freq (add space after)
     completion = "@" + m_currentPluginAlias + ":" + alias + " ";
+  } else if (m_autocompleteMode == AutocompleteMode::Track) {
+    // Track: $TrackName (add space after)
+    completion = "$" + alias + " ";
   }
 
   // Find end of current trigger (including any : and param prefix)

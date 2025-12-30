@@ -177,10 +177,10 @@ private:
   std::string m_lastRequest;
 
   // Autocomplete state
-  enum class AutocompleteMode { None, Plugin, Mix, Param };
+  enum class AutocompleteMode { None, Plugin, Mix, Param, Track };
   bool m_showAutocomplete = false;
   int m_autocompleteIndex = 0;
-  size_t m_triggerPosition = std::string::npos; // Position of @ or # trigger
+  size_t m_triggerPosition = std::string::npos; // Position of @, #, or $ trigger
   std::string m_autocompletePrefix;
   std::vector<AutocompleteSuggestion> m_suggestions;
   AutocompleteMode m_autocompleteMode = AutocompleteMode::None;
