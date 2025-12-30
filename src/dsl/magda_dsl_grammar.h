@@ -125,7 +125,9 @@ MUSICAL CONTENT (automatically added to most recently created track):
 - chord(symbol=Em, length=4) - Chord (Em, Am7, Cmaj7, etc.)
 - arpeggio(symbol=Am, note_duration=0.25, length=4) - Arpeggio pattern
 - progression(chords=[C, Am, F, G], length=16) - Chord progression
-- pattern(drum=kick, grid="x---x---x---x---") - Drum pattern (x=hit, -=rest)
+- pattern(drum=kick, grid="x---x---x---x---") - Drum pattern (x=hit, -=rest, 16 chars = 1 bar)
+
+IMPORTANT: Generate each command EXACTLY ONCE. Do NOT duplicate commands.
 
 PITCH NOTATION: Note name + octave (E1=bass, C4=middle C, A4=440Hz)
 Examples: E1, F#2, Bb3, C4, G#5
@@ -146,6 +148,9 @@ EXAMPLES:
 - "delete track 1" → track(id=1).delete()
 - "mute all tracks named Drums" → filter(tracks, track.name == "Drums").set_track(mute=true)
 - "add reverb to track 2" → track(id=2).add_fx(fxname="ReaVerbate")
+- "kick 4 to the floor" →
+  track(name="Kick")
+  pattern(drum=kick, grid="x---x---x---x---")
 
 **CRITICAL: Always generate DSL code. Never generate plain text responses.**
 )DESC";
