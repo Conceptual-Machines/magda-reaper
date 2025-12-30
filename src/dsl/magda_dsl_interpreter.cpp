@@ -651,6 +651,13 @@ MediaTrack *Interpreter::CreateTrack(const Params &params) {
 
   m_ctx.current_track_idx = idx;
 
+  // Select the newly created track so subsequent operations can reference it
+  void (*SetTrackSelected)(MediaTrack *, bool) =
+      (void (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
+  if (SetTrackSelected) {
+    SetTrackSelected(track, true);
+  }
+
   // Set track name if provided
   std::string trackName;
   if (params.Has("name") && GetSetMediaTrackInfo_String) {
