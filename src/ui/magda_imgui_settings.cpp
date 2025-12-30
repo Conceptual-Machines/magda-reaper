@@ -246,10 +246,11 @@ bool MagdaImGuiSettings::GetShowTokenUsage() {
     return true;
 
   const char *showTokensStr = GetExtState("MAGDA", "show_token_usage");
-  if (showTokensStr) {
-    return (atoi(showTokensStr) != 0);
+  // GetExtState returns "" for non-existent keys, so check for non-empty
+  if (showTokensStr && showTokensStr[0] != '\0') {
+    return (strcmp(showTokensStr, "0") != 0); // Only false if explicitly "0"
   }
-  return true; // Default to showing token usage
+  return true; // Default to showing token usage (setting not yet saved)
 }
 
 void MagdaImGuiSettings::Show() {
