@@ -741,13 +741,13 @@ bool MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(const char *compareArgs,
 
     if (trackIndices.empty()) {
       error_msg.Set("No tracks found matching the provided identifiers. Try: "
-                    "'@mix:compare selected' or specify track names/indices.");
+                    "'#compare selected' or specify track names/indices.");
       return false;
     }
 
     if (trackIndices.size() < 2) {
-      error_msg.Set("Please specify at least two tracks to compare (e.g., '@mix:compare "
-                    "track1 and track2' or '@mix:compare selected').");
+      error_msg.Set("Please specify at least two tracks to compare (e.g., '#compare "
+                    "track1 and track2' or '#compare selected').");
       return false;
     }
   }

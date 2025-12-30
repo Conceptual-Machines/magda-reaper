@@ -764,13 +764,9 @@ void MagdaImGuiChat::Render() {
       m_ImGui_TextColored(m_ctx, g_theme.headerText, "ACTIONS");
       m_ImGui_Separator(m_ctx);
       if (m_ImGui_Button(m_ctx, "Mix Analysis", nullptr, nullptr)) {
-        // Trigger mix analysis workflow (bounce/analyze/send to agent)
+        // Trigger mix analysis - use # prefix for track type selection
+        // Includes: drums, bass, synth, vocals, master, bus, group, compare
         magdaAction(g_cmdMixAnalyze, 0);
-      }
-      if (m_ImGui_Button(m_ctx, "Master Analysis", nullptr, nullptr)) {
-        // Trigger master analysis workflow (bounce master/analyze/send to
-        // agent)
-        magdaAction(g_cmdMasterAnalyze, 0);
       }
 
       m_ImGui_Separator(m_ctx);
@@ -1017,15 +1013,9 @@ void MagdaImGuiChat::RenderControlsColumn() {
   double btnHeight = 28.0;
 
   if (m_ImGui_Button(m_ctx, "Mix Analysis", &btnWidth, &btnHeight)) {
-    // Trigger mix analysis workflow (bounce/analyze/send to agent)
+    // Trigger mix analysis - use # prefix for track type selection
+    // Includes: drums, bass, synth, vocals, master, bus, group, compare
     magdaAction(g_cmdMixAnalyze, 0);
-  }
-
-  m_ImGui_Dummy(m_ctx, 0, 3);
-
-  if (m_ImGui_Button(m_ctx, "Master Analysis", &btnWidth, &btnHeight)) {
-    // Trigger master analysis workflow (bounce master/analyze/send to agent)
-    magdaAction(g_cmdMasterAnalyze, 0);
   }
 
   m_ImGui_Dummy(m_ctx, 0, 3);
@@ -1445,11 +1435,18 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
   if (m_autocompleteMode == AutocompleteMode::Mix) {
     // Mix analysis types (triggered by #)
     static const std::vector<std::pair<std::string, std::string>> mixTypes = {
-        {"drums", "Analyze drums/percussion track"}, {"bass", "Analyze bass track"},
-        {"synth", "Analyze synth/pad track"},        {"vocals", "Analyze vocal track"},
-        {"guitar", "Analyze guitar track"},          {"piano", "Analyze piano/keys track"},
-        {"strings", "Analyze strings track"},        {"fx", "Analyze FX/sound design track"},
-        {"compare", "Compare multiple tracks"},      {"master", "Analyze master bus"},
+        {"drums", "Analyze drums/percussion track"},
+        {"bass", "Analyze bass track"},
+        {"synth", "Analyze synth/pad track"},
+        {"vocals", "Analyze vocal track"},
+        {"guitar", "Analyze guitar track"},
+        {"piano", "Analyze piano/keys track"},
+        {"strings", "Analyze strings track"},
+        {"fx", "Analyze FX/sound design track"},
+        {"master", "Analyze master bus"},
+        {"bus", "Analyze bus/group track"},
+        {"group", "Analyze group/submix track"},
+        {"compare", "Compare multiple tracks"},
     };
 
     for (const auto &pair : mixTypes) {
@@ -1769,10 +1766,10 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
     return true;
   }
 
-  // Handle track type analysis (drums, bass, synth, vocals, etc.)
+  // Handle track type analysis (drums, bass, synth, vocals, bus, group, etc.)
   static const std::vector<std::string> validTypes = {
-      "drums",   "bass", "synth", "vocals", "guitar", "piano", "keys",
-      "strings", "fx",   "pad",   "lead",   "pluck",  "perc"};
+      "drums", "bass", "synth", "vocals", "guitar", "piano", "keys",  "strings",
+      "fx",    "pad",  "lead",  "pluck",  "perc",   "bus",   "group", "submix"};
 
   bool isValidType = false;
   for (const auto &type : validTypes) {
