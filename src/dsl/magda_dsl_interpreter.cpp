@@ -1,4 +1,5 @@
 #include "magda_dsl_interpreter.h"
+#include "magda_actions.h"
 #include "magda_dsl_context.h"
 #include "plugins/magda_plugin_scanner.h"
 #include "reaper_plugin.h"
@@ -1132,28 +1133,81 @@ bool Interpreter::ParseAddAutomation(Tokenizer &tok, const Params &params) {
 }
 
 bool Interpreter::AddAutomation(MediaTrack *track, const Params &params) {
-  (void)track;
+  if (!g_rec || !track) {
+    m_ctx.SetError("No track context for automation");
+    return false;
+  }
 
+  // Get required parameters
   std::string param = params.Get("param");
   std::string curve = params.Get("curve");
 
-  // Automation via DSL is not yet implemented - inform the user
-  // The MagdaActions::AddAutomation has a partial implementation but only for volume/pan/mute
-  m_ctx.SetErrorF("Automation via DSL not yet implemented. param='%s', curve='%s'. "
-                  "Currently only 'volume', 'pan', 'mute' are supported via the action system.",
-                  param.c_str(), curve.c_str());
+  if (param.empty()) {
+    m_ctx.SetError("add_automation requires 'param' (volume, pan, or mute)");
+    return false;
+  }
+
+  // Get track index
+  double (*GetMediaTrackInfo_Value)(MediaTrack *, const char *) =
+      (double (*)(MediaTrack *, const char *))g_rec->GetFunc("GetMediaTrackInfo_Value");
+  int track_index = 0;
+  if (GetMediaTrackInfo_Value) {
+    track_index = (int)GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER") - 1;
+  }
+
+  // Parse timing parameters
+  // Support: start/end (beats), start_bar/end_bar (bars)
+  double start_time = params.GetFloat("start", 0.0);
+  double end_time = params.GetFloat("end", 4.0);
+  bool times_in_seconds = false;
+
+  // Bar-based timing takes precedence
+  if (params.Has("start_bar") || params.Has("end_bar")) {
+    int start_bar = params.GetInt("start_bar", 1);
+    int end_bar = params.GetInt("end_bar", start_bar + 4);
+
+    // Convert bars to time using MagdaActions helper
+    start_time = MagdaActions::BarToTime(start_bar);
+    end_time = MagdaActions::BarToTime(end_bar);
+    times_in_seconds = true;
+  }
+
+  // Parse value parameters
+  double from_val = NAN;
+  double to_val = NAN;
+  if (params.Has("from")) {
+    from_val = params.GetFloat("from");
+  }
+  if (params.Has("to")) {
+    to_val = params.GetFloat("to");
+  }
+
+  // Oscillator parameters
+  double freq = params.GetFloat("freq", 1.0);
+  double amplitude = params.GetFloat("amplitude", 1.0);
+  double phase = params.GetFloat("phase", 0.0);
+  int shape = params.GetInt("shape", 0); // 0 = linear
+
+  // Call MagdaActions::AddAutomation
+  WDL_FastString error_msg;
+  bool success = MagdaActions::AddAutomation(
+      track_index, param.c_str(), curve.empty() ? "ramp" : curve.c_str(), start_time, end_time,
+      times_in_seconds, from_val, to_val, freq, amplitude, phase, shape, nullptr, error_msg);
+
+  if (!success) {
+    m_ctx.SetErrorF("AddAutomation failed: %s", error_msg.Get());
+    return false;
+  }
 
   void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
-    char msg[512];
-    snprintf(msg, sizeof(msg),
-             "MAGDA DSL: AddAutomation not implemented for param='%s'. "
-             "FX parameter automation requires implementation.\n",
+    char msg[256];
+    snprintf(msg, sizeof(msg), "MAGDA DSL: Added %s automation on '%s'\n", curve.c_str(),
              param.c_str());
     ShowConsoleMsg(msg);
   }
 
-  return false;
+  return true;
 }
 
 bool Interpreter::ParseDelete(Tokenizer &tok) {

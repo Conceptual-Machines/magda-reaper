@@ -30,6 +30,18 @@ public:
   static int GetLastCreatedTrackIndex(); // Returns -1 if none
   static void ClearLastCreatedTrack();   // Call after processing all DSL
 
+  // Automation envelope handler - supports curve-based and point-based syntax
+  // curve types: fade_in, fade_out, ramp, sine, saw, square, exp_in, exp_out
+  // times_in_seconds: if true, start/end are already in seconds (from bar conversion)
+  static bool AddAutomation(int track_index, const char *param, const char *curve, double start,
+                            double end, bool times_in_seconds, double from_val, double to_val,
+                            double freq, double amplitude, double phase, int shape,
+                            wdl_json_element *points_array, WDL_FastString &error_msg);
+
+  // Time conversion helpers
+  static double BarToTime(int bar);
+  static double BarsToTime(int bars);
+
 private:
   // Execute a single action
   static bool ExecuteAction(const wdl_json_element *action, WDL_FastString &result,
@@ -66,17 +78,4 @@ private:
                                 const char *bar_str, const char *name, const char *color,
                                 const char *length_str, const char *selected_str,
                                 WDL_FastString &error_msg);
-
-  // Automation envelope handler - supports curve-based and point-based syntax
-  // curve types: fade_in, fade_out, ramp, sine, saw, square, exp_in, exp_out
-  // times_in_seconds: if true, start/end are already in seconds (from bar
-  // conversion)
-  static bool AddAutomation(int track_index, const char *param, const char *curve, double start,
-                            double end, bool times_in_seconds, double from_val, double to_val,
-                            double freq, double amplitude, double phase, int shape,
-                            wdl_json_element *points_array, WDL_FastString &error_msg);
-
-  // Helper functions
-  static double BarToTime(int bar);
-  static double BarsToTime(int bars);
 };
