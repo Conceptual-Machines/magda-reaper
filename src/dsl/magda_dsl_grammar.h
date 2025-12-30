@@ -28,12 +28,24 @@ start: statement+
 
 statement: track_statement
          | filter_statement
+         | note_statement
+         | chord_statement
+         | arpeggio_statement
+         | progression_statement
+         | pattern_statement
 
 // Track statements
 track_statement: "track" "(" params? ")" chain?
 
 // Filter statements (for bulk operations)
 filter_statement: "filter" "(" "tracks" "," condition ")" chain?
+
+// Musical content statements (added to most recently created track)
+note_statement: "note" "(" params ")"
+chord_statement: "chord" "(" params ")"
+arpeggio_statement: "arpeggio" "(" params ")"
+progression_statement: "progression" "(" params ")"
+pattern_statement: "pattern" "(" params ")"
 
 condition: "track" "." IDENTIFIER "==" value
 
@@ -64,12 +76,17 @@ value: STRING
      | NUMBER
      | BOOLEAN
      | IDENTIFIER
+     | array
+
+// Array for progression chords
+array: "[" array_items? "]"
+array_items: IDENTIFIER ("," IDENTIFIER)*
 
 // Terminals
 STRING: "\"" /[^"]*/ "\""
 NUMBER: /-?[0-9]+(\.[0-9]+)?/
 BOOLEAN: "true" | "false" | "True" | "False"
-IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
+IDENTIFIER: /[a-zA-Z_#][a-zA-Z0-9_#]*/
 
 // Whitespace and comments
 %import common.WS
