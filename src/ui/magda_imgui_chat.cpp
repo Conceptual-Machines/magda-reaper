@@ -1278,7 +1278,15 @@ void MagdaImGuiChat::RenderAutocompletePopup() {
         m_ImGui_PushStyleColor(m_ctx, 24, g_theme.buttonBg); // Col_Header
       }
 
-      std::string label = "@" + suggestion.alias + " - " + suggestion.plugin_name;
+      // Build label with correct prefix based on autocomplete mode
+      std::string label;
+      if (m_autocompleteMode == AutocompleteMode::Mix) {
+        label = "#" + suggestion.alias + " - " + suggestion.plugin_name;
+      } else if (m_autocompleteMode == AutocompleteMode::Param) {
+        label = ":" + suggestion.alias + " - " + suggestion.plugin_name;
+      } else {
+        label = "@" + suggestion.alias + " - " + suggestion.plugin_name;
+      }
 
       if (m_ImGui_Selectable(m_ctx, label.c_str(), &isSelected, nullptr, nullptr, nullptr)) {
         selectedAlias = suggestion.alias;
