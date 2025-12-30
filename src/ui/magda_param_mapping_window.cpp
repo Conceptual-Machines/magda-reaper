@@ -1,4 +1,5 @@
 #include "magda_param_mapping_window.h"
+#include "magda_imgui_plugin_window.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -324,6 +325,11 @@ void MagdaParamMappingWindow::SaveMapping() {
 
   g_paramMappingManager->SetMapping(mapping);
   m_hasChanges = false;
+
+  // Refresh the plugin window to update the green tick indicator
+  if (g_imguiPluginWindow) {
+    g_imguiPluginWindow->RequestRefresh();
+  }
 
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");

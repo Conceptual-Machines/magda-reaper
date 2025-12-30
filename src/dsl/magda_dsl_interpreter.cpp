@@ -1,5 +1,7 @@
 #include "magda_dsl_interpreter.h"
+#include "magda_actions.h"
 #include "magda_dsl_context.h"
+#include "plugins/magda_plugin_scanner.h"
 #include "reaper_plugin.h"
 #include <cctype>
 #include <cmath>
@@ -8,6 +10,7 @@
 #include <cstring>
 
 extern reaper_plugin_info_t *g_rec;
+extern MagdaPluginScanner *g_pluginScanner;
 
 namespace MagdaDSL {
 
@@ -427,8 +430,37 @@ bool Interpreter::ParseTrackStatement(Tokenizer &tok) {
       m_ctx.current_track_idx =
           (int)GetMediaTrackInfo_Value(m_ctx.current_track, "IP_TRACKNUMBER") - 1;
     }
+  } else if (params.Has("name") && !params.Has("instrument")) {
+    // track(name="X") without instrument - try to find existing track first
+    std::string trackName = params.Get("name");
+    m_ctx.current_track = GetTrackByName(trackName);
+
+    if (m_ctx.current_track) {
+      // Found existing track
+      double (*GetMediaTrackInfo_Value)(MediaTrack *, const char *) =
+          (double (*)(MediaTrack *, const char *))g_rec->GetFunc("GetMediaTrackInfo_Value");
+      if (GetMediaTrackInfo_Value) {
+        m_ctx.current_track_idx =
+            (int)GetMediaTrackInfo_Value(m_ctx.current_track, "IP_TRACKNUMBER") - 1;
+      }
+
+      void (*ShowConsoleMsg)(const char *) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "MAGDA DSL: Found existing track '%s' at index %d\n",
+                 trackName.c_str(), m_ctx.current_track_idx + 1);
+        ShowConsoleMsg(msg);
+      }
+    } else {
+      // Not found - create new track
+      m_ctx.current_track = CreateTrack(params);
+      if (!m_ctx.current_track) {
+        return false;
+      }
+    }
   } else {
-    // track() or track(name="...", instrument="...") - create new track
+    // track() or track(instrument="...") - create new track
     m_ctx.current_track = CreateTrack(params);
     if (!m_ctx.current_track) {
       return false;
@@ -649,6 +681,13 @@ MediaTrack *Interpreter::CreateTrack(const Params &params) {
 
   m_ctx.current_track_idx = idx;
 
+  // Select the newly created track so subsequent operations can reference it
+  void (*SetTrackSelected)(MediaTrack *, bool) =
+      (void (*)(MediaTrack *, bool))g_rec->GetFunc("SetTrackSelected");
+  if (SetTrackSelected) {
+    SetTrackSelected(track, true);
+  }
+
   // Set track name if provided
   std::string trackName;
   if (params.Has("name") && GetSetMediaTrackInfo_String) {
@@ -662,11 +701,34 @@ MediaTrack *Interpreter::CreateTrack(const Params &params) {
   // Add instrument if provided
   if (params.Has("instrument") && TrackFX_AddByName) {
     std::string instrument = params.Get("instrument");
-    int fxIdx = TrackFX_AddByName(track, instrument.c_str(), false, -1);
+
+    // Resolve plugin alias using the plugin scanner
+    std::string resolved_instrument = instrument;
+    if (g_pluginScanner) {
+      std::string resolved = g_pluginScanner->ResolveAlias(instrument.c_str());
+      if (!resolved.empty() && resolved != instrument) {
+        resolved_instrument = resolved;
+        void (*ShowConsoleMsg)(const char *) =
+            (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+        if (ShowConsoleMsg) {
+          char msg[512];
+          snprintf(msg, sizeof(msg), "MAGDA DSL: Resolved '%s' -> '%s'\n", instrument.c_str(),
+                   resolved_instrument.c_str());
+          ShowConsoleMsg(msg);
+        }
+      }
+    }
+
+    int fxIdx = TrackFX_AddByName(track, resolved_instrument.c_str(), false, -1);
     if (fxIdx < 0) {
       // Try with VST prefix
-      std::string vst_name = "VST: " + instrument;
+      std::string vst_name = "VST: " + resolved_instrument;
       fxIdx = TrackFX_AddByName(track, vst_name.c_str(), false, -1);
+    }
+    if (fxIdx < 0) {
+      // Try with VST3 prefix
+      std::string vst3_name = "VST3: " + resolved_instrument;
+      fxIdx = TrackFX_AddByName(track, vst3_name.c_str(), false, -1);
     }
     if (fxIdx < 0) {
       // Log warning but don't fail
@@ -1040,11 +1102,33 @@ bool Interpreter::AddFX(MediaTrack *track, const std::string &fx_name) {
     return false;
   }
 
-  int idx = TrackFX_AddByName(track, fx_name.c_str(), false, -1);
+  // Resolve plugin alias using the plugin scanner
+  std::string resolved_fx = fx_name;
+  if (g_pluginScanner) {
+    std::string resolved = g_pluginScanner->ResolveAlias(fx_name.c_str());
+    if (!resolved.empty() && resolved != fx_name) {
+      resolved_fx = resolved;
+      void (*ShowConsoleMsg)(const char *) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[512];
+        snprintf(msg, sizeof(msg), "MAGDA DSL: Resolved FX '%s' -> '%s'\n", fx_name.c_str(),
+                 resolved_fx.c_str());
+        ShowConsoleMsg(msg);
+      }
+    }
+  }
+
+  int idx = TrackFX_AddByName(track, resolved_fx.c_str(), false, -1);
   if (idx < 0) {
     // Try with VST prefix
-    std::string vst_name = "VST: " + fx_name;
+    std::string vst_name = "VST: " + resolved_fx;
     idx = TrackFX_AddByName(track, vst_name.c_str(), false, -1);
+  }
+  if (idx < 0) {
+    // Try with VST3 prefix
+    std::string vst3_name = "VST3: " + resolved_fx;
+    idx = TrackFX_AddByName(track, vst3_name.c_str(), false, -1);
   }
 
   if (idx < 0) {
@@ -1055,7 +1139,7 @@ bool Interpreter::AddFX(MediaTrack *track, const std::string &fx_name) {
   void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA DSL: Added FX '%s' at index %d\n", fx_name.c_str(), idx);
+    snprintf(msg, sizeof(msg), "MAGDA DSL: Added FX '%s' at index %d\n", resolved_fx.c_str(), idx);
     ShowConsoleMsg(msg);
   }
 
@@ -1078,20 +1162,77 @@ bool Interpreter::ParseAddAutomation(Tokenizer &tok, const Params &params) {
 }
 
 bool Interpreter::AddAutomation(MediaTrack *track, const Params &params) {
-  // TODO: Implement automation curve generation
-  // This would need to:
-  // 1. Get the envelope for the parameter (volume, pan, etc.)
-  // 2. Generate curve points based on curve type (fade_in, fade_out, sine,
-  // etc.)
-  // 3. Insert automation points
+  if (!g_rec || !track) {
+    m_ctx.SetError("No track context for automation");
+    return false;
+  }
 
-  (void)track;
+  // Get required parameters
+  std::string param = params.Get("param");
+  std::string curve = params.Get("curve");
+
+  if (param.empty()) {
+    m_ctx.SetError("add_automation requires 'param' (volume, pan, or mute)");
+    return false;
+  }
+
+  // Get track index
+  double (*GetMediaTrackInfo_Value)(MediaTrack *, const char *) =
+      (double (*)(MediaTrack *, const char *))g_rec->GetFunc("GetMediaTrackInfo_Value");
+  int track_index = 0;
+  if (GetMediaTrackInfo_Value) {
+    track_index = (int)GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER") - 1;
+  }
+
+  // Parse timing parameters
+  // Support: start/end (beats), start_bar/end_bar (bars)
+  double start_time = params.GetFloat("start", 0.0);
+  double end_time = params.GetFloat("end", 4.0);
+  bool times_in_seconds = false;
+
+  // Bar-based timing takes precedence
+  if (params.Has("start_bar") || params.Has("end_bar")) {
+    int start_bar = params.GetInt("start_bar", 1);
+    int end_bar = params.GetInt("end_bar", start_bar + 4);
+
+    // Convert bars to time using MagdaActions helper
+    start_time = MagdaActions::BarToTime(start_bar);
+    end_time = MagdaActions::BarToTime(end_bar);
+    times_in_seconds = true;
+  }
+
+  // Parse value parameters
+  double from_val = NAN;
+  double to_val = NAN;
+  if (params.Has("from")) {
+    from_val = params.GetFloat("from");
+  }
+  if (params.Has("to")) {
+    to_val = params.GetFloat("to");
+  }
+
+  // Oscillator parameters
+  double freq = params.GetFloat("freq", 1.0);
+  double amplitude = params.GetFloat("amplitude", 1.0);
+  double phase = params.GetFloat("phase", 0.0);
+  int shape = params.GetInt("shape", 0); // 0 = linear
+
+  // Call MagdaActions::AddAutomation
+  WDL_FastString error_msg;
+  bool success = MagdaActions::AddAutomation(
+      track_index, param.c_str(), curve.empty() ? "ramp" : curve.c_str(), start_time, end_time,
+      times_in_seconds, from_val, to_val, freq, amplitude, phase, shape, nullptr, error_msg);
+
+  if (!success) {
+    m_ctx.SetErrorF("AddAutomation failed: %s", error_msg.Get());
+    return false;
+  }
 
   void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA DSL: TODO - AddAutomation(param=%s, curve=%s)\n",
-             params.Get("param").c_str(), params.Get("curve").c_str());
+    snprintf(msg, sizeof(msg), "MAGDA DSL: Added %s automation on '%s'\n", curve.c_str(),
+             param.c_str());
     ShowConsoleMsg(msg);
   }
 

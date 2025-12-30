@@ -471,7 +471,7 @@ void magdaAction(int command_id, int flag) {
       }).detach();
     }
   } else if (command_id == g_cmdMixAnalyze) {
-    // Mix analysis: open chat with @mix: prefilled
+    // Mix analysis: open chat with # prefilled
     // User can then type track type and query
     {
       void (*ShowConsoleMsg)(const char *msg) =
@@ -483,7 +483,7 @@ void magdaAction(int command_id, int flag) {
 
       if (g_imguiChat && g_imguiChat->IsAvailable()) {
         // Try to guess track type from selected track name
-        std::string prefill = "@mix:";
+        std::string prefill = "#";
 
         // Get selected track name for smart suggestion
         MediaTrack *(*GetSelectedTrack)(ReaProject *, int) =
@@ -522,8 +522,12 @@ void magdaAction(int command_id, int flag) {
               } else if (lowerName.find("piano") != std::string::npos ||
                          lowerName.find("keys") != std::string::npos) {
                 prefill += "piano ";
+              } else if (lowerName.find("master") != std::string::npos ||
+                         lowerName.find("bus") != std::string::npos ||
+                         lowerName.find("group") != std::string::npos) {
+                prefill += "master ";
               }
-              // If no match, just leave @mix: for user to type
+              // If no match, just leave # for user to type (autocomplete will show)
             }
           }
         }
@@ -536,7 +540,7 @@ void magdaAction(int command_id, int flag) {
       }
     }
   } else if (command_id == g_cmdMasterAnalyze) {
-    // Master analysis: open chat with @master: prefilled
+    // Master analysis: redirect to mix analysis with #master prefilled
     {
       void (*ShowConsoleMsg)(const char *msg) =
           (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
@@ -546,7 +550,7 @@ void magdaAction(int command_id, int flag) {
       }
 
       if (g_imguiChat && g_imguiChat->IsAvailable()) {
-        g_imguiChat->ShowWithInput("@master:");
+        g_imguiChat->ShowWithInput("#master ");
       } else {
         if (ShowConsoleMsg) {
           ShowConsoleMsg("MAGDA: Chat not available (ReaImGui required)\n");

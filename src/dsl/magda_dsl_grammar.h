@@ -28,12 +28,24 @@ start: statement+
 
 statement: track_statement
          | filter_statement
+         | note_statement
+         | chord_statement
+         | arpeggio_statement
+         | progression_statement
+         | pattern_statement
 
 // Track statements
 track_statement: "track" "(" params? ")" chain?
 
 // Filter statements (for bulk operations)
 filter_statement: "filter" "(" "tracks" "," condition ")" chain?
+
+// Musical content statements (added to most recently created track)
+note_statement: "note" "(" params ")"
+chord_statement: "chord" "(" params ")"
+arpeggio_statement: "arpeggio" "(" params ")"
+progression_statement: "progression" "(" params ")"
+pattern_statement: "pattern" "(" params ")"
 
 condition: "track" "." IDENTIFIER "==" value
 
@@ -64,12 +76,17 @@ value: STRING
      | NUMBER
      | BOOLEAN
      | IDENTIFIER
+     | array
+
+// Array for progression chords
+array: "[" array_items? "]"
+array_items: IDENTIFIER ("," IDENTIFIER)*
 
 // Terminals
 STRING: "\"" /[^"]*/ "\""
 NUMBER: /-?[0-9]+(\.[0-9]+)?/
 BOOLEAN: "true" | "false" | "True" | "False"
-IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
+IDENTIFIER: /[a-zA-Z_#][a-zA-Z0-9_#]*/
 
 // Whitespace and comments
 %import common.WS
@@ -87,11 +104,12 @@ static const char *MAGDA_DSL_TOOL_DESCRIPTION = R"DESC(
 **YOU MUST USE THIS TOOL TO GENERATE YOUR RESPONSE. DO NOT GENERATE TEXT OUTPUT DIRECTLY.**
 
 Executes REAPER operations using the MAGDA DSL. Generate functional script code.
+Each command goes on a separate line. Track operations execute FIRST, then musical content is added.
 
 TRACK OPERATIONS:
 - track() - Create new track
 - track(name="Bass") - Create track with name
-- track(instrument="Serum") - Create track with instrument
+- track(instrument="Serum") - Create track with instrument (use @plugin_name format)
 - track(id=1) - Reference existing track (1-based index)
 - track(selected=true) - Reference selected track
 
@@ -99,26 +117,40 @@ METHOD CHAINING:
 - .new_clip(bar=3, length_bars=4) - Create MIDI clip at bar
 - .set_track(name="X", volume_db=-3, pan=0.5, mute=true, solo=true, selected=true)
 - .add_fx(fxname="ReaEQ") - Add effect to track
-- .add_automation(param="volume", curve="fade_in", start=0, end=4)
 - .delete() - Delete track
+
+MUSICAL CONTENT (automatically added to most recently created track):
+- note(pitch="E1", duration=4) - Single sustained note (duration in beats, 4=whole note)
+- note(pitch="C4", duration=2, velocity=100) - Note with velocity (0-127)
+- chord(symbol=Em, length=4) - Chord (Em, Am7, Cmaj7, etc.)
+- arpeggio(symbol=Am, note_duration=0.25, length=4) - Arpeggio pattern
+- progression(chords=[C, Am, F, G], length=16) - Chord progression
+- pattern(drum=kick, grid="x---x---x---x---") - Drum pattern (x=hit, -=rest, 16 chars = 1 bar)
+
+IMPORTANT: Generate each command EXACTLY ONCE. Do NOT duplicate commands.
+
+PITCH NOTATION: Note name + octave (E1=bass, C4=middle C, A4=440Hz)
+Examples: E1, F#2, Bb3, C4, G#5
 
 FILTER OPERATIONS (bulk):
 - filter(tracks, track.name == "X").delete() - Delete all tracks named X
 - filter(tracks, track.name == "X").set_track(mute=true) - Mute all tracks named X
 
-AUTOMATION CURVES:
-- fade_in, fade_out - Linear fades
-- ramp - Linear sweep from/to values
-- sine, saw, square - Oscillator curves (use freq, amplitude params)
-- exp_in, exp_out - Exponential curves
-
 EXAMPLES:
-- "create track with Serum" → track(instrument="Serum")
-- "create 3 tracks" → track(); track(); track()
+- "create track with Serum" → track(instrument="@serum")
+- "add track with bass note E1" →
+  track(name="Bass")
+  note(pitch="E1", duration=4)
+- "create synth track with C minor chord" →
+  track(instrument="@serum", name="Synth")
+  chord(symbol=Cm, length=4)
+- "add sustained E1 for 8 beats" → note(pitch="E1", duration=8)
 - "delete track 1" → track(id=1).delete()
 - "mute all tracks named Drums" → filter(tracks, track.name == "Drums").set_track(mute=true)
 - "add reverb to track 2" → track(id=2).add_fx(fxname="ReaVerbate")
-- "create clip at bar 5" → track(selected=true).new_clip(bar=5, length_bars=4)
+- "kick 4 to the floor" →
+  track(name="Kick")
+  pattern(drum=kick, grid="x---x---x---x---")
 
 **CRITICAL: Always generate DSL code. Never generate plain text responses.**
 )DESC";

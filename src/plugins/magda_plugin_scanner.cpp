@@ -799,10 +799,11 @@ MagdaPluginScanner::GenerateAbbreviationAliases(const std::string &base_name) co
 }
 
 // Generate all aliases for a single plugin
-// Simple approach: lowercase name with underscores instead of spaces
+// Comprehensive approach: generates multiple alias patterns for maximum compatibility
 std::vector<std::string>
 MagdaPluginScanner::GenerateAliasesForPlugin(const PluginInfo &plugin) const {
   std::vector<std::string> aliases;
+  std::set<std::string> unique_aliases; // Use set to avoid duplicates
 
   // Use plugin.name if available (cleaner), otherwise extract from full_name
   std::string base_name = plugin.name.empty() ? ExtractBaseName(plugin.full_name) : plugin.name;
@@ -810,32 +811,74 @@ MagdaPluginScanner::GenerateAliasesForPlugin(const PluginInfo &plugin) const {
     return aliases;
   }
 
-  // Convert to lowercase and replace spaces with underscores
-  std::string alias;
+  // 1. Basic alias: lowercase with underscores (e.g., "ReaPitch" -> "reapitch")
+  std::string basic_alias;
   for (char c : base_name) {
     if (c == ' ') {
-      alias += '_';
+      basic_alias += '_';
     } else {
-      alias += (char)std::tolower(c);
+      basic_alias += (char)std::tolower(c);
+    }
+  }
+  // Remove any double underscores and trim
+  while (basic_alias.find("__") != std::string::npos) {
+    size_t pos = basic_alias.find("__");
+    basic_alias.erase(pos, 1);
+  }
+  while (!basic_alias.empty() && basic_alias.front() == '_') {
+    basic_alias.erase(0, 1);
+  }
+  while (!basic_alias.empty() && basic_alias.back() == '_') {
+    basic_alias.pop_back();
+  }
+  if (!basic_alias.empty()) {
+    unique_aliases.insert(basic_alias);
+  }
+
+  // 2. Version aliases (e.g., "Serum 2" -> ["serum", "serum2", "serum_2"])
+  auto version_aliases = GenerateVersionAliases(base_name);
+  for (const auto &alias : version_aliases) {
+    std::string normalized = ToLower(Trim(alias));
+    if (!normalized.empty()) {
+      unique_aliases.insert(normalized);
     }
   }
 
-  // Remove any double underscores and trim
-  while (alias.find("__") != std::string::npos) {
-    size_t pos = alias.find("__");
-    alias.erase(pos, 1);
-  }
-  while (!alias.empty() && alias.front() == '_') {
-    alias.erase(0, 1);
-  }
-  while (!alias.empty() && alias.back() == '_') {
-    alias.pop_back();
-  }
-
-  if (!alias.empty()) {
-    aliases.push_back(alias);
+  // 3. CamelCase/PascalCase splits (e.g., "ReaEQ" -> ["reaeq", "rea-eq", "rea_eq", "eq"])
+  auto camel_aliases = SplitCamelCase(base_name);
+  for (const auto &alias : camel_aliases) {
+    std::string normalized = ToLower(Trim(alias));
+    // Normalize separators to underscores
+    std::replace(normalized.begin(), normalized.end(), ' ', '_');
+    std::replace(normalized.begin(), normalized.end(), '-', '_');
+    if (!normalized.empty()) {
+      unique_aliases.insert(normalized);
+    }
   }
 
+  // 4. Manufacturer-prefixed aliases
+  if (!plugin.manufacturer.empty()) {
+    auto mfr_aliases = GenerateManufacturerAliases(base_name, plugin.manufacturer);
+    for (const auto &alias : mfr_aliases) {
+      std::string normalized = ToLower(Trim(alias));
+      std::replace(normalized.begin(), normalized.end(), ' ', '_');
+      if (!normalized.empty()) {
+        unique_aliases.insert(normalized);
+      }
+    }
+  }
+
+  // 5. Abbreviation aliases (e.g., "ReaEQ" -> ["eq"])
+  auto abbrev_aliases = GenerateAbbreviationAliases(base_name);
+  for (const auto &alias : abbrev_aliases) {
+    std::string normalized = ToLower(Trim(alias));
+    if (!normalized.empty()) {
+      unique_aliases.insert(normalized);
+    }
+  }
+
+  // Convert set to vector
+  aliases.assign(unique_aliases.begin(), unique_aliases.end());
   return aliases;
 }
 
@@ -1421,7 +1464,8 @@ std::string MagdaPluginScanner::ResolveAlias(const char *alias) const {
     }
   }
 
-  return alias; // Return original if not found
+  // Return original alias if not found (might work if it's the actual plugin name)
+  return alias;
 }
 
 void MagdaPluginScanner::SetPluginAliases(const char *full_name,

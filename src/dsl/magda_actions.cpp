@@ -2,6 +2,7 @@
 #include "magda_drum_mapping.h"
 #include "magda_dsl_context.h"
 #include "magda_dsp_analyzer.h"
+#include "magda_param_mapping.h"
 #include "magda_plugin_scanner.h"
 // Workaround for typo in reaper_plugin_functions.h line 6475 (Reaproject ->
 // ReaProject) This is a typo in the REAPER SDK itself, not our code
@@ -18,6 +19,8 @@ typedef ReaProject Reaproject;
 #endif
 
 extern reaper_plugin_info_t *g_rec;
+extern ParamMappingManager *g_paramMappingManager;
+extern MagdaPluginScanner *g_pluginScanner;
 
 // Use the centralized DSL context system
 int MagdaActions::GetLastCreatedTrackIndex() {
@@ -2619,6 +2622,20 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
   bool is_volume = false;
   bool is_pan = false;
 
+  // Get additional REAPER API functions for FX parameters
+  TrackEnvelope *(*GetFXEnvelope)(MediaTrack *, int, int, bool) =
+      (TrackEnvelope * (*)(MediaTrack *, int, int, bool)) g_rec->GetFunc("GetFXEnvelope");
+  int (*TrackFX_GetCount)(MediaTrack *) = (int (*)(MediaTrack *))g_rec->GetFunc("TrackFX_GetCount");
+  bool (*TrackFX_GetFXName)(MediaTrack *, int, char *, int) =
+      (bool (*)(MediaTrack *, int, char *, int))g_rec->GetFunc("TrackFX_GetFXName");
+  int (*TrackFX_GetNumParams)(MediaTrack *, int) =
+      (int (*)(MediaTrack *, int))g_rec->GetFunc("TrackFX_GetNumParams");
+  bool (*TrackFX_GetParamName)(MediaTrack *, int, int, char *, int) =
+      (bool (*)(MediaTrack *, int, int, char *, int))g_rec->GetFunc("TrackFX_GetParamName");
+
+  TrackEnvelope *envelope = nullptr;
+  bool is_fx_param = false;
+
   if (strcmp(param, "volume") == 0) {
     envelope_chunk_name = "<VOLENV";
     envelope_display_name = "Volume";
@@ -2631,27 +2648,191 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
     envelope_chunk_name = "<MUTEENV";
     envelope_display_name = "Mute";
   } else {
-    // FX parameter - format is "FXName:ParamName"
-    // For now, only support volume/pan - FX params need more complex handling
-    error_msg.Set("FX parameter automation not yet supported - use 'volume' or 'pan'");
-    return false;
+    // FX parameter - try to resolve using param mapping
+    is_fx_param = true;
   }
 
-  // Try to get envelope by chunk name first (works even if not visible)
-  TrackEnvelope *envelope = nullptr;
-  if (GetTrackEnvelopeByChunkName) {
-    envelope = GetTrackEnvelopeByChunkName(track, envelope_chunk_name);
-  }
-  // Fall back to display name if chunk name didn't work
-  if (!envelope && GetTrackEnvelopeByName) {
-    envelope = GetTrackEnvelopeByName(track, envelope_display_name);
-  }
+  if (is_fx_param) {
+    // FX parameter automation
+    if (!GetFXEnvelope || !TrackFX_GetCount) {
+      error_msg.Set("REAPER API for FX envelopes not available");
+      return false;
+    }
 
-  if (!envelope) {
-    error_msg.Set("Could not get envelope for parameter: ");
-    error_msg.Append(param);
-    error_msg.Append(" - try showing the envelope first (View > Track Envelope > Volume)");
-    return false;
+    // Parse @plugin:param format (e.g., "@serum_2:filter_1_freq")
+    std::string plugin_alias;
+    std::string param_alias = param;
+
+    if (param[0] == '@') {
+      std::string paramStr = param + 1; // Skip @
+      size_t colonPos = paramStr.find(':');
+      if (colonPos != std::string::npos) {
+        plugin_alias = paramStr.substr(0, colonPos);
+        param_alias = paramStr.substr(colonPos + 1);
+        if (ShowConsoleMsg) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Parsed @plugin:param - plugin='%s', param='%s'\n", plugin_alias.c_str(),
+                   param_alias.c_str());
+          ShowConsoleMsg(log_msg);
+        }
+      }
+    }
+
+    int fx_count = TrackFX_GetCount(track);
+    if (fx_count <= 0) {
+      error_msg.Set("No FX on track for parameter automation");
+      return false;
+    }
+
+    // First, try to resolve the param alias using the param mapping manager
+    // We need to find which FX has this parameter
+    int found_fx_idx = -1;
+    int found_param_idx = -1;
+
+    // If plugin alias specified, find the matching FX first
+    if (!plugin_alias.empty() && g_pluginScanner) {
+      std::string resolvedPlugin = g_pluginScanner->ResolveAlias(plugin_alias.c_str());
+      if (ShowConsoleMsg) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Resolved plugin alias '%s' -> '%s'\n",
+                 plugin_alias.c_str(), resolvedPlugin.c_str());
+        ShowConsoleMsg(log_msg);
+      }
+
+      // Find the FX on the track that matches
+      for (int fx_idx = 0; fx_idx < fx_count; fx_idx++) {
+        char fx_name[256] = {0};
+        if (TrackFX_GetFXName) {
+          TrackFX_GetFXName(track, fx_idx, fx_name, sizeof(fx_name));
+        }
+
+        // Check if FX name contains the resolved plugin name
+        std::string fxNameStr = fx_name;
+        if (fxNameStr.find(resolvedPlugin) != std::string::npos ||
+            resolvedPlugin.find(fxNameStr) != std::string::npos) {
+          found_fx_idx = fx_idx;
+          if (ShowConsoleMsg) {
+            char log_msg[256];
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Found matching FX '%s' at index %d\n",
+                     fx_name, fx_idx);
+            ShowConsoleMsg(log_msg);
+          }
+          break;
+        }
+      }
+    }
+
+    // Get plugin key for param alias lookup
+    char fx_name[256] = {0};
+    int target_fx_idx = (found_fx_idx >= 0) ? found_fx_idx : 0;
+    if (TrackFX_GetFXName) {
+      TrackFX_GetFXName(track, target_fx_idx, fx_name, sizeof(fx_name));
+    }
+
+    // Generate plugin key from FX name (similar to plugin scanner)
+    std::string plugin_key = fx_name;
+    // Remove common prefixes like "VST:", "VST3:", "JS:", etc.
+    size_t colon_pos = plugin_key.find(": ");
+    if (colon_pos != std::string::npos) {
+      plugin_key = plugin_key.substr(colon_pos + 2);
+    }
+
+    // Try param mapping first using the extracted param alias
+    if (g_paramMappingManager) {
+      found_param_idx = g_paramMappingManager->ResolveParamAlias(plugin_key, param_alias);
+      if (found_param_idx >= 0) {
+        if (found_fx_idx < 0)
+          found_fx_idx = target_fx_idx;
+        if (ShowConsoleMsg) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Resolved param alias '%s' -> param index %d on FX '%s'\n",
+                   param_alias.c_str(), found_param_idx, fx_name);
+          ShowConsoleMsg(log_msg);
+        }
+      }
+    }
+
+    // If not found via alias, try to match by actual parameter name
+    if (found_param_idx < 0 && TrackFX_GetNumParams && TrackFX_GetParamName) {
+      // If we have a specific FX target from plugin alias, only search that FX
+      int start_fx = (found_fx_idx >= 0) ? found_fx_idx : 0;
+      int end_fx = (found_fx_idx >= 0) ? found_fx_idx + 1 : fx_count;
+
+      for (int fx_idx = start_fx; fx_idx < end_fx && found_param_idx < 0; fx_idx++) {
+        int num_params = TrackFX_GetNumParams(track, fx_idx);
+        for (int p = 0; p < num_params; p++) {
+          char param_name[256] = {0};
+          TrackFX_GetParamName(track, fx_idx, p, param_name, sizeof(param_name));
+
+          // Normalize both for comparison (lowercase, remove spaces)
+          std::string param_lower = param_alias;
+          std::string name_lower = param_name;
+          for (char &c : param_lower)
+            c = tolower(c);
+          for (char &c : name_lower)
+            c = tolower(c);
+
+          // Also try with underscores replaced by spaces
+          std::string param_with_spaces = param_alias;
+          for (char &c : param_with_spaces) {
+            if (c == '_')
+              c = ' ';
+          }
+          for (char &c : param_with_spaces)
+            c = tolower(c);
+
+          if (name_lower == param_lower || name_lower == param_with_spaces ||
+              name_lower.find(param_lower) != std::string::npos ||
+              name_lower.find(param_with_spaces) != std::string::npos) {
+            found_fx_idx = fx_idx;
+            found_param_idx = p;
+            if (ShowConsoleMsg) {
+              char log_msg[256];
+              snprintf(log_msg, sizeof(log_msg),
+                       "MAGDA: Matched param '%s' -> '%s' (idx %d) on FX %d\n", param_alias.c_str(),
+                       param_name, p, fx_idx);
+              ShowConsoleMsg(log_msg);
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    if (found_fx_idx < 0 || found_param_idx < 0) {
+      error_msg.Set("Could not find FX parameter '");
+      error_msg.Append(param_alias.c_str());
+      error_msg.Append("' - try setting up param aliases in the plugin window first");
+      return false;
+    }
+
+    // Get envelope for FX parameter (create=true to create if doesn't exist)
+    envelope = GetFXEnvelope(track, found_fx_idx, found_param_idx, true);
+    if (!envelope) {
+      error_msg.Set("Could not get/create envelope for FX parameter '");
+      error_msg.Append(param_alias.c_str());
+      error_msg.Append("'");
+      return false;
+    }
+  } else {
+    // Track parameter (volume/pan/mute)
+    // Try to get envelope by chunk name first (works even if not visible)
+    if (GetTrackEnvelopeByChunkName) {
+      envelope = GetTrackEnvelopeByChunkName(track, envelope_chunk_name);
+    }
+    // Fall back to display name if chunk name didn't work
+    if (!envelope && GetTrackEnvelopeByName) {
+      envelope = GetTrackEnvelopeByName(track, envelope_display_name);
+    }
+
+    if (!envelope) {
+      error_msg.Set("Could not get envelope for parameter: ");
+      error_msg.Append(param);
+      error_msg.Append(" - try showing the envelope first (View > Track Envelope > Volume)");
+      return false;
+    }
   }
 
   // Convert beat times to project time if needed
