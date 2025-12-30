@@ -2405,6 +2405,19 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           return "Added FX";
         } else if (line.find("clip(") == 0 || line.find(".new_clip") != std::string::npos) {
           return "Created clip";
+        } else if (line.find(".add_automation") != std::string::npos ||
+                   line.find(".addAutomation") != std::string::npos) {
+          // Extract param name if possible
+          size_t paramStart = line.find("param=\"");
+          if (paramStart != std::string::npos) {
+            paramStart += 7;
+            size_t paramEnd = line.find("\"", paramStart);
+            if (paramEnd != std::string::npos) {
+              std::string param = line.substr(paramStart, paramEnd - paramStart);
+              return "Added automation on '" + param + "'";
+            }
+          }
+          return "Added automation";
         }
         return "";
       };

@@ -1125,24 +1125,28 @@ bool Interpreter::ParseAddAutomation(Tokenizer &tok, const Params &params) {
 }
 
 bool Interpreter::AddAutomation(MediaTrack *track, const Params &params) {
-  // TODO: Implement automation curve generation
-  // This would need to:
-  // 1. Get the envelope for the parameter (volume, pan, etc.)
-  // 2. Generate curve points based on curve type (fade_in, fade_out, sine,
-  // etc.)
-  // 3. Insert automation points
-
   (void)track;
+
+  std::string param = params.Get("param");
+  std::string curve = params.Get("curve");
+
+  // Automation via DSL is not yet implemented - inform the user
+  // The MagdaActions::AddAutomation has a partial implementation but only for volume/pan/mute
+  m_ctx.SetErrorF("Automation via DSL not yet implemented. param='%s', curve='%s'. "
+                  "Currently only 'volume', 'pan', 'mute' are supported via the action system.",
+                  param.c_str(), curve.c_str());
 
   void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
-    char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA DSL: TODO - AddAutomation(param=%s, curve=%s)\n",
-             params.Get("param").c_str(), params.Get("curve").c_str());
+    char msg[512];
+    snprintf(msg, sizeof(msg),
+             "MAGDA DSL: AddAutomation not implemented for param='%s'. "
+             "FX parameter automation requires implementation.\n",
+             param.c_str());
     ShowConsoleMsg(msg);
   }
 
-  return true;
+  return false;
 }
 
 bool Interpreter::ParseDelete(Tokenizer &tok) {
