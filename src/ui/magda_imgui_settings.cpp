@@ -148,6 +148,12 @@ void MagdaImGuiSettings::LoadSettings() {
   if (jsfxDescStr) {
     m_jsfxIncludeDescription = (atoi(jsfxDescStr) != 0);
   }
+
+  // Load show token usage setting
+  const char *showTokensStr = GetExtState("MAGDA", "show_token_usage");
+  if (showTokensStr) {
+    m_showTokenUsage = (atoi(showTokensStr) != 0);
+  }
 }
 
 void MagdaImGuiSettings::SaveSettings() {
@@ -174,6 +180,9 @@ void MagdaImGuiSettings::SaveSettings() {
 
   // Save JSFX include description setting
   SetExtState("MAGDA", "jsfx_include_description", m_jsfxIncludeDescription ? "1" : "0", true);
+
+  // Save show token usage setting
+  SetExtState("MAGDA", "show_token_usage", m_showTokenUsage ? "1" : "0", true);
 }
 
 StateFilterPreferences MagdaImGuiSettings::GetPreferences() {
@@ -225,6 +234,22 @@ bool MagdaImGuiSettings::GetJSFXIncludeDescription() {
     return (atoi(jsfxDescStr) != 0);
   }
   return true; // Default to including description
+}
+
+bool MagdaImGuiSettings::GetShowTokenUsage() {
+  if (!g_rec)
+    return true; // Default to showing token usage
+
+  const char *(*GetExtState)(const char *section, const char *key) =
+      (const char *(*)(const char *, const char *))g_rec->GetFunc("GetExtState");
+  if (!GetExtState)
+    return true;
+
+  const char *showTokensStr = GetExtState("MAGDA", "show_token_usage");
+  if (showTokensStr) {
+    return (atoi(showTokensStr) != 0);
+  }
+  return true; // Default to showing token usage
 }
 
 void MagdaImGuiSettings::Show() {
@@ -299,7 +324,7 @@ void MagdaImGuiSettings::Render() {
 
   // Set window size
   int cond = ImGuiCond::FirstUseEver;
-  m_ImGui_SetNextWindowSize(m_ctx, 450, 280, &cond);
+  m_ImGui_SetNextWindowSize(m_ctx, 450, 360, &cond);
 
   // Begin window
   int flags = ImGuiWindowFlags::NoCollapse;
@@ -420,6 +445,28 @@ void MagdaImGuiSettings::Render() {
   }
   if (m_ImGui_TextColored) {
     m_ImGui_TextColored(m_ctx, COLOR_DIM, "When enabled, AI explains the generated code");
+  }
+
+  if (m_ImGui_Separator)
+    m_ImGui_Separator(m_ctx);
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Chat Settings section
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, g_theme.headerText, "Chat");
+  } else {
+    m_ImGui_Text(m_ctx, "Chat");
+  }
+  if (m_ImGui_Spacing)
+    m_ImGui_Spacing(m_ctx);
+
+  // Show token usage checkbox
+  if (m_ImGui_Checkbox) {
+    m_ImGui_Checkbox(m_ctx, "Show token usage in responses", &m_showTokenUsage);
+  }
+  if (m_ImGui_TextColored) {
+    m_ImGui_TextColored(m_ctx, COLOR_DIM, "Display input/output token counts after each request");
   }
 
   if (m_ImGui_Separator)

@@ -2838,15 +2838,22 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           if (i < actionSummaries.size() - 1)
             msg += "\n";
         }
-        // Always show token usage (shows 0 if not available)
-        msg += "\n📊 " + std::to_string(m_lastInputTokens) + " → " +
-               std::to_string(m_lastOutputTokens) + " tokens";
+        // Show token usage if enabled in settings
+        if (MagdaImGuiSettings::GetShowTokenUsage() &&
+            (m_lastInputTokens > 0 || m_lastOutputTokens > 0)) {
+          msg += "\n📊 " + std::to_string(m_lastInputTokens) + " → " +
+                 std::to_string(m_lastOutputTokens) + " tokens";
+        }
         AddAssistantMessage(msg);
       } else if (dslSuccess) {
         // Success but no trackable actions (fallback)
         std::string msg = "Done.";
-        msg += "\n📊 " + std::to_string(m_lastInputTokens) + " → " +
-               std::to_string(m_lastOutputTokens) + " tokens";
+        // Show token usage if enabled in settings
+        if (MagdaImGuiSettings::GetShowTokenUsage() &&
+            (m_lastInputTokens > 0 || m_lastOutputTokens > 0)) {
+          msg += "\n📊 " + std::to_string(m_lastInputTokens) + " → " +
+                 std::to_string(m_lastOutputTokens) + " tokens";
+        }
         AddAssistantMessage(msg);
       } else {
         std::string errorStr = "Error: " + lastError;

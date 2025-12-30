@@ -32,6 +32,9 @@ public:
   // JSFX settings
   static bool GetJSFXIncludeDescription();
 
+  // Token usage display setting
+  static bool GetShowTokenUsage();
+
 private:
   // ReaImGui function pointers
   void *(*m_ImGui_CreateContext)(const char *label, int *config_flagsInOptional);
@@ -83,6 +86,9 @@ private:
 
   // JSFX settings
   bool m_jsfxIncludeDescription = true;
+
+  // Token usage display
+  bool m_showTokenUsage = true;
 
   // Internal methods
   void LoadSettings();
