@@ -20,6 +20,7 @@ typedef ReaProject Reaproject;
 
 extern reaper_plugin_info_t *g_rec;
 extern ParamMappingManager *g_paramMappingManager;
+extern MagdaPluginScanner *g_pluginScanner;
 
 // Use the centralized DSL context system
 int MagdaActions::GetLastCreatedTrackIndex() {
@@ -2658,6 +2659,26 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
       return false;
     }
 
+    // Parse @plugin:param format (e.g., "@serum_2:filter_1_freq")
+    std::string plugin_alias;
+    std::string param_alias = param;
+
+    if (param[0] == '@') {
+      std::string paramStr = param + 1; // Skip @
+      size_t colonPos = paramStr.find(':');
+      if (colonPos != std::string::npos) {
+        plugin_alias = paramStr.substr(0, colonPos);
+        param_alias = paramStr.substr(colonPos + 1);
+        if (ShowConsoleMsg) {
+          char log_msg[256];
+          snprintf(log_msg, sizeof(log_msg),
+                   "MAGDA: Parsed @plugin:param - plugin='%s', param='%s'\n", plugin_alias.c_str(),
+                   param_alias.c_str());
+          ShowConsoleMsg(log_msg);
+        }
+      }
+    }
+
     int fx_count = TrackFX_GetCount(track);
     if (fx_count <= 0) {
       error_msg.Set("No FX on track for parameter automation");
@@ -2669,10 +2690,44 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
     int found_fx_idx = -1;
     int found_param_idx = -1;
 
-    // Get first FX's plugin key for param alias lookup
+    // If plugin alias specified, find the matching FX first
+    if (!plugin_alias.empty() && g_pluginScanner) {
+      std::string resolvedPlugin = g_pluginScanner->ResolveAlias(plugin_alias.c_str());
+      if (ShowConsoleMsg) {
+        char log_msg[256];
+        snprintf(log_msg, sizeof(log_msg), "MAGDA: Resolved plugin alias '%s' -> '%s'\n",
+                 plugin_alias.c_str(), resolvedPlugin.c_str());
+        ShowConsoleMsg(log_msg);
+      }
+
+      // Find the FX on the track that matches
+      for (int fx_idx = 0; fx_idx < fx_count; fx_idx++) {
+        char fx_name[256] = {0};
+        if (TrackFX_GetFXName) {
+          TrackFX_GetFXName(track, fx_idx, fx_name, sizeof(fx_name));
+        }
+
+        // Check if FX name contains the resolved plugin name
+        std::string fxNameStr = fx_name;
+        if (fxNameStr.find(resolvedPlugin) != std::string::npos ||
+            resolvedPlugin.find(fxNameStr) != std::string::npos) {
+          found_fx_idx = fx_idx;
+          if (ShowConsoleMsg) {
+            char log_msg[256];
+            snprintf(log_msg, sizeof(log_msg), "MAGDA: Found matching FX '%s' at index %d\n",
+                     fx_name, fx_idx);
+            ShowConsoleMsg(log_msg);
+          }
+          break;
+        }
+      }
+    }
+
+    // Get plugin key for param alias lookup
     char fx_name[256] = {0};
+    int target_fx_idx = (found_fx_idx >= 0) ? found_fx_idx : 0;
     if (TrackFX_GetFXName) {
-      TrackFX_GetFXName(track, 0, fx_name, sizeof(fx_name));
+      TrackFX_GetFXName(track, target_fx_idx, fx_name, sizeof(fx_name));
     }
 
     // Generate plugin key from FX name (similar to plugin scanner)
@@ -2683,16 +2738,17 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
       plugin_key = plugin_key.substr(colon_pos + 2);
     }
 
-    // Try param mapping first
+    // Try param mapping first using the extracted param alias
     if (g_paramMappingManager) {
-      found_param_idx = g_paramMappingManager->ResolveParamAlias(plugin_key, param);
+      found_param_idx = g_paramMappingManager->ResolveParamAlias(plugin_key, param_alias);
       if (found_param_idx >= 0) {
-        found_fx_idx = 0; // Assume first FX for now
+        if (found_fx_idx < 0)
+          found_fx_idx = target_fx_idx;
         if (ShowConsoleMsg) {
           char log_msg[256];
           snprintf(log_msg, sizeof(log_msg),
-                   "MAGDA: Resolved param alias '%s' -> param index %d on FX '%s'\n", param,
-                   found_param_idx, fx_name);
+                   "MAGDA: Resolved param alias '%s' -> param index %d on FX '%s'\n",
+                   param_alias.c_str(), found_param_idx, fx_name);
           ShowConsoleMsg(log_msg);
         }
       }
@@ -2700,14 +2756,18 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
 
     // If not found via alias, try to match by actual parameter name
     if (found_param_idx < 0 && TrackFX_GetNumParams && TrackFX_GetParamName) {
-      for (int fx_idx = 0; fx_idx < fx_count && found_param_idx < 0; fx_idx++) {
+      // If we have a specific FX target from plugin alias, only search that FX
+      int start_fx = (found_fx_idx >= 0) ? found_fx_idx : 0;
+      int end_fx = (found_fx_idx >= 0) ? found_fx_idx + 1 : fx_count;
+
+      for (int fx_idx = start_fx; fx_idx < end_fx && found_param_idx < 0; fx_idx++) {
         int num_params = TrackFX_GetNumParams(track, fx_idx);
         for (int p = 0; p < num_params; p++) {
           char param_name[256] = {0};
           TrackFX_GetParamName(track, fx_idx, p, param_name, sizeof(param_name));
 
           // Normalize both for comparison (lowercase, remove spaces)
-          std::string param_lower = param;
+          std::string param_lower = param_alias;
           std::string name_lower = param_name;
           for (char &c : param_lower)
             c = tolower(c);
@@ -2715,7 +2775,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
             c = tolower(c);
 
           // Also try with underscores replaced by spaces
-          std::string param_with_spaces = param;
+          std::string param_with_spaces = param_alias;
           for (char &c : param_with_spaces) {
             if (c == '_')
               c = ' ';
@@ -2731,8 +2791,8 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
             if (ShowConsoleMsg) {
               char log_msg[256];
               snprintf(log_msg, sizeof(log_msg),
-                       "MAGDA: Matched param '%s' -> '%s' (idx %d) on FX %d\n", param, param_name,
-                       p, fx_idx);
+                       "MAGDA: Matched param '%s' -> '%s' (idx %d) on FX %d\n", param_alias.c_str(),
+                       param_name, p, fx_idx);
               ShowConsoleMsg(log_msg);
             }
             break;
@@ -2743,7 +2803,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
 
     if (found_fx_idx < 0 || found_param_idx < 0) {
       error_msg.Set("Could not find FX parameter '");
-      error_msg.Append(param);
+      error_msg.Append(param_alias.c_str());
       error_msg.Append("' - try setting up param aliases in the plugin window first");
       return false;
     }
@@ -2752,7 +2812,7 @@ bool MagdaActions::AddAutomation(int track_index, const char *param, const char 
     envelope = GetFXEnvelope(track, found_fx_idx, found_param_idx, true);
     if (!envelope) {
       error_msg.Set("Could not get/create envelope for FX parameter '");
-      error_msg.Append(param);
+      error_msg.Append(param_alias.c_str());
       error_msg.Append("'");
       return false;
     }

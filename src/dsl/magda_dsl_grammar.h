@@ -109,7 +109,7 @@ Each command goes on a separate line. Track operations execute FIRST, then music
 TRACK OPERATIONS:
 - track() - Create new track
 - track(name="Bass") - Create track with name
-- track(instrument="Serum") - Create track with instrument (use @plugin:name format)
+- track(instrument="Serum") - Create track with instrument (use @plugin_name format)
 - track(id=1) - Reference existing track (1-based index)
 - track(selected=true) - Reference selected track
 
@@ -135,12 +135,12 @@ FILTER OPERATIONS (bulk):
 - filter(tracks, track.name == "X").set_track(mute=true) - Mute all tracks named X
 
 EXAMPLES:
-- "create track with Serum" → track(instrument="@plugin:serum")
+- "create track with Serum" → track(instrument="@serum")
 - "add track with bass note E1" →
   track(name="Bass")
   note(pitch="E1", duration=4)
 - "create synth track with C minor chord" →
-  track(instrument="@plugin:serum", name="Synth")
+  track(instrument="@serum", name="Synth")
   chord(symbol=Cm, length=4)
 - "add sustained E1 for 8 beats" → note(pitch="E1", duration=8)
 - "delete track 1" → track(id=1).delete()

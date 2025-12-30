@@ -15,6 +15,7 @@
 #include "magda_imgui_api_keys.h"
 #include "magda_imgui_login.h"
 #include "magda_imgui_settings.h"
+#include "magda_param_mapping.h"
 #include "magda_plugin_scanner.h"
 #include "magda_state.h"
 #include <algorithm>
@@ -26,6 +27,7 @@ static MagdaHTTPClient s_httpClient;
 
 // g_rec is needed for debug logging
 extern reaper_plugin_info_t *g_rec;
+extern ParamMappingManager *g_paramMappingManager;
 
 // Forward declaration
 extern void magdaAction(int command_id, int flag);
@@ -1353,26 +1355,64 @@ void MagdaImGuiChat::RenderMessageWithHighlighting(const std::string &content) {
 void MagdaImGuiChat::DetectAtTrigger() {
   std::string input = m_inputBuffer;
 
+  // Check for @ (plugin) or # (mix) triggers
   size_t atPos = input.rfind('@');
+  size_t hashPos = input.rfind('#');
 
-  if (atPos == std::string::npos) {
+  // Determine which trigger is most recent (closest to end)
+  size_t triggerPos = std::string::npos;
+  char triggerChar = 0;
+
+  if (atPos != std::string::npos && (hashPos == std::string::npos || atPos > hashPos)) {
+    triggerPos = atPos;
+    triggerChar = '@';
+  } else if (hashPos != std::string::npos) {
+    triggerPos = hashPos;
+    triggerChar = '#';
+  }
+
+  if (triggerPos == std::string::npos) {
     m_showAutocomplete = false;
-    m_atPosition = std::string::npos;
+    m_triggerPosition = std::string::npos;
+    m_autocompleteMode = AutocompleteMode::None;
     return;
   }
 
-  if (atPos > 0 && input[atPos - 1] != ' ') {
+  // Trigger must be at start or after a space
+  if (triggerPos > 0 && input[triggerPos - 1] != ' ') {
     m_showAutocomplete = false;
     return;
   }
 
-  m_atPosition = atPos;
-  m_autocompletePrefix = input.substr(atPos + 1);
+  m_triggerPosition = triggerPos;
+  std::string afterTrigger = input.substr(triggerPos + 1);
 
-  size_t spacePos = m_autocompletePrefix.find(' ');
+  // Check for space (ends autocomplete)
+  size_t spacePos = afterTrigger.find(' ');
   if (spacePos != std::string::npos) {
     m_showAutocomplete = false;
     return;
+  }
+
+  // Check for param autocomplete: @plugin_name:param
+  if (triggerChar == '@') {
+    size_t colonPos = afterTrigger.find(':');
+    if (colonPos != std::string::npos) {
+      // Param autocomplete mode
+      m_autocompleteMode = AutocompleteMode::Param;
+      m_currentPluginAlias = afterTrigger.substr(0, colonPos);
+      m_autocompletePrefix = afterTrigger.substr(colonPos + 1);
+    } else {
+      // Plugin autocomplete mode
+      m_autocompleteMode = AutocompleteMode::Plugin;
+      m_autocompletePrefix = afterTrigger;
+      m_currentPluginAlias.clear();
+    }
+  } else {
+    // # trigger - mix autocomplete mode
+    m_autocompleteMode = AutocompleteMode::Mix;
+    m_autocompletePrefix = afterTrigger;
+    m_currentPluginAlias.clear();
   }
 
   UpdateAutocompleteSuggestions();
@@ -1394,58 +1434,95 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
   std::string query = m_autocompletePrefix;
   std::transform(query.begin(), query.end(), query.begin(), ::tolower);
 
-  // Add mix analysis types
-  static const std::vector<std::pair<std::string, std::string>> mixTypes = {
-      {"mix:drums", "Analyze drums/percussion track"}, {"mix:bass", "Analyze bass track"},
-      {"mix:synth", "Analyze synth/pad track"},        {"mix:vocals", "Analyze vocal track"},
-      {"mix:guitar", "Analyze guitar track"},          {"mix:piano", "Analyze piano/keys track"},
-      {"mix:strings", "Analyze strings track"},        {"mix:fx", "Analyze FX/sound design track"},
-  };
+  if (m_autocompleteMode == AutocompleteMode::Mix) {
+    // Mix analysis types (triggered by #)
+    static const std::vector<std::pair<std::string, std::string>> mixTypes = {
+        {"drums", "Analyze drums/percussion track"}, {"bass", "Analyze bass track"},
+        {"synth", "Analyze synth/pad track"},        {"vocals", "Analyze vocal track"},
+        {"guitar", "Analyze guitar track"},          {"piano", "Analyze piano/keys track"},
+        {"strings", "Analyze strings track"},        {"fx", "Analyze FX/sound design track"},
+        {"compare", "Compare multiple tracks"},      {"master", "Analyze master bus"},
+    };
 
-  for (const auto &pair : mixTypes) {
-    const std::string &alias = pair.first;
-    const std::string &desc = pair.second;
-
-    std::string aliasLower = alias;
-    std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
-
-    if (query.empty() || aliasLower.find(query) == 0) {
-      AutocompleteSuggestion suggestion;
-      suggestion.alias = alias;
-      suggestion.plugin_name = desc;
-      suggestion.plugin_type = "mix";
-      m_suggestions.push_back(suggestion);
-    }
-  }
-
-  // Add plugin aliases with "plugin:" prefix
-  if (m_pluginScanner) {
-    const auto &aliases = m_pluginScanner->GetAliases();
-
-    for (const auto &pair : aliases) {
+    for (const auto &pair : mixTypes) {
       const std::string &alias = pair.first;
-      const std::string &pluginName = pair.second;
+      const std::string &desc = pair.second;
 
-      // Create prefixed alias for matching
-      std::string prefixedAlias = "plugin:" + alias;
-      std::string prefixedLower = prefixedAlias;
-      std::transform(prefixedLower.begin(), prefixedLower.end(), prefixedLower.begin(), ::tolower);
+      std::string aliasLower = alias;
+      std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
 
-      if (query.empty() || prefixedLower.find(query) == 0) {
+      if (query.empty() || aliasLower.find(query) == 0) {
         AutocompleteSuggestion suggestion;
-        suggestion.alias = prefixedAlias;
-        suggestion.plugin_name = pluginName;
-        suggestion.plugin_type = "plugin";
+        suggestion.alias = alias;
+        suggestion.plugin_name = desc;
+        suggestion.plugin_type = "mix";
         m_suggestions.push_back(suggestion);
+      }
+    }
+  } else if (m_autocompleteMode == AutocompleteMode::Plugin) {
+    // Plugin aliases (triggered by @)
+    if (m_pluginScanner) {
+      const auto &aliases = m_pluginScanner->GetAliases();
+
+      for (const auto &pair : aliases) {
+        const std::string &alias = pair.first;
+        const std::string &pluginName = pair.second;
+
+        std::string aliasLower = alias;
+        std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
+
+        if (query.empty() || aliasLower.find(query) == 0) {
+          AutocompleteSuggestion suggestion;
+          suggestion.alias = alias;
+          suggestion.plugin_name = pluginName;
+          suggestion.plugin_type = "plugin";
+          m_suggestions.push_back(suggestion);
+        }
+      }
+    }
+  } else if (m_autocompleteMode == AutocompleteMode::Param) {
+    // Plugin parameter aliases (triggered by @plugin:)
+    if (m_pluginScanner && g_paramMappingManager) {
+      // First, resolve the plugin alias to get the plugin key
+      std::string pluginName = m_pluginScanner->ResolveAlias(m_currentPluginAlias.c_str());
+
+      // Get param mappings for this plugin
+      const ParamMapping *mapping = g_paramMappingManager->GetMappingForPlugin(pluginName);
+      if (mapping) {
+        for (const auto &pair : mapping->aliases) {
+          const std::string &paramAlias = pair.first;
+          // int paramIndex = pair.second;
+
+          std::string aliasLower = paramAlias;
+          std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
+
+          if (query.empty() || aliasLower.find(query) == 0) {
+            AutocompleteSuggestion suggestion;
+            suggestion.alias = paramAlias;
+            suggestion.plugin_name = "Parameter";
+            suggestion.plugin_type = "param";
+            m_suggestions.push_back(suggestion);
+          }
+        }
+      }
+
+      // If no mappings found, suggest setting up params
+      if (m_suggestions.empty() && query.empty()) {
+        AutocompleteSuggestion hint;
+        hint.alias = "(no params mapped)";
+        hint.plugin_name = "Use plugin window to set up param aliases";
+        hint.plugin_type = "hint";
+        m_suggestions.push_back(hint);
       }
     }
   }
 
+  // Sort suggestions
   std::sort(m_suggestions.begin(), m_suggestions.end(),
             [&query](const AutocompleteSuggestion &a, const AutocompleteSuggestion &b) {
-              // Mix types first, then plugins
-              if (a.plugin_type != b.plugin_type) {
-                return a.plugin_type == "mix";
+              // Hints go last
+              if (a.plugin_type == "hint" || b.plugin_type == "hint") {
+                return b.plugin_type == "hint";
               }
               bool aStartsWith = a.alias.find(query) == 0;
               bool bStartsWith = b.alias.find(query) == 0;
@@ -1454,44 +1531,51 @@ void MagdaImGuiChat::UpdateAutocompleteSuggestions() {
               }
               return a.alias < b.alias;
             });
-
-  // Insert separator between mix and plugin types
-  bool foundMix = false;
-  bool insertedSeparator = false;
-  for (size_t i = 0; i < m_suggestions.size() && !insertedSeparator; i++) {
-    if (m_suggestions[i].plugin_type == "mix") {
-      foundMix = true;
-    } else if (foundMix && m_suggestions[i].plugin_type == "plugin") {
-      // Insert separator before first plugin
-      AutocompleteSuggestion separator;
-      separator.alias = "---";
-      separator.plugin_name = "";
-      separator.plugin_type = "separator";
-      m_suggestions.insert(m_suggestions.begin() + i, separator);
-      insertedSeparator = true;
-    }
-  }
 }
 
 void MagdaImGuiChat::InsertCompletion(const std::string &alias) {
-  if (m_atPosition == std::string::npos) {
+  if (m_triggerPosition == std::string::npos) {
+    return;
+  }
+
+  // Skip hints (non-selectable items)
+  if (alias == "(no params mapped)") {
+    m_showAutocomplete = false;
     return;
   }
 
   std::string input = m_inputBuffer;
-  std::string before = input.substr(0, m_atPosition);
-  std::string completion = "@" + alias + " ";
+  std::string before = input.substr(0, m_triggerPosition);
+  std::string completion;
 
-  // Find end of current @mention (next space or end of string)
-  size_t afterAt = m_atPosition + 1 + m_autocompletePrefix.length();
-  std::string after = (afterAt < input.length()) ? input.substr(afterAt) : "";
+  if (m_autocompleteMode == AutocompleteMode::Plugin) {
+    // Plugin: @serum_2 (add space after for continuation)
+    completion = "@" + alias + " ";
+  } else if (m_autocompleteMode == AutocompleteMode::Mix) {
+    // Mix: #drums (add space after)
+    completion = "#" + alias + " ";
+  } else if (m_autocompleteMode == AutocompleteMode::Param) {
+    // Param: @serum_2:filter_1_freq (add space after)
+    completion = "@" + m_currentPluginAlias + ":" + alias + " ";
+  }
+
+  // Find end of current trigger (including any : and param prefix)
+  size_t afterTrigger = m_triggerPosition + 1 + m_autocompletePrefix.length();
+  if (m_autocompleteMode == AutocompleteMode::Param) {
+    // Include the plugin name and colon
+    afterTrigger =
+        m_triggerPosition + 1 + m_currentPluginAlias.length() + 1 + m_autocompletePrefix.length();
+  }
+  std::string after = (afterTrigger < input.length()) ? input.substr(afterTrigger) : "";
 
   std::string newInput = before + completion + after;
 
   strncpy(m_inputBuffer, newInput.c_str(), sizeof(m_inputBuffer) - 1);
   m_inputBuffer[sizeof(m_inputBuffer) - 1] = '\0';
 
-  m_atPosition = std::string::npos;
+  m_triggerPosition = std::string::npos;
+  m_autocompleteMode = AutocompleteMode::None;
+  m_showAutocomplete = false;
 }
 
 // Public action methods (callable from REAPER action system)
@@ -1538,34 +1622,25 @@ void MagdaImGuiChat::CopyToClipboard() {
   }
 }
 
-// Check if message is a @mix: or @master: command and handle it
+// Check if message is a #mix command and handle it
 // Returns true if handled (should not be sent to regular API)
+// Supports: #master, #drums, #bass, #synth, #compare, etc.
 bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
-  // Check for @master: prefix first (master bus analysis)
-  size_t masterPos = msg.find("@master:");
-  if (masterPos != std::string::npos) {
-    // Extract query after @master:
-    std::string afterMaster = msg.substr(masterPos + 8); // After "@master:"
+  // Check for # prefix (new style) or legacy @mix:/@master: prefixes
+  size_t hashPos = msg.find('#');
+  size_t legacyMixPos = msg.find("@mix:");
+  size_t legacyMasterPos = msg.find("@master:");
 
-    // Trim leading spaces from query
+  // Handle legacy @master: prefix
+  if (legacyMasterPos != std::string::npos) {
+    std::string afterMaster = msg.substr(legacyMasterPos + 8);
     size_t queryStart = afterMaster.find_first_not_of(" ");
     std::string userQuery;
     if (queryStart != std::string::npos) {
       userQuery = afterMaster.substr(queryStart);
     }
 
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      char logMsg[512];
-      snprintf(logMsg, sizeof(logMsg), "MAGDA: Master analysis - query: '%s'\n", userQuery.c_str());
-      ShowConsoleMsg(logMsg);
-    }
-
-    // Clear any pending result from previous run
     MagdaBounceWorkflow::ClearPendingResult();
-
-    // Execute the master analysis workflow
     WDL_FastString error_msg;
     bool success = MagdaBounceWorkflow::ExecuteMasterWorkflow(userQuery.c_str(), error_msg);
 
@@ -1574,109 +1649,146 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
       errorStr += error_msg.Get();
       AddAssistantMessage(errorStr);
     } else {
-      // Set busy state to show spinner
       m_busy = true;
       m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-      SetAPIStatus("Analyzing master...", 0xFFFF66FF); // Yellow
+      SetAPIStatus("Analyzing master...", 0xFFFF66FF);
     }
-
     return true;
   }
 
-  // Check for @mix: prefix
-  size_t mixPos = msg.find("@mix:");
-  if (mixPos == std::string::npos) {
+  // Handle legacy @mix: prefix
+  if (legacyMixPos != std::string::npos) {
+    hashPos = std::string::npos; // Prefer legacy if found
+    std::string afterMix = msg.substr(legacyMixPos + 5);
+    size_t cmdStart = afterMix.find_first_not_of(" ");
+    if (cmdStart == std::string::npos) {
+      AddAssistantMessage(
+          "Error: Please specify a track type (e.g., #drums, #bass, #synth, #compare)");
+      return true;
+    }
+    // Convert to new format and continue processing
+    std::string convertedMsg = "#" + afterMix.substr(cmdStart);
+    return HandleMixCommand(convertedMsg);
+  }
+
+  // Check for # prefix (new style)
+  if (hashPos == std::string::npos) {
     return false;
   }
 
-  // Extract command after @mix:
-  std::string afterMix = msg.substr(mixPos + 5); // After "@mix:"
-
-  // Trim leading spaces
-  size_t cmdStart = afterMix.find_first_not_of(" ");
-  if (cmdStart == std::string::npos) {
-    AddAssistantMessage("Error: Please specify a track type or comparison after @mix: (e.g., "
-                        "@mix:synth make it brighter or @mix:compare drums bass)");
-    return true;
-  }
-  afterMix = afterMix.substr(cmdStart);
-
-  // Check for "compare" keyword for multi-track comparison
-  std::string lowerCmd = afterMix;
-  std::transform(lowerCmd.begin(), lowerCmd.end(), lowerCmd.begin(), ::tolower);
-
-  if (lowerCmd.compare(0, 8, "compare ") == 0) {
-    // Multi-track comparison mode
-    std::string compareArgs = afterMix.substr(8); // After "compare "
-    size_t argsStart = compareArgs.find_first_not_of(" ");
-    if (argsStart != std::string::npos) {
-      compareArgs = compareArgs.substr(argsStart);
-    }
-
-    void (*ShowConsoleMsg)(const char *msg) =
-        (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
-    if (ShowConsoleMsg) {
-      char logMsg[512];
-      snprintf(logMsg, sizeof(logMsg), "MAGDA: Multi-track comparison - args: '%s'\n",
-               compareArgs.c_str());
-      ShowConsoleMsg(logMsg);
-    }
-
-    // Clear any pending result from previous run
-    MagdaBounceWorkflow::ClearPendingResult();
-
-    // Execute the multi-track comparison workflow
-    WDL_FastString error_msg;
-    bool success = MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(compareArgs.c_str(), error_msg);
-
-    if (!success) {
-      std::string errorStr = "Multi-track comparison failed: ";
-      errorStr += error_msg.Get();
-      AddAssistantMessage(errorStr);
-    } else {
-      // Set busy state to show spinner
-      m_busy = true;
-      m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-      SetAPIStatus("Comparing tracks...", 0xFFFF66FF); // Yellow
-    }
-
-    return true;
+  // Must be at start or after space
+  if (hashPos > 0 && msg[hashPos - 1] != ' ') {
+    return false;
   }
 
-  // Single-track mode (original behavior)
-  // Find the track type (next word)
-  size_t typeEnd = afterMix.find(' ');
-  std::string trackType;
+  // Extract command after #
+  std::string afterHash = msg.substr(hashPos + 1);
+
+  // Find the command (up to next space)
+  size_t spacePos = afterHash.find(' ');
+  std::string command;
   std::string userQuery;
 
-  if (typeEnd == std::string::npos) {
-    trackType = afterMix;
+  if (spacePos == std::string::npos) {
+    command = afterHash;
     userQuery = "";
   } else {
-    trackType = afterMix.substr(0, typeEnd);
-    userQuery = afterMix.substr(typeEnd + 1);
-    // Trim leading spaces from query
+    command = afterHash.substr(0, spacePos);
+    userQuery = afterHash.substr(spacePos + 1);
     size_t queryStart = userQuery.find_first_not_of(" ");
     if (queryStart != std::string::npos) {
       userQuery = userQuery.substr(queryStart);
     }
   }
 
+  std::string lowerCmd = command;
+  std::transform(lowerCmd.begin(), lowerCmd.end(), lowerCmd.begin(), ::tolower);
+
   void (*ShowConsoleMsg)(const char *msg) =
       (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+
+  // Handle #master command
+  if (lowerCmd == "master") {
+    if (ShowConsoleMsg) {
+      char logMsg[256];
+      snprintf(logMsg, sizeof(logMsg), "MAGDA: Master analysis - query: '%s'\n", userQuery.c_str());
+      ShowConsoleMsg(logMsg);
+    }
+
+    MagdaBounceWorkflow::ClearPendingResult();
+    WDL_FastString error_msg;
+    bool success = MagdaBounceWorkflow::ExecuteMasterWorkflow(userQuery.c_str(), error_msg);
+
+    if (!success) {
+      std::string errorStr = "Master analysis failed: ";
+      errorStr += error_msg.Get();
+      AddAssistantMessage(errorStr);
+    } else {
+      m_busy = true;
+      m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+      SetAPIStatus("Analyzing master...", 0xFFFF66FF);
+    }
+    return true;
+  }
+
+  // Handle #compare command
+  if (lowerCmd == "compare") {
+    if (userQuery.empty()) {
+      AddAssistantMessage("Error: Please specify tracks to compare (e.g., #compare drums bass)");
+      return true;
+    }
+
+    if (ShowConsoleMsg) {
+      char logMsg[256];
+      snprintf(logMsg, sizeof(logMsg), "MAGDA: Multi-track comparison - args: '%s'\n",
+               userQuery.c_str());
+      ShowConsoleMsg(logMsg);
+    }
+
+    MagdaBounceWorkflow::ClearPendingResult();
+    WDL_FastString error_msg;
+    bool success = MagdaBounceWorkflow::ExecuteMultiTrackWorkflow(userQuery.c_str(), error_msg);
+
+    if (!success) {
+      std::string errorStr = "Multi-track comparison failed: ";
+      errorStr += error_msg.Get();
+      AddAssistantMessage(errorStr);
+    } else {
+      m_busy = true;
+      m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
+      SetAPIStatus("Comparing tracks...", 0xFFFF66FF);
+    }
+    return true;
+  }
+
+  // Handle track type analysis (drums, bass, synth, vocals, etc.)
+  static const std::vector<std::string> validTypes = {
+      "drums",   "bass", "synth", "vocals", "guitar", "piano", "keys",
+      "strings", "fx",   "pad",   "lead",   "pluck",  "perc"};
+
+  bool isValidType = false;
+  for (const auto &type : validTypes) {
+    if (lowerCmd == type) {
+      isValidType = true;
+      break;
+    }
+  }
+
+  if (!isValidType) {
+    // Not a recognized mix command
+    return false;
+  }
+
   if (ShowConsoleMsg) {
-    char logMsg[512];
+    char logMsg[256];
     snprintf(logMsg, sizeof(logMsg), "MAGDA: Mix analysis - type: '%s', query: '%s'\n",
-             trackType.c_str(), userQuery.c_str());
+             command.c_str(), userQuery.c_str());
     ShowConsoleMsg(logMsg);
   }
 
-  // Clear any pending result from previous run
   MagdaBounceWorkflow::ClearPendingResult();
-
-  // Execute the mix analysis workflow
   WDL_FastString error_msg;
-  bool success = MagdaBounceWorkflow::ExecuteWorkflow(BOUNCE_MODE_FULL_TRACK, trackType.c_str(),
+  bool success = MagdaBounceWorkflow::ExecuteWorkflow(BOUNCE_MODE_FULL_TRACK, command.c_str(),
                                                       userQuery.c_str(), error_msg);
 
   if (!success) {
@@ -1684,10 +1796,9 @@ bool MagdaImGuiChat::HandleMixCommand(const std::string &msg) {
     errorStr += error_msg.Get();
     AddAssistantMessage(errorStr);
   } else {
-    // Set busy state to show spinner
     m_busy = true;
     m_spinnerStartTime = (double)clock() / CLOCKS_PER_SEC;
-    SetAPIStatus("Analyzing...", 0xFFFF66FF); // Yellow
+    SetAPIStatus("Analyzing track...", 0xFFFF66FF);
   }
 
   return true;
