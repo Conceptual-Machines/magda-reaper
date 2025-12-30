@@ -430,8 +430,37 @@ bool Interpreter::ParseTrackStatement(Tokenizer &tok) {
       m_ctx.current_track_idx =
           (int)GetMediaTrackInfo_Value(m_ctx.current_track, "IP_TRACKNUMBER") - 1;
     }
+  } else if (params.Has("name") && !params.Has("instrument")) {
+    // track(name="X") without instrument - try to find existing track first
+    std::string trackName = params.Get("name");
+    m_ctx.current_track = GetTrackByName(trackName);
+
+    if (m_ctx.current_track) {
+      // Found existing track
+      double (*GetMediaTrackInfo_Value)(MediaTrack *, const char *) =
+          (double (*)(MediaTrack *, const char *))g_rec->GetFunc("GetMediaTrackInfo_Value");
+      if (GetMediaTrackInfo_Value) {
+        m_ctx.current_track_idx =
+            (int)GetMediaTrackInfo_Value(m_ctx.current_track, "IP_TRACKNUMBER") - 1;
+      }
+
+      void (*ShowConsoleMsg)(const char *) =
+          (void (*)(const char *))g_rec->GetFunc("ShowConsoleMsg");
+      if (ShowConsoleMsg) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "MAGDA DSL: Found existing track '%s' at index %d\n",
+                 trackName.c_str(), m_ctx.current_track_idx + 1);
+        ShowConsoleMsg(msg);
+      }
+    } else {
+      // Not found - create new track
+      m_ctx.current_track = CreateTrack(params);
+      if (!m_ctx.current_track) {
+        return false;
+      }
+    }
   } else {
-    // track() or track(name="...", instrument="...") - create new track
+    // track() or track(instrument="...") - create new track
     m_ctx.current_track = CreateTrack(params);
     if (!m_ctx.current_track) {
       return false;

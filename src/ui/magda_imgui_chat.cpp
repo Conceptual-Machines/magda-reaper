@@ -2586,27 +2586,24 @@ void MagdaImGuiChat::ProcessAsyncResult() {
         // Now check for standalone commands (not chained)
         if (line.find("track(") == 0) {
           // Determine if this is a track reference or creation
-          bool isReference = (line.find("id=") != std::string::npos) ||
-                             (line.find("selected=") != std::string::npos);
+          bool hasId = (line.find("id=") != std::string::npos);
+          bool hasSelected = (line.find("selected=") != std::string::npos);
+          bool hasInstrument = (line.find("instrument=") != std::string::npos);
+          bool hasNameOnly =
+              (line.find("name=") != std::string::npos) && !hasInstrument && !hasId && !hasSelected;
 
           // If it's just a reference with no action, skip it
-          if (isReference && line.find(").") == std::string::npos &&
-              line.find(")") == line.length() - 1) {
-            return ""; // Just a track reference, no action
+          bool isReference = hasId || hasSelected || hasNameOnly;
+          if (isReference && line.find(").") == std::string::npos) {
+            // Check if line ends with just ) - pure reference
+            size_t closeParenPos = line.find(')');
+            if (closeParenPos != std::string::npos && closeParenPos == line.length() - 1) {
+              return ""; // Just a track reference, no action
+            }
           }
 
-          // Track creation
-          if (!isReference) {
-            size_t nameStart = line.find("name=\"");
-            if (nameStart != std::string::npos) {
-              nameStart += 6;
-              size_t nameEnd = line.find("\"", nameStart);
-              if (nameEnd != std::string::npos) {
-                std::string name = line.substr(nameStart, nameEnd - nameStart);
-                return "Created track '" + name + "'";
-              }
-            }
-            // Check for instrument
+          // Track with instrument = creation
+          if (hasInstrument) {
             size_t instStart = line.find("instrument=\"");
             if (instStart != std::string::npos) {
               instStart += 12;
@@ -2619,6 +2616,24 @@ void MagdaImGuiChat::ProcessAsyncResult() {
                 return "Created track with " + inst;
               }
             }
+          }
+
+          // Track with name only (no instrument) = might be reference to existing
+          if (hasNameOnly) {
+            size_t nameStart = line.find("name=\"");
+            if (nameStart != std::string::npos) {
+              nameStart += 6;
+              size_t nameEnd = line.find("\"", nameStart);
+              if (nameEnd != std::string::npos) {
+                // This might be a reference OR a creation - the interpreter decides
+                // Don't report here, let the actual execution determine the message
+                return "";
+              }
+            }
+          }
+
+          // Empty track() = creation
+          if (!hasId && !hasSelected && !hasNameOnly && !hasInstrument) {
             return "Created track";
           }
         }
