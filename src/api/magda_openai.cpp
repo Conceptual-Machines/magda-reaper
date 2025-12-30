@@ -186,6 +186,22 @@ bool MagdaOpenAI::ExtractDSLFromResponse(const char *response_json, int response
     // Otherwise it's "error": null - not an error, continue
   }
 
+  // Extract token usage from response
+  m_lastTokenUsage = TokenUsage{}; // Reset
+  wdl_json_element *usage_elem = root->get_item_by_name("usage");
+  if (usage_elem) {
+    wdl_json_element *input_tokens = usage_elem->get_item_by_name("input_tokens");
+    wdl_json_element *output_tokens = usage_elem->get_item_by_name("output_tokens");
+    wdl_json_element *total_tokens = usage_elem->get_item_by_name("total_tokens");
+    // WDL JSON parser stores numbers as raw string values
+    if (input_tokens && input_tokens->m_value && !input_tokens->m_value_string)
+      m_lastTokenUsage.input_tokens = atoi(input_tokens->m_value);
+    if (output_tokens && output_tokens->m_value && !output_tokens->m_value_string)
+      m_lastTokenUsage.output_tokens = atoi(output_tokens->m_value);
+    if (total_tokens && total_tokens->m_value && !total_tokens->m_value_string)
+      m_lastTokenUsage.total_tokens = atoi(total_tokens->m_value);
+  }
+
   // Navigate to output array
   wdl_json_element *output = root->get_item_by_name("output");
   if (!output || !output->is_array()) {

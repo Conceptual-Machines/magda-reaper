@@ -793,15 +793,6 @@ void MagdaImGuiChat::Render() {
       }
     }
     m_ImGui_EndChild(m_ctx);
-
-    // Footer with colored circle indicator
-    m_ImGui_Separator(m_ctx);
-    m_ImGui_TextColored(m_ctx, m_apiStatusColor,
-                        "\xe2\x97\x8f"); // ● (filled circle UTF-8)
-    m_ImGui_SameLine(m_ctx, &zero, &zero);
-    m_ImGui_TextColored(m_ctx, g_theme.dimText, " Status: ");
-    m_ImGui_SameLine(m_ctx, &zero, &zero);
-    m_ImGui_TextColored(m_ctx, m_apiStatusColor, m_apiStatus.c_str());
   }
 
   m_ImGui_End(m_ctx);
@@ -1945,10 +1936,15 @@ void MagdaImGuiChat::StartDirectOpenAIRequest(const std::string &question) {
       bool success = openai->GenerateDSLWithState(question.c_str(), MAGDA_DSL_TOOL_DESCRIPTION,
                                                   stateStr.c_str(), dslCode, errorMsg);
 
+      // Get token usage
+      const auto &tokenUsage = openai->GetLastTokenUsage();
+
       std::lock_guard<std::mutex> lock(m_asyncMutex);
       m_asyncSuccess = success && dslCode.GetLength() > 0;
       m_asyncResponseJson = dslCode.Get();
       m_asyncErrorMsg = errorMsg.Get();
+      m_lastInputTokens = tokenUsage.input_tokens;
+      m_lastOutputTokens = tokenUsage.output_tokens;
       m_asyncResultReady = true;
       m_asyncPending = false;
       return;
@@ -2834,12 +2830,22 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           if (i < actionSummaries.size() - 1)
             msg += "\n";
         }
+        // Add token usage if available
+        if (m_lastInputTokens > 0 || m_lastOutputTokens > 0) {
+          msg += "\n\n";
+          msg += "📊 " + std::to_string(m_lastInputTokens) + " → " +
+                 std::to_string(m_lastOutputTokens) + " tokens";
+        }
         AddAssistantMessage(msg);
-        SetAPIStatus("Done", 0x88FF88FF); // Green
       } else if (dslSuccess) {
         // Success but no trackable actions (fallback)
-        AddAssistantMessage("Done.");
-        SetAPIStatus("Done", 0x88FF88FF); // Green
+        std::string msg = "Done.";
+        if (m_lastInputTokens > 0 || m_lastOutputTokens > 0) {
+          msg += "\n\n";
+          msg += "📊 " + std::to_string(m_lastInputTokens) + " → " +
+                 std::to_string(m_lastOutputTokens) + " tokens";
+        }
+        AddAssistantMessage(msg);
       } else {
         std::string errorStr = "Error: " + lastError;
         AddAssistantMessage(errorStr);

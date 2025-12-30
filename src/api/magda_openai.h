@@ -15,6 +15,13 @@
 //   REAPER
 // ============================================================================
 
+// Token usage from last API call
+struct TokenUsage {
+  int input_tokens = 0;
+  int output_tokens = 0;
+  int total_tokens = 0;
+};
+
 class MagdaOpenAI {
 public:
   MagdaOpenAI();
@@ -64,6 +71,9 @@ public:
   void SetTimeout(int seconds) { m_timeout_seconds = seconds; }
   int GetTimeout() const { return m_timeout_seconds; }
 
+  // Get token usage from last API call
+  const TokenUsage &GetLastTokenUsage() const { return m_lastTokenUsage; }
+
 private:
   // Build request JSON with CFG grammar tool
   char *BuildRequestJSON(const char *question, const char *system_prompt, const char *state_json);
@@ -79,6 +89,7 @@ private:
   WDL_FastString m_api_key;
   WDL_FastString m_model;
   int m_timeout_seconds;
+  TokenUsage m_lastTokenUsage;
 };
 
 // ============================================================================

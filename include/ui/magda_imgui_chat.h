@@ -209,7 +209,9 @@ private:
   bool m_directOpenAI = false;    // True when using direct OpenAI (DSL result)
   std::string m_asyncResponseJson;
   std::string m_asyncErrorMsg;
-  std::string m_pendingQuestion;               // Question being processed
+  std::string m_pendingQuestion; // Question being processed
+  int m_lastInputTokens = 0;     // Token usage from last request
+  int m_lastOutputTokens = 0;
   std::vector<std::string> m_streamingActions; // Actions queued from stream
                                                // (executed on main thread)
 
