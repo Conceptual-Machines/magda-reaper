@@ -2494,7 +2494,10 @@ void MagdaImGuiChat::ProcessAsyncResult() {
       std::vector<std::string> contentCommands; // arpeggio, chord, pattern - execute second
       std::string jsfxCode;                     // JSFX is special - entire block
 
+      // First pass: join lines that start with '.' to the previous line (method chains)
+      std::string preprocessedDsl;
       size_t pos = 0;
+      std::string prevLine;
       while (pos < dslCode.size()) {
         size_t endPos = dslCode.find('\n', pos);
         if (endPos == std::string::npos)
@@ -2509,6 +2512,37 @@ void MagdaImGuiChat::ProcessAsyncResult() {
           continue;
         size_t end = line.find_last_not_of(" \t\r");
         line = line.substr(start, end - start + 1);
+        if (line.empty())
+          continue;
+
+        // If line starts with '.', it's a method chain continuation
+        if (line[0] == '.') {
+          if (!prevLine.empty()) {
+            prevLine += line; // Append to previous line
+          }
+        } else {
+          // Output previous line if exists
+          if (!prevLine.empty()) {
+            preprocessedDsl += prevLine + "\n";
+          }
+          prevLine = line;
+        }
+      }
+      // Don't forget the last line
+      if (!prevLine.empty()) {
+        preprocessedDsl += prevLine + "\n";
+      }
+
+      // Second pass: categorize commands
+      pos = 0;
+      while (pos < preprocessedDsl.size()) {
+        size_t endPos = preprocessedDsl.find('\n', pos);
+        if (endPos == std::string::npos)
+          endPos = preprocessedDsl.size();
+
+        std::string line = preprocessedDsl.substr(pos, endPos - pos);
+        pos = endPos + 1;
+
         if (line.empty())
           continue;
 
