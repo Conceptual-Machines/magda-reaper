@@ -2343,8 +2343,8 @@ void MagdaJSFXEditor::RenderSaveAsDialog() {
           m_currentFilePath = newPath;
           m_currentFileName = m_saveAsFilename;
           SaveCurrentFile();
-          RefreshFileList();  // Update file list to show new file
-          RefreshFXBrowser(); // Update REAPER's FX browser
+          RefreshFileList(); // Update file list to show new file
+          // Note: Don't call RefreshFXBrowser() here - it can cause REAPER to create subprojects
         }
         m_showSaveAsDialog = false;
         m_contextMenuTarget.clear();
