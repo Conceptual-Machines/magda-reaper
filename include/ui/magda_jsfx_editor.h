@@ -68,7 +68,8 @@ private:
   void RecompileJSFX();
   void AddToSelectedTrack();
   void AddToTrackAndOpen();
-  void OpenInReaperEditor();
+  void OpenInReaperIDE();    // Opens in REAPER's built-in JSFX IDE (via FX window)
+  void OpenInReaperEditor(); // Opens in system's default text editor
 
   // Compile and get errors - returns empty string on success, error message on
   // failure

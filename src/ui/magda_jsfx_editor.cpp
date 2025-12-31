@@ -1141,8 +1141,8 @@ void MagdaJSFXEditor::RenderToolbar() {
 
   m_ImGui_SameLine(m_ctx, &zero, &spacing);
 
-  // Open in external editor button
-  if (m_ImGui_Button(m_ctx, "Open External", nullptr, nullptr)) {
+  // Open in external text editor
+  if (m_ImGui_Button(m_ctx, "Text Editor", nullptr, nullptr)) {
     OpenInReaperEditor();
   }
 
@@ -1759,6 +1759,39 @@ void MagdaJSFXEditor::AddToTrackAndOpen() {
   }
 }
 
+void MagdaJSFXEditor::OpenInReaperIDE() {
+  if (!m_rec) {
+    return;
+  }
+
+  void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
+
+  // Need to save the file first
+  if (m_currentFilePath.empty()) {
+    if (m_modified || strlen(m_editorBuffer) > 0) {
+      m_showSaveAsDialog = true;
+      strncpy(m_saveAsFilename, m_currentFileName.c_str(), sizeof(m_saveAsFilename));
+      if (ShowConsoleMsg) {
+        ShowConsoleMsg("MAGDA JSFX: Please save the file first, then try again\n");
+      }
+    }
+    return;
+  }
+
+  // Save if modified
+  if (m_modified) {
+    SaveCurrentFile();
+  }
+
+  // Add to track and open the floating FX window
+  AddToTrackAndOpen();
+
+  // Show message to user - they need to click "Edit" to open the IDE
+  if (ShowConsoleMsg) {
+    ShowConsoleMsg("MAGDA JSFX: Click 'Edit' in the FX window to open REAPER's JSFX IDE\n");
+  }
+}
+
 void MagdaJSFXEditor::OpenInReaperEditor() {
   if (!m_rec || m_currentFilePath.empty()) {
     void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
@@ -1773,16 +1806,7 @@ void MagdaJSFXEditor::OpenInReaperEditor() {
     SaveCurrentFile();
   }
 
-  // Use REAPER's action to open JSFX in IDE
-  // Action 40535 = "Development: Open JSFX in text editor"
-  // But we need to use Main_OnCommand with the file
-  // Alternative: Use the reascript action
-  int (*NamedCommandLookup)(const char *) =
-      (int (*)(const char *))m_rec->GetFunc("NamedCommandLookup");
-  void (*Main_OnCommand)(int, int) = (void (*)(int, int))m_rec->GetFunc("Main_OnCommand");
-
-  // Try to open in system's default editor for JSFX files
-  // On macOS we can use "open" command
+  // Open in system's default text editor
 #ifdef __APPLE__
   std::string cmd = "open \"" + m_currentFilePath + "\"";
   system(cmd.c_str());
@@ -1797,8 +1821,7 @@ void MagdaJSFXEditor::OpenInReaperEditor() {
   void (*ShowConsoleMsg)(const char *) = (void (*)(const char *))m_rec->GetFunc("ShowConsoleMsg");
   if (ShowConsoleMsg) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "MAGDA JSFX: Opened %s in external editor\n",
-             m_currentFileName.c_str());
+    snprintf(msg, sizeof(msg), "MAGDA JSFX: Opened %s in text editor\n", m_currentFileName.c_str());
     ShowConsoleMsg(msg);
   }
 }
